@@ -740,17 +740,6 @@ export default function EmployeesPage() {
                           />
                         </label>
 
-                        <label className="cursor-pointer rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">
-                          ถ่ายรูป
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="hidden"
-                            onChange={(e) => handlePhotoChange(e.target.files?.[0])}
-                          />
-                        </label>
-
                         {photoPreview && (
                           <button
                             type="button"

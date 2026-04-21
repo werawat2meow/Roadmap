@@ -5,7 +5,6 @@ import { Select } from "antd";
 import { swalConfirm, swalError, swalSuccess } from "../../components/Swal";
 import { PhoneInput } from "react-international-phone";
 import "react-international-phone/style.css";
-
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
@@ -567,76 +566,97 @@ export default function EmployeesPage() {
                   </tr>
                 ))
               ) : employees.length > 0 ? (
-                employees.map((employee) => (
-                  <tr key={employee.id} className="border-t border-slate-200 hover:bg-slate-50">
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {employee.employee_code}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {employee.full_name_th}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {employee.branch_name || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {employee.division_name || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {employee.position_name || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          employee.employee_status_color === "green"
-                            ? "bg-green-100 text-green-700"
-                            : employee.employee_status_color === "yellow"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : employee.employee_status_color === "red"
-                            ? "bg-red-100 text-red-600"
-                            : employee.employee_status_color === "orange"
-                            ? "bg-orange-100 text-orange-700"
-                            : employee.employee_status_color === "blue"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {employee.employee_status_name || "-"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
-                        <div className="flex justify-end gap-2">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(employee)}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                            >
-                              Edit
-                            </button>
-                          )}
+                employees.map((employee) => {
+                  const isProtectedEmployee =
+                    employee.employee_code === "EMP000001" ||
+                    employee.full_name_th?.toLowerCase() === "system admin";
 
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(employee)}
-                              disabled={deletingId === employee.id}
-                              className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === employee.id
-                                  ? "cursor-not-allowed border-slate-200 text-slate-400"
-                                  : "border-red-200 text-red-600 hover:bg-red-50"
-                              }`}
-                            >
-                              {deletingId === employee.id ? "Deleting..." : "Delete"}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-right text-slate-400">-</div>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                  return (
+                    <tr key={employee.id} className="border-t border-slate-200 hover:bg-slate-50">
+                      <td className="px-6 py-4 font-medium text-slate-700">
+                        {employee.employee_code}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-700">
+                        {employee.full_name_th}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {employee.branch_name || "-"}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {employee.division_name || "-"}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {employee.position_name || "-"}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            employee.employee_status_color === "green"
+                              ? "bg-green-100 text-green-700"
+                              : employee.employee_status_color === "yellow"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : employee.employee_status_color === "red"
+                              ? "bg-red-100 text-red-600"
+                              : employee.employee_status_color === "orange"
+                              ? "bg-orange-100 text-orange-700"
+                              : employee.employee_status_color === "blue"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {employee.employee_status_name || "-"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {canEdit || canDelete ? (
+                          <div className="flex justify-end gap-2">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(employee)}
+                                disabled={isProtectedEmployee}
+                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                                  isProtectedEmployee
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                    : "border-slate-300 text-slate-600 hover:bg-slate-100"
+                                }`}
+                              >
+                                {isProtectedEmployee ? "Protected" : "Edit"}
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(employee)}
+                                disabled={deletingId === employee.id || isProtectedEmployee}
+                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                                  deletingId === employee.id || isProtectedEmployee
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                    : "border-red-200 text-red-600 hover:bg-red-50"
+                                }`}
+                              >
+                                {deletingId === employee.id
+                                  ? "Deleting..."
+                                  : isProtectedEmployee
+                                  ? "Protected"
+                                  : "Delete"}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-right text-slate-400">-</div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-10 text-center text-slate-400">

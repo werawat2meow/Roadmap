@@ -114,6 +114,7 @@ export async function PATCH(req, { params }) {
       .single();
 
     if (error) throw error;
+    const branchRows = data.branch_departments || [];
 
     await writeActivityLog({
       module_name: "departments",
@@ -147,7 +148,6 @@ export async function PATCH(req, { params }) {
       },
     });
 
-    const branchRows = data.branch_departments || [];
 
     return NextResponse.json({
       success: true,

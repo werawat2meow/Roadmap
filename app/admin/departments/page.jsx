@@ -6,6 +6,7 @@ import { Tooltip } from "antd";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../components/LoadingOrb";
 
 const initialForm = {
   code: "",
@@ -324,7 +325,7 @@ export default function DepartmentsPage() {
     );
   };
 
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 

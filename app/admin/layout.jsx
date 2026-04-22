@@ -19,7 +19,7 @@ export default function AdminLayout({ children }) {
   const menus = useMemo(() => sidebarMenus, []);
   const [openGroup, setOpenGroup] = useState(menus[0]?.title ?? null);
 
-  const {user,loadingUser,setUser,} = useAuth();
+  const {user,setUser,} = useAuth();
 
   const handleGroupClick = (title) => {
     setOpenGroup((prev) => (prev === title ? null : title));
@@ -77,38 +77,6 @@ export default function AdminLayout({ children }) {
 
     setMobileMenuOpen(false);
   }, [pathname, menus]);
-
-  if (loadingUser) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50/80 backdrop-blur-md">
-        <div className="relative flex flex-col items-center">
-          {/* Outer Glow Ring */}
-          <div className="absolute h-24 w-24 animate-ping rounded-full bg-[#0f6e56]/10" />
-          
-          {/* Main Logo Container */}
-          <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-[#0f6e56]/20">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#0f6e56] to-[#1eb68d] opacity-90" />
-            <span className="relative text-2xl font-black tracking-tighter text-white">HW</span>
-            
-            {/* Shine Effect Animation */}
-            <div className="absolute inset-0 animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full" />
-          </div>
-
-          {/* Status Text */}
-          <div className="mt-8 flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#0f6e56] [animation-delay:-0.3s]" />
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#0f6e56] [animation-delay:-0.15s]" />
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#0f6e56]" />
-            </div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-              Initializing System
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex">

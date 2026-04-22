@@ -6,6 +6,7 @@ import { Pagination } from "antd";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../components/LoadingOrb";
 
 const initialForm = {
   module_code: "",
@@ -245,7 +246,7 @@ export default function PermissionsPage() {
   };
 
   // #region Permission
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
   // #endregion

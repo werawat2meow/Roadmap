@@ -8,6 +8,7 @@ import "react-international-phone/style.css";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../components/LoadingOrb";
 
 const initialForm = {
   first_name_th: "",
@@ -493,7 +494,7 @@ export default function EmployeesPage() {
   };
 
   // #region Permission
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
   // #endregion

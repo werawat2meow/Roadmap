@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../components/LoadingOrb";
 
 const PAGE_SIZE = 20;
 
@@ -128,7 +129,7 @@ export default function ActivityLogsPage() {
     }
   };
 
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 

@@ -6,6 +6,7 @@ import { swalConfirm, swalError, swalSuccess } from "../../components/Swal";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../components/LoadingOrb";
 
 const initialForm = {
   employee_id: "",
@@ -318,7 +319,7 @@ export default function UserAccountsPage() {
   const pageStart = total === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const pageEnd = Math.min(currentPage * ITEMS_PER_PAGE, total);
 
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 

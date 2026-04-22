@@ -27,6 +27,7 @@ import {
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import { sidebarMenus } from "./components/sidebarMenus";
+import LoadingOrb from ".././components/LoadingOrb";
 
 const { Title, Text } = Typography;
 
@@ -197,7 +198,7 @@ export default function AdminPage() {
       });
   }, [user]);
 
-  if (loadingUser) return null;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canViewDashboard) return null;
 

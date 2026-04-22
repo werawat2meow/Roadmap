@@ -170,6 +170,7 @@ export async function POST(req) {
       .single();
 
     if (fetchError) throw fetchError;
+    const branchRows = fullDepartment.branch_departments || [];
 
     await writeActivityLog({
       module_name: "departments",
@@ -191,7 +192,6 @@ export async function POST(req) {
       },
     });
 
-    const branchRows = fullDepartment.branch_departments || [];
 
     return NextResponse.json({
       success: true,

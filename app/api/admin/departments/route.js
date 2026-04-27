@@ -171,7 +171,7 @@ export async function POST(req) {
 
     if (fetchError) throw fetchError;
     const branchRows = fullDepartment.branch_departments || [];
-
+    
     await writeActivityLog({
       module_name: "departments",
       action_type: "create",

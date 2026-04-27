@@ -138,6 +138,9 @@ export async function GET(request) {
       divisionsResult,
       unitsResult,
       positionsResult,
+      unitPositionsResult,
+      activeEmployeesForHeadcountResult,
+      employeesForStatusBreakdownResult,
       employeesActivityResult,
       userAccountsActivityResult,
       rolesActivityResult,
@@ -188,6 +191,50 @@ export async function GET(request) {
       supabaseAdmin
         .from("positions")
         .select("*", { count: "exact", head: true }),
+
+      supabaseAdmin
+        .from("unit_positions")
+        .select(`
+          id,
+          unit_id,
+          position_id,
+          headcount_target,
+          status,
+          units (
+            id,
+            unit_name
+          ),
+          positions (
+            id,
+            position_name
+          )
+        `)
+        .eq("status", "active"),
+
+      supabaseAdmin
+        .from("employees")
+        .select(`
+          id,
+          unit_id,
+          position_id,
+          status
+        `)
+        .eq("status", "active"),
+
+      supabaseAdmin
+        .from("employees")
+        .select(`
+          id,
+          unit_id,
+          position_id,
+          status,
+          employee_status_id,
+          employee_statuses (
+            id,
+            status_name,
+            color
+          )
+        `),
 
       supabaseAdmin
         .from("employees")
@@ -313,6 +360,9 @@ export async function GET(request) {
       divisionsResult,
       unitsResult,
       positionsResult,
+      unitPositionsResult,
+      activeEmployeesForHeadcountResult,
+      employeesForStatusBreakdownResult,
       employeesActivityResult,
       userAccountsActivityResult,
       rolesActivityResult,
@@ -329,6 +379,129 @@ export async function GET(request) {
     if (firstError?.error) {
       throw firstError.error;
     }
+
+    const unitPositions = unitPositionsResult.data || [];
+    const activeEmployees = activeEmployeesForHeadcountResult.data || [];
+    const employeesForStatusBreakdown =
+      employeesForStatusBreakdownResult.data || [];
+
+    const actualMap = activeEmployees.reduce((acc, employee) => {
+      if (!employee.unit_id || !employee.position_id) return acc;
+
+      const key = `${employee.unit_id}_${employee.position_id}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const manpowerRows = unitPositions.map((item) => {
+      const key = `${item.unit_id}_${item.position_id}`;
+      const actualHeadcount = actualMap[key] || 0;
+      const targetHeadcount = item.headcount_target || 0;
+      const vacantHeadcount = Math.max(targetHeadcount - actualHeadcount, 0);
+
+      return {
+        id: item.id,
+        unit_id: item.unit_id,
+        unit_name: item.units?.unit_name || "-",
+        position_id: item.position_id,
+        position_name: item.positions?.position_name || "-",
+        headcount_target: targetHeadcount,
+        headcount_actual: actualHeadcount,
+        headcount_vacant: vacantHeadcount,
+      };
+    });
+
+    const headcountTargetTotal = manpowerRows.reduce(
+      (sum, item) => sum + item.headcount_target,
+      0
+    );
+
+    const headcountActualTotal = manpowerRows.reduce(
+      (sum, item) => sum + item.headcount_actual,
+      0
+    );
+
+    const headcountVacantTotal = manpowerRows.reduce(
+      (sum, item) => sum + item.headcount_vacant,
+      0
+    );
+
+    const shortageUnitPositions = manpowerRows
+      .filter((item) => item.headcount_vacant > 0)
+      .sort((a, b) => {
+        if (b.headcount_vacant !== a.headcount_vacant) {
+          return b.headcount_vacant - a.headcount_vacant;
+        }
+
+        if (a.unit_name !== b.unit_name) {
+          return a.unit_name.localeCompare(b.unit_name);
+        }
+
+        return a.position_name.localeCompare(b.position_name);
+      });
+
+    const topUnitPositionShortages = shortageUnitPositions.slice(0, 5);
+
+    const employeeStatusSummaryMap = {};
+    const positionStatusMap = {};
+
+    for (const employee of employeesForStatusBreakdown) {
+      const statusName =
+        employee.employee_statuses?.status_name ||
+        (employee.status === "active"
+          ? "Active"
+          : employee.status === "resigned"
+          ? "Resigned"
+          : employee.status === "inactive"
+          ? "Inactive"
+          : "Unknown");
+
+      const statusColor = employee.employee_statuses?.color || "default";
+
+      if (!employeeStatusSummaryMap[statusName]) {
+        employeeStatusSummaryMap[statusName] = {
+          status_name: statusName,
+          color: statusColor,
+          total: 0,
+        };
+      }
+
+      employeeStatusSummaryMap[statusName].total += 1;
+
+      if (!employee.unit_id || !employee.position_id) continue;
+
+      const key = `${employee.unit_id}_${employee.position_id}`;
+
+      if (!positionStatusMap[key]) {
+        positionStatusMap[key] = {};
+      }
+
+      if (!positionStatusMap[key][statusName]) {
+        positionStatusMap[key][statusName] = {
+          status_name: statusName,
+          color: statusColor,
+          total: 0,
+        };
+      }
+
+      positionStatusMap[key][statusName].total += 1;
+    }
+
+    const employeeStatusSummary = Object.values(employeeStatusSummaryMap).sort(
+      (a, b) => b.total - a.total
+    );
+
+    const positionStatusBreakdowns = manpowerRows.map((row) => {
+      const key = `${row.unit_id}_${row.position_id}`;
+      const statuses = Object.values(positionStatusMap[key] || {}).sort(
+        (a, b) => b.total - a.total
+      );
+
+      return {
+        ...row,
+        statuses,
+      };
+    });
 
     const employeeActivities = mapActivities(
       (employeesActivityResult.data || []).map((item) => ({
@@ -452,6 +625,17 @@ export async function GET(request) {
         divisions: divisionsResult.count || 0,
         units: unitsResult.count || 0,
         positions: positionsResult.count || 0,
+
+        headcount_target_total: headcountTargetTotal,
+        headcount_actual_total: headcountActualTotal,
+        headcount_vacant_total: headcountVacantTotal,
+        top_unit_position_shortages: topUnitPositionShortages,
+        shortage_unit_positions: shortageUnitPositions,
+        shortage_unit_positions_total: shortageUnitPositions.length,
+
+        employee_status_summary: employeeStatusSummary,
+        position_status_breakdowns: positionStatusBreakdowns,
+
         recent_activities: recentActivities,
         recent_activities_total: totalActivities,
         recent_activities_page: page,

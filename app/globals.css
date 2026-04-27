@@ -92,3 +92,54 @@ body {
 }
 
 /* End phone */
+
+
+
+
+/* สีขอบ สายรุ่ง login  */
+
+@property --hue {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes hue-spin {
+  to { --hue: 360deg; }
+}
+
+.rb-wrap {
+  position: relative;
+  border-radius: 30px;
+  isolation: isolate; /* ✅ เพิ่มบรรทัดนี้ */
+}
+
+.rb-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 42px;
+  background: conic-gradient(from var(--hue), hsl(0,100%,55%), hsl(60,100%,55%), hsl(120,100%,55%), hsl(180,100%,55%), hsl(240,100%,55%), hsl(300,100%,55%), hsl(360,100%,55%));
+  animation: hue-spin 4s linear infinite;
+  filter: blur(20px);
+  opacity: 0.85;
+  z-index: -1; /* ✅ ต่ำกว่า content แต่อยู่ใน isolation context */
+}
+
+.rb-border {
+  position: absolute;
+  inset: -4px;
+  border-radius: 32px;
+  background: conic-gradient(from var(--hue), hsl(0,100%,55%), hsl(60,100%,55%), hsl(120,100%,55%), hsl(180,100%,55%), hsl(240,100%,55%), hsl(300,100%,55%), hsl(360,100%,55%));
+  animation: hue-spin 4s linear infinite;
+  z-index: 0;
+}
+
+.rb-inner {
+  position: absolute;
+  inset: 4px;
+  border-radius: 26px;
+  background: white;
+  z-index: 1;
+}
+
+/* end  */

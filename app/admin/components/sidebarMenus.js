@@ -11,6 +11,7 @@ import {
   IdcardOutlined,
   SafetyOutlined,
   KeyOutlined,
+  WarningOutlined,
   AuditOutlined,
   UsergroupAddOutlined,
 } from "@ant-design/icons";
@@ -23,6 +24,12 @@ export const sidebarMenus = [
         label: "Dashboard",
         href: "/admin",
         icon: <DashboardOutlined />,
+        permission: "dashboard.view",
+      },
+      {
+        label: "กำลังคน",
+        href: "/admin/manpower",
+        icon: <WarningOutlined />,
         permission: "dashboard.view",
       },
     ],
@@ -132,6 +139,29 @@ export const sidebarMenus = [
         href: "/admin/activity-logs",
         icon: <AuditOutlined />,
         permission: "activity_logs.view",
+      },
+    ],
+  },
+  {
+    title: "API MANAGEMENT",
+    items: [
+      {
+        label: "API Clients",
+        href: "/admin/api-clients",
+        icon: <UsergroupAddOutlined />,
+        permission: "api_clients.view",
+      },
+      {
+        label: "API Tokens",
+        href: "/admin/api-tokens",
+        icon: <KeyOutlined />,
+        permission: "api_tokens.view",
+      },
+      {
+        label: "API Logs",
+        href: "/admin/api-logs",
+        icon: <AuditOutlined />,
+        permission: "api_logs.view",
       },
     ],
   },

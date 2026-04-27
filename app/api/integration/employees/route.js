@@ -27,17 +27,36 @@ Header:
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateApiKey } from "@/lib/validateApiKey";
+import { logApiAccess } from "@/lib/logApiAccess";
 
 export async function GET(req) {
-  const auth = validateApiKey(req);
+  const url = new URL(req.url);
+  const requestIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+  const userAgent = req.headers.get("user-agent") || null;
+  const searchParams = url.searchParams;
+  const requestQuery = Object.fromEntries(searchParams.entries());
+
+  // 🔐 validate token
+  const auth = await validateApiKey(req);
 
   if (!auth.success) {
+    await logApiAccess({
+      clientId: null,
+      tokenId: null,
+      method: "GET",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 401,
+      isSuccess: false,
+      requestQuery,
+      errorMessage: "Unauthorized: Invalid or missing API token",
+    });
+
     return auth.response;
   }
 
   try {
-    const { searchParams } = new URL(req.url);
-
     const employee_code = searchParams.get("employee_code")?.trim() || "";
     const status = searchParams.get("status")?.trim() || "";
     const branch_id = searchParams.get("branch_id")?.trim() || "";
@@ -112,67 +131,106 @@ export async function GET(req) {
 
     if (error) throw error;
 
-    return NextResponse.json({
+    const mappedData = (data || []).map((item) => ({
+      id: item.id,
+      employee_code: item.employee_code,
+      first_name_th: item.first_name_th,
+      last_name_th: item.last_name_th,
+      first_name_en: item.first_name_en,
+      last_name_en: item.last_name_en,
+      nick_name: item.nick_name,
+      gender: item.gender,
+      phone: item.phone,
+      email: item.email,
+      employee_photo_url: item.employee_photo_url || "",
+      nationality: item.nationality,
+      hire_date: item.hire_date,
+      employment_type: item.employment_type,
+      status: item.status,
+
+      branch: {
+        id: item.branch_id,
+        code: item.branches?.branch_code || null,
+        name: item.branches?.branch_name || null,
+      },
+
+      department: {
+        id: item.department_id,
+        code: item.departments?.department_code || null,
+        name: item.departments?.department_name || null,
+      },
+
+      division: {
+        id: item.division_id,
+        code: item.divisions?.division_code || null,
+        name: item.divisions?.division_name || null,
+      },
+
+      unit: {
+        id: item.unit_id,
+        code: item.units?.unit_code || null,
+        name: item.units?.unit_name || null,
+      },
+
+      position: {
+        id: item.position_id,
+        code: item.positions?.position_code || null,
+        name: item.positions?.position_name || null,
+        group: item.positions?.position_group || null,
+        level: item.positions?.position_level || null,
+      },
+
+      employee_status: {
+        id: item.employee_status_id,
+        code: item.employee_statuses?.status_code || null,
+        name: item.employee_statuses?.status_name || null,
+        color: item.employee_statuses?.color || null,
+      },
+    }));
+
+    const responseBody = {
       success: true,
-      data: (data || []).map((item) => ({
-        id: item.id,
-        employee_code: item.employee_code,
-        first_name_th: item.first_name_th,
-        last_name_th: item.last_name_th,
-        first_name_en: item.first_name_en,
-        last_name_en: item.last_name_en,
-        nick_name: item.nick_name,
-        gender: item.gender,
-        phone: item.phone,
-        email: item.email,
-        employee_photo_url: item.employee_photo_url || "",
-        nationality: item.nationality,
-        hire_date: item.hire_date,
-        employment_type: item.employment_type,
-        status: item.status,
+      client: {
+        id: auth.client.id,
+        client_code: auth.client.client_code,
+        client_name: auth.client.client_name,
+      },
+      data: mappedData,
+    };
 
-        branch: {
-          id: item.branch_id,
-          code: item.branches?.branch_code || null,
-          name: item.branches?.branch_name || null,
-        },
-
-        department: {
-          id: item.department_id,
-          code: item.departments?.department_code || null,
-          name: item.departments?.department_name || null,
-        },
-
-        division: {
-          id: item.division_id,
-          code: item.divisions?.division_code || null,
-          name: item.divisions?.division_name || null,
-        },
-
-        unit: {
-          id: item.unit_id,
-          code: item.units?.unit_code || null,
-          name: item.units?.unit_name || null,
-        },
-
-        position: {
-          id: item.position_id,
-          code: item.positions?.position_code || null,
-          name: item.positions?.position_name || null,
-          group: item.positions?.position_group || null,
-          level: item.positions?.position_level || null,
-        },
-
-        employee_status: {
-          id: item.employee_status_id,
-          code: item.employee_statuses?.status_code || null,
-          name: item.employee_statuses?.status_name || null,
-          color: item.employee_statuses?.color || null,
-        },
-      })),
+    // 🧾 log success
+    await logApiAccess({
+      clientId: auth.client.id,
+      tokenId: auth.token.id,
+      method: "GET",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 200,
+      isSuccess: true,
+      requestQuery,
+      responseBody: {
+        success: true,
+        count: mappedData.length,
+      },
     });
+
+    return NextResponse.json(responseBody);
   } catch (error) {
     console.error("INTEGRATION_EMPLOYEES_API_ERROR:", error);
+
+    await logApiAccess({
+      clientId: auth.client?.id || null,
+      tokenId: auth.token?.id || null,
+      method: "GET",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 500,
+      isSuccess: false,
+      requestQuery,
+      errorMessage: error.message || "ไม่สามารถดึงข้อมูลพนักงานได้",
+    });
 
     return NextResponse.json(
       {

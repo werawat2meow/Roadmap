@@ -25,7 +25,7 @@ export default function RolePermissionsPage() {
     const { user, loadingUser } = useAuth();
     const canView = hasPermission(user, "role_permissions.view");
     const canEdit = hasPermission(user, "role_permissions.edit");
-
+  
     useEffect(() => {
       if (loadingUser) return;
   
@@ -147,6 +147,11 @@ export default function RolePermissionsPage() {
       return;
     }
 
+    if (selectedRole?.role_code === "SUPER_ADMIN" && user?.role_code !== "SUPER_ADMIN") {
+      swalError("คุณไม่มีสิทธิ์แก้ไข Super Admin");
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -265,7 +270,12 @@ export default function RolePermissionsPage() {
           value={selectedRoleId || undefined}
           onChange={(value) => setSelectedRoleId(value || "")}
           loading={loadingRoles}
-          options={roles.map((item) => ({
+          options={roles.filter((item) => {
+            // ถ้าเป็น SUPER_ADMIN → เห็นทุก role
+            if (user?.role_code === "SUPER_ADMIN") return true;
+            // ถ้าไม่ใช่ → ซ่อน SUPER_ADMIN
+            return item.role_code !== "SUPER_ADMIN";
+          }).map((item) => ({
             value: item.id,
             label: `${item.role_code} - ${item.role_name}`,
           }))}

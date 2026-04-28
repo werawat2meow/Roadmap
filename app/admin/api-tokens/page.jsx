@@ -37,6 +37,13 @@ export default function ApiTokensPage() {
   const [pendingPlainToken, setPendingPlainToken] = useState("");
   const [form] = Form.useForm();
 
+  // #region Lazily Load Clients for Select Options in Create Modal
+  const [clientOptions, setClientOptions] = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientPage, setClientPage] = useState(1);
+  const [clientHasMore, setClientHasMore] = useState(true);
+  // #endregion
+
   // #region Auth & Permissions
   const router = useRouter();
   const { user, loadingUser } = useAuth();
@@ -81,6 +88,26 @@ export default function ApiTokensPage() {
     } finally {
       setClientsLoading(false);
     }
+  };
+
+  const fetchClientOptions = async ({
+    search = "",
+    page = 1,
+    append = false,
+    } = {}) => {
+      const res = await fetch(
+        `/api/admin/api-clients?page=${page}&pageSize=30&status=active&search=${encodeURIComponent(search)}`
+      );
+
+    const json = await res.json();
+
+    const options = (json.data || []).map((item) => ({
+      label: `${item.client_name} (${item.client_code})`,
+      value: item.id,
+    }));
+
+    setClientOptions((prev) => (append ? [...prev, ...options] : options));
+    setClientHasMore(page < (json.pagination?.totalPages || 1));
   };
 
   const fetchTokens = async () => {
@@ -402,14 +429,38 @@ export default function ApiTokensPage() {
                 rules={[{ required: true, message: "กรุณาเลือก API Client" }]}
               >
                 <Select
+                  showSearch
+                  filterOption={false}
                   loading={clientsLoading}
                   placeholder="เลือก Client"
-                  options={clients
-                    .filter((item) => item.is_active)
-                    .map((item) => ({
-                      label: `${item.client_name} (${item.client_code})`,
-                      value: item.id,
-                    }))}
+                  options={clientOptions}
+                  onOpenChange={(open) => {
+                    if (open && clientOptions.length === 0) {
+                      fetchClientOptions({ page: 1 });
+                    }
+                  }}
+                  onSearch={(value) => {
+                    setClientSearch(value);
+                    setClientPage(1);
+                    fetchClientOptions({ search: value, page: 1 });
+                  }}
+                  onPopupScroll={(e) => {
+                    const target = e.currentTarget;
+
+                    if (
+                      target.scrollTop + target.offsetHeight >= target.scrollHeight - 20 &&
+                      clientHasMore &&
+                      !clientsLoading
+                    ) {
+                      const nextPage = clientPage + 1;
+                      setClientPage(nextPage);
+                      fetchClientOptions({
+                        search: clientSearch,
+                        page: nextPage,
+                        append: true,
+                      });
+                    }
+                  }}
                 />
               </Form.Item>
 

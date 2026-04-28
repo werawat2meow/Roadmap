@@ -37,6 +37,11 @@ export default function UserAccountsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Lazy Load
+  const [employeePage, setEmployeePage] = useState(1);
+  const [employeeTotalPages, setEmployeeTotalPages] = useState(1);
+  const [employeeKeyword, setEmployeeKeyword] = useState("");
+
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
@@ -60,23 +65,31 @@ export default function UserAccountsPage() {
   }, [user, canView, loadingUser, router]);
   // #endregion
 
-
-  const loadEmployees = async (keyword = "") => {
+  const loadEmployees = async (keyword = "", page = 1, append = false) => {
     try {
       setEmployeeLoading(true);
 
-      const url = `/api/admin/employees?search=${encodeURIComponent(
-        keyword
-      )}&limit=20`;
+      const params = new URLSearchParams();
+      params.set("search", keyword);
+      params.set("page", String(page));
+      params.set("pageSize", "20");
 
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(`/api/admin/employees?${params.toString()}`, {
+        cache: "no-store",
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data?.error || "Load employees failed");
       }
 
-      setEmployees(data.data || []);
+      setEmployees((prev) =>
+        append ? [...prev, ...(data.data || [])] : data.data || []
+      );
+
+      setEmployeePage(data.pagination?.page || page);
+      setEmployeeTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error(err);
       swalError(err.message || "ไม่สามารถโหลดข้อมูลพนักงานได้");
@@ -586,10 +599,26 @@ export default function UserAccountsPage() {
                   filterOption={false}
                   placeholder="ค้นหาพนักงาน"
                   value={form.employee_id || undefined}
-                  onSearch={loadEmployees}
+                  onSearch={(value) => {
+                    setEmployeeKeyword(value);
+                    setEmployeePage(1);
+                    loadEmployees(value, 1, false);
+                  }}
+                  onPopupScroll={(e) => {
+                    const target = e.target;
+
+                    const isBottom =
+                      target.scrollTop + target.offsetHeight >= target.scrollHeight - 20;
+
+                    if (isBottom && !employeeLoading && employeePage < employeeTotalPages) {
+                      loadEmployees(employeeKeyword, employeePage + 1, true);
+                    }
+                  }}
                   onFocus={() => {
                     if (employees.length === 0) {
-                      loadEmployees("");
+                      setEmployeeKeyword("");
+                      setEmployeePage(1);
+                      loadEmployees("", 1, false);
                     }
                   }}
                   onChange={(value) =>
@@ -604,15 +633,11 @@ export default function UserAccountsPage() {
                   options={employees.map((emp) => {
                     const fullNameTh =
                       emp.full_name_th ||
-                      `${emp.first_name_th || ""} ${
-                        emp.last_name_th || ""
-                      }`.trim();
+                      `${emp.first_name_th || ""} ${emp.last_name_th || ""}`.trim();
 
                     const fullNameEn =
                       emp.full_name_en ||
-                      `${emp.first_name_en || ""} ${
-                        emp.last_name_en || ""
-                      }`.trim();
+                      `${emp.first_name_en || ""} ${emp.last_name_en || ""}`.trim();
 
                     return {
                       value: emp.id,
@@ -643,10 +668,15 @@ export default function UserAccountsPage() {
                       role_id: value ?? "",
                     }))
                   }
-                  options={roles.map((role) => ({
-                    value: role.id,
-                    label: `${role.role_code} - ${role.role_name}`,
-                  }))}
+                  options={roles
+                    .filter((role) => {
+                      if (user?.role_code === "SUPER_ADMIN") return true;
+                      return role.role_code !== "SUPER_ADMIN";
+                    })
+                    .map((role) => ({
+                      value: role.id,
+                      label: `${role.role_code} - ${role.role_name}`,
+                    }))}
                   className="w-full"
                   size="large"
                 />

@@ -1,7 +1,4 @@
 /*
-
-
-
   STEP 1: Login (เอา Token มาก่อน)
   Response ที่จะได้ 
   {
@@ -10,13 +7,6 @@
     "refreshToken": "xxxxx"
   } 
 
-
-
-
-
-
-
-  
   const res = await fetch("/api/access/login", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -32,23 +22,79 @@
   localStorage.setItem("refreshToken", json.refreshToken);
 
 */
-
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import bcrypt from "bcryptjs";
 import { logActivity } from "@/lib/logActivity";
 import { createAccessToken, createRefreshToken, hashToken } from "@/lib/jwt";
+import { logApiAccess } from "@/lib/logApiAccess";
+
+async function writeLoginApiLog(req, payload) {
+  await logApiAccess({
+    method: payload.method || req.method,
+    endpoint: "/api/access/login",
+    requestIp:
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      null,
+    userAgent: req.headers.get("user-agent") || null,
+    statusCode: payload.statusCode,
+    isSuccess: payload.isSuccess,
+    requestQuery: Object.fromEntries(new URL(req.url).searchParams),
+    requestBody: payload.requestBody || null,
+    responseBody: payload.responseBody || null,
+    errorMessage: payload.errorMessage || null,
+  });
+}
+
+export async function GET(req) {
+  await writeLoginApiLog(req, {
+    method: "GET",
+    statusCode: 405,
+    isSuccess: false,
+    responseBody: {
+      success: false,
+      error: "Method Not Allowed. Use POST.",
+    },
+    errorMessage: "Method Not Allowed",
+  });
+
+  return NextResponse.json(
+    { success: false, error: "Method Not Allowed. Use POST." },
+    { status: 405 }
+  );
+}
 
 export async function POST(req) {
+  let username = "";
+
   try {
     const body = await req.json();
 
-    const username = body?.username?.trim();
-    const password = body?.password?.trim();
-    const requestIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+    username = body?.username?.trim() || "";
+    const password = body?.password?.trim() || "";
+
+    const requestIp =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      null;
+
     const userAgent = req.headers.get("user-agent") || null;
 
     if (!username || !password) {
+      await writeLoginApiLog(req, {
+        statusCode: 400,
+        isSuccess: false,
+        requestBody: {
+          username,
+        },
+        responseBody: {
+          success: false,
+          error: "กรุณากรอก Username และ Password",
+        },
+        errorMessage: "กรุณากรอก Username และ Password",
+      });
+
       return NextResponse.json(
         { success: false, error: "กรุณากรอก Username และ Password" },
         { status: 400 }
@@ -81,6 +127,19 @@ export async function POST(req) {
     if (error) throw error;
 
     if (!user) {
+      await writeLoginApiLog(req, {
+        statusCode: 401,
+        isSuccess: false,
+        requestBody: {
+          username,
+        },
+        responseBody: {
+          success: false,
+          error: "ไม่พบผู้ใช้งาน",
+        },
+        errorMessage: "ไม่พบผู้ใช้งาน",
+      });
+
       return NextResponse.json(
         { success: false, error: "ไม่พบผู้ใช้งาน" },
         { status: 401 }
@@ -88,6 +147,19 @@ export async function POST(req) {
     }
 
     if (!user.is_active) {
+      await writeLoginApiLog(req, {
+        statusCode: 403,
+        isSuccess: false,
+        requestBody: {
+          username,
+        },
+        responseBody: {
+          success: false,
+          error: "บัญชีถูกปิดการใช้งาน",
+        },
+        errorMessage: "บัญชีถูกปิดการใช้งาน",
+      });
+
       return NextResponse.json(
         { success: false, error: "บัญชีถูกปิดการใช้งาน" },
         { status: 403 }
@@ -97,6 +169,19 @@ export async function POST(req) {
     const isMatch = await bcrypt.compare(password, user.password_hash || "");
 
     if (!isMatch) {
+      await writeLoginApiLog(req, {
+        statusCode: 401,
+        isSuccess: false,
+        requestBody: {
+          username,
+        },
+        responseBody: {
+          success: false,
+          error: "รหัสผ่านไม่ถูกต้อง",
+        },
+        errorMessage: "รหัสผ่านไม่ถูกต้อง",
+      });
+
       return NextResponse.json(
         { success: false, error: "รหัสผ่านไม่ถูกต้อง" },
         { status: 401 }
@@ -144,6 +229,20 @@ export async function POST(req) {
       },
     });
 
+    await writeLoginApiLog(req, {
+      statusCode: 200,
+      isSuccess: true,
+      requestBody: {
+        username,
+      },
+      responseBody: {
+        success: true,
+        message: "เข้าสู่ระบบสำเร็จ",
+        username: user.username,
+        role_code: user.roles?.role_code || "",
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "เข้าสู่ระบบสำเร็จ",
@@ -165,6 +264,19 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error("LOGIN_ERROR:", error);
+
+    await writeLoginApiLog(req, {
+      statusCode: 500,
+      isSuccess: false,
+      requestBody: {
+        username,
+      },
+      responseBody: {
+        success: false,
+        error: error.message || "Login ไม่สำเร็จ",
+      },
+      errorMessage: error.message || "Login ไม่สำเร็จ",
+    });
 
     return NextResponse.json(
       { success: false, error: error.message || "Login ไม่สำเร็จ" },

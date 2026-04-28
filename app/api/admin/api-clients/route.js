@@ -2,18 +2,61 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { logActivity } from "@/lib/logActivity";
 
-export async function GET() {
+export async function GET(req) {
   try {
-    const { data, error } = await supabaseAdmin
+    const { searchParams } = new URL(req.url);
+
+    const search = searchParams.get("search")?.trim() || "";
+    const status = searchParams.get("status");
+
+    const page = Math.max(Number(searchParams.get("page") || 1), 1);
+    const pageSize = Math.min(
+      Math.max(Number(searchParams.get("pageSize") || 10), 1),
+      100
+    );
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabaseAdmin
       .from("api_clients")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (search) {
+      query = query.or(
+        [
+          `client_code.ilike.%${search}%`,
+          `client_name.ilike.%${search}%`,
+          `description.ilike.%${search}%`,
+          `contact_name.ilike.%${search}%`,
+          `contact_email.ilike.%${search}%`,
+        ].join(",")
+      );
+    }
+
+    if (status === "active") {
+      query = query.eq("is_active", true);
+    }
+
+    if (status === "inactive") {
+      query = query.eq("is_active", false);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
       data: data || [],
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / pageSize),
+      },
     });
   } catch (error) {
     console.error("GET /api/admin/api-clients error:", error);

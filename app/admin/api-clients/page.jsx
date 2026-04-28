@@ -31,6 +31,9 @@ export default function ApiClientsPage() {
   const [editing, setEditing] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [form] = Form.useForm();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   // #region Auth & Permissions
   const router = useRouter();
@@ -59,11 +62,16 @@ export default function ApiClientsPage() {
   }, [loadingUser, user, canView, router]);
   // #endregion
 
-  const fetchClients = async () => {
+  const fetchClients = async (nextPage = page, nextPageSize = pageSize) => {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/admin/api-clients");
+      const params = new URLSearchParams({
+        page: String(nextPage),
+        pageSize: String(nextPageSize),
+      });
+
+      const res = await fetch(`/api/admin/api-clients?${params.toString()}`);
       const json = await res.json();
 
       if (!res.ok) {
@@ -71,6 +79,9 @@ export default function ApiClientsPage() {
       }
 
       setData(json.data || []);
+      setTotal(json.pagination?.total || 0);
+      setPage(json.pagination?.page || nextPage);
+      setPageSize(json.pagination?.pageSize || nextPageSize);
     } catch (err) {
       message.error(err.message || "โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -363,8 +374,14 @@ export default function ApiClientsPage() {
         loading={loading}
         scroll={{ x: 1000 }}
         pagination={{
-          pageSize: 10,
+          current: page,
+          pageSize,
+          total,
           showSizeChanger: false,
+          showTotal: (totalRows) => `ทั้งหมด ${totalRows} รายการ`,
+          onChange: (nextPage, nextPageSize) => {
+            fetchClients(nextPage, nextPageSize);
+          },
         }}
       />
 

@@ -59,6 +59,13 @@ export default function ApiLogsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // lazy load 
+  const [clientLoading, setClientLoading] = useState(false);
+  const [clientPage, setClientPage] = useState(1);
+  const [clientTotalPages, setClientTotalPages] = useState(1);
+  const [clientKeyword, setClientKeyword] = useState("");
+
+
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
@@ -81,18 +88,32 @@ export default function ApiLogsPage() {
     }
   }, [loadingUser, user, canView, router]);
 
-  const fetchClients = async () => {
+  const fetchClients = async (keyword = "", page = 1, append = false) => {
     try {
-      const res = await fetch("/api/admin/api-clients");
+      setClientLoading(true);
+
+      const params = new URLSearchParams();
+      params.set("search", keyword);
+      params.set("page", String(page));
+      params.set("pageSize", "20");
+
+      const res = await fetch(`/api/admin/api-clients?${params.toString()}`);
       const json = await res.json();
 
       if (!res.ok) {
         throw new Error(json.message || "โหลด API Clients ไม่สำเร็จ");
       }
 
-      setClients(json.data || []);
+      setClients((prev) =>
+        append ? [...prev, ...(json.data || [])] : json.data || []
+      );
+
+      setClientPage(json.pagination?.page || page);
+      setClientTotalPages(json.pagination?.totalPages || 1);
     } catch (error) {
       message.error(error.message || "โหลด API Clients ไม่สำเร็จ");
+    } finally {
+      setClientLoading(false);
     }
   };
 
@@ -283,10 +304,37 @@ export default function ApiLogsPage() {
           />
 
           <Select
+            showSearch
             allowClear
             placeholder="เลือก Client"
             value={clientFilter}
+            filterOption={false}
+            onSearch={(value) => {
+              setClientKeyword(value);
+              setClientPage(1);
+              fetchClients(value, 1, false);
+            }}
+            onPopupScroll={(e) => {
+              const target = e.target;
+
+              const isBottom =
+                target.scrollTop + target.offsetHeight >= target.scrollHeight - 20;
+
+              if (isBottom && !clientLoading && clientPage < clientTotalPages) {
+                fetchClients(clientKeyword, clientPage + 1, true);
+              }
+            }}
+            onFocus={() => {
+              if (clients.length === 0) {
+                setClientKeyword("");
+                setClientPage(1);
+                fetchClients("", 1, false);
+              }
+            }}
             onChange={setClientFilter}
+            notFoundContent={
+              clientLoading ? "กำลังโหลด..." : "ไม่พบข้อมูล"
+            }
             options={clients.map((item) => ({
               label: `${item.client_name} (${item.client_code})`,
               value: item.id,

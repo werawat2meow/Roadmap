@@ -30,7 +30,9 @@ export default function DivisionsPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+ 
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
@@ -39,7 +41,6 @@ export default function DivisionsPage() {
   const canEdit = hasPermission(user, "divisions.edit");
   const canDelete = hasPermission(user, "divisions.delete");
 
-  
   useEffect(() => {
     if (loadingUser) return;
 
@@ -52,11 +53,12 @@ export default function DivisionsPage() {
       router.replace("/admin");
     }
   }, [user, canView, loadingUser, router]);
+
   // #endregion
 
   const loadDepartments = async () => {
     try {
-      const res = await fetch("/api/admin/departments", {
+      const res = await fetch("/api/admin/departments?all=true", {
         method: "GET",
         cache: "no-store",
       });
@@ -74,16 +76,18 @@ export default function DivisionsPage() {
     }
   };
 
-  const loadDivisions = async (keyword = "") => {
+  const loadDivisions = async (keyword = "", nextPage = 1) => {
     try {
       setLoading(true);
       setError("");
 
-      const url = keyword
-        ? `/api/admin/divisions?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/divisions";
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", String(pageSize));
 
-      const res = await fetch(url, {
+      if (keyword) params.set("search", keyword);
+
+      const res = await fetch(`/api/admin/divisions?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
       });
@@ -104,7 +108,9 @@ export default function DivisionsPage() {
       }));
 
       setDivisions(mapped);
-      setPage(1);
+      setPage(data.pagination?.page || nextPage);
+      setTotal(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error(err);
       setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
@@ -115,12 +121,12 @@ export default function DivisionsPage() {
 
   useEffect(() => {
     loadDepartments();
-    loadDivisions();
+    loadDivisions("", 1);
   }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadDivisions(search);
+      loadDivisions(search, 1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -136,6 +142,7 @@ export default function DivisionsPage() {
       swalError("คุณไม่มีสิทธิ์เพิ่มฝ่าย");
       return;
     }
+
     resetForm();
     setOpenModal(true);
   };
@@ -145,6 +152,7 @@ export default function DivisionsPage() {
       swalError("คุณไม่มีสิทธิ์แก้ไขฝ่าย");
       return;
     }
+
     setEditingDivision(division);
 
     setForm({
@@ -164,6 +172,7 @@ export default function DivisionsPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingDivision;
+
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขฝ่าย");
       return;
@@ -186,8 +195,6 @@ export default function DivisionsPage() {
 
     try {
       setSaving(true);
-
-      const isEdit = !!editingDivision;
 
       const url = isEdit
         ? `/api/admin/divisions/${editingDivision.id}`
@@ -214,30 +221,12 @@ export default function DivisionsPage() {
         throw new Error(data?.error || "Save failed");
       }
 
-      const savedDivision = {
-        id: data.data.id,
-        code: data.data.division_code,
-        name: data.data.division_name,
-        department_id: data.data.department_id,
-        department_name: data.data.department_name,
-        status: data.data.status,
-      };
-
-      if (isEdit) {
-        setDivisions((prev) =>
-          prev.map((item) =>
-            item.id === savedDivision.id ? savedDivision : item
-          )
-        );
-
-        swalSuccess("อัพเดทข้อมูลฝ่ายเรียบร้อยแล้ว");
-      } else {
-        setDivisions((prev) => [savedDivision, ...prev]);
-        setPage(1);
-        swalSuccess("บันทึกข้อมูลฝ่ายเรียบร้อยแล้ว");
-      }
+      swalSuccess(
+        isEdit ? "อัพเดทข้อมูลฝ่ายเรียบร้อยแล้ว" : "บันทึกข้อมูลฝ่ายเรียบร้อยแล้ว"
+      );
 
       handleCloseModal();
+      await loadDivisions(search, isEdit ? page : 1);
     } catch (err) {
       console.error(err);
       swalError(err.message || "เกิดข้อผิดพลาดในการบันทึก");
@@ -247,7 +236,7 @@ export default function DivisionsPage() {
   };
 
   const handleDelete = async (division) => {
-     if (!canDelete) {
+    if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบฝ่าย");
       return;
     }
@@ -271,15 +260,12 @@ export default function DivisionsPage() {
         throw new Error(data?.error || "Delete failed");
       }
 
-      const nextDivisions = divisions.filter((item) => item.id !== division.id);
-      setDivisions(nextDivisions);
-
-      const nextTotalPages = Math.max(1, Math.ceil(nextDivisions.length / pageSize));
-      if (page > nextTotalPages) {
-        setPage(nextTotalPages);
-      }
-
       swalSuccess("ลบข้อมูลฝ่ายเรียบร้อยแล้ว");
+
+      const nextPage =
+        divisions.length === 1 && page > 1 ? page - 1 : page;
+
+      await loadDivisions(search, nextPage);
     } catch (err) {
       console.error(err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
@@ -287,12 +273,6 @@ export default function DivisionsPage() {
       setDeletingId("");
     }
   };
-
-  const totalPages = Math.max(1, Math.ceil(divisions.length / pageSize));
-  const paginatedDivisions = divisions.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -307,6 +287,7 @@ export default function DivisionsPage() {
             <p className="mt-1 text-sm text-slate-500">
               จัดการข้อมูลฝ่ายภายใต้แต่ละแผนก
             </p>
+
             {!canCreate && !canEdit && !canDelete ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบฝ่ายได้
@@ -360,15 +341,28 @@ export default function DivisionsPage() {
               {loading ? (
                 [...Array(pageSize)].map((_, i) => (
                   <tr key={i} className="border-t border-slate-200">
-                    <td className="px-6 py-4"><div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-3.5 w-40 animate-pulse rounded-md bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="ml-auto h-8 w-24 animate-pulse rounded-xl bg-slate-200" /></td>
+                    <td className="px-6 py-4">
+                      <div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-3.5 w-40 animate-pulse rounded-md bg-slate-200" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="ml-auto h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
+                    </td>
                   </tr>
                 ))
-              ) : paginatedDivisions.length > 0 ? (
-                paginatedDivisions.map((division , index) => (
+              ) : divisions.length > 0 ? (
+                divisions.map((division, index) => (
                   <tr
                     key={division.id}
                     className="border-t border-slate-200 hover:bg-slate-50"
@@ -402,7 +396,7 @@ export default function DivisionsPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
+                      {canEdit || canDelete ? (
                         <div className="flex justify-end gap-2">
                           {canEdit && (
                             <button
@@ -437,7 +431,10 @@ export default function DivisionsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-10 text-center text-slate-400"
+                  >
                     ไม่พบข้อมูลฝ่าย
                   </td>
                 </tr>
@@ -447,14 +444,14 @@ export default function DivisionsPage() {
 
           <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
             <p className="text-sm text-slate-500">
-              ทั้งหมด {divisions.length} รายการ
+              ทั้งหมด {total} รายการ
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => prev - 1)}
+                onClick={() => loadDivisions(search, page - 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ก่อนหน้า
@@ -467,7 +464,7 @@ export default function DivisionsPage() {
               <button
                 type="button"
                 disabled={page >= totalPages || loading}
-                onClick={() => setPage((prev) => prev + 1)}
+                onClick={() => loadDivisions(search, page + 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ถัดไป
@@ -567,7 +564,8 @@ export default function DivisionsPage() {
                 Cancel
               </button>
 
-              {((editingDivision && canEdit) || (!editingDivision && canCreate)) && (
+              {((editingDivision && canEdit) ||
+                (!editingDivision && canCreate)) && (
                 <button
                   type="button"
                   onClick={handleSave}

@@ -6,7 +6,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
@@ -15,22 +15,56 @@ export async function GET(req) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("divisions")
-      .select(`
-        id,
-        division_code,
-        division_name,
-        department_id,
-        status,
-        sort_order,
-        created_at,
-        departments (
-          department_name
-        )
-      `)
+      .select(
+        `
+          id,
+          division_code,
+          division_name,
+          department_id,
+          status,
+          sort_order,
+          created_at,
+          departments (
+            department_name
+          )
+        `,
+        { count: "exact" }
+      )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    if (search) {
+      const keyword = `%${search}%`;
+
+      const { data: departmentRows, error: departmentError } =
+        await supabaseAdmin
+          .from("departments")
+          .select("id")
+          .ilike("department_name", keyword);
+
+      if (departmentError) throw departmentError;
+
+      const departmentIds = (departmentRows || []).map((item) => item.id);
+
+      const orConditions = [
+        `division_code.ilike.${keyword}`,
+        `division_name.ilike.${keyword}`,
+      ];
+
+      if (departmentIds.length > 0) {
+        orConditions.push(`department_id.in.(${departmentIds.join(",")})`);
+      }
+
+      query = query.or(orConditions.join(","));
+    }
+
+    if (!all) {
+      query = query.range(from, to);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
@@ -45,42 +79,23 @@ export async function GET(req) {
       created_at: division.created_at,
     }));
 
-    const filteredData = search
-      ? mappedData.filter((item) => {
-          return (
-            item.division_code?.toLowerCase().includes(search) ||
-            item.division_name?.toLowerCase().includes(search) ||
-            item.department_name?.toLowerCase().includes(search)
-          );
-        })
-      : mappedData;
-
-    const total = filteredData.length;
-
-    if (all) {
-      return NextResponse.json({
-        success: true,
-        data: filteredData,
-      });
-    }
-
-    const paginatedData = filteredData.slice(from, to + 1);
-
     return NextResponse.json({
       success: true,
-      data: paginatedData,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      data: mappedData,
+      pagination: all
+        ? undefined
+        : {
+            page,
+            pageSize,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / pageSize),
+          },
     });
   } catch (error) {
     console.error("GET_DIVISIONS_ERROR:", error);
 
     return NextResponse.json(
-      { error: "ไม่สามารถดึงข้อมูลฝ่ายได้" },
+      { success: false, error: "ไม่สามารถดึงข้อมูลฝ่ายได้" },
       { status: 500 }
     );
   }

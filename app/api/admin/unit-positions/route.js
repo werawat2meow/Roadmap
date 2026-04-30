@@ -5,37 +5,140 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const search = searchParams.get("search")?.trim() || "";
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
     const pageSize = Math.max(Number(searchParams.get("pageSize") || 20), 1);
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("unit_positions")
-      .select(`
-        id,
-        unit_id,
-        position_id,
-        headcount_target,
-        status,
-        created_at,
-        units (
-          unit_name,
-          divisions (
-            division_name,
-            departments (
-              department_name
+      .select(
+        `
+          id,
+          unit_id,
+          position_id,
+          headcount_target,
+          status,
+          created_at,
+          units (
+            unit_name,
+            divisions (
+              division_name,
+              departments (
+                department_name
+              )
             )
+          ),
+          positions (
+            position_name,
+            position_level
           )
-        ),
-        positions (
-          position_name,
-          position_level
-        )
-      `)
+        `,
+        { count: "exact" }
+      )
       .order("created_at", { ascending: false });
+
+    if (search) {
+      const keyword = `%${search}%`;
+
+      const { data: positionRows, error: positionError } = await supabaseAdmin
+        .from("positions")
+        .select("id")
+        .or(
+          [
+            `position_name.ilike.${keyword}`,
+            `position_level.ilike.${keyword}`,
+          ].join(",")
+        );
+
+      if (positionError) throw positionError;
+
+      const { data: departmentRows, error: departmentError } =
+        await supabaseAdmin
+          .from("departments")
+          .select("id")
+          .ilike("department_name", keyword);
+
+      if (departmentError) throw departmentError;
+
+      const departmentIds = (departmentRows || []).map((item) => item.id);
+
+      const { data: divisionRows, error: divisionError } = await supabaseAdmin
+        .from("divisions")
+        .select("id")
+        .or(`division_name.ilike.${keyword}`);
+
+      if (divisionError) throw divisionError;
+
+      let divisionIds = (divisionRows || []).map((item) => item.id);
+
+      if (departmentIds.length > 0) {
+        const { data: divisionsByDepartment, error: divisionsByDepartmentError } =
+          await supabaseAdmin
+            .from("divisions")
+            .select("id")
+            .in("department_id", departmentIds);
+
+        if (divisionsByDepartmentError) throw divisionsByDepartmentError;
+
+        divisionIds = [
+          ...divisionIds,
+          ...(divisionsByDepartment || []).map((item) => item.id),
+        ];
+      }
+
+      divisionIds = [...new Set(divisionIds)];
+
+      const { data: unitRows, error: unitError } = await supabaseAdmin
+        .from("units")
+        .select("id")
+        .or(`unit_name.ilike.${keyword}`);
+
+      if (unitError) throw unitError;
+
+      let unitIds = (unitRows || []).map((item) => item.id);
+
+      if (divisionIds.length > 0) {
+        const { data: unitsByDivision, error: unitsByDivisionError } =
+          await supabaseAdmin
+            .from("units")
+            .select("id")
+            .in("division_id", divisionIds);
+
+        if (unitsByDivisionError) throw unitsByDivisionError;
+
+        unitIds = [
+          ...unitIds,
+          ...(unitsByDivision || []).map((item) => item.id),
+        ];
+      }
+
+      unitIds = [...new Set(unitIds)];
+
+      const positionIds = (positionRows || []).map((item) => item.id);
+
+      const orConditions = [];
+
+      if (unitIds.length > 0) {
+        orConditions.push(`unit_id.in.(${unitIds.join(",")})`);
+      }
+
+      if (positionIds.length > 0) {
+        orConditions.push(`position_id.in.(${positionIds.join(",")})`);
+      }
+
+      if (orConditions.length === 0) {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      } else {
+        query = query.or(orConditions.join(","));
+      }
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
@@ -53,36 +156,24 @@ export async function GET(req) {
       created_at: item.created_at,
     }));
 
-    const filteredData = search
-      ? mappedData.filter((item) => {
-          return (
-            item.unit_name?.toLowerCase().includes(search) ||
-            item.division_name?.toLowerCase().includes(search) ||
-            item.department_name?.toLowerCase().includes(search) ||
-            item.position_name?.toLowerCase().includes(search) ||
-            item.position_level?.toLowerCase().includes(search)
-          );
-        })
-      : mappedData;
-
-    const total = filteredData.length;
-    const paginatedData = filteredData.slice(from, to + 1);
-
     return NextResponse.json({
       success: true,
-      data: paginatedData,
+      data: mappedData,
       pagination: {
         page,
         pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / pageSize),
       },
     });
   } catch (error) {
     console.error("GET_UNIT_POSITIONS_ERROR:", error);
 
     return NextResponse.json(
-      { error: "ไม่สามารถดึงข้อมูลกำหนดตำแหน่งตามหน่วยได้" },
+      {
+        success: false,
+        error: "ไม่สามารถดึงข้อมูลกำหนดตำแหน่งตามหน่วยได้",
+      },
       { status: 500 }
     );
   }

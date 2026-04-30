@@ -64,6 +64,12 @@ export default function EmployeesPage() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Lazy load Position
+  const [positionLoading, setPositionLoading] = useState(false);
+  const [positionPage, setPositionPage] = useState(1);
+  const [positionTotalPages, setPositionTotalPages] = useState(1);
+  const [positionKeyword, setPositionKeyword] = useState("");
+
 
   // #region Permission
   const router = useRouter();
@@ -145,11 +151,38 @@ export default function EmployeesPage() {
     );
   };
 
-  const loadPositions = async () => {
-    const res = await fetch("/api/admin/positions?all=true", { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Load positions failed");
-    setPositions(data.data || []);
+  const loadPositions = async (keyword = "", nextPage = 1, append = false) => {
+    try {
+      setPositionLoading(true);
+
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", "20");
+
+      if (keyword) params.set("search", keyword);
+
+      const res = await fetch(`/api/admin/positions?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Load positions failed");
+      }
+
+      setPositions((prev) =>
+        append ? [...prev, ...(data.data || [])] : data.data || []
+      );
+
+      setPositionPage(data.pagination?.page || nextPage);
+      setPositionTotalPages(data.pagination?.totalPages || 1);
+    } catch (err) {
+      console.error(err);
+      swalError(err.message || "ไม่สามารถโหลดข้อมูลตำแหน่งได้");
+    } finally {
+      setPositionLoading(false);
+    }
   };
 
   const loadEmployees = async (keyword = "", currentPage = 1) => {
@@ -1022,13 +1055,39 @@ export default function EmployeesPage() {
                 <Select
                   showSearch
                   allowClear
+                  filterOption={false}
                   placeholder="เลือกตำแหน่ง"
                   value={form.position_id || undefined}
+                  onSearch={(value) => {
+                    setPositionKeyword(value);
+                    setPositionPage(1);
+                    loadPositions(value, 1, false);
+                  }}
+                  onPopupScroll={(e) => {
+                    const target = e.target;
+
+                    const isBottom =
+                      target.scrollTop + target.offsetHeight >= target.scrollHeight - 20;
+
+                    if (isBottom && !positionLoading && positionPage < positionTotalPages) {
+                      loadPositions(positionKeyword, positionPage + 1, true);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (positions.length === 0) {
+                      setPositionKeyword("");
+                      setPositionPage(1);
+                      loadPositions("", 1, false);
+                    }
+                  }}
                   onChange={(value) =>
                     setForm((prev) => ({
                       ...prev,
                       position_id: value ?? "",
                     }))
+                  }
+                  notFoundContent={
+                    positionLoading ? "กำลังโหลดตำแหน่ง..." : "ไม่พบข้อมูล"
                   }
                   options={positions.map((p) => ({
                     value: p.id,

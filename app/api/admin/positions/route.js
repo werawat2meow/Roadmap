@@ -9,7 +9,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
@@ -18,20 +18,42 @@ export async function GET(req) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("positions")
-      .select(`
-        id,
-        position_code,
-        position_name,
-        position_group,
-        position_level,
-        status,
-        sort_order,
-        created_at
-      `)
+      .select(
+        `
+          id,
+          position_code,
+          position_name,
+          position_group,
+          position_level,
+          status,
+          sort_order,
+          created_at
+        `,
+        { count: "exact" }
+      )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    if (search) {
+      const keyword = `%${search}%`;
+
+      query = query.or(
+        [
+          `position_code.ilike.${keyword}`,
+          `position_name.ilike.${keyword}`,
+          `position_group.ilike.${keyword}`,
+          `position_level.ilike.${keyword}`,
+        ].join(",")
+      );
+    }
+
+    if (!all) {
+      query = query.range(from, to);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
@@ -46,37 +68,17 @@ export async function GET(req) {
       created_at: item.created_at,
     }));
 
-    const filteredData = search
-      ? mappedData.filter((item) => {
-          return (
-            item.position_code?.toLowerCase().includes(search) ||
-            item.position_name?.toLowerCase().includes(search) ||
-            item.position_group?.toLowerCase().includes(search) ||
-            item.position_level?.toLowerCase().includes(search)
-          );
-        })
-      : mappedData;
-
-    const total = filteredData.length;
-
-    if (all) {
-      return NextResponse.json({
-        success: true,
-        data: filteredData,
-      });
-    }
-
-    const paginatedData = filteredData.slice(from, to + 1);
-
     return NextResponse.json({
       success: true,
-      data: paginatedData,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      data: mappedData,
+      pagination: all
+        ? undefined
+        : {
+            page,
+            pageSize,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / pageSize),
+          },
     });
   } catch (error) {
     console.error("GET_POSITIONS_ERROR:", error);

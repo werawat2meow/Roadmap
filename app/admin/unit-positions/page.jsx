@@ -33,6 +33,8 @@ export default function UnitPositionsPage() {
   // Partition
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // #region Permission
   const router = useRouter();
@@ -98,16 +100,18 @@ export default function UnitPositionsPage() {
     }
   };
 
-  const loadUnitPositions = async (keyword = "") => {
+  const loadUnitPositions = async (keyword = "", nextPage = 1) => {
     try {
       setLoading(true);
       setError("");
 
-      const url = keyword
-        ? `/api/admin/unit-positions?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/unit-positions";
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", String(pageSize));
 
-      const res = await fetch(url, {
+      if (keyword) params.set("search", keyword);
+
+      const res = await fetch(`/api/admin/unit-positions?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
       });
@@ -119,6 +123,9 @@ export default function UnitPositionsPage() {
       }
 
       setRows(data.data || []);
+      setPage(data.pagination?.page || nextPage);
+      setTotal(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error(err);
       setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
@@ -135,7 +142,7 @@ export default function UnitPositionsPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadUnitPositions(search);
+      loadUnitPositions(search, 1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -237,13 +244,11 @@ export default function UnitPositionsPage() {
       const saved = data.data;
 
       if (isEdit) {
-        setRows((prev) =>
-          prev.map((item) => (item.id === saved.id ? saved : item))
-        );
         swalSuccess("อัพเดทข้อมูลเรียบร้อยแล้ว");
+        await loadUnitPositions(search, page);
       } else {
-        setRows((prev) => [saved, ...prev]);
         swalSuccess("บันทึกข้อมูลเรียบร้อยแล้ว");
+        await loadUnitPositions(search, 1);
       }
 
       handleCloseModal();
@@ -260,7 +265,7 @@ export default function UnitPositionsPage() {
       swalError("คุณไม่มีสิทธิ์ลบข้อมูลกำหนดตำแหน่งตามหน่วย");
       return;
     }
-    
+
     const confirmed = await swalConfirm(
       `ต้องการลบการผูกตำแหน่ง "${row.position_name}" กับหน่วย "${row.unit_name}" ใช่หรือไม่?`
     );
@@ -280,15 +285,15 @@ export default function UnitPositionsPage() {
         throw new Error(data?.error || "Delete failed");
       }
 
-      setRows((prev) => prev.filter((item) => item.id !== row.id));
-      const nextRows = rows.filter((item) => item.id !== row.id);
-      setRows(nextRows);
-
-      const nextTotalPages = Math.max(1, Math.ceil(nextRows.length / pageSize));
-      if (page > nextTotalPages) {
-        setPage(nextTotalPages);
-      }
       swalSuccess("ลบข้อมูลเรียบร้อยแล้ว");
+
+      // ✅ ถ้าลบตัวสุดท้ายของหน้า → ถอยหน้า
+      const isLastItemOnPage = rows.length === 1;
+      const nextPage = isLastItemOnPage && page > 1 ? page - 1 : page;
+
+      // ✅ โหลดใหม่จาก server (สำคัญ)
+      await loadUnitPositions(search, nextPage);
+
     } catch (err) {
       console.error(err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
@@ -325,13 +330,6 @@ export default function UnitPositionsPage() {
       label: position.position_name + (position.position_level ? ` (${position.position_level})` : ""),
     }));
   }, [positions]);
-
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const paginatedRows = useMemo(() => {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
-    return rows.slice(from, to);
-  }, [rows, page, pageSize]);
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -415,8 +413,8 @@ export default function UnitPositionsPage() {
                     <td className="px-6 py-4"><div className="ml-auto h-8 w-24 animate-pulse rounded bg-slate-200" /></td>
                   </tr>
                 ))
-              ) : paginatedRows.length > 0 ? (
-                paginatedRows.map((row, index) => (
+              ) : rows.length > 0 ? (
+                rows.map((row, index) => (
                   <tr key={row.id} className="border-t border-slate-200 hover:bg-slate-50">
                     <td className="px-6 py-4 font-medium text-slate-700">
                       {(page - 1) * pageSize + index + 1}
@@ -505,14 +503,14 @@ export default function UnitPositionsPage() {
           {/* Partition */}
           <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
             <p className="text-sm text-slate-500">
-              ทั้งหมด {rows.length} รายการ
+              ทั้งหมด {total} รายการ
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => prev - 1)}
+                onClick={() => loadUnitPositions(search, page - 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ก่อนหน้า
@@ -525,7 +523,7 @@ export default function UnitPositionsPage() {
               <button
                 type="button"
                 disabled={page >= totalPages || loading}
-                onClick={() => setPage((prev) => prev + 1)}
+                onClick={() => loadUnitPositions(search, page + 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ถัดไป

@@ -9,7 +9,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
@@ -18,25 +18,85 @@ export async function GET(req) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("units")
-      .select(`
-        id,
-        unit_code,
-        unit_name,
-        division_id,
-        status,
-        sort_order,
-        created_at,
-        divisions (
-          division_name,
-          departments (
-            department_name
+      .select(
+        `
+          id,
+          unit_code,
+          unit_name,
+          division_id,
+          status,
+          sort_order,
+          created_at,
+          divisions (
+            division_name,
+            departments (
+              department_name
+            )
           )
-        )
-      `)
+        `,
+        { count: "exact" }
+      )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    if (search) {
+      const keyword = `%${search}%`;
+
+      const { data: divisionRows, error: divisionError } = await supabaseAdmin
+        .from("divisions")
+        .select("id")
+        .or(`division_name.ilike.${keyword}`);
+
+      if (divisionError) throw divisionError;
+
+      const { data: departmentRows, error: departmentError } =
+        await supabaseAdmin
+          .from("departments")
+          .select("id")
+          .ilike("department_name", keyword);
+
+      if (departmentError) throw departmentError;
+
+      const departmentIds = (departmentRows || []).map((item) => item.id);
+
+      let divisionIds = (divisionRows || []).map((item) => item.id);
+
+      if (departmentIds.length > 0) {
+        const { data: divisionsByDepartment, error: divisionsByDepartmentError } =
+          await supabaseAdmin
+            .from("divisions")
+            .select("id")
+            .in("department_id", departmentIds);
+
+        if (divisionsByDepartmentError) throw divisionsByDepartmentError;
+
+        divisionIds = [
+          ...divisionIds,
+          ...(divisionsByDepartment || []).map((item) => item.id),
+        ];
+      }
+
+      divisionIds = [...new Set(divisionIds)];
+
+      const orConditions = [
+        `unit_code.ilike.${keyword}`,
+        `unit_name.ilike.${keyword}`,
+      ];
+
+      if (divisionIds.length > 0) {
+        orConditions.push(`division_id.in.(${divisionIds.join(",")})`);
+      }
+
+      query = query.or(orConditions.join(","));
+    }
+
+    if (!all) {
+      query = query.range(from, to);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
@@ -46,50 +106,29 @@ export async function GET(req) {
       unit_name: unit.unit_name,
       division_id: unit.division_id,
       division_name: unit.divisions?.division_name || "-",
-      department_name:
-        unit.divisions?.departments?.department_name || "-",
+      department_name: unit.divisions?.departments?.department_name || "-",
       status: unit.status,
       sort_order: unit.sort_order,
       created_at: unit.created_at,
     }));
 
-    const filteredData = search
-      ? mappedData.filter((item) => {
-          return (
-            item.unit_code?.toLowerCase().includes(search) ||
-            item.unit_name?.toLowerCase().includes(search) ||
-            item.division_name?.toLowerCase().includes(search) ||
-            item.department_name?.toLowerCase().includes(search)
-          );
-        })
-      : mappedData;
-
-    const total = filteredData.length;
-
-    if (all) {
-      return NextResponse.json({
-        success: true,
-        data: filteredData,
-      });
-    }
-
-    const paginatedData = filteredData.slice(from, to + 1);
-
     return NextResponse.json({
       success: true,
-      data: paginatedData,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      data: mappedData,
+      pagination: all
+        ? undefined
+        : {
+            page,
+            pageSize,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / pageSize),
+          },
     });
   } catch (error) {
     console.error("GET_UNITS_ERROR:", error);
 
     return NextResponse.json(
-      { error: "ไม่สามารถดึงข้อมูลหน่วยได้" },
+      { success: false, error: "ไม่สามารถดึงข้อมูลหน่วยได้" },
       { status: 500 }
     );
   }

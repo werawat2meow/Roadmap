@@ -47,6 +47,8 @@ export default function PositionsPage() {
   // Partition
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // #region Permission
   const router = useRouter();
@@ -71,16 +73,18 @@ export default function PositionsPage() {
   }, [user, canView, loadingUser, router]);
   // #endregion
 
-  const loadPositions = async (keyword = "") => {
+  const loadPositions = async (keyword = "", nextPage = 1) => {
     try {
       setLoading(true);
       setError("");
 
-      const url = keyword
-        ? `/api/admin/positions?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/positions";
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", String(pageSize));
 
-      const res = await fetch(url, {
+      if (keyword) params.set("search", keyword);
+
+      const res = await fetch(`/api/admin/positions?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
       });
@@ -101,7 +105,9 @@ export default function PositionsPage() {
       }));
 
       setPositions(mapped);
-      setPage(1);
+      setPage(data.pagination?.page || nextPage);
+      setTotal(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error(err);
       setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
@@ -116,7 +122,7 @@ export default function PositionsPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadPositions(search);
+      loadPositions(search, 1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -171,7 +177,7 @@ export default function PositionsPage() {
       swalError("คุณไม่มีสิทธิ์เพิ่มตำแหน่ง");
       return;
     }
-    
+
     if (!form.code.trim() || !form.name.trim()) {
       swalError("กรุณากรอกรหัสตำแหน่งและชื่อตำแหน่ง");
       return;
@@ -185,7 +191,6 @@ export default function PositionsPage() {
     try {
       setSaving(true);
 
-      const isEdit = !!editingPosition;
       const url = isEdit
         ? `/api/admin/positions/${editingPosition.id}`
         : "/api/admin/positions";
@@ -212,26 +217,12 @@ export default function PositionsPage() {
         throw new Error(data?.error || "Save failed");
       }
 
-      const savedPosition = {
-        id: data.data.id,
-        code: data.data.position_code,
-        name: data.data.position_name,
-        group: data.data.position_group || "",
-        level: data.data.position_level || "",
-        status: data.data.status,
-      };
-
       if (isEdit) {
-        setPositions((prev) =>
-          prev.map((item) =>
-            item.id === savedPosition.id ? savedPosition : item
-          )
-        );
         swalSuccess("อัพเดทข้อมูลตำแหน่งเรียบร้อยแล้ว");
+        await loadPositions(search, page);
       } else {
-        setPositions((prev) => [savedPosition, ...prev]);
-        setPage(1);
         swalSuccess("บันทึกข้อมูลตำแหน่งเรียบร้อยแล้ว");
+        await loadPositions(search, 1);
       }
 
       handleCloseModal();
@@ -244,7 +235,7 @@ export default function PositionsPage() {
   };
 
   const handleDelete = async (position) => {
-     if (!canDelete) {
+    if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบตำแหน่ง");
       return;
     }
@@ -268,18 +259,12 @@ export default function PositionsPage() {
         throw new Error(data?.error || "Delete failed");
       }
 
-      const nextPositions = positions.filter((item) => item.id !== position.id);
-      setPositions(nextPositions);
-
-      const nextTotalPages = Math.max(
-        1,
-        Math.ceil(nextPositions.length / pageSize)
-      );
-
-      if (page > nextTotalPages) {
-        setPage(nextTotalPages);
-      }
       swalSuccess("ลบข้อมูลตำแหน่งเรียบร้อยแล้ว");
+
+      const isLastItemOnPage = positions.length === 1;
+      const nextPage = isLastItemOnPage && page > 1 ? page - 1 : page;
+
+      await loadPositions(search, nextPage);
     } catch (err) {
       console.error(err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
@@ -287,12 +272,6 @@ export default function PositionsPage() {
       setDeletingId("");
     }
   };
-
-  const totalPages = Math.max(1, Math.ceil(positions.length / pageSize));
-  const paginatedPositions = positions.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
 
   const gradeTiers = [
     { codes: ["P2", "P3"], badge: "bg-teal-50 text-teal-700" },
@@ -407,8 +386,8 @@ export default function PositionsPage() {
                     </td>
                   </tr>
                 ))
-              ) : paginatedPositions.length > 0 ? (
-                paginatedPositions.map((position,index) => (
+              ) : positions.length > 0 ? (
+                positions.map((position,index) => (
                   <tr
                     key={position.id}
                     className="border-t border-slate-200 hover:bg-slate-50"
@@ -495,14 +474,14 @@ export default function PositionsPage() {
           {/* Partition */}
           <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
             <p className="text-sm text-slate-500">
-              ทั้งหมด {positions.length} รายการ
+             ทั้งหมด {total} รายการ
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => prev - 1)}
+                onClick={() => loadPositions(search, page - 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ก่อนหน้า
@@ -515,7 +494,7 @@ export default function PositionsPage() {
               <button
                 type="button"
                 disabled={page >= totalPages || loading}
-                onClick={() => setPage((prev) => prev + 1)}
+                onClick={() => loadPositions(search, page + 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ถัดไป

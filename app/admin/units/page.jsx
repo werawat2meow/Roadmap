@@ -31,6 +31,8 @@ export default function UnitsPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // #region Permission
   const router = useRouter();
@@ -75,16 +77,18 @@ export default function UnitsPage() {
     }
   };
 
-  const loadUnits = async (keyword = "") => {
+  const loadUnits = async (keyword = "", nextPage = 1) => {
     try {
       setLoading(true);
       setError("");
 
-      const url = keyword
-        ? `/api/admin/units?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/units";
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", String(pageSize));
 
-      const res = await fetch(url, {
+      if (keyword) params.set("search", keyword);
+
+      const res = await fetch(`/api/admin/units?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
       });
@@ -106,7 +110,9 @@ export default function UnitsPage() {
       }));
 
       setUnits(mapped);
-      setPage(1);
+      setPage(data.pagination?.page || nextPage);
+      setTotal(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       console.error(err);
       setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
@@ -122,7 +128,7 @@ export default function UnitsPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadUnits(search);
+      loadUnits(search,1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -192,8 +198,6 @@ export default function UnitsPage() {
     try {
       setSaving(true);
 
-      const isEdit = !!editingUnit;
-
       const url = isEdit
         ? `/api/admin/units/${editingUnit.id}`
         : "/api/admin/units";
@@ -219,25 +223,16 @@ export default function UnitsPage() {
         throw new Error(data?.error || "Save failed");
       }
 
-      const savedUnit = {
-        id: data.data.id,
-        code: data.data.unit_code,
-        name: data.data.unit_name,
-        division_id: data.data.division_id,
-        division_name: data.data.division_name,
-        department_name: data.data.department_name,
-        status: data.data.status,
-      };
-
       if (isEdit) {
-        setUnits((prev) =>
-          prev.map((item) => (item.id === savedUnit.id ? savedUnit : item))
-        );
         swalSuccess("อัพเดทข้อมูลหน่วยเรียบร้อยแล้ว");
+
+        // ✅ reload หน้าเดิม
+        await loadUnits(search, page);
       } else {
-        setUnits((prev) => [savedUnit, ...prev]);
-        setPage(1);
         swalSuccess("บันทึกข้อมูลหน่วยเรียบร้อยแล้ว");
+
+        // ✅ กลับไปหน้า 1 เพื่อเห็นรายการใหม่
+        await loadUnits(search, 1);
       }
 
       handleCloseModal();
@@ -250,7 +245,6 @@ export default function UnitsPage() {
   };
 
   const handleDelete = async (unit) => {
-
     if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบหน่วย");
       return;
@@ -275,14 +269,13 @@ export default function UnitsPage() {
         throw new Error(data?.error || "Delete failed");
       }
 
-      const nextUnits = units.filter((item) => item.id !== unit.id);
-      setUnits(nextUnits);
-
-      const nextTotalPages = Math.max(1, Math.ceil(nextUnits.length / pageSize));
-      if (page > nextTotalPages) {
-        setPage(nextTotalPages);
-      }
       swalSuccess("ลบข้อมูลหน่วยเรียบร้อยแล้ว");
+
+      const isLastItemOnPage = units.length === 1;
+      const nextPage = isLastItemOnPage && page > 1 ? page - 1 : page;
+
+      await loadUnits(search, nextPage);
+
     } catch (err) {
       console.error(err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
@@ -309,12 +302,6 @@ export default function UnitsPage() {
       return acc;
     }, {})
   ).sort((a, b) => a.label.localeCompare(b.label, "th"));
-
-  const totalPages = Math.max(1, Math.ceil(units.length / pageSize));
-  const paginatedUnits = units.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -403,8 +390,8 @@ export default function UnitsPage() {
                     </td>
                   </tr>
                 ))
-              ) : paginatedUnits.length > 0 ? (
-                paginatedUnits.map((unit , index) => (
+              ) : units.length > 0 ? (
+                units.map((unit , index) => (
                   <tr
                     key={unit.id}
                     className="border-t border-slate-200 hover:bg-slate-50"
@@ -490,14 +477,14 @@ export default function UnitsPage() {
 
           <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
             <p className="text-sm text-slate-500">
-              ทั้งหมด {units.length} รายการ
+              ทั้งหมด {total} รายการ
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => prev - 1)}
+                onClick={() => loadUnits(search, page - 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ก่อนหน้า
@@ -510,7 +497,7 @@ export default function UnitsPage() {
               <button
                 type="button"
                 disabled={page >= totalPages || loading}
-                onClick={() => setPage((prev) => prev + 1)}
+                onClick={() => loadUnits(search, page + 1)}
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ถัดไป

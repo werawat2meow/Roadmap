@@ -47,7 +47,8 @@ export async function GET(req) {
         employees (
           employee_code,
           first_name_th,
-          last_name_th
+          last_name_th,
+          employment_type
         ),
         roles (
           role_code,
@@ -77,9 +78,8 @@ export async function GET(req) {
         role_code: user.roles?.role_code || "",
         role_name: user.roles?.role_name || "",
         employee_code: user.employees?.employee_code || "",
-        employee_name: `${user.employees?.first_name_th || ""} ${
-          user.employees?.last_name_th || ""
-        }`.trim(),
+        employee_name: `${user.employees?.first_name_th || ""} ${user.employees?.last_name_th || "" }`.trim(),
+        employment_type: user.employees?.employment_type || "",
       },
     });
   } catch {

@@ -50,6 +50,7 @@ export async function GET(req) {
           last_name_th,
           employment_type,
           hire_date,
+          employee_photo_url,
           positions (
             position_level
           )
@@ -86,6 +87,7 @@ export async function GET(req) {
         employment_type: user.employees?.employment_type || "",
         position_level: user.employees?.positions?.position_level || "", 
         hire_date: user.employees?.hire_date || null,
+        employee_photo_url : user.employees?.employee_photo_url || null,
       },
     });
   } catch {

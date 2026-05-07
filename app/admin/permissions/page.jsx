@@ -82,6 +82,18 @@ export default function PermissionsPage() {
     loadPermissions();
   }, []);
 
+  const parseJsonResponse = async (res) => {
+    const text = await res.text();
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(
+        "API ไม่ได้ส่ง JSON กลับมา อาจเกิดจาก Route 404 หรือ API Error"
+      );
+    }
+  };
+
   const resetForm = () => {
     setForm(initialForm);
     setEditingPermission(null);
@@ -98,9 +110,13 @@ export default function PermissionsPage() {
   };
 
   const handleOpenEdit = (item) => {
-
     if (!canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Permission");
+      return;
+    }
+
+    if (!item?.id) {
+      swalError("ไม่พบ ID ของ Permission");
       return;
     }
 
@@ -116,7 +132,7 @@ export default function PermissionsPage() {
       permission_code: item.permission_code || "",
       permission_name: item.permission_name || "",
       description: item.description || "",
-      is_active: !!item.is_active,
+      is_active: item.is_active === true,
     });
     setOpenModal(true);
   };
@@ -205,9 +221,13 @@ export default function PermissionsPage() {
   };
 
   const handleDelete = async (item) => {
-
     if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบ Permission");
+      return;
+    }
+
+    if (!item?.id) {
+      swalError("ไม่พบ ID ของ Permission");
       return;
     }
 
@@ -227,18 +247,19 @@ export default function PermissionsPage() {
 
       const res = await fetch(`/api/admin/permissions/${item.id}`, {
         method: "DELETE",
+        cache: "no-store",
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
 
       if (!res.ok) {
         throw new Error(data?.error || "Delete failed");
       }
 
       setPermissions((prev) => prev.filter((x) => x.id !== item.id));
-      swalSuccess("ลบ Permission เรียบร้อยแล้ว");
+      swalSuccess(data?.message || "ลบ Permission เรียบร้อยแล้ว");
     } catch (err) {
-      console.error(err);
+      console.error("DELETE_PERMISSION_CLIENT_ERROR:", err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
     } finally {
       setDeletingId("");

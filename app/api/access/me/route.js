@@ -83,7 +83,7 @@ export async function GET(req) {
         role_code: user.roles?.role_code || "",
         role_name: user.roles?.role_name || "",
         employee_code: user.employees?.employee_code || "",
-        employee_name: `${user.employees?.first_name_th || ""} ${user.employees?.last_name_th || "" }`.trim(),
+        employee_name: `${user.employees?.first_name_th || ""} ${user.employees?.last_name_th || ""}`.trim(),
         employment_type: user.employees?.employment_type || "",
         position_level: user.employees?.positions?.position_level || "", 
         hire_date: user.employees?.hire_date || null,

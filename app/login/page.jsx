@@ -71,7 +71,7 @@ export default function LoginPage() {
               </div>
               <div className="mt-8 space-y-4">
                 <Title level={1} className="!text-white !mb-0 !text-4xl !leading-tight">
-                  Employee<br />Master System
+                  Employee System
                 </Title>
                 <Text className="!text-emerald-50 text-base leading-7 block max-w-md">
                   Manage employee profiles, organization structure, and HR administration

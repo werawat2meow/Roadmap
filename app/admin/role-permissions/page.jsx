@@ -20,25 +20,26 @@ export default function RolePermissionsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-   // #region Permission
-    const router = useRouter();
-    const { user, loadingUser } = useAuth();
-    const canView = hasPermission(user, "role_permissions.view");
-    const canEdit = hasPermission(user, "role_permissions.edit");
-  
-    useEffect(() => {
-      if (loadingUser) return;
-  
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-  
-      if (!canView) {
-        router.replace("/admin");
-      }
-    }, [user, canView, loadingUser, router]);
-    // #endregion
+  const [selectedSystem, setSelectedSystem] = useState("");
+
+  const router = useRouter();
+  const { user, loadingUser } = useAuth();
+
+  const canView = hasPermission(user, "role_permissions.view");
+  const canEdit = hasPermission(user, "role_permissions.edit");
+
+  useEffect(() => {
+    if (loadingUser) return;
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!canView) {
+      router.replace("/admin");
+    }
+  }, [user, canView, loadingUser, router]);
 
   const loadRoles = async () => {
     try {
@@ -64,7 +65,9 @@ export default function RolePermissionsPage() {
     try {
       setLoadingPermissions(true);
 
-      const res = await fetch("/api/admin/permissions", { cache: "no-store" });
+      const res = await fetch("/api/admin/permissions", {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -93,6 +96,7 @@ export default function RolePermissionsPage() {
         `/api/admin/role-permissions?role_id=${encodeURIComponent(roleId)}`,
         { cache: "no-store" }
       );
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -121,13 +125,46 @@ export default function RolePermissionsPage() {
     loadAssignedPermissions(selectedRoleId);
   }, [selectedRoleId]);
 
+  const getSystemGroup = (moduleCode = "") => {
+    if (moduleCode.startsWith("benefit")) return "Benefit System";
+    if (moduleCode.startsWith("payroll")) return "Payroll System";
+    if (moduleCode.startsWith("hrm")) return "HRM System";
+    if (moduleCode.startsWith("ems")) return "Employee Master";
+    if (
+      moduleCode.startsWith("user_accounts") ||
+      moduleCode.startsWith("roles") ||
+      moduleCode.startsWith("permissions") ||
+      moduleCode.startsWith("role_permissions")
+    ) {
+      return "Access Control";
+    }
+
+    return "Other";
+  };
+
+  const getFeatureGroup = (moduleCode = "") => {
+    if (!moduleCode) return "Other";
+
+    const parts = moduleCode.split(".");
+
+    if (parts.length >= 2) {
+      return parts[1];
+    }
+
+    return moduleCode;
+  };
+
   const groupedPermissions = useMemo(() => {
     const groups = {};
 
     permissions.forEach((item) => {
-      const key = item.module_code || "other";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
+      const systemKey = getSystemGroup(item.module_code);
+      const featureKey = getFeatureGroup(item.module_code);
+
+      if (!groups[systemKey]) groups[systemKey] = {};
+      if (!groups[systemKey][featureKey]) groups[systemKey][featureKey] = [];
+
+      groups[systemKey][featureKey].push(item);
     });
 
     return groups;
@@ -135,8 +172,17 @@ export default function RolePermissionsPage() {
 
   const selectedRole = roles.find((item) => item.id === selectedRoleId);
 
-  const handleSave = async () => {
+  const systemOptions = Object.keys(groupedPermissions);
 
+  const visibleGroupedPermissions = useMemo(() => {
+    if (!selectedSystem) return groupedPermissions;
+
+    return {
+      [selectedSystem]: groupedPermissions[selectedSystem] || {},
+    };
+  }, [groupedPermissions, selectedSystem]);
+
+  const handleSave = async () => {
     if (!canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
       return;
@@ -147,7 +193,10 @@ export default function RolePermissionsPage() {
       return;
     }
 
-    if (selectedRole?.role_code === "SUPER_ADMIN" && user?.role_code !== "SUPER_ADMIN") {
+    if (
+      selectedRole?.role_code === "SUPER_ADMIN" &&
+      user?.role_code !== "SUPER_ADMIN"
+    ) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Super Admin");
       return;
     }
@@ -216,21 +265,45 @@ export default function RolePermissionsPage() {
     }
   };
 
-  // #region Permission
+  const toggleSystemPermissions = (featureGroups) => {
+    if (!canEdit) {
+      swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
+      return;
+    }
+
+    const systemPermissionIds = Object.values(featureGroups)
+      .flat()
+      .map((item) => item.id);
+
+    const allChecked = systemPermissionIds.every((id) =>
+      selectedPermissionIds.includes(id)
+    );
+
+    if (allChecked) {
+      setSelectedPermissionIds((prev) =>
+        prev.filter((id) => !systemPermissionIds.includes(id))
+      );
+    } else {
+      setSelectedPermissionIds((prev) => [
+        ...new Set([...prev, ...systemPermissionIds]),
+      ]);
+    }
+  };
+
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
-  // #endregion
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">
               Role Permissions
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+
+            <p className="mt-1 text-sm text-slate-500">
               กำหนดสิทธิ์การใช้งานให้แต่ละ Role
             </p>
           </div>
@@ -258,7 +331,7 @@ export default function RolePermissionsPage() {
         </div>
       ) : null}
 
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <label className="mb-2 block text-sm font-medium text-slate-700">
           เลือก Role
         </label>
@@ -270,15 +343,15 @@ export default function RolePermissionsPage() {
           value={selectedRoleId || undefined}
           onChange={(value) => setSelectedRoleId(value || "")}
           loading={loadingRoles}
-          options={roles.filter((item) => {
-            // ถ้าเป็น SUPER_ADMIN → เห็นทุก role
-            if (user?.role_code === "SUPER_ADMIN") return true;
-            // ถ้าไม่ใช่ → ซ่อน SUPER_ADMIN
-            return item.role_code !== "SUPER_ADMIN";
-          }).map((item) => ({
-            value: item.id,
-            label: `${item.role_code} - ${item.role_name}`,
-          }))}
+          options={roles
+            .filter((item) => {
+              if (user?.role_code === "SUPER_ADMIN") return true;
+              return item.role_code !== "SUPER_ADMIN";
+            })
+            .map((item) => ({
+              value: item.id,
+              label: `${item.role_code} - ${item.role_name}`,
+            }))}
           className="w-full"
           size="large"
         />
@@ -286,8 +359,10 @@ export default function RolePermissionsPage() {
         {selectedRole ? (
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-700">
-              <span className="font-semibold">Role:</span> {selectedRole.role_name}
+              <span className="font-semibold">Role:</span>{" "}
+              {selectedRole.role_name}
             </p>
+
             <p className="mt-1 text-sm text-slate-500">
               {selectedRole.description || "-"}
             </p>
@@ -300,6 +375,31 @@ export default function RolePermissionsPage() {
           </div>
         ) : null}
       </div>
+
+      {selectedRoleId ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            เลือกระบบ
+          </label>
+
+          <Select
+            allowClear
+            placeholder="เลือกระบบ เช่น Benefit System"
+            value={selectedSystem || undefined}
+            onChange={(value) => setSelectedSystem(value || "")}
+            options={systemOptions.map((item) => ({
+              value: item,
+              label: item,
+            }))}
+            className="w-full"
+            size="large"
+          />
+
+          <p className="mt-2 text-xs text-slate-400">
+            ถ้าไม่เลือกระบบ จะแสดงทุกระบบ
+          </p>
+        </div>
+      ) : null}
 
       {!selectedRoleId ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-400">
@@ -314,6 +414,7 @@ export default function RolePermissionsPage() {
                 className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
               >
                 <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {[...Array(4)].map((__, i) => (
                     <div
@@ -324,83 +425,148 @@ export default function RolePermissionsPage() {
                 </div>
               </div>
             ))
-          ) : Object.keys(groupedPermissions).length > 0 ? (
-            Object.entries(groupedPermissions).map(([moduleCode, items]) => {
-              const allChecked = items.every((item) =>
-                selectedPermissionIds.includes(item.id)
-              );
+          ) : Object.keys(visibleGroupedPermissions).length > 0 ? (
+            Object.entries(visibleGroupedPermissions).map(
+              ([systemName, featureGroups]) => {
+                const systemPermissionIds = Object.values(featureGroups)
+                  .flat()
+                  .map((item) => item.id);
 
-              return (
-                <div
-                  key={moduleCode}
-                  className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
-                >
-                  <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-800 capitalize">
-                        {moduleCode}
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        จัดการสิทธิ์ของโมดูล {moduleCode}
-                      </p>
-                    </div>
+                const allSystemChecked =
+                  systemPermissionIds.length > 0 &&
+                  systemPermissionIds.every((id) =>
+                    selectedPermissionIds.includes(id)
+                  );
 
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => toggleModulePermissions(items)}
-                        className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                          allChecked
-                            ? "bg-red-100 text-red-700 hover:bg-red-200"
-                            : "bg-slate-900 text-white hover:bg-slate-800"
-                        }`}
-                      >
-                        {allChecked ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
-                      </button>
-                    )}
-                  </div>
+                return (
+                  <div
+                    key={systemName}
+                    className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                  >
+                    <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-800">
+                          {systemName}
+                        </h2>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {items.map((item) => {
-                      const checked = selectedPermissionIds.includes(item.id);
+                        <p className="text-sm text-slate-500">
+                          จัดการสิทธิ์ของระบบ {systemName}
+                        </p>
+                      </div>
 
-                      return (
-                        <label
-                          key={item.id}
-                          className={`flex items-start gap-3 rounded-2xl border p-4 transition ${
-                            canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-80"
-                          } ${
-                            checked
-                              ? "border-slate-900 bg-slate-50"
-                              : "border-slate-200 bg-white hover:bg-slate-50"
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSystemPermissions(featureGroups)}
+                          className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                            allSystemChecked
+                              ? "bg-red-100 text-red-700 hover:bg-red-200"
+                              : "bg-slate-900 text-white hover:bg-slate-800"
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={!canEdit}
-                            onChange={() => togglePermission(item.id)}
-                            className="mt-1 h-4 w-4 rounded border-slate-300"
-                          />
+                          {allSystemChecked
+                            ? "ยกเลิกทั้งระบบ"
+                            : "เลือกทั้งระบบ"}
+                        </button>
+                      )}
+                    </div>
 
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-800">
-                              {item.permission_name}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {item.permission_code}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-600">
-                              {item.description || "-"}
-                            </p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                    <div className="space-y-4">
+                      {Object.entries(featureGroups).map(
+                        ([featureName, items]) => {
+                          const allChecked = items.every((item) =>
+                            selectedPermissionIds.includes(item.id)
+                          );
+
+                          return (
+                            <div
+                              key={`${systemName}-${featureName}`}
+                              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                            >
+                              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                  <h3 className="text-lg font-bold capitalize text-slate-800">
+                                    {featureName}
+                                  </h3>
+
+                                  <p className="text-sm text-slate-500">
+                                    {items.length} permissions
+                                  </p>
+                                </div>
+
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleModulePermissions(items)
+                                    }
+                                    className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                                      allChecked
+                                        ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                        : "bg-slate-900 text-white hover:bg-slate-800"
+                                    }`}
+                                  >
+                                    {allChecked
+                                      ? "ยกเลิกกลุ่มนี้"
+                                      : "เลือกกลุ่มนี้"}
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                {items.map((item) => {
+                                  const checked =
+                                    selectedPermissionIds.includes(item.id);
+
+                                  return (
+                                    <label
+                                      key={item.id}
+                                      className={`flex items-start gap-3 rounded-2xl border p-4 transition ${
+                                        canEdit
+                                          ? "cursor-pointer"
+                                          : "cursor-not-allowed opacity-80"
+                                      } ${
+                                        checked
+                                          ? "border-slate-900 bg-white"
+                                          : "border-slate-200 bg-white hover:bg-slate-100"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={!canEdit}
+                                        onChange={() =>
+                                          togglePermission(item.id)
+                                        }
+                                        className="mt-1 h-4 w-4 rounded border-slate-300"
+                                      />
+
+                                      <div className="min-w-0">
+                                        <p className="font-semibold text-slate-800">
+                                          {item.permission_name}
+                                        </p>
+
+                                        <p className="text-sm text-slate-500">
+                                          {item.permission_code}
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-slate-600">
+                                          {item.description || "-"}
+                                        </p>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              }
+            )
           ) : (
             <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">
               ไม่พบข้อมูล Permission

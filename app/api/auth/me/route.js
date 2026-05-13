@@ -71,7 +71,8 @@ export async function GET() {
           first_name_th,
           last_name_th,
           first_name_en,
-          last_name_en
+          last_name_en,
+          employee_photo_url
         `)
         .eq("id", userAccount.employee_id)
         .maybeSingle();
@@ -136,6 +137,7 @@ export async function GET() {
         permissions,
         employee_code: employee?.employee_code || null,
         full_name: fullNameTh,
+        employee_photo_url: employee?.employee_photo_url || null,
       },
     });
   } catch (error) {

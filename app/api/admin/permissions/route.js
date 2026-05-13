@@ -7,14 +7,24 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
+
     const search = searchParams.get("search")?.trim()?.toLowerCase() || "";
+    const page = Math.max(Number(searchParams.get("page") || 1), 1);
+    const pageSize = Math.max(Number(searchParams.get("pageSize") || 20), 1);
+    const all = searchParams.get("all") === "true";
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     let query = supabaseAdmin
       .from("permissions")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("module_code", { ascending: true })
       .order("action_code", { ascending: true })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      
+      if (!all) {
+        query = query.range(from, to);
+      }
 
     if (search) {
       query = query.or(
@@ -28,13 +38,19 @@ export async function GET(req) {
       );
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
       data: data || [],
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / pageSize),
+      },
     });
   } catch (error) {
     console.error("GET_PERMISSIONS_ERROR:", error);

@@ -32,10 +32,10 @@ export default function CompaniesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "companies.view");
-  const canCreate = hasPermission(user, "companies.create");
-  const canEdit = hasPermission(user, "companies.edit");
-  const canDelete = hasPermission(user, "companies.delete");
+  const canView = hasPermission(user, "ems.companies.view");
+  const canCreate = hasPermission(user, "ems.companies.create");
+  const canEdit = hasPermission(user, "ems.companies.edit");
+  const canDelete = hasPermission(user, "ems.companies.delete");
 
   
   useEffect(() => {

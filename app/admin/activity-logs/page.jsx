@@ -12,7 +12,7 @@ export default function ActivityLogsPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "activity_logs.view");
+  const canView = hasPermission(user, "access.activity_logs.view");
 
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);

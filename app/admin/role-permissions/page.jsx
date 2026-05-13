@@ -25,8 +25,8 @@ export default function RolePermissionsPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "role_permissions.view");
-  const canEdit = hasPermission(user, "role_permissions.edit");
+  const canView = hasPermission(user, "access.role_permissions.view");
+  const canEdit = hasPermission(user, "access.role_permissions.edit");
 
   useEffect(() => {
     if (loadingUser) return;
@@ -65,7 +65,7 @@ export default function RolePermissionsPage() {
     try {
       setLoadingPermissions(true);
 
-      const res = await fetch("/api/admin/permissions", {
+      const res = await fetch("/api/admin/permissions?all=true", {
         cache: "no-store",
       });
       const data = await res.json();

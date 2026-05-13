@@ -27,17 +27,18 @@ export default function PermissionsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [editingPermission, setEditingPermission] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const [totalItems, setTotalItems] = useState(0);
+  const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 7;
-  const paginatedPermissions = permissions.slice((currentPage - 1) * pageSize,currentPage * pageSize);
+  const pageSize = 20;
 
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "permissions.view");
-  const canCreate = hasPermission(user, "permissions.create");
-  const canEdit = hasPermission(user, "permissions.edit");
-  const canDelete = hasPermission(user, "permissions.delete");
+  const canView = hasPermission(user, "access.permissions.view");
+  const canCreate = hasPermission(user, "access.permissions.create");
+  const canEdit = hasPermission(user, "access.permissions.edit");
+  const canDelete = hasPermission(user, "access.permissions.delete");
 
   
   useEffect(() => {
@@ -59,7 +60,13 @@ export default function PermissionsPage() {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/admin/permissions", {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: String(pageSize),
+        search: search || "",
+      });
+
+      const res = await fetch(`/api/admin/permissions?${params.toString()}`, {
         cache: "no-store",
       });
 
@@ -70,6 +77,7 @@ export default function PermissionsPage() {
       }
 
       setPermissions(data.data || []);
+      setTotalItems(data.pagination?.total || 0);
     } catch (err) {
       console.error(err);
       setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
@@ -80,7 +88,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     loadPermissions();
-  }, []);
+  }, [currentPage, search]);
 
   const parseJsonResponse = async (res) => {
     const text = await res.text();
@@ -301,6 +309,19 @@ export default function PermissionsPage() {
         </div>
       ) : null}
 
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <input
+          type="text"
+          placeholder="ค้นหา Module / Action / Permission Code / Permission Name"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+        />
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -319,7 +340,7 @@ export default function PermissionsPage() {
 
             <tbody>
               {loading ? (
-                [...Array(5)].map((_, index) => (
+                [...Array(pageSize)].map((_, index) => (
                   <tr key={index} className="border-t border-slate-200">
                     <td className="px-6 py-4">
                       <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
@@ -345,7 +366,7 @@ export default function PermissionsPage() {
                   </tr>
                 ))
               ) : permissions.length > 0 ? (
-                paginatedPermissions.map((item , index) => (
+                permissions.map((item , index) => (
                   <tr
                     key={item.id}
                     className="border-t border-slate-200 hover:bg-slate-50"
@@ -444,12 +465,14 @@ export default function PermissionsPage() {
 
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
             <span className="text-sm text-slate-400">
-              แสดง {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, permissions.length)} จาก {permissions.length} รายการ
+              แสดง{" "}
+              {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+              –{Math.min(currentPage * pageSize, totalItems)} จาก {totalItems} รายการ
             </span>
 
             <Pagination
               current={currentPage}
-              total={permissions.length}
+              total={totalItems}
               pageSize={pageSize}
               onChange={(page) => setCurrentPage(page)}
               showSizeChanger={false}

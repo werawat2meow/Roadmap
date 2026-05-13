@@ -3,12 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Progress, Skeleton, Tag, Input } from "antd";
-import {
-  WarningOutlined,
-  SearchOutlined,
-  ArrowLeftOutlined,
-  DownloadOutlined,
-} from "@ant-design/icons";
+import {WarningOutlined,SearchOutlined,ArrowLeftOutlined,DownloadOutlined,} from "@ant-design/icons";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../components/LoadingOrb";
@@ -17,7 +12,7 @@ export default function ManpowerPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "dashboard.view");
+  const canView = hasPermission(user, "ems.manpower.view");
 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -133,7 +128,7 @@ export default function ManpowerPage() {
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => router.push("/admin")}
+                    onClick={() => router.push("/admin/dashboard")}
                     className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
                   >
                     <ArrowLeftOutlined />

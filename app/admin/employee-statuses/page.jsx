@@ -30,10 +30,10 @@ export default function EmployeeStatusesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "employee_statuses.view");
-  const canCreate = hasPermission(user, "employee_statuses.create");
-  const canEdit = hasPermission(user, "employee_statuses.edit");
-  const canDelete = hasPermission(user, "employee_statuses.delete");
+  const canView = hasPermission(user, "ems.employee_statuses.view");
+  const canCreate = hasPermission(user, "ems.employee_statuses.create");
+  const canEdit = hasPermission(user, "ems.employee_statuses.edit");
+  const canDelete = hasPermission(user, "ems.employee_statuses.delete");
 
   
   useEffect(() => {

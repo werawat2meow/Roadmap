@@ -74,10 +74,10 @@ export default function EmployeesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "employees.view");
-  const canCreate = hasPermission(user, "employees.create");
-  const canEdit = hasPermission(user, "employees.edit");
-  const canDelete = hasPermission(user, "employees.delete");
+  const canView = hasPermission(user, "ems.employees.view");
+  const canCreate = hasPermission(user, "ems.employees.create");
+  const canEdit = hasPermission(user, "ems.employees.edit");
+  const canDelete = hasPermission(user, "ems.employees.delete");
 
   useEffect(() => {
     if (loadingUser) return;

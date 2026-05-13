@@ -28,10 +28,10 @@ export default function EmploymentTypesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "employment_types.view");
-  const canCreate = hasPermission(user, "employment_types.create");
-  const canEdit = hasPermission(user, "employment_types.edit");
-  const canDelete = hasPermission(user, "employment_types.delete");
+  const canView = hasPermission(user, "ems.employment_types.view");
+  const canCreate = hasPermission(user, "ems.employment_types.create");
+  const canEdit = hasPermission(user, "ems.employment_types.edit");
+  const canDelete = hasPermission(user, "ems.employment_types.delete");
 
   
   useEffect(() => {

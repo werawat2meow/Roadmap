@@ -3,15 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Tag, Avatar, Typography, Input, Empty } from "antd";
-import {
-  UserOutlined,
-  ArrowRightOutlined,
-  AppstoreOutlined,
-  SafetyCertificateOutlined,
-  SearchOutlined,
-  TeamOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+import {UserOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCertificateOutlined,SearchOutlined,TeamOutlined,SettingOutlined,} from "@ant-design/icons";
 
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
@@ -80,7 +72,7 @@ export default function AdminPage() {
         title: "จัดการพนักงาน",
         description: "เพิ่ม แก้ไข และตรวจสอบข้อมูลพนักงาน",
         path: "/admin/employees",
-        permission: "employees.view",
+        permission: "ems.portal.view",
         icon: <TeamOutlined />,
       },
       {

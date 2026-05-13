@@ -48,9 +48,9 @@ export default function ApiTokensPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "api_tokens.view");
-  const canCreate = hasPermission(user, "api_tokens.create");
-  const canRevoke = hasPermission(user, "api_tokens.revoke");
+  const canView = hasPermission(user, "api.api_tokens.view");
+  const canCreate = hasPermission(user, "api.api_tokens.create");
+  const canRevoke = hasPermission(user, "api.api_tokens.revoke");
 
   useEffect(() => {
     setMounted(true);

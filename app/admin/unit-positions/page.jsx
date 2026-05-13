@@ -39,10 +39,10 @@ export default function UnitPositionsPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "unit_positions.view");
-  const canCreate = hasPermission(user, "unit_positions.create");
-  const canEdit = hasPermission(user, "unit_positions.edit");
-  const canDelete = hasPermission(user, "unit_positions.delete");
+  const canView = hasPermission(user, "ems.unit_positions.view");
+  const canCreate = hasPermission(user, "ems.unit_positions.create");
+  const canEdit = hasPermission(user, "ems.unit_positions.edit");
+  const canDelete = hasPermission(user, "ems.unit_positions.delete");
 
   
   useEffect(() => {

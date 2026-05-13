@@ -53,10 +53,10 @@ export default function PositionsPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "positions.view");
-  const canCreate = hasPermission(user, "positions.create");
-  const canEdit = hasPermission(user, "positions.edit");
-  const canDelete = hasPermission(user, "positions.delete");
+  const canView = hasPermission(user, "ems.positions.view");
+  const canCreate = hasPermission(user, "ems.positions.create");
+  const canEdit = hasPermission(user, "ems.positions.edit");
+  const canDelete = hasPermission(user, "ems.positions.delete");
 
   
   useEffect(() => {

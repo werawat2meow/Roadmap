@@ -2,33 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Progress,
-  Tag,
-  Button,
-  Avatar,
-  Typography,
-  Skeleton,
-  Pagination,
-} from "antd";
-import {
-  TeamOutlined,
-  ApartmentOutlined,
-  SafetyCertificateOutlined,
-  UserOutlined,
-  ArrowUpOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  UsergroupAddOutlined,
-  DownloadOutlined,
-  SolutionOutlined,
-  WarningOutlined,
-  RiseOutlined,
-} from "@ant-design/icons";
+import {Card,Row,Col,Statistic,Progress,Tag,Button,Avatar,Typography,Skeleton,Pagination,} from "antd";
+import {TeamOutlined,ApartmentOutlined,SafetyCertificateOutlined,UserOutlined,ArrowUpOutlined,ClockCircleOutlined,CheckCircleOutlined,UsergroupAddOutlined,DownloadOutlined,SolutionOutlined,WarningOutlined,RiseOutlined,} from "@ant-design/icons";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import { sidebarMenus } from "../components/sidebarMenus";
@@ -93,7 +68,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canViewDashboard = hasPermission(user, "dashboard.view");
+  const canViewDashboard = hasPermission(user, "ems.dashboard.view");
 
   const [dashboard, setDashboard] = useState({
     employees: 0,

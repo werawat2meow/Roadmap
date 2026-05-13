@@ -39,10 +39,10 @@ export default function ApiClientsPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "api_clients.view");
-  const canCreate = hasPermission(user, "api_clients.create");
-  const canEdit = hasPermission(user, "api_clients.edit");
-  const canDelete = hasPermission(user, "api_clients.delete");
+  const canView = hasPermission(user, "api.api_clients.view");
+  const canCreate = hasPermission(user, "api.api_clients.create");
+  const canEdit = hasPermission(user, "api.api_clients.edit");
+  const canDelete = hasPermission(user, "api.api_clients.delete");
 
   useEffect(() => {
     setMounted(true);

@@ -28,10 +28,10 @@ export default function RolesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "roles.view");
-  const canCreate = hasPermission(user, "roles.create");
-  const canEdit = hasPermission(user, "roles.edit");
-  const canDelete = hasPermission(user, "roles.delete");
+  const canView = hasPermission(user, "access.roles.view");
+  const canCreate = hasPermission(user, "access.roles.create");
+  const canEdit = hasPermission(user, "access.roles.edit");
+  const canDelete = hasPermission(user, "access.roles.delete");
 
   
   useEffect(() => {

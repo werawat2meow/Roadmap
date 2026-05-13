@@ -14,7 +14,7 @@ export const systemApps = [
     subtitle: "ระบบข้อมูลพนักงาน",
     description: "จัดการข้อมูลพนักงาน โครงสร้างองค์กร และสิทธิ์ผู้ใช้งาน",
     path: "/admin/dashboard",
-    permission: "ems.view",
+    permission: "ems.portal.view",
     icon: <TeamOutlined />,
     badge: "Core",
     category: "HR Core",

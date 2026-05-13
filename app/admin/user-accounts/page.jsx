@@ -45,10 +45,10 @@ export default function UserAccountsPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "user_accounts.view");
-  const canCreate = hasPermission(user, "user_accounts.create");
-  const canEdit = hasPermission(user, "user_accounts.edit");
-  const canDelete = hasPermission(user, "user_accounts.delete");
+  const canView = hasPermission(user, "access.user_accounts.view");
+  const canCreate = hasPermission(user, "access.user_accounts.create");
+  const canEdit = hasPermission(user, "access.user_accounts.edit");
+  const canDelete = hasPermission(user, "access.user_accounts.delete");
 
   
   useEffect(() => {

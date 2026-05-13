@@ -69,7 +69,7 @@ export default function ApiLogsPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
-  const canView = hasPermission(user, "api_logs.view");
+  const canView = hasPermission(user, "api.api_logs.view");
 
   useEffect(() => {
     setMounted(true);

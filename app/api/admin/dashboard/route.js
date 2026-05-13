@@ -116,7 +116,7 @@ export async function GET(request) {
       );
     }
 
-    if (!hasPermission(currentUser, "dashboard.view")) {
+    if (!hasPermission(currentUser, "ems.dashboard.view")) {
       return NextResponse.json(
         { success: false, error: "Forbidden" },
         { status: 403 }

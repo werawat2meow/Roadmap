@@ -31,10 +31,10 @@ export default function DepartmentsPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "departments.view");
-  const canCreate = hasPermission(user, "departments.create");
-  const canEdit = hasPermission(user, "departments.edit");
-  const canDelete = hasPermission(user, "departments.delete");
+  const canView = hasPermission(user, "ems.departments.view");
+  const canCreate = hasPermission(user, "ems.departments.create");
+  const canEdit = hasPermission(user, "ems.departments.edit");
+  const canDelete = hasPermission(user, "ems.departments.delete");
 
   
   useEffect(() => {

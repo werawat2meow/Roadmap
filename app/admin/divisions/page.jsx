@@ -36,10 +36,10 @@ export default function DivisionsPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "divisions.view");
-  const canCreate = hasPermission(user, "divisions.create");
-  const canEdit = hasPermission(user, "divisions.edit");
-  const canDelete = hasPermission(user, "divisions.delete");
+  const canView = hasPermission(user, "ems.divisions.view");
+  const canCreate = hasPermission(user, "ems.divisions.create");
+  const canEdit = hasPermission(user, "ems.divisions.edit");
+  const canDelete = hasPermission(user, "ems.divisions.delete");
 
   useEffect(() => {
     if (loadingUser) return;

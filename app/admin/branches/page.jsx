@@ -36,10 +36,10 @@ export default function BranchesPage() {
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "branches.view");
-  const canCreate = hasPermission(user, "branches.create");
-  const canEdit = hasPermission(user, "branches.edit");
-  const canDelete = hasPermission(user, "branches.delete");
+  const canView = hasPermission(user, "ems.branches.view");
+  const canCreate = hasPermission(user, "ems.branches.create");
+  const canEdit = hasPermission(user, "ems.branches.edit");
+  const canDelete = hasPermission(user, "ems.branches.delete");
 
   
   useEffect(() => {

@@ -66,6 +66,7 @@ export default function AdminPage() {
     return Object.keys(groupedSystemApps);
   }, [groupedSystemApps]);
 
+  // เพิ่ม สำหรับเมนูทางลัด
   const adminMenus = useMemo(
     () => [
       {
@@ -79,14 +80,14 @@ export default function AdminPage() {
         title: "Roles & Permissions",
         description: "กำหนดสิทธิ์การเข้าถึงระบบและเมนู",
         path: "/admin/roles",
-        permission: "roles.view",
+        permission: "access.roles.view",
         icon: <SafetyCertificateOutlined />,
       },
       {
         title: "API Management",
         description: "จัดการ API Clients, Tokens และ Logs",
         path: "/admin/api-tokens",
-        permission: "api_tokens.view",
+        permission: "api.api_tokens.view",
         icon: <SettingOutlined />,
       },
     ],

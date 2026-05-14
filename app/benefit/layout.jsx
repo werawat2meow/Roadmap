@@ -1,35 +1,29 @@
+// app/benefit/layout.jsx
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Layout, Button, Avatar, Tag } from "antd";
-import {
-  HomeOutlined,
-  GiftOutlined,
-  UserOutlined,
-  LogoutOutlined,
-} from "@ant-design/icons";
+import { HomeOutlined, GiftOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 
-import useAuth from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext"; // ✅ เปลี่ยน
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../components/LoadingOrb";
 
 const { Header, Content } = Layout;
 
-export default function BenefitLayout({ children }) {
+function BenefitContent({ children }) {
   const router = useRouter();
-  const { user, loadingUser } = useAuth();
+  const { user, loadingUser } = useAuth(); // ✅ ดึงจาก Context
 
   const canAccessBenefit = hasPermission(user, "benefit.view");
 
   useEffect(() => {
     if (loadingUser) return;
-
     if (!user) {
       router.replace("/login");
       return;
     }
-
     if (!canAccessBenefit) {
       router.replace("/admin");
     }
@@ -50,11 +44,8 @@ export default function BenefitLayout({ children }) {
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-xl text-white">
             <GiftOutlined />
           </div>
-
           <div>
-            <div className="text-base font-bold text-white">
-              Benefit System
-            </div>
+            <div className="text-base font-bold text-white">Benefit System</div>
             <div className="hidden text-xs text-emerald-100 sm:block">
               Enterprise Staff Benefit Platform
             </div>
@@ -68,17 +59,14 @@ export default function BenefitLayout({ children }) {
             onClick={() => router.push("/admin")}
             className="!text-emerald-100 hover:!bg-white/10 hover:!text-white"
           />
-
           <Tag className="m-0 hidden rounded-full border-0 bg-white px-3 py-1 text-xs font-medium text-emerald-700 md:inline-flex">
             {user?.role_name || user?.role_code || "User"}
           </Tag>
-
           <Avatar
             src={user?.employee_photo_url || undefined}
             icon={!user?.employee_photo_url ? <UserOutlined /> : null}
             className="!bg-emerald-600"
           />
-
           <Button
             type="text"
             icon={<LogoutOutlined />}
@@ -92,5 +80,13 @@ export default function BenefitLayout({ children }) {
 
       <Content>{children}</Content>
     </Layout>
+  );
+}
+
+export default function BenefitLayout({ children }) {
+  return (
+    <AuthProvider>  {/* ✅ ครอบ Provider ที่นี่ แทน root layout */}
+      <BenefitContent>{children}</BenefitContent>
+    </AuthProvider>
   );
 }

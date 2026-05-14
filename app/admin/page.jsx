@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Tag, Avatar, Typography, Input, Empty } from "antd";
-import {UserOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCertificateOutlined,SearchOutlined,TeamOutlined,SettingOutlined,} from "@ant-design/icons";
+import {UserOutlined,UnlockOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCertificateOutlined,SearchOutlined,TeamOutlined,SettingOutlined,LockOutlined,} from "@ant-design/icons";
 
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
@@ -77,7 +77,7 @@ export default function AdminPage() {
         icon: <TeamOutlined />,
       },
       {
-        title: "Roles & Permissions",
+        title: "Roles",
         description: "กำหนดสิทธิ์การเข้าถึงระบบและเมนู",
         path: "/admin/roles",
         permission: "access.roles.view",
@@ -89,6 +89,20 @@ export default function AdminPage() {
         path: "/admin/api-tokens",
         permission: "api.api_tokens.view",
         icon: <SettingOutlined />,
+      },
+      {
+        title: "Roles & Permissions",
+        description: "กำหนดสิทธิ์การใช้งานระบบ",
+        path: "/admin/role-permissions",
+        permission: "access.role_permissions.view",
+        icon: <LockOutlined />,
+      },
+      {
+        title: "Permissions",
+        description: "จัดการสิทธิ์การเข้าถึงเมนูและการใช้งานในระบบ",
+        path: "/admin/permissions",
+        permission: "access.permissions.view",
+        icon: <UnlockOutlined  />,
       },
     ],
     []

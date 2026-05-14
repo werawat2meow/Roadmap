@@ -22,11 +22,12 @@ export default function RolePermissionsPage() {
 
   const [selectedSystem, setSelectedSystem] = useState("");
 
+  // #region Permisstion
   const router = useRouter();
   const { user, loadingUser } = useAuth();
 
   const canView = hasPermission(user, "access.role_permissions.view");
-  const canEdit = hasPermission(user, "access.role_permissions.edit");
+  const canManage = hasPermission(user, "access.role_permissions.manage");
 
   useEffect(() => {
     if (loadingUser) return;
@@ -40,6 +41,8 @@ export default function RolePermissionsPage() {
       router.replace("/admin");
     }
   }, [user, canView, loadingUser, router]);
+
+  // #endregion
 
   const loadRoles = async () => {
     try {
@@ -114,6 +117,35 @@ export default function RolePermissionsPage() {
     }
   };
 
+
+  const canManageRole = (role) => {
+    if (user?.role_code === "SUPER_ADMIN") return true;
+
+    if (user?.role_code === "HR_ADMIN") {
+      return ["HR_USER", "MANAGER"].includes(role.role_code);
+    }
+
+    if (user?.role_code === "BENEFIT_ADMIN") {
+      return ["BENEFIT_USER"].includes(role.role_code);
+    }
+
+    return false;
+  };
+
+  const canManagePermissionItem = (permission) => {
+    if (user?.role_code === "SUPER_ADMIN") return true;
+
+    if (user?.role_code === "HR_ADMIN") {
+      return permission.permission_code?.startsWith("ems.");
+    }
+
+    if (user?.role_code === "BENEFIT_ADMIN") {
+      return permission.permission_code?.startsWith("benefit.");
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     Promise.all([loadRoles(), loadPermissions()]).catch((err) => {
       console.error(err);
@@ -157,7 +189,7 @@ export default function RolePermissionsPage() {
   const groupedPermissions = useMemo(() => {
     const groups = {};
 
-    permissions.forEach((item) => {
+    permissions.filter(canManagePermissionItem).forEach((item) => {
       const systemKey = getSystemGroup(item.module_code);
       const featureKey = getFeatureGroup(item.module_code);
 
@@ -183,7 +215,7 @@ export default function RolePermissionsPage() {
   }, [groupedPermissions, selectedSystem]);
 
   const handleSave = async () => {
-    if (!canEdit) {
+    if (!canManage) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
       return;
     }
@@ -231,7 +263,7 @@ export default function RolePermissionsPage() {
   };
 
   const togglePermission = (permissionId) => {
-    if (!canEdit) {
+    if (!canManage) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
       return;
     }
@@ -244,7 +276,7 @@ export default function RolePermissionsPage() {
   };
 
   const toggleModulePermissions = (moduleItems) => {
-    if (!canEdit) {
+    if (!canManage) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
       return;
     }
@@ -266,7 +298,7 @@ export default function RolePermissionsPage() {
   };
 
   const toggleSystemPermissions = (featureGroups) => {
-    if (!canEdit) {
+    if (!canManage) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Role Permissions");
       return;
     }
@@ -308,7 +340,7 @@ export default function RolePermissionsPage() {
             </p>
           </div>
 
-          {canEdit && (
+          {canManage && (
             <button
               type="button"
               onClick={handleSave}
@@ -344,10 +376,7 @@ export default function RolePermissionsPage() {
           onChange={(value) => setSelectedRoleId(value || "")}
           loading={loadingRoles}
           options={roles
-            .filter((item) => {
-              if (user?.role_code === "SUPER_ADMIN") return true;
-              return item.role_code !== "SUPER_ADMIN";
-            })
+            .filter((item) => canManageRole(item))
             .map((item) => ({
               value: item.id,
               label: `${item.role_code} - ${item.role_name}`,
@@ -369,7 +398,7 @@ export default function RolePermissionsPage() {
           </div>
         ) : null}
 
-        {selectedRole && !canEdit ? (
+        {selectedRole && !canManage ? (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
             คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถแก้ไขสิทธิ์ของ Role นี้ได้
           </div>
@@ -454,7 +483,7 @@ export default function RolePermissionsPage() {
                         </p>
                       </div>
 
-                      {canEdit && (
+                      {canManage && (
                         <button
                           type="button"
                           onClick={() => toggleSystemPermissions(featureGroups)}
@@ -494,7 +523,7 @@ export default function RolePermissionsPage() {
                                   </p>
                                 </div>
 
-                                {canEdit && (
+                                {canManage && (
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -522,7 +551,7 @@ export default function RolePermissionsPage() {
                                     <label
                                       key={item.id}
                                       className={`flex items-start gap-3 rounded-2xl border p-4 transition ${
-                                        canEdit
+                                        canManage
                                           ? "cursor-pointer"
                                           : "cursor-not-allowed opacity-80"
                                       } ${
@@ -534,7 +563,7 @@ export default function RolePermissionsPage() {
                                       <input
                                         type="checkbox"
                                         checked={checked}
-                                        disabled={!canEdit}
+                                        disabled={!canManage}
                                         onChange={() =>
                                           togglePermission(item.id)
                                         }

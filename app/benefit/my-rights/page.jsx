@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Tag, Spin, Empty } from "antd";
 import {GiftOutlined,UserOutlined,CheckCircleOutlined,} from "@ant-design/icons";
 
@@ -8,6 +8,31 @@ export default function MyBenefitRightsPage() {
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState(null);
   const [rights, setRights] = useState([]);
+
+  const getBenefitKey = (item) => {
+    return (
+      item?.benefit_id ||
+      item?.benefits?.id ||
+      item?.benefit_code ||
+      item?.benefits?.benefit_code ||
+      item?.id
+    );
+  };
+
+  const removeDuplicateRights = (items = []) => {
+    const map = new Map();
+
+    items.forEach((item) => {
+      const key = getBenefitKey(item);
+      if (!key) return;
+
+      if (!map.has(key)) {
+        map.set(key, item);
+      }
+    });
+
+    return Array.from(map.values());
+  };
 
   const loadMyRights = async () => {
     try {
@@ -23,10 +48,15 @@ export default function MyBenefitRightsPage() {
         throw new Error(data?.error || "โหลดสิทธิ์ไม่สำเร็จ");
       }
 
+      const rawRights = data.data?.rights || [];
+      const uniqueRights = removeDuplicateRights(rawRights);
+
       setEmployee(data.data?.employee || null);
-      setRights(data.data?.rights || []);
+      setRights(uniqueRights);
     } catch (error) {
       console.error("LOAD_MY_RIGHTS_ERROR:", error);
+      setEmployee(null);
+      setRights([]);
     } finally {
       setLoading(false);
     }
@@ -36,7 +66,27 @@ export default function MyBenefitRightsPage() {
     loadMyRights();
   }, []);
 
-  const fullName = employee? `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(): "-";
+  const fullName = useMemo(() => {
+    return employee
+      ? `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim()
+      : "-";
+  }, [employee]);
+
+  const formatQuota = (item) => {
+    if (item?.is_unlimited) return "ไม่จำกัด";
+
+    if (item?.quota_amount) {
+      return `${Number(item.quota_amount).toLocaleString()} ${
+        item.quota_unit || ""
+      }`;
+    }
+
+    if (item?.discount_percent) {
+      return `${item.discount_percent}%`;
+    }
+
+    return "-";
+  };
 
   if (loading) {
     return (
@@ -56,6 +106,7 @@ export default function MyBenefitRightsPage() {
                 <Tag className="m-0 rounded-full border-0 bg-emerald-100 text-emerald-700">
                   My Rights
                 </Tag>
+
                 <Tag className="m-0 rounded-full border-0 bg-slate-100 text-slate-600">
                   Benefit System
                 </Tag>
@@ -78,6 +129,7 @@ export default function MyBenefitRightsPage() {
 
                 <div>
                   <div className="font-bold text-slate-800">{fullName}</div>
+
                   <div className="text-xs text-slate-500">
                     {employee?.employee_code || "-"} ·{" "}
                     {employee?.positions?.position_level || "-"} ·{" "}
@@ -93,7 +145,7 @@ export default function MyBenefitRightsPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rights.map((item) => (
               <Card
-                key={item.id}
+                key={getBenefitKey(item)}
                 variant="borderless"
                 className="rounded-[24px] shadow-sm"
               >
@@ -126,15 +178,7 @@ export default function MyBenefitRightsPage() {
                   <div className="rounded-2xl bg-slate-50 p-3 text-sm">
                     <span className="text-slate-400">Quota: </span>
                     <span className="font-semibold text-slate-700">
-                      {item.is_unlimited
-                        ? "ไม่จำกัด"
-                        : item.quota_amount
-                          ? `${Number(item.quota_amount).toLocaleString()} ${
-                              item.quota_unit || ""
-                            }`
-                          : item.discount_percent
-                            ? `${item.discount_percent}%`
-                            : "-"}
+                      {formatQuota(item)}
                     </span>
                   </div>
 

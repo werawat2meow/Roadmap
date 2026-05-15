@@ -95,3 +95,86 @@ export default function BenefitPage() {
     </div>
   );
 }
+
+/*
+ app/benefit
+├── page.jsx
+├── layout.jsx
+│
+├── dashboard
+│   └── page.jsx
+│
+├── my-rights
+│   └── page.jsx
+│
+├── requests
+│   ├── page.jsx
+│   ├── history
+│   │   └── page.jsx
+│   └── create
+│       └── page.jsx
+│
+├── approvals
+│   └── page.jsx
+│
+├── benefits
+│   └── page.jsx
+│
+├── categories
+│   └── page.jsx
+│
+├── rules
+│   └── page.jsx
+│
+├── entitlements
+│   └── page.jsx
+│
+├── workflows
+│   └── page.jsx
+│
+├── usages
+│   └── page.jsx
+│
+├── reports
+│   └── page.jsx
+│
+├── attachments
+│   └── page.jsx
+│
+├── running-numbers
+│   └── page.jsx
+│
+└── components
+    ├── BenefitHeader.jsx
+    ├── BenefitMenuCard.jsx
+    ├── BenefitMenuSection.jsx
+    ├── benefitMenus.js
+    │
+    ├── cards
+    │   ├── BenefitCard.jsx
+    │   ├── BenefitRuleCard.jsx
+    │   ├── BenefitUsageCard.jsx
+    │   └── RequestCard.jsx
+    │
+    ├── tables
+    │   ├── BenefitTable.jsx
+    │   ├── BenefitRuleTable.jsx
+    │   ├── ApprovalTable.jsx
+    │   └── EntitlementTable.jsx
+    │
+    ├── forms
+    │   ├── BenefitForm.jsx
+    │   ├── BenefitRuleForm.jsx
+    │   ├── CategoryForm.jsx
+    │   ├── RequestForm.jsx
+    │   └── WorkflowForm.jsx
+    │
+    └── modals
+        ├── BenefitModal.jsx
+        ├── RuleModal.jsx
+        ├── CategoryModal.jsx
+        └── ApprovalModal.jsx
+
+
+
+*/

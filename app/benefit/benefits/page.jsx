@@ -21,6 +21,7 @@ export default function BenefitMasterPage() {
   const canCreate = hasPermission(user, "benefit.master.create") || hasPermission(user, "benefit.master.manage");
   const canUpdate = hasPermission(user, "benefit.master.update") || hasPermission(user, "benefit.master.manage");
   const canDelete = hasPermission(user, "benefit.master.delete") || hasPermission(user, "benefit.master.manage");
+  const canView = hasPermission(user, "benefit.master.view") || hasPermission(user, "benefit.master.manage");
 
   const loadData = async () => {
     try {
@@ -208,6 +209,24 @@ export default function BenefitMasterPage() {
     ],
     [canUpdate, canDelete]
   );
+
+  if (!canView) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Card className="rounded-[24px] text-center shadow-sm">
+          <div className="space-y-3">
+            <div className="text-xl font-bold text-red-500">
+              ไม่มีสิทธิ์เข้าถึง
+            </div>
+
+            <p className="text-slate-500">
+              คุณไม่มีสิทธิ์ดูข้อมูลสวัสดิการ
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 lg:p-6">

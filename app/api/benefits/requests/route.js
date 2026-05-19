@@ -9,35 +9,48 @@ async function getCurrentUser() {
 
   if (!token) return null;
 
-  const decoded = jwt.verify(
-    token,
-    process.env.JWT_SECRET || "dev-secret-key"
-  );
-
+  const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key");
   const userId = decoded?.user_id;
+
   if (!userId) return null;
 
-  const { data, error } = await supabaseAdmin
+  const { data } = await supabaseAdmin
     .from("user_accounts")
     .select(`
       id,
       employee_id,
+      role_id,
+      username,
       is_active,
-      role_permissions (
-        permissions (
-          permission_code
-        )
+      roles (
+        role_code,
+        role_name
       )
     `)
     .eq("id", userId)
     .maybeSingle();
 
-  if (error || !data || !data.is_active) return null;
+  if (!data || !data.is_active) return null;
 
-  const permissions =
-    data.role_permissions
-      ?.map((item) => item.permissions?.permission_code)
-      ?.filter(Boolean) || [];
+  let permissions = [];
+
+  if (data.role_id) {
+    const { data: permissionRows } = await supabaseAdmin
+      .from("role_permissions")
+      .select(`
+        permissions (
+          permission_code,
+          is_active
+        )
+      `)
+      .eq("role_id", data.role_id);
+
+    permissions =
+      permissionRows
+        ?.map((row) => row.permissions)
+        ?.filter((perm) => perm?.is_active)
+        ?.map((perm) => perm.permission_code) || [];
+  }
 
   return {
     ...data,
@@ -45,64 +58,76 @@ async function getCurrentUser() {
   };
 }
 
-export async function GET() {
-  try {
-    const user = await getCurrentUser();
+function hasPermission(user, permission) {
+  const roleCode = user?.roles?.role_code;
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+  if (roleCode === "SUPER_ADMIN") return true;
 
-    if (!user.permissions.includes("benefit.request.view")) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
-    }
+  return user?.permissions?.includes(permission) || false;
+}
 
-    const { data, error } = await supabaseAdmin
-      .from("benefit_requests")
-      .select(`
-        id,
-        request_no,
-        requested_amount,
-        approved_amount,
-        request_date,
-        status,
-        remark,
-        reject_reason,
-        created_at,
-        benefits (
-          id,
-          benefit_code,
-          benefit_name
-        )
-      `)
-      .eq("employee_id", user.employee_id)
-      .order("created_at", { ascending: false });
+async function generateRequestNo() {
+  const year = new Date().getFullYear();
 
-    if (error) {
-      return NextResponse.json(
-        { success: false, error: "โหลดคำขอสวัสดิการไม่สำเร็จ" },
-        { status: 500 }
-      );
-    }
+  const { data, error } = await supabaseAdmin
+    .from("benefit_running_numbers")
+    .select("id, current_number, prefix, padding_length")
+    .eq("module_code", "BENEFIT")
+    .eq("document_type", "REQUEST")
+    .eq("running_year", year)
+    .eq("is_active", true)
+    .maybeSingle();
 
-    return NextResponse.json({
-      success: true,
-      data: data || [],
-    });
-  } catch (error) {
-    console.error("BENEFIT_REQUESTS_GET_ERROR:", error);
-
-    return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดภายในระบบ" },
-      { status: 500 }
-    );
+  if (error) {
+    throw new Error(error.message);
   }
+
+  if (!data) {
+    const prefix = `BEN-${year}-`;
+
+    const { data: created, error: createError } = await supabaseAdmin
+      .from("benefit_running_numbers")
+      .insert({
+        module_code: "BENEFIT",
+        document_type: "REQUEST",
+        prefix,
+        current_number: 1,
+        padding_length: 6,
+        reset_every_year: true,
+        running_year: year,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw new Error(createError.message);
+    }
+
+    return `${created.prefix}${String(created.current_number).padStart(
+      created.padding_length || 6,
+      "0"
+    )}`;
+  }
+
+  const nextNumber = Number(data.current_number || 0) + 1;
+
+  const { error: updateError } = await supabaseAdmin
+    .from("benefit_running_numbers")
+    .update({
+      current_number: nextNumber,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", data.id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  return `${data.prefix || `BEN-${year}-`}${String(nextNumber).padStart(
+    data.padding_length || 6,
+    "0"
+  )}`;
 }
 
 export async function POST(req) {
@@ -116,118 +141,105 @@ export async function POST(req) {
       );
     }
 
-    if (!user.permissions.includes("benefit.request.create")) {
+    if (!hasPermission(user, "benefit.request.create")) {
       return NextResponse.json(
-        { success: false, error: "Forbidden" },
+        { success: false, error: "ไม่มีสิทธิ์สร้างคำขอสวัสดิการ" },
         { status: 403 }
       );
     }
 
     if (!user.employee_id) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบ Employee ID ของผู้ใช้งาน" },
+        { success: false, error: "ไม่พบข้อมูลพนักงานของผู้ใช้งานนี้" },
         { status: 400 }
       );
     }
 
     const body = await req.json();
 
-    const benefitCode = body?.benefitCode;
-    const benefitId = body?.benefitId;
-    const requestedAmount = body?.requestedAmount ?? null;
+    const benefitId = body?.benefitId || body?.benefit_id;
+    const requestedAmount = body?.requestedAmount ?? body?.requested_amount ?? null;
     const remark = body?.remark || null;
 
-    if (!benefitCode && !benefitId) {
+    if (!benefitId) {
       return NextResponse.json(
         { success: false, error: "กรุณาเลือกสวัสดิการ" },
         { status: 400 }
       );
     }
 
-    let benefit = null;
+    const currentYear = new Date().getFullYear();
 
-    if (benefitId) {
-      const { data, error } = await supabaseAdmin
-        .from("benefits")
-        .select("id, benefit_code, benefit_name, is_active")
-        .eq("id", benefitId)
-        .maybeSingle();
-
-      if (error) throw error;
-      benefit = data;
-    } else {
-      const { data, error } = await supabaseAdmin
-        .from("benefits")
-        .select("id, benefit_code, benefit_name, is_active")
-        .eq("benefit_code", benefitCode)
-        .maybeSingle();
-
-      if (error) throw error;
-      benefit = data;
-    }
-
-    if (!benefit || !benefit.is_active) {
-      return NextResponse.json(
-        { success: false, error: "ไม่พบสวัสดิการ หรือสวัสดิการถูกปิดใช้งาน" },
-        { status: 404 }
-      );
-    }
-
-    const { data: inserted, error: insertError } = await supabaseAdmin
-      .from("benefit_requests")
-      .insert({
-        employee_id: user.employee_id,
-        benefit_id: benefit.id,
-        requested_amount: requestedAmount,
-        remark,
-        status: "pending",
-        created_by: user.id,
-      })
+    const { data: entitlement } = await supabaseAdmin
+      .from("benefit_entitlements")
       .select(`
         id,
-        request_no,
-        employee_id,
-        benefit_id,
-        requested_amount,
-        request_date,
-        status,
-        remark,
-        created_at,
-        benefits (
-          benefit_code,
-          benefit_name
-        )
+        quota_amount,
+        used_amount,
+        remaining_amount,
+        quota_unit,
+        status
       `)
+      .eq("employee_id", user.employee_id)
+      .eq("benefit_id", benefitId)
+      .eq("entitlement_year", currentYear)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (entitlement && requestedAmount !== null) {
+      const remaining = Number(entitlement.remaining_amount || 0);
+      const requestAmount = Number(requestedAmount || 0);
+
+      if (remaining > 0 && requestAmount > remaining) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `ยอดที่ขอเกินสิทธิ์คงเหลือ (${remaining.toLocaleString()} ${
+              entitlement.quota_unit || ""
+            })`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const requestNo = await generateRequestNo();
+
+    const payload = {
+      request_no: requestNo,
+      employee_id: user.employee_id,
+      benefit_id: benefitId,
+      requested_amount: requestedAmount,
+      status: "pending",
+      remark,
+      created_by: user.id,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from("benefit_requests")
+      .insert(payload)
+      .select()
       .single();
 
-    if (insertError) {
-      console.error("BENEFIT_REQUEST_INSERT_ERROR:", insertError);
+    if (error) {
+      console.error("BENEFIT_REQUEST_POST_ERROR:", error);
 
       return NextResponse.json(
-        { success: false, error: "สร้างคำขอสวัสดิการไม่สำเร็จ" },
+        { success: false, error: error.message },
         { status: 500 }
       );
     }
 
-    await supabaseAdmin
-      .from("benefit_request_approvals")
-      .insert({
-        benefit_request_id: inserted.id,
-        action: "submitted",
-        action_by: user.id,
-        action_note: "ส่งคำขอสวัสดิการ",
-      });
-
     return NextResponse.json({
       success: true,
-      message: "ส่งคำขอสวัสดิการเรียบร้อยแล้ว",
-      data: inserted,
+      data,
     });
   } catch (error) {
-    console.error("BENEFIT_REQUESTS_POST_ERROR:", error);
+    console.error("BENEFIT_REQUEST_POST_FATAL:", error);
 
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดภายในระบบ" },
+      { success: false, error: error.message || "สร้างคำขอไม่สำเร็จ" },
       { status: 500 }
     );
   }

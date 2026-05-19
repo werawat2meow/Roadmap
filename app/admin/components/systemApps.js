@@ -1,11 +1,4 @@
-import {
-  TeamOutlined,
-  GiftOutlined,
-  DollarOutlined,
-  ClockCircleOutlined,
-  ToolOutlined,
-  FileTextOutlined,
-} from "@ant-design/icons";
+import {TeamOutlined,GiftOutlined,DollarOutlined,ClockCircleOutlined,ToolOutlined,FileTextOutlined,} from "@ant-design/icons";
 
 export const systemApps = [
   {

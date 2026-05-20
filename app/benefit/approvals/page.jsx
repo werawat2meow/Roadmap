@@ -1,8 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {Button,Card,Input,Modal,Select,Space,Table,Tag,message,} from "antd";
-import {CheckCircleOutlined,CloseCircleOutlined,ReloadOutlined,EyeOutlined,EditOutlined,DeleteOutlined,PlusOutlined,} from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  message,
+} from "antd";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ReloadOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
@@ -13,24 +31,27 @@ export default function BenefitApprovalsPage() {
 
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
-  const [statusFilter, setStatusFilter] = useState();
+  const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
-  const canView = hasPermission(user, "benefit.request.view") || hasPermission(user, "benefit.request.approve");
+  const canView =
+    hasPermission(user, "benefit.request.view") ||
+    hasPermission(user, "benefit.request.approve");
+
   const canCreate = hasPermission(user, "benefit.request.create");
   const canApprove = hasPermission(user, "benefit.request.approve");
   const canReject = hasPermission(user, "benefit.request.reject");
   const canEdit = hasPermission(user, "benefit.request.edit");
   const canDelete = hasPermission(user, "benefit.request.delete");
 
-  const loadData = async () => {
+  const loadData = async ({ nextSearch = search, nextStatus = statusFilter } = {}) => {
     try {
       setLoading(true);
 
       const params = new URLSearchParams();
 
-      if (statusFilter) params.set("status", statusFilter);
-      if (search) params.set("search", search);
+      if (nextStatus) params.set("status", nextStatus);
+      if (nextSearch) params.set("search", nextSearch);
 
       const res = await fetch(`/api/benefits/approvals?${params.toString()}`, {
         cache: "no-store",
@@ -52,7 +73,9 @@ export default function BenefitApprovalsPage() {
   };
 
   useEffect(() => {
-    if (canView) loadData();
+    if (canView) {
+      loadData({ nextSearch: "", nextStatus: "" });
+    }
   }, [canView]);
 
   const updateStatus = (record, status) => {
@@ -126,14 +149,20 @@ export default function BenefitApprovalsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case "draft":
+        return "default";
+      case "pending":
+        return "gold";
+      case "in_review":
+        return "blue";
       case "approved":
         return "green";
       case "rejected":
         return "red";
-      case "pending":
-        return "gold";
       case "cancelled":
         return "default";
+      case "paid":
+        return "purple";
       default:
         return "blue";
     }
@@ -157,8 +186,7 @@ export default function BenefitApprovalsPage() {
           return (
             <div>
               <div className="font-semibold">
-                {`${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`.trim() ||
-                  "-"}
+                {`${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`.trim() || "-"}
               </div>
               <div className="text-xs text-slate-400">
                 {emp?.employee_code || "-"}
@@ -194,8 +222,7 @@ export default function BenefitApprovalsPage() {
         title: "Created",
         dataIndex: "created_at",
         width: 180,
-        render: (value) =>
-          value ? new Date(value).toLocaleString("th-TH") : "-",
+        render: (value) => (value ? new Date(value).toLocaleString("th-TH") : "-"),
       },
       {
         title: "Actions",
@@ -289,29 +316,51 @@ export default function BenefitApprovalsPage() {
             <Input.Search
               placeholder="ค้นหา..."
               allowClear
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
               onSearch={(value) => {
-                setSearch(value);
-                setTimeout(loadData, 100);
+                const nextSearch = value || "";
+                setSearch(nextSearch);
+                loadData({
+                  nextSearch,
+                  nextStatus: statusFilter,
+                });
               }}
             />
 
             <Select
               allowClear
               placeholder="Status"
-              style={{ width: 160 }}
+              style={{ width: 180 }}
+              value={statusFilter || undefined}
               onChange={(value) => {
-                setStatusFilter(value);
-                setTimeout(loadData, 100);
+                const nextStatus = value || "";
+                setStatusFilter(nextStatus);
+                loadData({
+                  nextSearch: search,
+                  nextStatus,
+                });
               }}
               options={[
+                { label: "Draft", value: "draft" },
                 { label: "Pending", value: "pending" },
+                { label: "In Review", value: "in_review" },
                 { label: "Approved", value: "approved" },
                 { label: "Rejected", value: "rejected" },
                 { label: "Cancelled", value: "cancelled" },
+                { label: "Paid", value: "paid" },
               ]}
             />
 
-            <Button icon={<ReloadOutlined />} onClick={loadData}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() =>
+                loadData({
+                  nextSearch: search,
+                  nextStatus: statusFilter,
+                })
+              }
+            >
               Refresh
             </Button>
           </Space>

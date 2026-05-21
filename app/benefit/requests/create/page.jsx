@@ -553,7 +553,7 @@ export default function CreateBenefitRequestPage() {
                       label: `${item.benefit_code} - ${item.benefit_name}`,
                       value: item.id,
                     }))}
-                    dropdownRender={(menu) => (
+                    popupRender={(menu) => (
                       <>
                         {menu}
                         <div className="border-t border-slate-100 p-2 text-center text-xs text-slate-400">

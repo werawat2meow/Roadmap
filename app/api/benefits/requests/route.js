@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 
 const ATTACHMENT_BUCKET = process.env.BENEFIT_ATTACHMENTS_BUCKET || "benefit-attachments";
 const MAX_FILE_SIZE_MB = Number(process.env.BENEFIT_ATTACHMENT_MAX_SIZE_MB || 10);
-const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+const ALLOWED_FILE_TYPES = ["application/pdf","image/jpeg","image/png",];
 
 async function getCurrentUser() {
   const cookieStore = await cookies();
@@ -13,7 +13,11 @@ async function getCurrentUser() {
 
   if (!token) return null;
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key");
+  const decoded = jwt.verify(
+    token,
+    process.env.JWT_SECRET || "dev-secret-key"
+  );
+
   const userId = decoded?.user_id;
 
   if (!userId) return null;
@@ -148,10 +152,15 @@ async function uploadAttachments({ files, requestId, userId }) {
     if (!file || typeof file === "string") continue;
 
     const validationError = validateFile(file);
-    if (validationError) throw new Error(validationError);
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
 
     const fileExt = file.name?.split(".").pop() || "file";
+
     const safeFileName = `${crypto.randomUUID()}.${fileExt}`;
+
     const filePath = `requests/${requestId}/${safeFileName}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
@@ -161,7 +170,9 @@ async function uploadAttachments({ files, requestId, userId }) {
         upsert: false,
       });
 
-    if (uploadError) throw new Error(uploadError.message);
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
 
     uploadedRows.push({
       benefit_request_id: requestId,
@@ -179,59 +190,12 @@ async function uploadAttachments({ files, requestId, userId }) {
       .from("benefit_request_attachments")
       .insert(uploadedRows);
 
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
   }
 
   return uploadedRows;
-}
-
-async function findSearchIds(search) {
-  if (!search) {
-    return {
-      employeeIds: [],
-      benefitIds: [],
-    };
-  }
-
-  const [employeeResult, benefitResult] = await Promise.all([
-    supabaseAdmin
-      .from("employees")
-      .select("id")
-      .or(
-        `employee_code.ilike.%${search}%,first_name_th.ilike.%${search}%,last_name_th.ilike.%${search}%`
-      )
-      .limit(100),
-
-    supabaseAdmin
-      .from("benefits")
-      .select("id")
-      .or(
-        `benefit_code.ilike.%${search}%,benefit_name.ilike.%${search}%`
-      )
-      .limit(100),
-  ]);
-
-  return {
-    employeeIds: employeeResult.data?.map((item) => item.id) || [],
-    benefitIds: benefitResult.data?.map((item) => item.id) || [],
-  };
-}
-
-function buildSearchOr(search, employeeIds = [], benefitIds = []) {
-  const conditions = [
-    `request_no.ilike.%${search}%`,
-    `remark.ilike.%${search}%`,
-  ];
-
-  if (employeeIds.length > 0) {
-    conditions.push(`employee_id.in.(${employeeIds.join(",")})`);
-  }
-
-  if (benefitIds.length > 0) {
-    conditions.push(`benefit_id.in.(${benefitIds.join(",")})`);
-  }
-
-  return conditions.join(",");
 }
 
 export async function GET(req) {
@@ -263,13 +227,15 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
+
     const pageSize = Math.min(
       Math.max(Number(searchParams.get("pageSize") || 10), 1),
       100
     );
 
-    const status = (searchParams.get("status") || "").trim().toLowerCase();
-    const search = (searchParams.get("search") || "").trim();
+    const status = (searchParams.get("status") || "")
+      .trim()
+      .toLowerCase();
 
     const allowedStatuses = [
       "draft",
@@ -290,30 +256,6 @@ export async function GET(req) {
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-
-    let employeeIds = [];
-    let benefitIds = [];
-
-    if (search) {
-      const [employeeResult, benefitResult] = await Promise.all([
-        supabaseAdmin
-          .from("employees")
-          .select("id")
-          .or(
-            `employee_code.ilike.%${search}%,first_name_th.ilike.%${search}%,last_name_th.ilike.%${search}%`
-          )
-          .limit(100),
-
-        supabaseAdmin
-          .from("benefits")
-          .select("id")
-          .or(`benefit_code.ilike.%${search}%,benefit_name.ilike.%${search}%`)
-          .limit(100),
-      ]);
-
-      employeeIds = employeeResult.data?.map((item) => item.id) || [];
-      benefitIds = benefitResult.data?.map((item) => item.id) || [];
-    }
 
     let query = supabaseAdmin
       .from("benefit_requests")
@@ -354,24 +296,6 @@ export async function GET(req) {
       query = query.eq("status", status);
     }
 
-    if (search) {
-      const orFilters = [
-        `request_no.ilike.%${search}%`,
-        `remark.ilike.%${search}%`,
-        `reject_reason.ilike.%${search}%`,
-      ];
-
-      if (employeeIds.length > 0) {
-        orFilters.push(`employee_id.in.(${employeeIds.join(",")})`);
-      }
-
-      if (benefitIds.length > 0) {
-        orFilters.push(`benefit_id.in.(${benefitIds.join(",")})`);
-      }
-
-      query = query.or(orFilters.join(","));
-    }
-
     const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -393,7 +317,6 @@ export async function GET(req) {
       pageSize,
       filters: {
         status,
-        search,
       },
     });
   } catch (error) {
@@ -435,10 +358,15 @@ export async function POST(req) {
 
     const formData = await req.formData();
 
-    const benefitId = formData.get("benefitId") || formData.get("benefit_id");
+    const benefitId =
+      formData.get("benefitId") || formData.get("benefit_id");
+
     const requestedAmountRaw =
-      formData.get("requestedAmount") || formData.get("requested_amount");
+      formData.get("requestedAmount") ||
+      formData.get("requested_amount");
+
     const remark = formData.get("remark") || null;
+
     const attachments = formData.getAll("attachments");
 
     if (!benefitId) {
@@ -560,7 +488,10 @@ export async function POST(req) {
     }
 
     return NextResponse.json(
-      { success: false, error: error.message || "สร้างคำขอไม่สำเร็จ" },
+      {
+        success: false,
+        error: error.message || "สร้างคำขอไม่สำเร็จ",
+      },
       { status: 500 }
     );
   }

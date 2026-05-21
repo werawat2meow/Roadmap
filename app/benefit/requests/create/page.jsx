@@ -571,10 +571,6 @@ export default function CreateBenefitRequestPage() {
                   name="requested_amount"
                   rules={[
                     {
-                      required: true,
-                      message: "กรุณากรอกจำนวน",
-                    },
-                    {
                       validator: (_, value) => {
                         if (
                           value === undefined ||

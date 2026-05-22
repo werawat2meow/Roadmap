@@ -14,11 +14,7 @@ export default function BenefitPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const roleCode =
-    user?.roles?.role_code ||
-    user?.role_code ||
-    user?.role?.role_code ||
-    "USER";
+  const roleCode = user?.roles?.role_code || user?.role_code || user?.role?.role_code || "USER";
 
   const selfMenus = useMemo(() => {
     return getVisibleBenefitMenus(user, benefitSelfMenus);

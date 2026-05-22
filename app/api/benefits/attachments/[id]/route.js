@@ -3,7 +3,8 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-const ATTACHMENT_BUCKET = process.env.BENEFIT_ATTACHMENTS_BUCKET || "benefit-attachments";
+const ATTACHMENT_BUCKET =
+  process.env.BENEFIT_ATTACHMENTS_BUCKET || "benefit-attachments";
 
 async function getCurrentUser() {
   const cookieStore = await cookies();
@@ -23,7 +24,9 @@ async function getCurrentUser() {
       employee_id,
       role_id,
       is_active,
-      roles ( role_code )
+      roles (
+        role_code
+      )
     `)
     .eq("id", userId)
     .maybeSingle();
@@ -58,6 +61,28 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function getAttachment(id) {
+  const { data, error } = await supabaseAdmin
+    .from("benefit_request_attachments")
+    .select(`
+      id,
+      benefit_request_id,
+      file_name,
+      file_path,
+      file_type,
+      benefit_requests (
+        id,
+        employee_id
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return data;
+}
+
 export async function GET(req, { params }) {
   try {
     const user = await getCurrentUser();
@@ -71,6 +96,8 @@ export async function GET(req, { params }) {
     }
 
     const canViewAll =
+      hasPermission(user, "benefit.attachment.view") ||
+      hasPermission(user, "benefit.attachment.manage") ||
       hasPermission(user, "benefit.request.view") ||
       hasPermission(user, "benefit.request.approve");
 
@@ -85,28 +112,7 @@ export async function GET(req, { params }) {
       );
     }
 
-    const { data: attachment, error } = await supabaseAdmin
-      .from("benefit_request_attachments")
-      .select(`
-        id,
-        benefit_request_id,
-        file_name,
-        file_path,
-        file_type,
-        benefit_requests (
-          id,
-          employee_id
-        )
-      `)
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
-    }
+    const attachment = await getAttachment(id);
 
     if (!attachment) {
       return NextResponse.json(
@@ -143,6 +149,75 @@ export async function GET(req, { params }) {
 
     return NextResponse.json(
       { success: false, error: "ดาวน์โหลดไฟล์ไม่สำเร็จ" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req, { params }) {
+  try {
+    const user = await getCurrentUser();
+    const { id } = await params;
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const canDelete =
+      hasPermission(user, "benefit.attachment.delete") ||
+      hasPermission(user, "benefit.attachment.manage");
+
+    if (!canDelete) {
+      return NextResponse.json(
+        { success: false, error: "ไม่มีสิทธิ์ลบไฟล์แนบ" },
+        { status: 403 }
+      );
+    }
+
+    const attachment = await getAttachment(id);
+
+    if (!attachment) {
+      return NextResponse.json(
+        { success: false, error: "ไม่พบไฟล์แนบ" },
+        { status: 404 }
+      );
+    }
+
+    const { error: storageError } = await supabaseAdmin.storage
+      .from(ATTACHMENT_BUCKET)
+      .remove([attachment.file_path]);
+
+    if (storageError) {
+      return NextResponse.json(
+        { success: false, error: storageError.message },
+        { status: 500 }
+      );
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("benefit_request_attachments")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      return NextResponse.json(
+        { success: false, error: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "ลบไฟล์แนบสำเร็จ",
+    });
+  } catch (error) {
+    console.error("BENEFIT_ATTACHMENT_DELETE_ERROR:", error);
+
+    return NextResponse.json(
+      { success: false, error: "ลบไฟล์แนบไม่สำเร็จ" },
       { status: 500 }
     );
   }

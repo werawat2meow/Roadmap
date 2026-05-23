@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {Button,Card,Form,Input,InputNumber,Modal,Select,Space,Switch,Table,Tag,message,} from "antd";
-import {TeamOutlined,PlusOutlined,EditOutlined,DeleteOutlined,ReloadOutlined,} from "@ant-design/icons";
+import {TeamOutlined,PlusOutlined,EditOutlined,DeleteOutlined,ReloadOutlined,SyncOutlined,} from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
@@ -12,6 +12,7 @@ export default function BenefitEntitlementsPage() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const [rows, setRows] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -22,8 +23,9 @@ export default function BenefitEntitlementsPage() {
 
   const canView = hasPermission(user, "benefit.entitlement.view") || hasPermission(user, "benefit.entitlement.manage");
   const canCreate = hasPermission(user, "benefit.entitlement.create") || hasPermission(user, "benefit.entitlement.manage");
-  const canUpdate = hasPermission(user, "benefit.entitlement.update") || hasPermission(user, "benefit.entitlement.manage");
+  const canUpdate = hasPermission(user, "benefit.entitlement.update") || hasPermission(user, "benefit.entitlement.edit") || hasPermission(user, "benefit.entitlement.manage");
   const canDelete = hasPermission(user, "benefit.entitlement.delete") || hasPermission(user, "benefit.entitlement.manage");
+  const canGenerate = hasPermission(user, "benefit.entitlement.generate") || hasPermission(user, "benefit.entitlement.manage");
 
   const loadData = async () => {
     try {
@@ -53,6 +55,49 @@ export default function BenefitEntitlementsPage() {
   useEffect(() => {
     if (canView) loadData();
   }, [canView]);
+
+  const handleGenerate = () => {
+    const currentYear = new Date().getFullYear();
+
+    Modal.confirm({
+      title: "ยืนยัน Generate Entitlements",
+      content: `ต้องการ Generate สิทธิ์สวัสดิการประจำปี ${currentYear} ตาม Benefit Rules ใช่หรือไม่?`,
+      okText: "Generate",
+      cancelText: "ยกเลิก",
+      async onOk() {
+        try {
+          setGenerating(true);
+
+          const res = await fetch("/api/benefits/entitlements/generate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              year: currentYear,
+            }),
+          });
+
+          const json = await res.json();
+
+          if (!res.ok) {
+            throw new Error(json?.error || "Generate Entitlements ไม่สำเร็จ");
+          }
+
+          message.success(
+            `${json?.message || "Generate Entitlements สำเร็จ"} (${json?.generated || 0} รายการ)`
+          );
+
+          loadData();
+        } catch (error) {
+          console.error("GENERATE_ENTITLEMENTS_ERROR:", error);
+          message.error(error.message || "Generate Entitlements ไม่สำเร็จ");
+        } finally {
+          setGenerating(false);
+        }
+      },
+    });
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -91,6 +136,7 @@ export default function BenefitEntitlementsPage() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+
       setSaving(true);
 
       const res = await fetch("/api/benefits/entitlements", {
@@ -128,7 +174,9 @@ export default function BenefitEntitlementsPage() {
   const handleDelete = (record) => {
     Modal.confirm({
       title: "ยืนยันการลบสิทธิ์สวัสดิการ",
-      content: `ต้องการลบสิทธิ์ของ "${record?.employees?.employee_code || "-"}" ใช่หรือไม่?`,
+      content: `ต้องการลบสิทธิ์ของ "${
+        record?.employees?.employee_code || "-"
+      }" ใช่หรือไม่?`,
       okText: "ลบ",
       cancelText: "ยกเลิก",
       okButtonProps: { danger: true },
@@ -168,11 +216,16 @@ export default function BenefitEntitlementsPage() {
         fixed: "left",
         render: (_, record) => {
           const emp = record.employees;
-          const name = `${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`.trim();
+          const name = `${emp?.first_name_th || ""} ${
+            emp?.last_name_th || ""
+          }`.trim();
+
           return (
             <div>
               <div className="font-semibold text-slate-800">{name || "-"}</div>
-              <div className="text-xs text-slate-400">{emp?.employee_code || "-"}</div>
+              <div className="text-xs text-slate-400">
+                {emp?.employee_code || "-"}
+              </div>
             </div>
           );
         },
@@ -188,13 +241,17 @@ export default function BenefitEntitlementsPage() {
         render: (_, record) =>
           record.is_unlimited
             ? "ไม่จำกัด"
-            : `${Number(record.quota_amount || 0).toLocaleString()} ${record.quota_unit || ""}`,
+            : `${Number(record.quota_amount || 0).toLocaleString()} ${
+                record.quota_unit || ""
+              }`,
       },
       {
         title: "ใช้ไป",
         width: 140,
         render: (_, record) =>
-          `${Number(record.used_amount || 0).toLocaleString()} ${record.quota_unit || ""}`,
+          `${Number(record.used_amount || 0).toLocaleString()} ${
+            record.quota_unit || ""
+          }`,
       },
       {
         title: "คงเหลือ",
@@ -202,14 +259,20 @@ export default function BenefitEntitlementsPage() {
         render: (_, record) =>
           record.is_unlimited
             ? "ไม่จำกัด"
-            : `${Number(record.remaining_amount || 0).toLocaleString()} ${record.quota_unit || ""}`,
+            : `${Number(record.remaining_amount || 0).toLocaleString()} ${
+                record.quota_unit || ""
+              }`,
       },
       {
         title: "สถานะ",
         dataIndex: "is_active",
         width: 120,
         render: (value) =>
-          value ? <Tag color="green">Active</Tag> : <Tag color="red">Inactive</Tag>,
+          value ? (
+            <Tag color="green">Active</Tag>
+          ) : (
+            <Tag color="red">Inactive</Tag>
+          ),
       },
       {
         title: "หมายเหตุ",
@@ -230,7 +293,11 @@ export default function BenefitEntitlementsPage() {
             )}
 
             {canDelete && (
-              <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleDelete(record)}
+              >
                 ลบ
               </Button>
             )}
@@ -268,10 +335,20 @@ export default function BenefitEntitlementsPage() {
           </div>
         }
         extra={
-          <Space>
+          <Space wrap>
             <Button icon={<ReloadOutlined />} onClick={loadData}>
               Refresh
             </Button>
+
+            {canGenerate && (
+              <Button
+                icon={<SyncOutlined />}
+                loading={generating}
+                onClick={handleGenerate}
+              >
+                Generate Entitlements
+              </Button>
+            )}
 
             {canCreate && (
               <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
@@ -303,6 +380,7 @@ export default function BenefitEntitlementsPage() {
         okText="บันทึก"
         cancelText="ยกเลิก"
         width={850}
+        forceRender
       >
         <Form form={form} layout="vertical">
           <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
@@ -316,7 +394,9 @@ export default function BenefitEntitlementsPage() {
                 placeholder="เลือกพนักงาน"
                 optionFilterProp="label"
                 options={employees.map((item) => ({
-                  label: `${item.employee_code} - ${item.first_name_th || ""} ${item.last_name_th || ""}`,
+                  label: `${item.employee_code} - ${item.first_name_th || ""} ${
+                    item.last_name_th || ""
+                  }`,
                   value: item.id,
                 }))}
               />
@@ -362,7 +442,11 @@ export default function BenefitEntitlementsPage() {
               <Input placeholder="เช่น บาท, ครั้ง, วัน" />
             </Form.Item>
 
-            <Form.Item label="ไม่จำกัดสิทธิ์" name="is_unlimited" valuePropName="checked">
+            <Form.Item
+              label="ไม่จำกัดสิทธิ์"
+              name="is_unlimited"
+              valuePropName="checked"
+            >
               <Switch />
             </Form.Item>
           </div>
@@ -379,3 +463,8 @@ export default function BenefitEntitlementsPage() {
     </div>
   );
 }
+
+/*
+HR_ADMIN / BENEFIT_ADMIN ได้ permission นี้ หรือใช้ benefit.entitlement.manage
+
+*/

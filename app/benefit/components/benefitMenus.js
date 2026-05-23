@@ -1,4 +1,19 @@
-import {GiftOutlined,FormOutlined,HistoryOutlined,BarChartOutlined,FileDoneOutlined,TagsOutlined,SafetyCertificateOutlined,TeamOutlined,CheckCircleOutlined,AuditOutlined,DatabaseOutlined,FileSearchOutlined,PaperClipOutlined,NumberOutlined,} from "@ant-design/icons";
+import {
+  GiftOutlined,
+  FormOutlined,
+  HistoryOutlined,
+  BarChartOutlined,
+  FileDoneOutlined,
+  TagsOutlined,
+  SafetyCertificateOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  AuditOutlined,
+  DatabaseOutlined,
+  FileSearchOutlined,
+  PaperClipOutlined,
+  NumberOutlined,
+} from "@ant-design/icons";
 
 export const benefitSelfMenus = [
   {
@@ -12,7 +27,7 @@ export const benefitSelfMenus = [
   },
   {
     title: "ขอใช้สิทธิ์",
-    desc: "ส่งคำขอใช้สวัสดิการ เช่น เบิกค่าใช้จ่าย หรือขอรับสิทธิ์",
+    desc: "เลือกสวัสดิการ กรอกจำนวนเงิน แนบเอกสาร และส่งคำขออนุมัติ",
     icon: <FormOutlined />,
     path: "/benefit/requests",
     tag: "Request",
@@ -37,6 +52,7 @@ export const benefitAdminMenus = [
     tag: "View",
     permissions: [
       "benefit.dashboard.view",
+      "benefit.dashboard.manage",
       "benefit.admin.view",
     ],
     executiveView: true,
@@ -51,6 +67,7 @@ export const benefitAdminMenus = [
       "benefit.master.view",
       "benefit.master.create",
       "benefit.master.update",
+      "benefit.master.edit",
       "benefit.master.delete",
       "benefit.master.manage",
     ],
@@ -65,6 +82,7 @@ export const benefitAdminMenus = [
       "benefit.category.view",
       "benefit.category.create",
       "benefit.category.update",
+      "benefit.category.edit",
       "benefit.category.delete",
       "benefit.category.manage",
     ],
@@ -79,6 +97,7 @@ export const benefitAdminMenus = [
       "benefit.rule.view",
       "benefit.rule.create",
       "benefit.rule.update",
+      "benefit.rule.edit",
       "benefit.rule.delete",
       "benefit.rule.manage",
     ],
@@ -93,6 +112,7 @@ export const benefitAdminMenus = [
       "benefit.entitlement.view",
       "benefit.entitlement.create",
       "benefit.entitlement.update",
+      "benefit.entitlement.edit",
       "benefit.entitlement.delete",
       "benefit.entitlement.manage",
     ],
@@ -104,7 +124,9 @@ export const benefitAdminMenus = [
     path: "/benefit/approvals",
     tag: "Approve",
     permissions: [
+      "benefit.request.view",
       "benefit.request.approve",
+      "benefit.request.reject",
       "benefit.approval.view",
       "benefit.approval.manage",
     ],
@@ -118,7 +140,7 @@ export const benefitAdminMenus = [
     permissions: [
       "benefit.workflow.view",
       "benefit.workflow.create",
-      "benefit.workflow.update",
+      "benefit.workflow.edit",
       "benefit.workflow.delete",
       "benefit.workflow.manage",
     ],
@@ -128,9 +150,12 @@ export const benefitAdminMenus = [
     desc: "ดูประวัติการใช้สิทธิ์ ยอดคงเหลือ และรายการที่ใช้ไปแล้ว",
     icon: <DatabaseOutlined />,
     path: "/benefit/usages",
-    tag: "View",
+    tag: "Usage",
     permissions: [
       "benefit.usage.view",
+      "benefit.usage.create",
+      "benefit.usage.edit",
+      "benefit.usage.delete",
       "benefit.usage.manage",
     ],
   },
@@ -143,6 +168,7 @@ export const benefitAdminMenus = [
     permissions: [
       "benefit.report.view",
       "benefit.report.export",
+      "benefit.report.manage",
       "benefit.admin.view",
     ],
     executiveView: true,
@@ -155,6 +181,7 @@ export const benefitAdminMenus = [
     tag: "Files",
     permissions: [
       "benefit.attachment.view",
+      "benefit.attachment.delete",
       "benefit.attachment.manage",
     ],
   },
@@ -165,8 +192,11 @@ export const benefitAdminMenus = [
     path: "/benefit/running-numbers",
     tag: "Config",
     permissions: [
-      "benefit.running_number.view",
-      "benefit.running_number.manage",
+      "benefit.running.view",
+      "benefit.running.create",
+      "benefit.running.edit",
+      "benefit.running.delete",
+      "benefit.running.manage",
     ],
   },
 ];
@@ -177,16 +207,14 @@ export function canAccessBenefitMenu(user, menu) {
   const roleCode =
     user?.roles?.role_code ||
     user?.role_code ||
-    user?.role?.role_code;
+    user?.role?.role_code ||
+    user?.role;
 
   if (roleCode === "SUPER_ADMIN") return true;
 
   if (menu.allowAllLogin) return true;
 
-  const userPermissions =
-    user?.permissions ||
-    user?.permission_codes ||
-    [];
+  const userPermissions = user?.permissions || user?.permission_codes || [];
 
   return menu.permissions?.some((permission) =>
     userPermissions.includes(permission)

@@ -33,7 +33,7 @@ export default function BenefitPage() {
       <div className="space-y-6">
         <BenefitHeader
           title="ระบบสวัสดิการพนักงาน"
-          subtitle="Benefit Management Portal สำหรับตรวจสอบสิทธิ์ ขอใช้สิทธิ์ และจัดการข้อมูลสวัสดิการตาม Roles / Permissions"
+          subtitle="Benefit Management Portal สำหรับตรวจสอบสิทธิ์ ขอใช้สิทธิ์ และจัดการข้อมูลสวัสดิการ"
           user={user}
           badges={["Benefit Portal", roleCode, "RBAC"]}
         >

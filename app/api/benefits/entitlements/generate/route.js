@@ -78,13 +78,29 @@ function isEmployeeMatchedRule(employee, rule) {
   }
 
   if (
-    rule.employment_type_id &&
-    employee.employment_type_id !== rule.employment_type_id
+    rule.employment_type &&
+    employee.employment_type !== rule.employment_type
   ) {
     return false;
   }
 
   return true;
+}
+
+function buildEntitlementRow({ employee, rule, entitlementYear, month }) {
+  return {
+    employee_id: employee.id,
+    benefit_id: rule.benefit_id,
+    benefit_rule_id: rule.id,
+    entitlement_year: entitlementYear,
+    entitlement_month: month,
+    quota_amount: rule.is_unlimited ? null : rule.quota_amount,
+    used_amount: 0,
+    remaining_amount: rule.is_unlimited ? null : rule.quota_amount,
+    quota_unit: rule.quota_unit,
+    status: "active",
+    updated_at: new Date().toISOString(),
+  };
 }
 
 export async function POST(req) {
@@ -98,9 +114,7 @@ export async function POST(req) {
       );
     }
 
-    const canGenerate =
-      hasPermission(user, "benefit.entitlement.generate") ||
-      hasPermission(user, "benefit.entitlement.manage");
+    const canGenerate = hasPermission(user, "benefit.entitlement.generate") || hasPermission(user, "benefit.entitlement.manage");
 
     if (!canGenerate) {
       return NextResponse.json(
@@ -125,12 +139,11 @@ export async function POST(req) {
         id,
         employee_code,
         employee_status_id,
-        employment_type_id,
+        employment_type,
         positions (
           position_level
         )
-      `)
-      .eq("is_active", true);
+      `);
 
     if (employeeError) {
       return NextResponse.json(
@@ -148,9 +161,9 @@ export async function POST(req) {
         quota_amount,
         quota_unit,
         quota_frequency,
+        entitlement_period,
         is_unlimited,
         employee_status_id,
-        employment_type_id,
         is_active,
         benefits (
           id,
@@ -158,7 +171,6 @@ export async function POST(req) {
           benefit_name
         )
       `)
-      .eq("is_active", true)
       .eq("rule_year", entitlementYear);
 
     if (ruleError) {
@@ -174,19 +186,29 @@ export async function POST(req) {
       for (const rule of rules || []) {
         if (!isEmployeeMatchedRule(employee, rule)) continue;
 
-        rows.push({
-          employee_id: employee.id,
-          benefit_id: rule.benefit_id,
-          benefit_rule_id: rule.id,
-          entitlement_year: entitlementYear,
-          entitlement_month: null,
-          quota_amount: rule.is_unlimited ? null : rule.quota_amount,
-          used_amount: 0,
-          remaining_amount: rule.is_unlimited ? null : rule.quota_amount,
-          quota_unit: rule.quota_unit,
-          status: "active",
-          updated_at: new Date().toISOString(),
-        });
+        const period = rule.entitlement_period || "yearly";
+
+        if (period === "monthly") {
+          for (let month = 1; month <= 12; month += 1) {
+            rows.push(
+              buildEntitlementRow({
+                employee,
+                rule,
+                entitlementYear,
+                month,
+              })
+            );
+          }
+        } else {
+          rows.push(
+            buildEntitlementRow({
+              employee,
+              rule,
+              entitlementYear,
+              month: 0,
+            })
+          );
+        }
       }
     }
 
@@ -199,9 +221,26 @@ export async function POST(req) {
       });
     }
 
+    const uniqueMap = new Map();
+
+    for (const row of rows) {
+      const key = [
+        row.employee_id,
+        row.benefit_id,
+        row.entitlement_year,
+        row.entitlement_month ?? 0,
+      ].join("|");
+
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, row);
+      }
+    }
+
+    const uniqueRows = Array.from(uniqueMap.values());
+
     const { data, error } = await supabaseAdmin
       .from("benefit_entitlements")
-      .upsert(rows, {
+      .upsert(uniqueRows, {
         onConflict:
           "employee_id,benefit_id,entitlement_year,entitlement_month",
       })
@@ -220,6 +259,8 @@ export async function POST(req) {
       year: entitlementYear,
       total_employees: employees?.length || 0,
       total_rules: rules?.length || 0,
+      prepared: rows.length || 0,
+      deduplicated: uniqueRows.length || 0,
       generated: data?.length || 0,
       data,
     });

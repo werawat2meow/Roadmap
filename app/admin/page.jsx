@@ -362,3 +362,10 @@ export default function AdminPage() {
     </div>
   );
 }
+
+
+/*
+  บัตรประชาชน - 13 หลัก
+  วันเดือนปีเกิด - 6 หลัก (YYMMDD)
+  id line
+*/

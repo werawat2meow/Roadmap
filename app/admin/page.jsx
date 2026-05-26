@@ -8,7 +8,7 @@ import {UserOutlined,UnlockOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCe
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../components/LoadingOrb";
-import { systemApps } from "./components/systemApps";
+import { systemApps } from "./(employee-master)/components/systemApps";
 
 const { Title, Text } = Typography;
 
@@ -367,5 +367,5 @@ export default function AdminPage() {
 /*
   บัตรประชาชน - 13 หลัก
   วันเดือนปีเกิด - 6 หลัก (YYMMDD)
-  id line
+  id line  ไม่ required แต่ถ้ามีต้องไม่ซ้ำกับพนักงานคนอื่น
 */

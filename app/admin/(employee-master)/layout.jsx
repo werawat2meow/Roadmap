@@ -266,10 +266,3 @@ export default function EmployeeMasterLayout({ children }) {
     </div>
   );
 }
-
-/*
- * 
- *  Flow - Employee Master Layout  
- *     3 ส่วนน 
- *  
- */

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import { RiLineFill } from "react-icons/ri";
 
 const initialForm = {
   first_name_th: "",
@@ -30,6 +31,10 @@ const initialForm = {
   employee_status_id: "",
   employee_photo_url: "",
   status: "active",
+  citizen_id: "",
+  passport_no: "",
+  birth_date: "",
+  line_id: "",
 };
 
 export default function EmployeesPage() {
@@ -298,6 +303,10 @@ export default function EmployeesPage() {
       employee_status_id: employee.employee_status_id || "",
       employee_photo_url: employee.employee_photo_url || "",
       status: employee.status || "active",
+      citizen_id: employee.citizen_id || "",
+      passport_no: employee.passport_no || "",
+      birth_date: employee.birth_date || "",
+      line_id: employee.line_id || "",
     });
     setPhotoFile(null);
     setPhotoPreview(employee.employee_photo_url || "");
@@ -414,6 +423,11 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (form.citizen_id && !isValidThaiCitizenId(form.citizen_id)) {
+      swalError("เลขบัตรประชาชนไม่ถูกต้อง");
+      return;
+    }
+
     if (!form.position_id) {
       swalError("กรุณาเลือกตำแหน่ง");
       return;
@@ -526,6 +540,36 @@ export default function EmployeesPage() {
     }
   };
 
+  const formatThaiCitizenId = (value) => {
+  const digits = value.replace(/\D/g, "").slice(0, 13);
+
+  return digits
+      .replace(/^(\d{1})(\d{0,4})(\d{0,5})(\d{0,2})(\d{0,1}).*/, (_, a, b, c, d, e) =>
+        [a, b, c, d, e].filter(Boolean).join("-")
+      );
+  };
+
+  const cleanThaiCitizenId = (value) => {
+    return value.replace(/\D/g, "").slice(0, 13);
+  };
+
+  const isValidThaiCitizenId = (value) => {
+    const digits = cleanThaiCitizenId(value);
+
+    if (digits.length !== 13) return false;
+
+    const sum = digits
+      .slice(0, 12)
+      .split("")
+      .reduce((total, digit, index) => {
+        return total + Number(digit) * (13 - index);
+      }, 0);
+
+    const checkDigit = (11 - (sum % 11)) % 10;
+
+    return checkDigit === Number(digits[12]);
+  };
+
   // #region Permission
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -558,7 +602,7 @@ export default function EmployeesPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหาชื่อ / รหัสพนักงาน / สาขา / แผนก / ฝ่าย"
+          placeholder="ค้นหา ชื่อ / รหัสพนักงาน / สาขา / แผนก / ฝ่าย / เลขบัตรประชาชน / Passport / Line ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -908,6 +952,110 @@ export default function EmployeesPage() {
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  เลขบัตรประชาชน
+                </label>
+
+                <input
+                  type="text"
+                  maxLength={17}
+                  value={formatThaiCitizenId(form.citizen_id)}
+                  onChange={(e) => {
+                    const val = cleanThaiCitizenId(e.target.value);
+
+                    setForm((prev) => ({
+                      ...prev,
+                      citizen_id: val,
+                    }));
+                  }}
+                  placeholder="1-2345-67890-12-3"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Passport
+                </label>
+
+                <input
+                  type="text"
+                  value={form.passport_no}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      passport_no: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  placeholder="Passport Number"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  วัน/เดือน/ปี เกิด
+                </label>
+
+                <input
+                  type="date"
+                  value={form.birth_date}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      birth_date: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  LINE ID
+                </label>
+
+                <div className="group flex overflow-hidden rounded-2xl border border-slate-300 bg-white transition-all focus-within:border-green-500 focus-within:ring-4 focus-within:ring-green-100">
+                  
+                  <div className="flex items-center justify-center border-r border-slate-200 bg-green-500 px-4 text-xl text-white">
+                    <RiLineFill />
+                  </div>
+
+                  <input
+                    type="text"
+                    value={form.line_id}
+                    onChange={(e) => {
+                      const value = e.target.value
+                        .replace(/\s/g, "")
+                        .replace(/^@+/, "");
+
+                      setForm((prev) => ({
+                        ...prev,
+                        line_id: value,
+                      }));
+                    }}
+                    placeholder="line id"
+                    className="w-full bg-transparent px-4 py-3 text-sm outline-none"
+                  />
+                </div>
+
+                {form.line_id && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                    <span>LINE:</span>
+
+                    <a
+                      href={`https://line.me/ti/p/~${form.line_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-green-600 hover:underline"
+                    >
+                      @{form.line_id}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">สัญชาติ</label>
                 <select
                   value={form.nationality}
@@ -1160,14 +1308,3 @@ export default function EmployeesPage() {
     </div>
   );
 }
-
-/***
- * 
- * เพิ่มมมาตรฐานการกรอกข้อมูลพนักงาน
- * 
- * บัตรประชาชน - 13 หลัก
- * วันเดือนปีเกิด - 6 หลัก (YYMMDD)
-   id line  ไม่ required แต่ถ้ามีต้องไม่ซ้ำกับพนักงานคนอื่น
-
-
-   */

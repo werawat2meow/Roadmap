@@ -362,10 +362,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-
-/*
-  บัตรประชาชน - 13 หลัก
-  วันเดือนปีเกิด - 6 หลัก (YYMMDD)
-  id line  ไม่ required แต่ถ้ามีต้องไม่ซ้ำกับพนักงานคนอื่น
-*/

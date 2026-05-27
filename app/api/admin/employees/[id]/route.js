@@ -18,6 +18,11 @@ export async function PATCH(req, { params }) {
     const gender = body?.gender || null;
     const phone = body?.phone?.trim() || null;
     const email = body?.email?.trim() || null;
+    const citizen_id = body?.citizen_id ?.replace(/\D/g, "") ?.trim() || null;
+    const passport_no = body?.passport_no?.trim() || null;
+    const birth_date = body?.birth_date || null;
+    const line_id = body?.line_id?.trim() || null;
+
     const employee_photo_url = body?.employee_photo_url?.trim() || null;
     const nationality = body?.nationality || null;
     const hire_date = body?.hire_date || null;
@@ -62,6 +67,13 @@ export async function PATCH(req, { params }) {
       );
     }
 
+    if (citizen_id && citizen_id.length !== 13) {
+      return NextResponse.json(
+        { success: false, error: "เลขบัตรประชาชนต้องมี 13 หลัก" },
+        { status: 400 }
+      );
+    }
+
     if (!employee_status_id) {
       return NextResponse.json(
         { success: false, error: "กรุณาเลือกสถานะพนักงาน" },
@@ -88,6 +100,10 @@ export async function PATCH(req, { params }) {
         gender,
         phone,
         email,
+        citizen_id,
+        passport_no,
+        birth_date,
+        line_id,
         employee_photo_url,
         nationality,
         hire_date,
@@ -118,6 +134,10 @@ export async function PATCH(req, { params }) {
         gender,
         phone,
         email,
+        citizen_id,
+        passport_no,
+        birth_date,
+        line_id,
         employee_photo_url,
         nationality,
         hire_date,
@@ -173,6 +193,10 @@ export async function PATCH(req, { params }) {
         gender: data.gender,
         phone: data.phone,
         email: data.email,
+        citizen_id: data.citizen_id,
+        passport_no: data.passport_no,
+        birth_date: data.birth_date,
+        line_id: data.line_id,
         employee_photo_url: data.employee_photo_url,
         nationality: data.nationality,
         hire_date: data.hire_date,
@@ -202,6 +226,10 @@ export async function PATCH(req, { params }) {
         gender: data.gender || "",
         phone: data.phone || "",
         email: data.email || "",
+        citizen_id: data.citizen_id || "",
+        passport_no: data.passport_no || "",
+        birth_date: data.birth_date || "",
+        line_id: data.line_id || "",
         employee_photo_url: data.employee_photo_url || "",
         nationality: data.nationality || "",
         hire_date: data.hire_date || "",

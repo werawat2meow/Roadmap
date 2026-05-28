@@ -14,31 +14,51 @@ async function getCurrentUser() {
 
   if (!userId) return null;
 
-  const { data, error } = await supabaseAdmin
+  const { data } = await supabaseAdmin
     .from("user_accounts")
     .select(`
       id,
+      role_id,
       is_active,
-      role_permissions (
-        permissions (
-          permission_code
-        )
+      roles (
+        role_code,
+        role_name
       )
     `)
     .eq("id", userId)
     .maybeSingle();
 
-  if (error || !data || !data.is_active) return null;
+  if (!data || !data.is_active) return null;
 
-  const permissions =
-    data.role_permissions
-      ?.map((item) => item.permissions?.permission_code)
-      ?.filter(Boolean) || [];
+  let permissions = [];
+
+  if (data.role_id) {
+    const { data: permissionRows } = await supabaseAdmin
+      .from("role_permissions")
+      .select(`
+        permissions (
+          permission_code,
+          is_active
+        )
+      `)
+      .eq("role_id", data.role_id);
+
+    permissions =
+      permissionRows
+        ?.map((row) => row.permissions)
+        ?.filter((perm) => perm?.is_active)
+        ?.map((perm) => perm.permission_code) || [];
+  }
 
   return { ...data, permissions };
 }
 
-export async function GET() {
+function hasPermission(user, permission) {
+  if (user?.roles?.role_code === "SUPER_ADMIN") return true;
+  return user?.permissions?.includes(permission) || false;
+}
+
+export async function GET(req) {
   try {
     const user = await getCurrentUser();
 
@@ -49,23 +69,67 @@ export async function GET() {
       );
     }
 
-    if (!user.permissions.includes("benefit.report.view")) {
+    const canView =
+      hasPermission(user, "benefit.report.view") ||
+      hasPermission(user, "benefit.report.manage");
+
+    if (!canView) {
       return NextResponse.json(
-        { success: false, error: "Forbidden" },
+        { success: false, error: "ไม่มีสิทธิ์ดูรายงานสวัสดิการ" },
         { status: 403 }
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    const { searchParams } = new URL(req.url);
+
+    const page = Math.max(Number(searchParams.get("page") || 1), 1);
+    const pageSize = Math.min(
+      Math.max(Number(searchParams.get("pageSize") || 20), 1),
+      100
+    );
+
+    const dateFrom = searchParams.get("dateFrom") || "";
+    const dateTo = searchParams.get("dateTo") || "";
+    const benefitId = searchParams.get("benefitId") || "";
+    const status = (searchParams.get("status") || "").trim().toLowerCase();
+
+    const allowedStatuses = [
+      "draft",
+      "pending",
+      "in_review",
+      "approved",
+      "rejected",
+      "cancelled",
+      "paid",
+    ];
+
+    if (status && !allowedStatuses.includes(status)) {
+      return NextResponse.json(
+        { success: false, error: `สถานะไม่ถูกต้อง: ${status}` },
+        { status: 400 }
+      );
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabaseAdmin
       .from("benefit_requests")
-      .select(`
+      .select(
+        `
         id,
         request_no,
+        employee_id,
+        benefit_id,
         requested_amount,
         approved_amount,
         request_date,
         status,
+        remark,
+        reject_reason,
+        approved_at,
         created_at,
+        updated_at,
         employees (
           id,
           employee_code,
@@ -75,42 +139,78 @@ export async function GET() {
         benefits (
           id,
           benefit_code,
-          benefit_name
+          benefit_name,
+          benefit_type
         )
-      `)
-      .order("created_at", { ascending: false });
+      `,
+        { count: "exact" }
+      );
+
+    if (dateFrom) {
+      query = query.gte("request_date", dateFrom);
+    }
+
+    if (dateTo) {
+      query = query.lte("request_date", dateTo);
+    }
+
+    if (benefitId) {
+      query = query.eq("benefit_id", benefitId);
+    }
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    const { data, error, count } = await query
+      .order("request_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
+      console.error("BENEFIT_REPORT_GET_ERROR:", error);
+
       return NextResponse.json(
-        { success: false, error: "โหลดรายงานไม่สำเร็จ" },
+        { success: false, error: error.message },
         { status: 500 }
       );
     }
 
     const rows = data || [];
 
-    const summary = {
-      total_requests: rows.length,
-      approved_requests: rows.filter((x) => x.status === "approved").length,
-      pending_requests: rows.filter((x) =>
-        ["pending", "in_review"].includes(x.status)
-      ).length,
-      total_amount: rows.reduce(
-        (sum, item) => sum + Number(item.approved_amount || item.requested_amount || 0),
-        0
-      ),
-    };
+    const totalRequestedAmount = rows.reduce(
+      (sum, item) => sum + Number(item.requested_amount || 0),
+      0
+    );
+
+    const totalApprovedAmount = rows.reduce(
+      (sum, item) => sum + Number(item.approved_amount || 0),
+      0
+    );
 
     return NextResponse.json({
       success: true,
-      summary,
       data: rows,
+      total: count || 0,
+      page,
+      pageSize,
+      summary: {
+        row_count: rows.length,
+        total_requested_amount: totalRequestedAmount,
+        total_approved_amount: totalApprovedAmount,
+      },
+      filters: {
+        dateFrom,
+        dateTo,
+        benefitId,
+        status,
+      },
     });
   } catch (error) {
-    console.error("BENEFIT_REPORTS_ERROR:", error);
+    console.error("BENEFIT_REPORT_GET_FATAL:", error);
 
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดภายในระบบ" },
+      { success: false, error: "โหลดรายงานสวัสดิการไม่สำเร็จ" },
       { status: 500 }
     );
   }

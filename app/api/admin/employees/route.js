@@ -61,6 +61,10 @@ function mapEmployee(item) {
     gender: item.gender || "",
     phone: item.phone || "",
     email: item.email || "",
+    citizen_id: item.citizen_id || "",
+    passport_no: item.passport_no || "",
+    birth_date: item.birth_date || "",
+    line_id: item.line_id || "",
     employee_photo_url: item.employee_photo_url || "",
     nationality: item.nationality || "",
     hire_date: item.hire_date || "",
@@ -190,6 +194,10 @@ export async function GET(req) {
         unit_id,
         position_id,
         created_at,
+        citizen_id,
+        passport_no,
+        birth_date,
+        line_id,
         employee_statuses (
           status_name,
           color
@@ -228,6 +236,9 @@ export async function GET(req) {
         `nick_name.ilike.%${safeSearch}%`,
         `phone.ilike.%${safeSearch}%`,
         `email.ilike.%${safeSearch}%`,
+        `citizen_id.ilike.%${safeSearch}%`,
+        `passport_no.ilike.%${safeSearch}%`,
+        `line_id.ilike.%${safeSearch}%`,
       ];
 
       if (searchParts.length >= 2) {
@@ -322,6 +333,12 @@ export async function POST(req) {
     const gender = body?.gender || null;
     const phone = body?.phone?.trim() || null;
     const email = body?.email?.trim() || null;
+
+    const citizen_id = body?.citizen_id ?.replace(/\D/g, "") ?.trim() || null;
+    const passport_no = body?.passport_no?.trim() || null;
+    const birth_date = body?.birth_date || null;
+    const line_id = body?.line_id?.trim() || null;
+
     const employee_photo_url = body?.employee_photo_url?.trim() || null;
     const nationality = body?.nationality || null;
     const hire_date = body?.hire_date || null;
@@ -370,6 +387,16 @@ export async function POST(req) {
       );
     }
 
+    if (citizen_id && citizen_id.length !== 13) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "เลขบัตรประชาชนต้องมี 13 หลัก",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: selectedPosition, error: positionError } = await supabaseAdmin
       .from("positions")
       .select("id, position_level")
@@ -412,6 +439,10 @@ export async function POST(req) {
       gender,
       phone,
       email,
+      citizen_id,
+      passport_no,
+      birth_date,
+      line_id,
       employee_photo_url,
       nationality,
       hire_date,
@@ -442,6 +473,10 @@ export async function POST(req) {
         gender,
         phone,
         email,
+        citizen_id,
+        passport_no,
+        birth_date,
+        line_id,
         employee_photo_url,
         nationality,
         hire_date,
@@ -495,6 +530,10 @@ export async function POST(req) {
         gender: data.gender,
         phone: data.phone,
         email: data.email,
+        citizen_id: data.citizen_id,
+        passport_no: data.passport_no,
+        birth_date: data.birth_date,
+        line_id: data.line_id,
         employee_photo_url: data.employee_photo_url,
         nationality: data.nationality,
         hire_date: data.hire_date,
@@ -524,6 +563,10 @@ export async function POST(req) {
         gender: data.gender || "",
         phone: data.phone || "",
         email: data.email || "",
+        citizen_id: data.citizen_id || "",
+        passport_no: data.passport_no || "",
+        birth_date: data.birth_date || "",
+        line_id: data.line_id || "",
         employee_photo_url: data.employee_photo_url || "",
         nationality: data.nationality || "",
         hire_date: data.hire_date || "",

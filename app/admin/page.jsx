@@ -8,7 +8,7 @@ import {UserOutlined,UnlockOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCe
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../components/LoadingOrb";
-import { systemApps } from "./components/systemApps";
+import { systemApps } from "./(employee-master)/components/systemApps";
 
 const { Title, Text } = Typography;
 

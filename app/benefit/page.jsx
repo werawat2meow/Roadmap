@@ -14,11 +14,7 @@ export default function BenefitPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const roleCode =
-    user?.roles?.role_code ||
-    user?.role_code ||
-    user?.role?.role_code ||
-    "USER";
+  const roleCode = user?.roles?.role_code || user?.role_code || user?.role?.role_code || "USER";
 
   const selfMenus = useMemo(() => {
     return getVisibleBenefitMenus(user, benefitSelfMenus);
@@ -37,7 +33,7 @@ export default function BenefitPage() {
       <div className="space-y-6">
         <BenefitHeader
           title="ระบบสวัสดิการพนักงาน"
-          subtitle="Benefit Management Portal สำหรับตรวจสอบสิทธิ์ ขอใช้สิทธิ์ และจัดการข้อมูลสวัสดิการตาม Roles / Permissions"
+          subtitle="Benefit Management Portal สำหรับตรวจสอบสิทธิ์ ขอใช้สิทธิ์ และจัดการข้อมูลสวัสดิการ"
           user={user}
           badges={["Benefit Portal", roleCode, "RBAC"]}
         >
@@ -177,4 +173,11 @@ export default function BenefitPage() {
 
 
 
+
+
+    Auto Entitlement Engine	⚠️
+    Benefit Matrix	⚠️
+    Auto Deduction	⚠️
+    Advanced Policy Engine	⚠️
+    Advanced Quota Rules	⚠️
 */

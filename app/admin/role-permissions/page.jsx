@@ -162,6 +162,7 @@ export default function RolePermissionsPage() {
     if (moduleCode.startsWith("payroll")) return "Payroll System";
     if (moduleCode.startsWith("hrm")) return "HRM System";
     if (moduleCode.startsWith("ems")) return "Employee Master";
+    if (moduleCode.startsWith("leave")) return "Leave System";
     if (
       moduleCode.startsWith("user_accounts") ||
       moduleCode.startsWith("roles") ||

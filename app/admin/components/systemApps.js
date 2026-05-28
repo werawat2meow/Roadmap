@@ -91,4 +91,19 @@ export const systemApps = [
     sortOrder: 6,
     gradient: "from-slate-500 to-slate-700",
   },
+
+  {
+    code: "LEAVE",
+    title: "Leave System",
+    subtitle: "ระบบลางาน",
+    description: "ยื่นคำขอลา ตรวจสอบสิทธิ์ และอนุมัติการลา",
+    path: "/leave",
+    hardNav: true,             
+    permission: "leave.view",
+    icon: <ClockCircleOutlined />,
+    badge: "Leave",
+    category: "HR Core",
+    sortOrder: 4,
+    gradient: "from-teal-500 to-cyan-600",
+  },
 ];

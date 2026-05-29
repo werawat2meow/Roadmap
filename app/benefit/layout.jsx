@@ -1,32 +1,48 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Layout, Button, Avatar, Tag } from "antd";
-import { HomeOutlined, GiftOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { useEffect, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Layout, Button, Avatar, Tag, Menu } from "antd";
+import {
+  HomeOutlined,
+  GiftOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
 
-import { AuthProvider, useAuth } from "@/contexts/AuthContext"; // ✅ เปลี่ยน
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../components/LoadingOrb";
+import { getVisibleBenefitSidebarMenus } from "./components/benefitMenus";
 
-const { Header, Content } = Layout;
+const { Header, Content, Sider } = Layout;
 
 function BenefitContent({ children }) {
   const router = useRouter();
-  const { user, loadingUser } = useAuth(); // ✅ ดึงจาก Context
+  const pathname = usePathname();
+  const { user, loadingUser } = useAuth();
 
   const canAccessBenefit = hasPermission(user, "benefit.view");
 
   useEffect(() => {
     if (loadingUser) return;
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-    if (!canAccessBenefit) {
-      router.replace("/admin");
-    }
+    if (!user) router.replace("/login");
+    if (user && !canAccessBenefit) router.replace("/admin");
   }, [user, loadingUser, canAccessBenefit, router]);
+
+  const sidebarMenus = useMemo(() => {
+    return getVisibleBenefitSidebarMenus(user);
+  }, [user]);
+
+  const menuItems = sidebarMenus.map((section) => ({
+    type: "group",
+    label: section.title,
+    children: section.items.map((item) => ({
+      key: item.href,
+      icon: item.icon,
+      label: item.label,
+    })),
+  }));
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -77,14 +93,39 @@ function BenefitContent({ children }) {
         </div>
       </Header>
 
-      <Content>{children}</Content>
+      <Layout>
+        <Sider
+          width={290}
+          theme="light"
+          className="min-h-[calc(100vh-64px)] border-r border-slate-200"
+        >
+          <div className="border-b border-slate-100 p-4">
+            <div className="text-sm font-bold text-slate-800">
+              Benefit Modules
+            </div>
+            <div className="text-xs text-slate-500">
+              แบ่งส่วนการทำงานของระบบสวัสดิการ
+            </div>
+          </div>
+
+          <Menu
+            mode="inline"
+            selectedKeys={[pathname]}
+            items={menuItems}
+            onClick={({ key }) => router.push(key)}
+            className="border-0"
+          />
+        </Sider>
+
+        <Content>{children}</Content>
+      </Layout>
     </Layout>
   );
 }
 
 export default function BenefitLayout({ children }) {
   return (
-    <AuthProvider>  {/* ✅ ครอบ Provider ที่นี่ แทน root layout */}
+    <AuthProvider>
       <BenefitContent>{children}</BenefitContent>
     </AuthProvider>
   );

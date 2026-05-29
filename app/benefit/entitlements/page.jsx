@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {Button,Card,Form,Input,InputNumber,Modal,Select,Space,Switch,Table,Tag,message,} from "antd";
-import {TeamOutlined,PlusOutlined,EditOutlined,DeleteOutlined,ReloadOutlined,SyncOutlined,} from "@ant-design/icons";
+import {TeamOutlined,PlusOutlined,EditOutlined,DeleteOutlined,ReloadOutlined,SyncOutlined,InfoCircleOutlined,} from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
@@ -353,11 +353,19 @@ export default function BenefitEntitlementsPage() {
         variant="borderless"
         className="rounded-[24px] shadow-sm"
         title={
-          <div className="flex items-center gap-2">
-            <TeamOutlined className="text-emerald-600" />
-            <span className="text-lg font-bold text-slate-800">
-              จัดการ Benefit Entitlements
-            </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <TeamOutlined className="text-emerald-600" />
+              <span className="text-lg font-bold text-slate-800">
+                จัดการ Benefit Entitlements
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <InfoCircleOutlined className="text-blue-500" />
+              <span className="text-sm text-slate-500">
+                กด Generate Entitlements เพื่อให้ระบบสร้างสิทธิ์สวัสดิการให้พนักงานอัตโนมัติ กำหนดรอบ/ปี/พนักงานเข้าใหม่ได้ตามต้องการ
+              </span>
+            </div>
           </div>
         }
         extra={

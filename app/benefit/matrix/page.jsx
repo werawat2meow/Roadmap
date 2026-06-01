@@ -96,7 +96,7 @@ export default function BenefitMatrixPage() {
   const loadMasterData = async () => {
     try {
       const [benefitRes, statusRes] = await Promise.all([
-        fetch("/api/benefits", {
+        fetch("/api/benefits/master", {
           cache: "no-store",
         }),
 

@@ -97,6 +97,119 @@ async function findSearchIds(search) {
   };
 }
 
+async function autoDeductBenefitUsage({ request, user }) {
+  const amount = Number(
+    request.approved_amount || request.requested_amount || 0
+  );
+
+  if (!amount || amount <= 0) {
+    throw new Error("ยอดอนุมัติไม่ถูกต้อง");
+  }
+
+  const currentYear = new Date().getFullYear();
+
+  const { data: entitlement, error: entitlementError } = await supabaseAdmin
+    .from("benefit_entitlements")
+    .select(`
+      id,
+      employee_id,
+      benefit_id,
+      entitlement_year,
+      entitlement_month,
+      quota_amount,
+      used_amount,
+      remaining_amount,
+      quota_unit,
+      status
+    `)
+    .eq("employee_id", request.employee_id)
+    .eq("benefit_id", request.benefit_id)
+    .eq("entitlement_year", currentYear)
+    .eq("status", "active")
+    .order("entitlement_month", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (entitlementError) {
+    throw new Error(entitlementError.message);
+  }
+
+  if (!entitlement) {
+    throw new Error("ไม่พบสิทธิ์ของพนักงานสำหรับสวัสดิการนี้");
+  }
+
+  const usedBefore = Number(entitlement.used_amount || 0);
+
+  const remainingBefore =
+    entitlement.remaining_amount === null
+      ? null
+      : Number(entitlement.remaining_amount || 0);
+
+  if (remainingBefore !== null && remainingBefore < amount) {
+    throw new Error("สิทธิ์คงเหลือไม่เพียงพอ");
+  }
+
+  const usedAfter = usedBefore + amount;
+
+  const remainingAfter =
+    remainingBefore === null ? null : remainingBefore - amount;
+
+  const { data: existingUsage, error: existingUsageError } = await supabaseAdmin
+    .from("benefit_usages")
+    .select("id")
+    .eq("benefit_request_id", request.id)
+    .maybeSingle();
+
+  if (existingUsageError) {
+    throw new Error(existingUsageError.message);
+  }
+
+  if (existingUsage) {
+    throw new Error("คำขอนี้ถูกตัดสิทธิ์ไปแล้ว");
+  }
+
+  const { error: usageError } = await supabaseAdmin
+    .from("benefit_usages")
+    .insert({
+      employee_id: request.employee_id,
+      benefit_id: request.benefit_id,
+      benefit_request_id: request.id,
+      entitlement_id: entitlement.id,
+      usage_date: new Date().toISOString().slice(0, 10),
+      used_amount: amount,
+      usage_unit: entitlement.quota_unit || "amount",
+      reference_no: request.request_no,
+      remark: "Auto deduction from approved benefit request",
+      created_by: user.id,
+    });
+
+  if (usageError) {
+    throw new Error(usageError.message);
+  }
+
+  const { error: updateEntitlementError } = await supabaseAdmin
+    .from("benefit_entitlements")
+    .update({
+      used_amount: usedAfter,
+      remaining_amount: remainingAfter,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", entitlement.id);
+
+  if (updateEntitlementError) {
+    throw new Error(updateEntitlementError.message);
+  }
+
+  return {
+    entitlement_id: entitlement.id,
+    used_before: usedBefore,
+    used_after: usedAfter,
+    remaining_before: remainingBefore,
+    remaining_after: remainingAfter,
+    deducted_amount: amount,
+  };
+}
+
 export async function GET(req) {
   try {
     const user = await getCurrentUser();
@@ -243,17 +356,66 @@ export async function PUT(req) {
       );
     }
 
-    if (status === "approved" && !hasPermission(user, "benefit.request.approve")) {
+    if (
+      status === "approved" &&
+      !hasPermission(user, "benefit.request.approve")
+    ) {
       return NextResponse.json(
         { success: false, error: "ไม่มีสิทธิ์อนุมัติ" },
         { status: 403 }
       );
     }
 
-    if (status === "rejected" && !hasPermission(user, "benefit.request.reject")) {
+    if (
+      status === "rejected" &&
+      !hasPermission(user, "benefit.request.reject")
+    ) {
       return NextResponse.json(
         { success: false, error: "ไม่มีสิทธิ์ปฏิเสธคำขอ" },
         { status: 403 }
+      );
+    }
+
+    const { data: currentRequest, error: currentRequestError } =
+      await supabaseAdmin
+        .from("benefit_requests")
+        .select(`
+          id,
+          request_no,
+          employee_id,
+          benefit_id,
+          requested_amount,
+          approved_amount,
+          status
+        `)
+        .eq("id", requestId)
+        .maybeSingle();
+
+    if (currentRequestError) {
+      return NextResponse.json(
+        { success: false, error: currentRequestError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!currentRequest) {
+      return NextResponse.json(
+        { success: false, error: "ไม่พบคำขอ" },
+        { status: 404 }
+      );
+    }
+
+    if (currentRequest.status === "approved") {
+      return NextResponse.json(
+        { success: false, error: "คำขอนี้อนุมัติไปแล้ว" },
+        { status: 400 }
+      );
+    }
+
+    if (currentRequest.status === "rejected") {
+      return NextResponse.json(
+        { success: false, error: "คำขอนี้ถูกปฏิเสธไปแล้ว" },
+        { status: 400 }
       );
     }
 
@@ -265,13 +427,30 @@ export async function PUT(req) {
     if (status === "approved") {
       payload.approved_by = user.id;
       payload.approved_at = new Date().toISOString();
+      payload.approved_amount =
+        currentRequest.approved_amount || currentRequest.requested_amount || 0;
     }
 
     const { data, error } = await supabaseAdmin
       .from("benefit_requests")
       .update(payload)
       .eq("id", requestId)
-      .select()
+      .select(`
+        id,
+        request_no,
+        employee_id,
+        benefit_id,
+        requested_amount,
+        approved_amount,
+        request_date,
+        status,
+        remark,
+        reject_reason,
+        approved_by,
+        approved_at,
+        created_at,
+        updated_at
+      `)
       .single();
 
     if (error) {
@@ -283,9 +462,40 @@ export async function PUT(req) {
       );
     }
 
+    let deduction = null;
+
+    if (status === "approved") {
+      try {
+        deduction = await autoDeductBenefitUsage({
+          request: data,
+          user,
+        });
+      } catch (deductionError) {
+        await supabaseAdmin
+          .from("benefit_requests")
+          .update({
+            status: currentRequest.status,
+            approved_by: null,
+            approved_at: null,
+            approved_amount: currentRequest.approved_amount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", requestId);
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: deductionError.message || "ตัดสิทธิ์อัตโนมัติไม่สำเร็จ",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data,
+      deduction,
     });
   } catch (error) {
     console.error("BENEFIT_APPROVALS_PUT_ERROR:", error);

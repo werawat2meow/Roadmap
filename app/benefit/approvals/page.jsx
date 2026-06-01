@@ -1,26 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  message,
-} from "antd";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import {Button,Card,Input,Modal,Select,Space,Table,Tag,message,} from "antd";
+import {CheckCircleOutlined,CloseCircleOutlined,ReloadOutlined,EyeOutlined,EditOutlined,DeleteOutlined,PlusOutlined,} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
@@ -34,9 +16,7 @@ export default function BenefitApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
-  const canView =
-    hasPermission(user, "benefit.request.view") ||
-    hasPermission(user, "benefit.request.approve");
+  const canView = hasPermission(user, "benefit.request.view") || hasPermission(user, "benefit.request.approve");
 
   const canCreate = hasPermission(user, "benefit.request.create");
   const canApprove = hasPermission(user, "benefit.request.approve");

@@ -216,12 +216,8 @@ export default function BenefitPage() {
         └── ApprovalModal.jsx
 
 
-
-
-
-    Auto Entitlement Engine	⚠️
-    Benefit Matrix	⚠️
     Auto Deduction	⚠️
     Advanced Policy Engine	⚠️
     Advanced Quota Rules	⚠️
+    Reports	🟡
 */

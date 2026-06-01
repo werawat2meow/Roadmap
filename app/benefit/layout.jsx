@@ -40,6 +40,9 @@ function BenefitContent({ children }) {
   }, [user]);
 
   const isActiveMenu = (href) => {
+    if (href === "/benefit/requests") {
+      return pathname === "/benefit/requests";
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 

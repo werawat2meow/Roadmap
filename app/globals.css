@@ -143,3 +143,32 @@ body {
 }
 
 /* end  */
+
+
+
+
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.modal-scrollbar:hover {
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+.modal-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: #94a3b8;
+}

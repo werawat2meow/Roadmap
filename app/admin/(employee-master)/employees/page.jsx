@@ -57,6 +57,10 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(initialForm);
   const [employmentTypes, setEmploymentTypes] = useState([]);
   const [employeeStatuses, setEmployeeStatuses] = useState([]);
+  const [citizenIdError, setCitizenIdError] = useState("");
+  const [citizenIdSuccess, setCitizenIdSuccess] = useState("");
+  const [passportError, setPassportError] = useState("");
+  const [passportSuccess, setPassportSuccess] = useState("");
 
   // Partition
   const [page, setPage] = useState(1);
@@ -428,6 +432,11 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (form.passport_no && !isValidPassportNo(form.passport_no)) {
+      swalError("รูปแบบ Passport ไม่ถูกต้อง");
+      return;
+    }
+
     if (!form.position_id) {
       swalError("กรุณาเลือกตำแหน่ง");
       return;
@@ -568,6 +577,19 @@ export default function EmployeesPage() {
     const checkDigit = (11 - (sum % 11)) % 10;
 
     return checkDigit === Number(digits[12]);
+  };
+
+  const cleanPassportNo = (value) => {
+    return value.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 12);
+  };
+
+  const isValidPassportNo = (value) => {
+    const passport = cleanPassportNo(value);
+
+    if (!passport) return true;
+
+    // รองรับ Passport หลายประเทศ: ตัวอักษร/ตัวเลข 6-12 ตัว
+    return /^[A-Z0-9]{6,12}$/.test(passport);
   };
 
   // #region Permission
@@ -967,10 +989,51 @@ export default function EmployeesPage() {
                       ...prev,
                       citizen_id: val,
                     }));
+
+                    if (!val) {
+                      setCitizenIdError("");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    if (val.length < 13) {
+                      setCitizenIdError("กรุณากรอกเลขบัตรประชาชนให้ครบ 13 หลัก");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    if (!isValidThaiCitizenId(val)) {
+                      setCitizenIdError("เลขบัตรประชาชนไม่ถูกต้อง");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    setCitizenIdError("");
+                    setCitizenIdSuccess("✓ เลขบัตรประชาชนถูกต้อง");
                   }}
                   placeholder="1-2345-67890-12-3"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
+                    ${
+                      citizenIdError
+                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                        : citizenIdSuccess
+                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                    }`
+                  }
                 />
+
+                {citizenIdError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {citizenIdError}
+                  </p>
+                )}
+
+                {citizenIdSuccess && (
+                  <p className="mt-1 text-xs font-medium text-green-600">
+                    {citizenIdSuccess}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -981,15 +1044,57 @@ export default function EmployeesPage() {
                 <input
                   type="text"
                   value={form.passport_no}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = cleanPassportNo(e.target.value);
+
                     setForm((prev) => ({
                       ...prev,
-                      passport_no: e.target.value.toUpperCase(),
-                    }))
-                  }
+                      passport_no: val,
+                    }));
+
+                    if (!val) {
+                      setPassportError("");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    if (val.length < 6) {
+                      setPassportError("กรุณากรอก Passport อย่างน้อย 6 ตัวอักษร");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    if (!isValidPassportNo(val)) {
+                      setPassportError("รูปแบบ Passport ไม่ถูกต้อง");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    setPassportError("");
+                    setPassportSuccess("Passport ถูกต้อง");
+                  }}
                   placeholder="Passport Number"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
+                    ${
+                      passportError
+                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                        : passportSuccess
+                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                    }`}
                 />
+
+                {passportError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {passportError}
+                  </p>
+                )}
+
+                {passportSuccess && (
+                  <p className="mt-1 text-xs font-medium text-green-600">
+                    ✓ {passportSuccess}
+                  </p>
+                )}
               </div>
 
               <div>

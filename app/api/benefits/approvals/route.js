@@ -187,6 +187,26 @@ async function autoDeductBenefitUsage({ request, user }) {
     throw new Error(usageError.message);
   }
 
+  const { error: usageLogError } = await supabaseAdmin
+    .from("benefit_usage_logs")
+    .insert({
+      employee_id: request.employee_id,
+      benefit_id: request.benefit_id,
+      benefit_entitlement_id: entitlement.id,
+      benefit_request_id: request.id,
+      usage_type: "request",
+      usage_status: "approved",
+      amount,
+      balance_before: remainingBefore,
+      balance_after: remainingAfter,
+      remark: "Auto deduction log from approved benefit request",
+      created_by: user.id,
+    });
+
+  if (usageLogError) {
+    throw new Error(usageLogError.message);
+  }
+
   const { error: updateEntitlementError } = await supabaseAdmin
     .from("benefit_entitlements")
     .update({

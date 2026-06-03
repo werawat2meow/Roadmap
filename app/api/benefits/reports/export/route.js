@@ -87,6 +87,24 @@ export async function GET(req) {
     const benefitId = searchParams.get("benefitId") || "";
     const status = (searchParams.get("status") || "").trim().toLowerCase();
 
+    const allowedStatuses = [
+      "draft",
+      "pending",
+      "in_review",
+      "approved",
+      "rejected",
+      "cancelled",
+      "paid",
+      "reversed",
+    ];
+
+    if (status && !allowedStatuses.includes(status)) {
+      return NextResponse.json(
+        { success: false, error: `สถานะไม่ถูกต้อง: ${status}` },
+        { status: 400 }
+      );
+    }
+
     let query = supabaseAdmin
       .from("benefit_requests")
       .select(`

@@ -11,6 +11,7 @@ const ALLOWED_STATUSES = [
   "rejected",
   "cancelled",
   "paid",
+  "reversed",
 ];
 
 async function getCurrentUser() {
@@ -230,6 +231,93 @@ async function autoDeductBenefitUsage({ request, user }) {
   };
 }
 
+async function reverseDeductBenefitUsage({ request, user }) {
+  const { data: usage, error: usageError } = await supabaseAdmin
+    .from("benefit_usages")
+    .select(`
+      id,
+      employee_id,
+      benefit_id,
+      benefit_request_id,
+      entitlement_id,
+      used_amount
+    `)
+    .eq("benefit_request_id", request.id)
+    .maybeSingle();
+
+  if (usageError) throw new Error(usageError.message);
+  if (!usage) throw new Error("ไม่พบรายการ Usage ที่ต้องคืนสิทธิ์");
+
+  const { data: entitlement, error: entitlementError } = await supabaseAdmin
+    .from("benefit_entitlements")
+    .select(`
+      id,
+      used_amount,
+      remaining_amount
+    `)
+    .eq("id", usage.entitlement_id)
+    .maybeSingle();
+
+  if (entitlementError) throw new Error(entitlementError.message);
+  if (!entitlement) throw new Error("ไม่พบ Entitlement ที่ต้องคืนสิทธิ์");
+
+  const amount = Number(usage.used_amount || 0);
+  const usedBefore = Number(entitlement.used_amount || 0);
+  const remainingBefore =
+    entitlement.remaining_amount === null
+      ? null
+      : Number(entitlement.remaining_amount || 0);
+
+  const usedAfter = Math.max(usedBefore - amount, 0);
+  const remainingAfter =
+    remainingBefore === null ? null : remainingBefore + amount;
+
+  const { error: logError } = await supabaseAdmin
+    .from("benefit_usage_logs")
+    .insert({
+      employee_id: usage.employee_id,
+      benefit_id: usage.benefit_id,
+      benefit_entitlement_id: entitlement.id,
+      benefit_request_id: request.id,
+      usage_type: "reverse",
+      usage_status: "reversed",
+      amount,
+      balance_before: remainingBefore,
+      balance_after: remainingAfter,
+      remark: "Reverse deduction from approved benefit request",
+      created_by: user.id,
+    });
+
+  if (logError) throw new Error(logError.message);
+
+  const { error: updateEntitlementError } = await supabaseAdmin
+    .from("benefit_entitlements")
+    .update({
+      used_amount: usedAfter,
+      remaining_amount: remainingAfter,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", entitlement.id);
+
+  if (updateEntitlementError) throw new Error(updateEntitlementError.message);
+
+  const { error: deleteUsageError } = await supabaseAdmin
+    .from("benefit_usages")
+    .delete()
+    .eq("id", usage.id);
+
+  if (deleteUsageError) throw new Error(deleteUsageError.message);
+
+  return {
+    entitlement_id: entitlement.id,
+    reversed_amount: amount,
+    used_before: usedBefore,
+    used_after: usedAfter,
+    remaining_before: remainingBefore,
+    remaining_after: remainingAfter,
+  };
+}
+
 export async function GET(req) {
   try {
     const user = await getCurrentUser();
@@ -369,7 +457,7 @@ export async function PUT(req) {
       );
     }
 
-    if (!["approved", "rejected"].includes(status)) {
+    if (!["approved", "rejected", "reversed"].includes(status)) {
       return NextResponse.json(
         { success: false, error: "สถานะไม่ถูกต้อง" },
         { status: 400 }
@@ -382,6 +470,17 @@ export async function PUT(req) {
     ) {
       return NextResponse.json(
         { success: false, error: "ไม่มีสิทธิ์อนุมัติ" },
+        { status: 403 }
+      );
+    }
+
+
+    if (
+      status === "reversed" &&
+      !hasPermission(user, "benefit.request.reverse")
+    ) {
+      return NextResponse.json(
+        { success: false, error: "ไม่มีสิทธิ์คืนสิทธิ์คำขอ" },
         { status: 403 }
       );
     }
@@ -425,9 +524,16 @@ export async function PUT(req) {
       );
     }
 
-    if (currentRequest.status === "approved") {
+    if (status === "approved" && currentRequest.status === "approved") {
       return NextResponse.json(
         { success: false, error: "คำขอนี้อนุมัติไปแล้ว" },
+        { status: 400 }
+      );
+    }
+
+    if (status === "reversed" && currentRequest.status !== "approved") {
+      return NextResponse.json(
+        { success: false, error: "คืนสิทธิ์ได้เฉพาะคำขอที่อนุมัติแล้วเท่านั้น" },
         { status: 400 }
       );
     }
@@ -443,6 +549,11 @@ export async function PUT(req) {
       status,
       updated_at: new Date().toISOString(),
     };
+
+    if (status === "reversed") {
+      payload.approved_by = null;
+      payload.approved_at = null;
+    }
 
     if (status === "approved") {
       payload.approved_by = user.id;
@@ -512,10 +623,31 @@ export async function PUT(req) {
       }
     }
 
+
+    let reverse = null;
+
+    if (status === "reversed") {
+      try {
+        reverse = await reverseDeductBenefitUsage({
+          request: data,
+          user,
+        });
+      } catch (reverseError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: reverseError.message || "คืนสิทธิ์อัตโนมัติไม่สำเร็จ",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data,
       deduction,
+      reverse,
     });
   } catch (error) {
     console.error("BENEFIT_APPROVALS_PUT_ERROR:", error);

@@ -82,12 +82,12 @@ export const benefitSidebarMenus = [
   },
 
   {
-    title: "BENEFIT MATRIX & RULES",
-    icon: <ApartmentOutlined />,
+    title: "RULES & POLICY ENGINE",
+    icon: <SafetyCertificateOutlined />,
     items: [
       {
         label: "Benefit Matrix",
-        desc: "กำหนดว่าใครได้สิทธิ์อะไร เท่าไหร่ ตาม Level, สถานะ และปี",
+        desc: "กำหนดสิทธิ์ตามปี, Level, สถานะพนักงาน และ Quota",
         href: "/benefit/matrix",
         icon: <ApartmentOutlined />,
         tag: "Matrix",
@@ -95,11 +95,19 @@ export const benefitSidebarMenus = [
       },
       {
         label: "Benefit Rules",
-        desc: "จัดการเงื่อนไขสิทธิ์สวัสดิการเพิ่มเติม เช่น ระดับพนักงาน หรือประเภทสิทธิ์",
+        desc: "จัดการเงื่อนไขสิทธิ์สวัสดิการพื้นฐาน",
         href: "/benefit/rules",
         icon: <SafetyCertificateOutlined />,
         tag: "Rules",
         permission: "benefit.rule.view",
+      },
+      {
+        label: "Policy Engine",
+        desc: "กำหนดเงื่อนไขขั้นสูง เช่น อายุงาน สาขา แผนก ประเภทการจ้าง",
+        href: "/benefit/policies",
+        icon: <AuditOutlined />,
+        tag: "Policy",
+        permission: "benefit.policy.view",
       },
     ],
   },
@@ -133,7 +141,7 @@ export const benefitSidebarMenus = [
       },
       {
         label: "รายการรออนุมัติ",
-        desc: "ตรวจสอบ อนุมัติ หรือปฏิเสธคำขอสวัสดิการของพนักงาน",
+        desc: "ตรวจสอบ อนุมัติ ปฏิเสธ หรือคืนสิทธิ์คำขอสวัสดิการ",
         href: "/benefit/approvals",
         icon: <CheckCircleOutlined />,
         tag: "Approve",

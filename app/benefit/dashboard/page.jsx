@@ -22,6 +22,8 @@ export default function BenefitDashboardPage() {
   });
 
   const [recentRequests, setRecentRequests] = useState([]);
+  const [summaryByBenefit, setSummaryByBenefit] = useState([]);
+  const [usageByMonth, setUsageByMonth] = useState([]);
 
   /*
     ดูภาพรวมคำขอ การใช้สิทธิ์ และสถานะระบบ Benefit
@@ -55,6 +57,8 @@ export default function BenefitDashboardPage() {
       );
 
       setRecentRequests(json.recent_requests || []);
+      setSummaryByBenefit(json.summary_by_benefit || []);
+      setUsageByMonth(json.usage_by_month || []);
     } catch (error) {
       console.error("LOAD_DASHBOARD_ERROR:", error);
       message.error(error.message || "โหลด Dashboard ไม่สำเร็จ");
@@ -292,6 +296,68 @@ export default function BenefitDashboardPage() {
                 value={summary.total_usage_amount}
                 precision={2}
                 prefix={<DollarOutlined />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Top Benefit Usage</div>}
+            >
+              <Table
+                rowKey="benefit_name"
+                loading={loading}
+                dataSource={summaryByBenefit}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Benefit",
+                    dataIndex: "benefit_name",
+                    render: (value) => value || "-",
+                  },
+                  {
+                    title: "Total Amount",
+                    dataIndex: "total_amount",
+                    align: "right",
+                    render: (value) =>
+                      Number(value || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      }),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Monthly Usage Trend</div>}
+            >
+              <Table
+                rowKey="month"
+                loading={loading}
+                dataSource={usageByMonth}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Month",
+                    dataIndex: "month",
+                    render: (value) => value || "-",
+                  },
+                  {
+                    title: "Total Amount",
+                    dataIndex: "total_amount",
+                    align: "right",
+                    render: (value) =>
+                      Number(value || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      }),
+                  },
+                ]}
               />
             </Card>
           </Col>

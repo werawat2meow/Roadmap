@@ -24,6 +24,11 @@ export default function BenefitDashboardPage() {
   const [recentRequests, setRecentRequests] = useState([]);
   const [summaryByBenefit, setSummaryByBenefit] = useState([]);
   const [usageByMonth, setUsageByMonth] = useState([]);
+  const [summaryByStatus, setSummaryByStatus] = useState([]);
+  const [topEmployeesUsage, setTopEmployeesUsage] = useState([]);
+  const [usageByDepartment, setUsageByDepartment] = useState([]);
+  const [usageByBranch, setUsageByBranch] = useState([]);
+
 
   /*
     ดูภาพรวมคำขอ การใช้สิทธิ์ และสถานะระบบ Benefit
@@ -59,6 +64,10 @@ export default function BenefitDashboardPage() {
       setRecentRequests(json.recent_requests || []);
       setSummaryByBenefit(json.summary_by_benefit || []);
       setUsageByMonth(json.usage_by_month || []);
+      setSummaryByStatus(json.summary_by_status || []);
+      setTopEmployeesUsage(json.top_employees_usage || []);
+      setUsageByDepartment(json.usage_by_department || []);
+      setUsageByBranch(json.usage_by_branch || []);
     } catch (error) {
       console.error("LOAD_DASHBOARD_ERROR:", error);
       message.error(error.message || "โหลด Dashboard ไม่สำเร็จ");
@@ -346,6 +355,131 @@ export default function BenefitDashboardPage() {
                   {
                     title: "Month",
                     dataIndex: "month",
+                    render: (value) => value || "-",
+                  },
+                  {
+                    title: "Total Amount",
+                    dataIndex: "total_amount",
+                    align: "right",
+                    render: (value) =>
+                      Number(value || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      }),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Status Summary</div>}
+            >
+              <Table
+                rowKey="status"
+                loading={loading}
+                dataSource={summaryByStatus}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Status",
+                    dataIndex: "status",
+                    render: (value) => (
+                      <Tag color={getStatusColor(value)}>
+                        {value || "-"}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: "Total",
+                    dataIndex: "total",
+                    align: "right",
+                    render: (value) => Number(value || 0).toLocaleString(),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Top Employees Usage</div>}
+            >
+              <Table
+                rowKey="employee_name"
+                loading={loading}
+                dataSource={topEmployeesUsage}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Employee",
+                    dataIndex: "employee_name",
+                    render: (value) => value || "-",
+                  },
+                  {
+                    title: "Total Amount",
+                    dataIndex: "total_amount",
+                    align: "right",
+                    render: (value) =>
+                      Number(value || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      }),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Usage By Department</div>}
+            >
+              <Table
+                rowKey="name"
+                loading={loading}
+                dataSource={usageByDepartment}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Department",
+                    dataIndex: "name",
+                    render: (value) => value || "-",
+                  },
+                  {
+                    title: "Total Amount",
+                    dataIndex: "total_amount",
+                    align: "right",
+                    render: (value) =>
+                      Number(value || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      }),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card
+              className="rounded-[24px] shadow-sm"
+              title={<div className="text-lg font-bold">Usage By Branch</div>}
+            >
+              <Table
+                rowKey="name"
+                loading={loading}
+                dataSource={usageByBranch}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Branch",
+                    dataIndex: "name",
                     render: (value) => value || "-",
                   },
                   {

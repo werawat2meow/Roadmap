@@ -20,7 +20,7 @@ function BenefitContent({ children }) {
   const [openGroup, setOpenGroup] = useState("");
   const [navigating, setNavigating] = useState(false);
   
-  const canAccessBenefit = hasPermission(user, "benefit.view");
+  const canAccessBenefit = hasPermission(user, "benefit.portal.view");
 
   useEffect(() => {
     if (loadingUser) return;

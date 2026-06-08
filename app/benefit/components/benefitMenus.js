@@ -195,6 +195,22 @@ export const benefitSidebarMenus = [
       },
     ],
   },
+
+  {
+    title: "SYSTEM AUDIT",
+    icon: <AuditOutlined />,
+    items: [
+      {
+        label: "Audit Logs",
+        desc: "ตรวจสอบประวัติการใช้งาน การอนุมัติ การแก้ไข และการ Generate ข้อมูล",
+        href: "/benefit/audit-logs",
+        icon: <AuditOutlined />,
+        tag: "Audit",
+        permission: "benefit.audit.view",
+      },
+    ],
+  },
+  
 ];
 
 export function canAccessBenefitSidebarItem(user, item) {

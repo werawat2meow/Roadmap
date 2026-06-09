@@ -354,7 +354,7 @@ export default function BenefitAuditLogsPage() {
       <Drawer
         title="Audit Log Detail"
         open={detailOpen}
-        width={780}
+        styles={{ wrapper: { width: 780 } }}
         onClose={() => setDetailOpen(false)}
         destroyOnHidden
       >

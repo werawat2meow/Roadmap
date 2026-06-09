@@ -92,6 +92,8 @@ export async function GET(req) {
     const moduleName = searchParams.get("module_name") || "";
     const actionType = searchParams.get("action_type") || "";
     const search = (searchParams.get("search") || "").trim();
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -131,6 +133,14 @@ export async function GET(req) {
       query = query.or(
         `module_name.ilike.%${search}%,action_type.ilike.%${search}%,description.ilike.%${search}%,created_by_name.ilike.%${search}%`
       );
+    }
+
+    if (dateFrom) {
+      query = query.gte("created_at", `${dateFrom}T00:00:00`);
+    }
+
+    if (dateTo) {
+      query = query.lte("created_at", `${dateTo}T23:59:59`);
     }
 
     const { data, error, count } = await query;

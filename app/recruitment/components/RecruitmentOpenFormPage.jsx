@@ -336,7 +336,7 @@ export default function RecruitmentOpenFormPage({
       const endpoint =
         mode === "edit"
           ? `/recruitment/api/job_openings/${initialData.id}`
-          : "/recruitment/api/job_openings/recruitment-openings";
+          : "/recruitment/api/job_openings";
 
       const method =
         mode === "edit"

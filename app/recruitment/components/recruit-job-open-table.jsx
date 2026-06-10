@@ -33,6 +33,7 @@ export default function RecruitJobOpenTable() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
   const from = (page - 1) * pageSize;
@@ -66,10 +67,7 @@ export default function RecruitJobOpenTable() {
 
       let countQuery = supabase
         .from('v_recruit_job_open_list')
-        .select('*', {
-          count: 'exact',
-          head: true,
-        });
+        .select('*', { count: 'exact', head: true });
 
       let dataQuery = supabase
         .from('v_recruit_job_open_list')
@@ -82,10 +80,7 @@ export default function RecruitJobOpenTable() {
         dataQuery = dataQuery.ilike('search_text', pattern);
       }
 
-      const [countRes, dataRes] = await Promise.all([
-        countQuery,
-        dataQuery,
-      ]);
+      const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
 
       if (!alive) return;
 
@@ -113,54 +108,7 @@ export default function RecruitJobOpenTable() {
     return () => {
       alive = false;
     };
-  }, [search, from, to]);
-
-  async function toggleStatus(row) {
-    const nextStatus = !row.status;
-
-    setBusyId(row.id);
-
-    setRows((prev) =>
-      prev.map((item) =>
-        item.id === row.id
-          ? { ...item, status: nextStatus }
-          : item
-      )
-    );
-
-    try {
-      const response = await fetch(
-        `/recruitment/api/job_openings/${row.id}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status: nextStatus,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      setRows((prev) =>
-        prev.map((item) =>
-          item.id === row.id
-            ? { ...item, status: row.status }
-            : item
-        )
-      );
-
-      alert(error.message);
-    }
-
-    setBusyId(null);
-  }
+  }, [search, from, to, reloadKey]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -169,10 +117,8 @@ export default function RecruitJobOpenTable() {
 
     try {
       const response = await fetch(
-        `/api/job_openings/${deleteTarget.id}`,
-        {
-          method: "DELETE",
-        }
+        `/recruitment/api/job_openings/${deleteTarget.id}`,
+        { method: "DELETE" }
       );
 
       const result = await response.json();
@@ -190,16 +136,13 @@ export default function RecruitJobOpenTable() {
     setBusyId(null);
 
     const nextCount = Math.max(0, count - 1);
-    const nextTotalPages = Math.max(
-      1,
-      Math.ceil(nextCount / pageSize)
-    );
+    const nextTotalPages = Math.max(1, Math.ceil(nextCount / pageSize));
 
     if (page > nextTotalPages) {
       setPage(nextTotalPages);
     }
 
-    loadData(); // แนะนำให้ reload ใหม่
+    setReloadKey((k) => k + 1);
   }
 
   const rangeText = useMemo(() => {
@@ -336,13 +279,13 @@ export default function RecruitJobOpenTable() {
                                           อัปเดต
                                       </Link>
               
-                                      {/* <button
+                                      <button
                                           type="button"
                                           onClick={() => setDeleteTarget(row)}
                                           className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-medium text-white hover:bg-rose-500"
                                       >
                                           ลบ
-                                      </button> */}
+                                      </button>
                                     </div>
                                 </td>
                             </tr>

@@ -71,6 +71,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "approval",
+      action_type: actionType,
+      ref_table: "benefit_requests",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_APPROVAL_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 async function findSearchIds(search) {
   if (!search) {
     return { employeeIds: [], benefitIds: [] };
@@ -643,6 +674,21 @@ export async function PUT(req) {
       }
     }
 
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: status,
+      refId: data.id,
+      description: `${status} คำขอ: ${data.request_no}`,
+      oldData: currentRequest,
+      newData: {
+        request: data,
+        deduction,
+        reverse,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -687,6 +733,12 @@ export async function DELETE(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_requests")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_requests")
       .delete()
@@ -700,6 +752,16 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบคำขอ: ${oldData?.request_no || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

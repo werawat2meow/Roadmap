@@ -58,6 +58,29 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({req,user,actionType,refId = null,description,oldData = null,newData = null,}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "entitlement",
+      action_type: actionType,
+      ref_table: "benefit_entitlements",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_ENTITLEMENT_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 function getLevelNumber(level) {
   const value = String(level || "").toUpperCase().replace("P", "");
   const number = Number(value);
@@ -249,7 +272,6 @@ export async function POST(req) {
         division_id,
         unit_id,
         employee_status_id,
-        employment_type_id,
         employment_type,
         positions (
           position_level
@@ -303,7 +325,6 @@ export async function POST(req) {
         rule_year,
         position_level,
         employee_status_id,
-        employment_type_id,
         branch_id,
         department_id,
         division_id,
@@ -458,6 +479,23 @@ export async function POST(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "generate",
+      description: `Generate Entitlements ปี ${entitlementYear}`,
+      oldData: null,
+      newData: {
+        year: entitlementYear,
+        total_employees: employees?.length || 0,
+        total_rules: rules?.length || 0,
+        total_policies: policies?.length || 0,
+        prepared: rows.length || 0,
+        deduplicated: uniqueRows.length || 0,
+        generated: data?.length || 0,
+      },
+    });
 
     return NextResponse.json({
       success: true,

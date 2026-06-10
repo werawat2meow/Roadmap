@@ -58,6 +58,47 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "report",
+      action_type: actionType,
+
+      ref_table: "benefit_reports",
+      ref_id: refId,
+
+      description,
+
+      old_data: oldData,
+      new_data: newData,
+
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+
+      user_agent:
+        req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error(
+      "CREATE_REPORT_AUDIT_LOG_ERROR:",
+      error
+    );
+  }
+}
+
 export async function GET(req) {
   try {
     const user = await getCurrentUser();
@@ -198,6 +239,24 @@ export async function GET(req) {
     const buffer = XLSX.write(workbook, {
       type: "buffer",
       bookType: "xlsx",
+    });
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "export",
+      description: "Export Benefit Report Excel",
+      oldData: null,
+      newData: {
+        export_type: "xlsx",
+        total_records: rows.length,
+        filters: {
+          dateFrom,
+          dateTo,
+          benefitId,
+          status,
+        },
+      },
     });
 
     return new NextResponse(buffer, {

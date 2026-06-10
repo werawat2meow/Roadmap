@@ -19,7 +19,6 @@ export default function SidebarContent({
   const router = useRouter();
   const pathname = usePathname();
 
-  console.log(pathname);
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
 
@@ -36,13 +35,17 @@ export default function SidebarContent({
         defaultOpen: false,
         children: [
           {
+            label: "Job Description",
+            href: "/recruitment/job_description",
+          },
+          {
             label: "Job Openings",
             href: "/recruitment/job_openings",
           },
           {
             label: "Evaluation Form",
             href: "/recruitment/evaluation_form",
-          },
+          }
         ],
       },
     ],

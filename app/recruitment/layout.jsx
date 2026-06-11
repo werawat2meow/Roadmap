@@ -208,11 +208,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
         </div>
         <Layout>
           <Content
-            className="
-              bg-slate-50
-              p-4 md:p-6
-              transition-all duration-300
-            "
+            className="bg-slate-50 p-4 md:p-6 transition-all duration-300"
           >
             {children}
           </Content>
@@ -230,7 +226,7 @@ export default function RecruitmentLayout({ children }) {
         <AdminTopBar 
           setMobileOpen={setMobileOpen}
           mobileOpen={mobileOpen}>
-            <div className="h-screen rounded-3xl bg-slate-100">
+            <div className="rounded-3xl bg-slate-100">
               {children}
             </div>
         </AdminTopBar>

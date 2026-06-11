@@ -28,6 +28,7 @@ export async function PATCH(req, { params }) {
     const hire_date = body?.hire_date || null;
     const employment_type = body?.employment_type || null;
     const employee_status_id = body?.employee_status_id || null;
+    const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
 
     const branch_id = body?.branch_id || null;
@@ -109,6 +110,7 @@ export async function PATCH(req, { params }) {
         hire_date,
         employment_type,
         employee_status_id,
+        resignation_date,
         status,
         branch_id,
         department_id,
@@ -144,6 +146,7 @@ export async function PATCH(req, { params }) {
         employment_type,
         status,
         employee_status_id,
+        resignation_date,
         branch_id,
         department_id,
         division_id,
@@ -202,6 +205,7 @@ export async function PATCH(req, { params }) {
         hire_date: data.hire_date,
         employment_type: data.employment_type,
         employee_status_id: data.employee_status_id,
+        resignation_date: data.resignation_date,
         status: data.status,
         branch_id: data.branch_id,
         department_id: data.department_id,
@@ -236,6 +240,7 @@ export async function PATCH(req, { params }) {
         employment_type: data.employment_type || "",
         status: data.status,
         employee_status_id: data.employee_status_id || "",
+        resignation_date: data.resignation_date || "",
         employee_status_name: data.employee_statuses?.status_name || "-",
         employee_status_color: data.employee_statuses?.color || "slate",
         branch_id: data.branch_id || "",

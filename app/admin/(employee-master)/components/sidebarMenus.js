@@ -1,25 +1,6 @@
 "use client";
 
-import {
-  HomeOutlined,
-  DashboardOutlined,
-  WarningOutlined,
-  ShopOutlined,
-  BankOutlined,
-  ApartmentOutlined,
-  ClusterOutlined,
-  TeamOutlined,
-  SolutionOutlined,
-  UserOutlined,
-  IdcardOutlined,
-  UsergroupAddOutlined,
-  SafetyOutlined,
-  LockOutlined,
-  KeyOutlined,
-  SafetyCertificateOutlined,
-  AuditOutlined,
-  ApiOutlined,
-} from "@ant-design/icons";
+import {HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -111,6 +92,12 @@ export const sidebarMenus = [
         href: "/admin/employee-statuses",
         icon: <SafetyOutlined />,
         permission: "ems.employee_statuses.view",
+      },
+      {
+        label: "รายงานพนักงาน",
+        href: "/admin/employee-reports",
+        icon: <BarChartOutlined />,
+        permission: "ems.employee_reports.view",
       },
     ],
   },

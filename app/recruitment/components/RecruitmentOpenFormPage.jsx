@@ -381,7 +381,7 @@ export default function RecruitmentOpenFormPage({
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm md:p-8">
+      <div className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

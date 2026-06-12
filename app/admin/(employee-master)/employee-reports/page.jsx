@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TeamOutlined,
-  UserAddOutlined,
-  UserDeleteOutlined,
-  SafetyOutlined,
-  DownloadOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
+import {TeamOutlined,UserAddOutlined,UserDeleteOutlined,SafetyOutlined,DownloadOutlined,SearchOutlined,} from "@ant-design/icons";
+
 
 export default function EmployeeReportsPage() {
   const [loading, setLoading] = useState(false);
@@ -24,14 +18,29 @@ export default function EmployeeReportsPage() {
     resignedThisMonth: 0,
     newThisYear: 0,
     resignedThisYear: 0,
+    gender: "",
+    nationality: "",
+    positionLevel: "",
   });
 
   const [employees, setEmployees] = useState([]);
-
   const [filters, setFilters] = useState({
     search: "",
     employeeStatus: "",
+    branch: "",
+    department: "",
+    division: "",
+    unit: "",
+    employmentType: "",
+    hireDateFrom: "",
+    hireDateTo: "",
+    resignationDateFrom: "",
+    resignationDateTo: "",
+    gender: "",
+    nationality: "",
+    positionLevel: "",
   });
+
 
   useEffect(() => {
     loadData();
@@ -40,16 +49,14 @@ export default function EmployeeReportsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-
       const res = await fetch(
         "/api/admin/employee-reports",
         {
           cache: "no-store",
         }
       );
-
       const result = await res.json();
-
+      console.log(result);
       if (!res.ok) {
         throw new Error(
           result?.error || "โหลดข้อมูลไม่สำเร็จ"
@@ -84,6 +91,33 @@ export default function EmployeeReportsPage() {
             .includes(keyword) ||
           item.department_name
             ?.toLowerCase()
+            .includes(keyword) ||
+          item.division_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.unit_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.position_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.phone
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.email
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.line_id
+            ?.toLowerCase()
+            .includes(keyword) ||
+
+          item.employment_type
+            ?.toLowerCase()
             .includes(keyword)
       );
     }
@@ -96,14 +130,110 @@ export default function EmployeeReportsPage() {
       );
     }
 
+    if (filters.branch) {
+      rows = rows.filter(
+        (item) =>
+          item.branch_name === filters.branch
+      );
+    }
+
+    if (filters.department) {
+      rows = rows.filter(
+        (item) =>
+          item.department_name ===
+          filters.department
+      );
+    }
+
+    if (filters.division) {
+      rows = rows.filter(
+        (item) =>
+          item.division_name ===
+          filters.division
+      );
+    }
+
+    if (filters.unit) {
+      rows = rows.filter(
+        (item) =>
+          item.unit_name === filters.unit
+      );
+    }
+
+    if (filters.employmentType) {
+      rows = rows.filter(
+        (item) =>
+          item.employment_type ===
+          filters.employmentType
+      );
+    }
+
+    if (filters.gender) {
+      rows = rows.filter(
+        (item) =>
+          item.gender === filters.gender
+      );
+    }
+
+    if (filters.nationality) {
+      rows = rows.filter(
+        (item) =>
+          item.nationality ===
+          filters.nationality
+      );
+    }
+
+    if (filters.positionLevel) {
+      rows = rows.filter(
+        (item) =>
+          item.position_level ===
+          filters.positionLevel
+      );
+    }
+
+    // Filter วันที่เริ่มงาน
+    if (filters.hireDateFrom) {
+      rows = rows.filter(
+        (item) =>
+          item.hire_date &&
+          item.hire_date >=
+            filters.hireDateFrom
+      );
+    }
+
+    if (filters.hireDateTo) {
+      rows = rows.filter(
+        (item) =>
+          item.hire_date &&
+          item.hire_date <=
+            filters.hireDateTo
+      );
+    }
+
+    // Filter วันที่ลาออก
+    if (filters.resignationDateFrom) {
+      rows = rows.filter(
+        (item) =>
+          item.resignation_date &&
+          item.resignation_date >=
+            filters.resignationDateFrom
+      );
+    }
+
+    if (filters.resignationDateTo) {
+      rows = rows.filter(
+        (item) =>
+          item.resignation_date &&
+          item.resignation_date <=
+            filters.resignationDateTo
+      );
+    }
+        
     return rows;
   }, [employees, filters]);
 
   const handleExport = () => {
-    window.open(
-      "/api/admin/employee-reports/export",
-      "_blank"
-    );
+    window.location.href ="/api/admin/employee-reports/export";
   };
 
   const cards = [
@@ -155,6 +285,88 @@ export default function EmployeeReportsPage() {
       icon: <UserDeleteOutlined />,
       color: "bg-rose-500",
     },
+    {
+      title: "เข้าใหม่ปีนี้",
+      value: summary.newThisYear,
+      icon: <UserAddOutlined />,
+      color: "bg-indigo-500",
+    },
+    {
+      title: "ลาออกปีนี้",
+      value: summary.resignedThisYear,
+      icon: <UserDeleteOutlined />,
+      color: "bg-pink-500",
+    },
+    {
+      title: "Turnover %",
+      value: `${summary.turnoverRate || 0}%`,
+      icon: <SafetyOutlined />,
+      color: "bg-purple-500",
+    },
+  ];
+
+  const branchOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.branch_name)
+        .filter(Boolean)
+    ),
+  ];
+
+  const departmentOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.department_name)
+        .filter(Boolean)
+    ),
+  ];
+
+  const divisionOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.division_name)
+        .filter(Boolean)
+    ),
+  ];
+
+  const unitOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.unit_name)
+        .filter(Boolean)
+    ),
+  ];
+
+  const employmentTypeOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.employment_type)
+        .filter(Boolean)
+    ),
+  ];
+
+  const nationalityOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.nationality)
+        .filter(Boolean)
+    ),
+  ];
+
+  const positionLevelOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.position_level)
+        .filter(Boolean)
+    ),
+  ];
+
+  const genderOptions = [
+    ...new Set(
+      employees
+        .map((x) => x.gender)
+        .filter(Boolean)
+    ),
   ];
 
   return (
@@ -171,17 +383,41 @@ export default function EmployeeReportsPage() {
             </p>
           </div>
 
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-700"
-          >
-            <DownloadOutlined />
-            Export Excel
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              <DownloadOutlined />
+              Export Excel
+            </button>
+
+            <button
+              onClick={() =>
+                setFilters({
+                  search: "",
+                  employeeStatus: "",
+                  branch: "",
+                  department: "",
+                  division: "",
+                  unit: "",
+                  employmentType: "",
+                  hireDateFrom: "",
+                  hireDateTo: "",
+                  resignationDateFrom: "",
+                  resignationDateTo: "",
+                })
+              }
+              className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm hover:bg-slate-50"
+            >
+              ล้างตัวกรอง
+            </button>
+          </div>
+
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {cards.map((card) => (
           <div
             key={card.title}
@@ -209,7 +445,7 @@ export default function EmployeeReportsPage() {
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <div className="relative">
             <SearchOutlined className="absolute left-4 top-4 text-slate-400" />
 
@@ -261,6 +497,249 @@ export default function EmployeeReportsPage() {
               พักงาน
             </option>
           </select>
+
+          <select
+            value={filters.branch}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                branch: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">
+              ทุกสาขา
+            </option>
+
+            {branchOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.department}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                department: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">
+              ทุกแผนก
+            </option>
+
+            {departmentOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.division}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                division: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">
+              ทุกฝ่าย
+            </option>
+
+            {divisionOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.unit}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                unit: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">
+              ทุกหน่วยงาน
+            </option>
+
+            {unitOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.employmentType}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                employmentType: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">
+              ทุกประเภทการจ้าง
+            </option>
+
+            {employmentTypeOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.gender}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                gender: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">ทุกเพศ</option>
+
+            {genderOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.nationality}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                nationality: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">ทุกสัญชาติ</option>
+
+            {nationalityOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <select
+            value={filters.positionLevel}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                positionLevel: e.target.value,
+              }))
+            }
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+          >
+            <option value="">ทุก Level</option>
+
+            {positionLevelOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              วันที่เริ่มงาน (จาก)
+            </label>
+
+            <input
+              type="date"
+              value={filters.hireDateFrom}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  hireDateFrom: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              วันที่เริ่มงาน (ถึง)
+            </label>
+
+            <input
+              type="date"
+              value={filters.hireDateTo}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  hireDateTo: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              วันที่ลาออก (จาก)
+            </label>
+
+            <input
+              type="date"
+              value={filters.resignationDateFrom}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  resignationDateFrom: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              วันที่ลาออก (ถึง)
+            </label>
+
+            <input
+              type="date"
+              value={filters.resignationDateTo}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  resignationDateTo: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+          
         </div>
       </div>
 

@@ -1,0 +1,362 @@
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseServer";
+
+export async function GET() {
+  try {
+    const currentDate = new Date();
+
+    const currentYear = currentDate.getFullYear();
+
+    const monthStart = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    )
+      .toISOString()
+      .split("T")[0];
+
+    const yearStart = `${currentYear}-01-01`;
+
+    const { data: employees, error } = await supabaseAdmin
+      .from("employees")
+      .select(`
+        id,
+        employee_code,
+
+        first_name_th,
+        last_name_th,
+
+        first_name_en,
+        last_name_en,
+
+        nick_name,
+
+        gender,
+
+        phone,
+        email,
+
+        citizen_id,
+        passport_no,
+
+        birth_date,
+
+        line_id,
+
+        nationality,
+
+        hire_date,
+        resignation_date,
+
+        employment_type,
+
+        employee_type_digit,
+        employee_year_2d,
+        employee_running_no,
+
+        employee_photo_url,
+
+        employee_status_id,
+
+        branch_id,
+        department_id,
+        division_id,
+        unit_id,
+        position_id,
+
+        created_at,
+
+        branches (
+          id,
+          branch_code,
+          branch_name
+        ),
+
+        departments (
+          id,
+          department_code,
+          department_name
+        ),
+
+        divisions (
+          id,
+          division_code,
+          division_name
+        ),
+
+        units (
+          id,
+          unit_code,
+          unit_name
+        ),
+
+        positions (
+          id,
+          position_code,
+          position_name,
+          position_level,
+          position_group
+        ),
+
+        employee_statuses (
+          id,
+          status_code,
+          status_name,
+          color
+        )
+      `)
+      .order("employee_code");
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = employees || [];
+
+    const organizationSummary = {
+      branches: {},
+      departments: {},
+      divisions: {},
+      units: {},
+      positionLevels: {},
+      employmentTypes: {},
+      genders: {},
+      nationalities: {},
+    };
+
+    rows.forEach((item) => {
+      const branch = item.branches?.branch_name || "Unknown";
+      const department = item.departments?.department_name || "Unknown";
+      const division = item.divisions?.division_name || "Unknown";
+      const unit = item.units?.unit_name || "Unknown";
+      const level = item.positions?.position_level || "N/A";
+      const employmentType = item.employment_type || "Unknown";
+      const gender = item.gender || "Unknown";
+      const nationality = item.nationality || "Unknown";
+
+      organizationSummary.branches[branch] =
+        (organizationSummary.branches[branch] || 0) + 1;
+
+      organizationSummary.departments[department] =
+        (organizationSummary.departments[department] || 0) + 1;
+
+      organizationSummary.divisions[division] =
+        (organizationSummary.divisions[division] || 0) + 1;
+
+      organizationSummary.units[unit] =
+        (organizationSummary.units[unit] || 0) + 1;
+
+      organizationSummary.positionLevels[level] =
+        (organizationSummary.positionLevels[level] || 0) + 1;
+
+      organizationSummary.employmentTypes[
+        employmentType
+      ] =
+        (
+          organizationSummary
+            .employmentTypes[
+            employmentType
+          ] || 0
+        ) + 1;
+
+      organizationSummary.genders[
+        gender
+      ] =
+        (
+          organizationSummary
+            .genders[gender] || 0
+        ) + 1;
+
+      organizationSummary.nationalities[
+        nationality
+      ] =
+        (
+          organizationSummary
+            .nationalities[
+            nationality
+          ] || 0
+        ) + 1;
+    });
+
+    const totalEmployees = rows.length;
+
+    const activeEmployees = rows.filter(
+      (item) =>
+        item.employee_statuses?.status_code === "ACTIVE"
+    ).length;
+
+    const probationEmployees = rows.filter(
+      (item) =>
+        item.employee_statuses?.status_code === "PROBATION"
+    ).length;
+
+    const resignedEmployees = rows.filter(
+      (item) =>
+        item.employee_statuses?.status_code === "RESIGNED"
+    ).length;
+
+    const retiredEmployees = rows.filter(
+      (item) =>
+        item.employee_statuses?.status_code === "RETIRED"
+    ).length;
+
+    const suspendedEmployees = rows.filter(
+      (item) =>
+        item.employee_statuses?.status_code === "SUSPENDED"
+    ).length;
+
+    const newThisMonth = rows.filter(
+      (item) =>
+        item.hire_date &&
+        item.hire_date >= monthStart
+    ).length;
+
+    const resignedThisMonth = rows.filter(
+      (item) =>
+        item.resignation_date &&
+        item.resignation_date >= monthStart
+    ).length;
+
+    const newThisYear = rows.filter(
+      (item) =>
+        item.hire_date &&
+        item.hire_date >= yearStart
+    ).length;
+
+    const resignedThisYear = rows.filter(
+      (item) =>
+        item.resignation_date &&
+        item.resignation_date >= yearStart
+    ).length;
+
+    const turnoverRate = totalEmployees > 0
+      ? Number(
+          (
+            (resignedThisYear /
+              totalEmployees) *
+            100
+          ).toFixed(2)
+        )
+      : 0;
+
+    const calculateServiceYears = (hireDate) => {
+      if (!hireDate) return 0;
+
+      const start = new Date(hireDate);
+      const now = new Date();
+
+      return Number(
+        (
+          (now - start) /
+          (1000 * 60 * 60 * 24 * 365)
+        ).toFixed(1)
+      );
+    };
+
+    const mappedEmployees = rows.map((employee) => ({
+      id: employee.id,
+
+      employee_code:employee.employee_code || "",
+      first_name_th:employee.first_name_th || "",
+      last_name_th:employee.last_name_th || "",
+      first_name_en:employee.first_name_en || "",
+      last_name_en:employee.last_name_en || "",
+      full_name_th:`${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(),
+      full_name_en:`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim(),
+      nick_name:employee.nick_name || "",
+      gender:employee.gender || "",
+      phone:employee.phone || "",
+      email:employee.email || "",
+      citizen_id:employee.citizen_id || "",
+      passport_no:employee.passport_no || "",
+      birth_date:employee.birth_date || "",
+      line_id:employee.line_id || "",
+      nationality:employee.nationality || "",
+      hire_date:employee.hire_date || "",
+      resignation_date:employee.resignation_date || "",
+      employment_type:employee.employment_type || "",
+      employee_type_digit:employee.employee_type_digit || "",
+      employee_year_2d:employee.employee_year_2d || "",
+      employee_running_no:employee.employee_running_no || "",
+      employee_photo_url:employee.employee_photo_url || "",
+      employee_status_id:employee.employee_status_id || "",
+      employee_status_code:employee.employee_statuses?.status_code || "",
+      employee_status_name:employee.employee_statuses?.status_name || "-",
+      employee_status_color:employee.employee_statuses?.color || "slate",
+      branch_id:employee.branch_id || "",
+      branch_code:
+        employee.branches?.branch_code || "",
+      branch_name:
+        employee.branches?.branch_name || "-",
+      department_id:
+        employee.department_id || "",
+      department_code:
+        employee.departments?.department_code || "",
+      department_name:
+        employee.departments?.department_name || "-",
+      division_id:
+        employee.division_id || "",
+      division_code:
+        employee.divisions?.division_code || "",
+      division_name:
+        employee.divisions?.division_name || "-",
+      unit_id:
+        employee.unit_id || "",
+      unit_code:
+        employee.units?.unit_code || "",
+      unit_name:employee.units?.unit_name || "-",
+      position_id:employee.position_id || "",
+      position_code:employee.positions?.position_code || "",
+      position_name:employee.positions?.position_name || "-",
+      position_level:employee.positions?.position_level || "",
+      position_group:employee.positions?.position_group || "",
+      created_at:employee.created_at,
+      service_years:
+        calculateServiceYears(
+          employee.hire_date
+        ),
+    }));
+
+    return NextResponse.json({
+      success: true,
+
+      summary: {
+        totalEmployees,
+        activeEmployees,
+        probationEmployees,
+        resignedEmployees,
+        retiredEmployees,
+        suspendedEmployees,
+
+        newThisMonth,
+        resignedThisMonth,
+
+        newThisYear,
+        resignedThisYear,
+
+        turnoverRate,
+      },
+
+      organizationSummary,
+
+      employees: mappedEmployees,
+    });
+  } catch (error) {
+    console.error(
+      "EMPLOYEE_REPORTS_ERROR:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error.message ||
+          "โหลดรายงานพนักงานไม่สำเร็จ",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

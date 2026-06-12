@@ -30,22 +30,58 @@ export default function SidebarContent({
         icon: LayoutDashboard,
       },
       {
+        label: "Report",
+        icon: Users,
+        defaultOpen: false,
+        children: [
+          {
+            label: "Summary recruitment",
+            href: "/recruitment/report_summary_recruit",
+          },
+        ]
+      },
+      {
         label: "Settings",
         icon: Users,
         defaultOpen: false,
         children: [
           {
+            label: "Language",
+            href: "/recruitment/setting/language",
+          },
+          {
+            label: "Job Language",
+            href: "/recruitment/setting/job_language",
+          },
+          {
             label: "Job Description",
-            href: "/recruitment/job_description",
+            href: "/recruitment/setting/job_description",
           },
           {
             label: "Job Openings",
-            href: "/recruitment/job_openings",
+            href: "/recruitment/setting/job_openings",
           },
           {
             label: "Evaluation Form",
-            href: "/recruitment/evaluation_form",
-          }
+            href: "/recruitment/setting/evaluation_form",
+          },
+          {
+            label:"Check Candidate Detail",
+            href:"/recruitment/setting/candidate_detail"
+          },
+          {
+            label:"Update interview appointment",
+            href:"/recruitment/setting/update_interview_appointment"
+          },
+          {
+            label:"Schedule interviews",
+            href:"/recruitment/setting/schedule_interviews"
+          },
+          // {
+          //   label:"Confirm start work",
+          //   href:"/recruitment/setting/confirm_start_work"
+          // }
+          
         ],
       },
     ],

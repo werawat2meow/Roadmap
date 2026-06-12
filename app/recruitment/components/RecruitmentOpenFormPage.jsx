@@ -359,7 +359,7 @@ export default function RecruitmentOpenFormPage({
         );
       }
 
-      router.push("/recruitment/job_openings");
+      router.push("/recruitment/setting/job_openings");
     } catch (err) {
       setError(
         err instanceof Error
@@ -569,7 +569,7 @@ export default function RecruitmentOpenFormPage({
             <div>
               <button
                 type="button"
-                onClick={() => router.push("/recruitment/job_openings")}
+                onClick={() => router.push("/recruitment/setting/job_openings")}
                 className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
                 style={{ backgroundColor: "orange" , color:"black" }}
               >

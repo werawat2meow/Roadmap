@@ -155,7 +155,7 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
         throw new Error(result.message || "บันทึกไม่สำเร็จ");
       }
 
-      router.push("/recruitment/job_description");
+      router.push("/recruitment/setting/job_description");
       router.refresh();
     } catch (error) {
       setErrorMessage(error.message);
@@ -273,7 +273,7 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
             <div>
               <button
                 type="button"
-                onClick={() => router.push("/admin/job-description")}
+                onClick={() => router.push("/recruitment/setting/job-description")}
                 className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
                 style={{ backgroundColor: "orange" , color:"black" }}
               >

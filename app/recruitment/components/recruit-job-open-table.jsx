@@ -272,7 +272,7 @@ export default function RecruitJobOpenTable() {
                                 <td className="px-4 py-3">
                                     <div className="flex flex-wrap gap-2">
                                       <Link
-                                          href={`/recruitment/job_openings/${row.id}/edit`}
+                                          href={`/recruitment/setting/job_openings/${row.id}/edit`}
                                           className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-medium cursor-pointer"
                                           style={{ backgroundColor: "#0f172b" , color: "white" }}
                                       >

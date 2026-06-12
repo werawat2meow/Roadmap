@@ -37,7 +37,7 @@ export default async function JobDescriptionPage() {
           </div>
           <div >
             <Link
-              href="/recruitment/job_description/create"
+              href="/recruitment/setting/job_description/create"
               className="rounded-xl bg-black px-5 py-3 text-white"
             >
               + เพิ่มข้อมูล
@@ -67,7 +67,7 @@ export default async function JobDescriptionPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Link
-                          href={`/admin/job-description/${row.id}`}
+                          href={`/recruitment/setting/job-description/${row.id}`}
                           className="rounded-xl border px-4 py-2 text-sm"
                         >
                           แก้ไขข้อมูล

@@ -22,7 +22,7 @@ export default function RecruitmentPage() {
             <div >
               <button
                 type="button"
-                onClick={() => router.push("/recruitment/job_openings/create")}
+                onClick={() => router.push("/recruitment/setting/job_openings/create")}
                 className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
                 style={{ backgroundColor: "green" }}
               >

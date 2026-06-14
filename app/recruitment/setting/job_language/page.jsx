@@ -79,12 +79,12 @@ export default function JobLanguagePage() {
   return (
     <div className="h-full w-full">
       <div className="overflow-y-auto p-6 w-full">
-        <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 items-center rounded-3xl bg-white p-6 shadow-sm">
+          <div className="justify-self-center md:justify-self-start">
             <h1 className="text-2xl font-semibold">Job Language</h1>
-            <p className="text-sm text-gray-600">จัดการข้อมูลตำแหน่งงานและภาษาของ job</p>
+            <p className="text-sm text-gray-600">จัดการข้อมูลภาษาของตำแหน่งงาน</p>
           </div>
-          <div >
+          <div className="justify-self-center md:justify-self-end">
             <button
               onClick={handleAdd}
               className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"

@@ -9,17 +9,12 @@ export default function RecruitmentPage() {
   return (
       <div className="h-full w-full">
         <div className="overflow-y-auto p-6 w-full">
-          <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">
-                Job Openings
-              </h1>
-
-              <p className="mt-2 text-slate-500">
-                หน้าจัดการการเปิดรับสมัครงาน
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 items-center rounded-3xl bg-white p-6 shadow-sm">
+            <div className="justify-self-center md:justify-self-start">
+              <h1 className="text-2xl font-bold text-slate-800">  Job Openings </h1>
+              <p className="mt-2 text-slate-500"> หน้าจัดการการเปิดรับสมัครงาน </p>
             </div>
-            <div >
+            <div className="justify-self-center md:justify-self-end">
               <button
                 type="button"
                 onClick={() => router.push("/recruitment/setting/job_openings/create")}

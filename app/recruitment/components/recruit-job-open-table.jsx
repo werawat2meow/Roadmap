@@ -190,19 +190,19 @@ export default function RecruitJobOpenTable() {
         <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50">
-                <tr className="text-left text-slate-600">
-                    <th className="px-4 py-3 font-medium">No.</th>
-                    <th className="px-4 py-3 font-medium">Branch</th>
-                    <th className="px-4 py-3 font-medium">Departments</th>
-                    <th className="px-4 py-3 font-medium">Divisions</th>
-                    <th className="px-4 py-3 font-medium">Units</th>
-                    <th className="px-4 py-3 font-medium">Positions</th>
-                    <th className="px-4 py-3 font-medium">Opening</th>
-                    <th className="px-4 py-3 font-medium">Start - End</th>
-                    <th className="px-4 py-3 font-medium">Urgent</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Action</th>
-                </tr>
+                  <tr className="text-left text-slate-600">
+                      <th className="px-4 py-3 font-medium">No.</th>
+                      <th className="px-4 py-3 font-medium">Branch</th>
+                      <th className="px-4 py-3 font-medium">Departments</th>
+                      <th className="px-4 py-3 font-medium">Divisions</th>
+                      <th className="px-4 py-3 font-medium">Units</th>
+                      <th className="px-4 py-3 font-medium">Positions</th>
+                      <th className="px-4 py-3 font-medium">Opening</th>
+                      <th className="px-4 py-3 font-medium">Start - End</th>
+                      <th className="px-4 py-3 font-medium">Urgent</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">Action</th>
+                  </tr>
                 </thead>
     
                 <tbody className="divide-y divide-slate-100">

@@ -16,7 +16,7 @@ export default function RecruitmentPage() {
               </h1>
 
               <p className="mt-2 text-slate-500">
-                หน้านี้เป็นหน้าเริ่มต้นของระบบ Recruitment
+                หน้าจัดการการเปิดรับสมัครงาน
               </p>
             </div>
             <div >

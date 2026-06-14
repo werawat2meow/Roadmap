@@ -1,89 +1,149 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const emptyRow = (key) => ({ [key]: "" });
+const buildLocalizedRow = (languages = []) =>
+  Object.fromEntries(languages.map((lang) => [lang.language_slug, ""]));
 
-const createEmptyForm = () => ({
+const normalizeLocalizedRows = (rows, languages = [], textField = "") => {
+  const base = buildLocalizedRow(languages);
+
+  if (Array.isArray(rows) && rows.length > 0) {
+    return rows.map((row) => {
+      // ดึง localized object จาก field ที่ระบุ เช่น row.requirement_text
+      const textData = (textField && row?.[textField]) || row || {};
+      return {
+        ...base,
+        ...(typeof textData === "object" ? textData : {}),
+      };
+    });
+  }
+
+  return [base];
+};
+
+const createEmptyForm = (languages = []) => ({
   position_id: "",
   salary_min: "",
   salary_max: "",
   type_of_work: "monthly",
   salary_note: "",
-  requirements: [emptyRow("requirement_text")],
-  responsibilities: [emptyRow("responsibility_text")],
-  benefits: [emptyRow("benefit_text")],
+  requirements: [buildLocalizedRow(languages)],
+  responsibilities: [buildLocalizedRow(languages)],
+  benefits: [buildLocalizedRow(languages)],
 });
 
-export default function JobDescriptionForm({ mode = "create", positions = [], initialData = null }) {
+const buildFormData = (initialData, languages) => ({
+  position_id: initialData?.positions_id?.toString() || "",
+  salary_min: initialData?.salary_min?.toString() || "",
+  salary_max: initialData?.salary_max?.toString() || "",
+  type_of_work: initialData?.type_of_work || "monthly",
+  salary_note: initialData?.salary_note || "",
+  requirements: normalizeLocalizedRows(
+    initialData?.requirements,
+    languages,
+    "requirement_text"       // ✅ เพิ่ม
+  ),
+  responsibilities: normalizeLocalizedRows(
+    initialData?.responsibilities,
+    languages,
+    "responsibility_text"    // ✅ เพิ่ม
+  ),
+  benefits: normalizeLocalizedRows(
+    initialData?.benefits,
+    languages,
+    "benefit_text"           // ✅ เพิ่ม
+  ),
+});
 
+export default function JobDescriptionForm({
+  mode = "create",
+  positions = [],
+  languages = [],
+  initialData = null,
+}) {
+
+  // console.log(initialData);
+  
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [form, setForm] = useState({
-    position_id: "",
-    salary_min: "",
-    salary_max: "",
-    type_of_work: "monthly",
-    salary_note: "",
-    requirements: [emptyRow("requirement_text")],
-    responsibilities: [emptyRow("responsibility_text")],
-    benefits: [emptyRow("benefit_text")],
-  });
+  const emptyForm = useMemo(
+    () => createEmptyForm(languages),
+    [languages]
+  );
+
+  const [form, setForm] = useState(() => emptyForm);
+
+  // console.log(form);
+  
+
+  const languageKey = useMemo(
+    () =>
+      languages
+        .map((lang) => lang.language_slug)
+        .join("|"),
+    [languages]
+  );
+
+  const formSyncKey = useMemo(() => {
+    return JSON.stringify({
+      id: initialData?.id ?? null,
+      languageKey,
+    });
+  }, [initialData?.id, languageKey]);
+
+  
+
+  const previousSyncKey = useRef(null);
+
+  const initialDataKey = initialData?.id ?? "create";
 
   useEffect(() => {
-    if (!initialData) return;
+    if (previousSyncKey.current === formSyncKey) {
+      return;
+    }
 
-    setForm({
-      position_id: initialData.position_id?.toString() || "",
-      salary_min: initialData.salary_min?.toString() || "",
-      salary_max: initialData.salary_max?.toString() || "",
-      type_of_work: initialData.type_of_work || "monthly",
-      salary_note: initialData.salary_note || "",
-      requirements:
-        initialData.requirements?.length > 0
-          ? initialData.requirements.map((item) => ({ requirement_text: item.requirement_text || "" }))
-          : [emptyRow("requirement_text")],
-      responsibilities:
-        initialData.responsibilities?.length > 0
-          ? initialData.responsibilities.map((item) => ({
-              responsibility_text: item.responsibility_text || "",
-            }))
-          : [emptyRow("responsibility_text")],
-      benefits:
-        initialData.benefits?.length > 0
-          ? initialData.benefits.map((item) => ({ benefit_text: item.benefit_text || "" }))
-          : [emptyRow("benefit_text")],
-    });
-  }, [initialData]);
+    previousSyncKey.current = formSyncKey;
+
+    if (!initialData) {
+      setForm(createEmptyForm(languages));
+      return;
+    }
+
+    setForm(buildFormData(initialData, languages));
+  }, [formSyncKey]);
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function updateSection(section, index, key, value) {
+  function updateSection(section, index, langSlug, value) {
     setForm((prev) => {
       const next = [...prev[section]];
-      next[index] = { ...next[index], [key]: value };
+      next[index] = {
+        ...next[index],
+        [langSlug]: value,
+      };
       return { ...prev, [section]: next };
     });
   }
 
-  function addRow(section, key) {
+  function addRow(section) {
     setForm((prev) => ({
       ...prev,
-      [section]: [...prev[section], emptyRow(key)],
+      [section]: [...prev[section], buildLocalizedRow(languages)],
     }));
   }
 
-  function removeRow(section, index, key) {
+  function removeRow(section, index) {
     setForm((prev) => {
       const next = prev[section].filter((_, i) => i !== index);
       return {
         ...prev,
-        [section]: next.length > 0 ? next : [emptyRow(key)],
+        [section]: next.length > 0 ? next : [buildLocalizedRow(languages)],
       };
     });
   }
@@ -93,31 +153,11 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
     setLoading(false);
 
     if (mode === "edit" && initialData) {
-      setForm({
-        position_id: initialData.position_id?.toString() || "",
-        salary_min: initialData.salary_min?.toString() || "",
-        salary_max: initialData.salary_max?.toString() || "",
-        type_of_work: initialData.type_of_work || "monthly",
-        salary_note: initialData.salary_note || "",
-        requirements:
-          initialData.requirements?.length > 0
-            ? initialData.requirements.map((item) => ({ requirement_text: item.requirement_text || "" }))
-            : [emptyRow("requirement_text")],
-        responsibilities:
-          initialData.responsibilities?.length > 0
-            ? initialData.responsibilities.map((item) => ({
-                responsibility_text: item.responsibility_text || "",
-              }))
-            : [emptyRow("responsibility_text")],
-        benefits:
-          initialData.benefits?.length > 0
-            ? initialData.benefits.map((item) => ({ benefit_text: item.benefit_text || "" }))
-            : [emptyRow("benefit_text")],
-      });
+      setForm(buildFormData(initialData, languages));
       return;
     }
 
-    setForm(createEmptyForm());
+    setForm(createEmptyForm(languages));
   }
 
   async function handleSubmit(e) {
@@ -131,13 +171,15 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
       salary_max: form.salary_max,
       salary_note: form.salary_note || null,
       type_of_work: form.type_of_work,
-      requirements: form.requirements,
-      responsibilities: form.responsibilities,
-      benefits: form.benefits,
+      requirements: form.requirements, // JSON
+      responsibilities: form.responsibilities, // JSON
+      benefits: form.benefits, // JSON
     };
-
+    
     const isEdit = mode === "edit";
-    const url = isEdit ? `/recruitment/api/job_description/${initialData.id}` : "/recruitment/api/job_description";
+    const url = isEdit
+      ? `/recruitment/api/job_description/${initialData.id}`
+      : "/recruitment/api/job_description";
     const method = isEdit ? "PUT" : "POST";
 
     try {
@@ -176,7 +218,8 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
             </h1>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-8 rounded-2xl border bg-white p-6 shadow-sm">
+
+        <form onSubmit={handleSubmit} className="space-y-8">
           {errorMessage ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {errorMessage}
@@ -241,47 +284,51 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
             <SectionList
               title="คุณสมบัติ"
               sectionKey="requirements"
-              itemKey="requirement_text"
               items={form.requirements}
-              onAdd={() => addRow("requirements", "requirement_text")}
-              onRemove={(index) => removeRow("requirements", index, "requirement_text")}
-              onChange={(index, value) => updateSection("requirements", index, "requirement_text", value)}
+              languages={languages}
+              onAdd={() => addRow("requirements")}
+              onRemove={(index) => removeRow("requirements", index)}
+              onChange={(index, langSlug, value) =>
+                updateSection("requirements", index, langSlug, value)
+              }
             />
 
             <SectionList
               title="หน้าที่ความรับผิดชอบ"
               sectionKey="responsibilities"
-              itemKey="responsibility_text"
               items={form.responsibilities}
-              onAdd={() => addRow("responsibilities", "responsibility_text")}
-              onRemove={(index) => removeRow("responsibilities", index, "responsibility_text")}
-              onChange={(index, value) => updateSection("responsibilities", index, "responsibility_text", value)}
+              languages={languages}
+              onAdd={() => addRow("responsibilities")}
+              onRemove={(index) => removeRow("responsibilities", index)}
+              onChange={(index, langSlug, value) =>
+                updateSection("responsibilities", index, langSlug, value)
+              }
             />
 
             <SectionList
               title="สวัสดิการ"
               sectionKey="benefits"
-              itemKey="benefit_text"
               items={form.benefits}
-              onAdd={() => addRow("benefits", "benefit_text")}
-              onRemove={(index) => removeRow("benefits", index, "benefit_text")}
-              onChange={(index, value) => updateSection("benefits", index, "benefit_text", value)}
+              languages={languages}
+              onAdd={() => addRow("benefits")}
+              onRemove={(index) => removeRow("benefits", index)}
+              onChange={(index, langSlug, value) => updateSection("benefits", index, langSlug, value)}
             />
           </div>
 
-          <div className="flex items-center gap-3 justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <button
                 type="button"
-                onClick={() => router.push("/recruitment/setting/job-description")}
-                className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
-                style={{ backgroundColor: "orange" , color:"black" }}
+                onClick={() => router.push("/recruitment/setting/job_description")}
+                className="cursor-pointer rounded-lg px-4 py-2 font-medium text-black shadow-sm transition-colors"
+                style={{ backgroundColor: "orange" }}
               >
                 ย้อนกลับ
               </button>
             </div>
-            <div className="flex items-center gap-3" >
 
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleReset}
@@ -305,9 +352,11 @@ export default function JobDescriptionForm({ mode = "create", positions = [], in
   );
 }
 
-function SectionList({ title, items, itemKey, onAdd, onRemove, onChange }) {
+function SectionList({ title, items, languages = [], onAdd, onRemove, onChange }) {
+  // console.log(languages);
+  
   return (
-    <div className="rounded-2xl border p-4">
+    <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-semibold">{title}</h3>
         <button type="button" onClick={onAdd} className="rounded-xl border px-4 py-2 text-sm">
@@ -315,22 +364,39 @@ function SectionList({ title, items, itemKey, onAdd, onRemove, onChange }) {
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {items.map((item, index) => (
-          <div key={index} className="flex gap-2">
-            <input
-              value={item[itemKey]}
-              onChange={(e) => onChange(index, e.target.value)}
-              className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-black"
-              placeholder={`กรอก${title}`}
-            />
-            <button
-              type="button"
-              onClick={() => onRemove(index)}
-              className="rounded-xl border px-4 py-3 text-sm text-red-600"
-            >
-              ลบ
-            </button>
+          
+          <div key={index} className="rounded-2xl border bg-gray-50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">
+                รายการที่ {index + 1}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => onRemove(index)}
+                className="rounded-xl border px-4 py-2 text-sm text-red-600"
+              >
+                ลบ
+              </button>
+            </div>
+
+            <div className={`grid gap-3 ${languages.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+              {languages.map((lang) => (
+                <div key={lang.language_slug}>
+                  <label className="mb-2 block text-sm font-medium">
+                    {lang.language_name || lang.language_slug}
+                  </label>
+                  <input
+                    value={item[lang.language_slug] ?? ""}
+                    onChange={(e) => onChange(index, lang.language_slug, e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    placeholder={`กรอก${title} (${lang.language_slug})`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>

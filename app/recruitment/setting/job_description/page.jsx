@@ -31,7 +31,12 @@ export default function JobDescriptionPage({ initialData }) {
           throw new Error(result?.message || "Fetch failed");
         }
 
-        setData(result.data || []);
+        
+        
+        setData(result || []);
+
+        console.log(result);
+
       } catch (err) {
         console.error(err);
         alert(err.message || "ดึงข้อมูลไม่สำเร็จ");
@@ -72,7 +77,6 @@ export default function JobDescriptionPage({ initialData }) {
     }
   }
 
-
   return (
     <div className="h-full w-full">
       <div className="overflow-y-auto p-6 w-full">
@@ -103,8 +107,9 @@ export default function JobDescriptionPage({ initialData }) {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-gray-50">
                 <tr className="text-center text-slate-600">
+                  <th className="px-4 py-3 font-medium">No.</th>
                   <th className="px-4 py-3 font-medium">Position</th>
                   <th className="px-4 py-3 font-medium">Updated at</th>
                   <th className="px-4 py-3 font-medium">Action</th>
@@ -112,20 +117,23 @@ export default function JobDescriptionPage({ initialData }) {
               </thead>
               <tbody className="divide-y divide-slate-100 text-center">
                 {data && data.length > 0 ? (
-                  data.map((row) => (
+                  data.map((row , index) => (
                     <tr key={row.id}>
-                      <td>{row.positions?.position_name || "-"}</td>
+                      <td className="px-4 py-4 text-sm text-gray-700">
+                      {index + 1}
+                    </td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"}</td>
 
-                      <td>
+                      <td className="px-4 py-4 text-sm text-gray-700">
                         {row.updated_at
                           ? new Date(row.updated_at).toLocaleString("th-TH")
                           : "-"}
                       </td>
 
-                      <td>
-                        <div className="flex gap-2">
+                      <td className="px-4 py-4 text-sm text-gray-700">
+                        <div className="flex gap-2 justify-center">
                           <Link
-                            href={`/recruitment/setting/job-description/${row.id}`}
+                            href={`/recruitment/setting/job_description/${row.id}/edit`}
                             className="rounded-xl border px-4 py-2 text-sm"
                           >
                             แก้ไขข้อมูล

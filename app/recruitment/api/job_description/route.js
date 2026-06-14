@@ -7,13 +7,17 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function cleanRows(items, textKey) {
+function cleanRows(items) {
   return (items || [])
     .map((item, index) => ({
-      text: (item?.[textKey] || "").trim(),
+      text: item,
       sort_order: index + 1,
     }))
-    .filter((item) => item.text.length > 0);
+    .filter((item) =>
+      Object.values(item.text || {}).some(
+        (v) => String(v || "").trim().length > 0
+      )
+    );
 }
 
 export async function GET() {
@@ -21,7 +25,7 @@ export async function GET() {
     .from("recruit_job_description")
     .select(`
       id,
-      position_id,
+      positions_id,
       salary_min,
       salary_max,
       type_of_work,
@@ -33,7 +37,7 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
-
+  
   const rows = (data || []).map((row) => ({
     id: row.id,
     position_id: row.position_id,
@@ -52,12 +56,13 @@ export async function POST(request) {
     const body = await request.json();
 
     const descriptionPayload = {
-      position_id: toNumberOrNull(body.position_id),
+      positions_id: body.position_id,
       salary_min: toNumberOrNull(body.salary_min),
       salary_max: toNumberOrNull(body.salary_max),
       salary_note: body.salary_note ?? null,
       type_of_work: body.type_of_work ?? "monthly",
-      status: body.status ?? "active",
+      status: true,
+      updated_at:new Date().toISOString(),
     };
 
     const { data: inserted, error: insertError } = await supabaseAdmin
@@ -73,40 +78,43 @@ export async function POST(request) {
     const descriptionId = inserted.id;
 
     const requirements = cleanRows(body.requirements, "requirement_text").map((item) => ({
-      recruit_job_description_id: descriptionId,
+      job_description_id: descriptionId,
       requirement_text: item.text,
       sort_order: item.sort_order,
+      updated_at:new Date().toISOString(),
     }));
 
     const responsibilities = cleanRows(body.responsibilities, "responsibility_text").map((item) => ({
-      recruit_job_description_id: descriptionId,
+      job_description_id: descriptionId,
       responsibility_text: item.text,
       sort_order: item.sort_order,
+      updated_at:new Date().toISOString(),
     }));
 
     const benefits = cleanRows(body.benefits, "benefit_text").map((item) => ({
-      recruit_job_description_id: descriptionId,
+      job_description_id: descriptionId,
       benefit_text: item.text,
       sort_order: item.sort_order,
+      updated_at:new Date().toISOString(),
     }));
 
     if (requirements.length) {
       const { error } = await supabaseAdmin
-        .from("recruit_job_opening_requirements")
+        .from("recruit_job_description_requirements")
         .insert(requirements);
       if (error) return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     if (responsibilities.length) {
       const { error } = await supabaseAdmin
-        .from("recruit_job_opening_responsibilities")
+        .from("recruit_job_description_responsibilities")
         .insert(responsibilities);
       if (error) return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     if (benefits.length) {
       const { error } = await supabaseAdmin
-        .from("recruit_job_opening_benefits")
+        .from("recruit_job_description_benefits")
         .insert(benefits);
       if (error) return NextResponse.json({ message: error.message }, { status: 500 });
     }

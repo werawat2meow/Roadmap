@@ -153,10 +153,10 @@ export default function LanguageTable() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">No.</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">language_img</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">language_name(language_slug)</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">action</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Language Img</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Language Name( Language Slug )</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Action</th>
             </tr>
           </thead>
 

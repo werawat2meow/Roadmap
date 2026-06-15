@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState  } from "react";
 import {TeamOutlined,UserAddOutlined,UserDeleteOutlined,SafetyOutlined,DownloadOutlined,SearchOutlined,} from "@ant-design/icons";
-
+import { useRouter } from "next/navigation";
+import useAuth from "@/hooks/useAuth";
+import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "../../../components/LoadingOrb";
 
 export default function EmployeeReportsPage() {
-  const [loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const isFirstRender = useRef(true); 
   const [summary, setSummary] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -24,6 +27,12 @@ export default function EmployeeReportsPage() {
   });
 
   const [employees, setEmployees] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [filters, setFilters] = useState({
     search: "",
     employeeStatus: "",
@@ -42,21 +51,70 @@ export default function EmployeeReportsPage() {
   });
 
 
+  // #region Permission
+  const router = useRouter();
+  const { user, loadingUser } = useAuth();
+  const canView = hasPermission(user, "ems.employee_reports.view");
+
   useEffect(() => {
-    loadData();
-  }, []);
+    if (loadingUser) return;
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!canView) {
+      router.replace("/admin");
+    }
+  }, [user, canView, loadingUser, router]);
+
+  // #endregion
+
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+
+    params.set("page", String(pagination.page));
+    params.set("pageSize", String(pagination.pageSize));
+
+    if (filters.search) {
+      params.set("search", filters.search);
+    }
+
+    if (filters.employeeStatus) {
+      params.set("status", filters.employeeStatus);
+    }
+
+    if (filters.branch) {
+      params.set("branch_id", filters.branch);
+    }
+
+    if (filters.department) {
+      params.set("department_id", filters.department);
+    }
+
+    if (filters.division) {
+      params.set("division_id", filters.division);
+    }
+
+    if (filters.unit) {
+      params.set("unit_id", filters.unit);
+    }
+
+    return params.toString();
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
+      const queryString = buildQueryString();
       const res = await fetch(
-        "/api/admin/employee-reports",
+         `/api/admin/employee-reports?${queryString}`,
         {
           cache: "no-store",
         }
       );
       const result = await res.json();
-      console.log(result);
       if (!res.ok) {
         throw new Error(
           result?.error || "โหลดข้อมูลไม่สำเร็จ"
@@ -65,12 +123,42 @@ export default function EmployeeReportsPage() {
 
       setSummary(result.summary || {});
       setEmployees(result.employees || []);
+      setPagination((prev) => ({
+        ...prev,
+        total: result.pagination?.total || 0,
+        totalPages: result.pagination?.totalPages || 1,
+      }));
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleFilterChange = (key, value) => {
+    setPagination((prev) => ({
+      ...prev,
+      page: 1,
+    }));
+
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  useEffect(() => {
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      loadData();
+      return;
+    }
+    const timer = setTimeout(() => {
+      loadData();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [filters, pagination.page, pagination.pageSize]);
 
   const filteredEmployees = useMemo(() => {
     let rows = [...employees];
@@ -369,6 +457,10 @@ export default function EmployeeReportsPage() {
     ),
   ];
 
+  if (loadingUser) return <LoadingOrb />;
+  if (!user) return null;
+  if (!canView) return null;
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -406,6 +498,9 @@ export default function EmployeeReportsPage() {
                   hireDateTo: "",
                   resignationDateFrom: "",
                   resignationDateTo: "",
+                  gender: "",           
+                  nationality: "",      
+                  positionLevel: "",    
                 })
               }
               className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm hover:bg-slate-50"
@@ -454,10 +549,7 @@ export default function EmployeeReportsPage() {
               placeholder="ค้นหารหัสพนักงาน / ชื่อ"
               value={filters.search}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  search: e.target.value,
-                }))
+                handleFilterChange("search", e.target.value)
               }
               className="w-full rounded-2xl border border-slate-300 py-3 pl-12 pr-4"
             />
@@ -466,10 +558,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.employeeStatus}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                employeeStatus: e.target.value,
-              }))
+              handleFilterChange("employeeStatus", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -501,10 +590,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.branch}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                branch: e.target.value,
-              }))
+              handleFilterChange("branch", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -523,10 +609,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.department}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                department: e.target.value,
-              }))
+              handleFilterChange("department", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -545,10 +628,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.division}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                division: e.target.value,
-              }))
+              handleFilterChange("division", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -567,10 +647,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.unit}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                unit: e.target.value,
-              }))
+              handleFilterChange("unit", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -589,10 +666,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.employmentType}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                employmentType: e.target.value,
-              }))
+              handleFilterChange("employmentType", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -611,10 +685,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.gender}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                gender: e.target.value,
-              }))
+              handleFilterChange("gender", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -631,10 +702,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.nationality}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                nationality: e.target.value,
-              }))
+              handleFilterChange("nationality", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -651,10 +719,7 @@ export default function EmployeeReportsPage() {
           <select
             value={filters.positionLevel}
             onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                positionLevel: e.target.value,
-              }))
+              handleFilterChange("positionLevel", e.target.value)
             }
             className="rounded-2xl border border-slate-300 px-4 py-3"
           >
@@ -677,10 +742,7 @@ export default function EmployeeReportsPage() {
               type="date"
               value={filters.hireDateFrom}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  hireDateFrom: e.target.value,
-                }))
+                handleFilterChange("hireDateFrom", e.target.value)
               }
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
             />
@@ -695,10 +757,7 @@ export default function EmployeeReportsPage() {
               type="date"
               value={filters.hireDateTo}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  hireDateTo: e.target.value,
-                }))
+                handleFilterChange("hireDateTo", e.target.value)
               }
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
             />
@@ -713,10 +772,7 @@ export default function EmployeeReportsPage() {
               type="date"
               value={filters.resignationDateFrom}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  resignationDateFrom: e.target.value,
-                }))
+                handleFilterChange("resignationDateFrom", e.target.value)
               }
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
             />
@@ -731,10 +787,7 @@ export default function EmployeeReportsPage() {
               type="date"
               value={filters.resignationDateTo}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  resignationDateTo: e.target.value,
-                }))
+                handleFilterChange("resignationDateTo", e.target.value)
               }
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
             />
@@ -816,6 +869,41 @@ export default function EmployeeReportsPage() {
               ))}
             </tbody>
           </table>
+
+          <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+            <div className="text-sm text-slate-500">
+              ทั้งหมด {pagination.total} รายการ | หน้า {pagination.page} /{" "}
+              {pagination.totalPages}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                disabled={pagination.page <= 1 || loading}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: Math.max(prev.page - 1, 1),
+                  }))
+                }
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm disabled:opacity-40"
+              >
+                ก่อนหน้า
+              </button>
+
+              <button
+                disabled={pagination.page >= pagination.totalPages || loading}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: Math.min(prev.page + 1, prev.totalPages),
+                  }))
+                }
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm disabled:opacity-40"
+              >
+                ถัดไป
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

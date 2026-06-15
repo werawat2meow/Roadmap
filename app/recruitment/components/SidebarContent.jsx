@@ -55,7 +55,7 @@ export default function SidebarContent({
           { label: "Job Language",                 href: "/recruitment/setting/job_language" },
           { label: "Job Description",              href: "/recruitment/setting/job_description" },
           { label: "Job Openings",                 href: "/recruitment/setting/job_openings" },
-          { label: "Evaluation Form",              href: "/recruitment/setting/evaluation_form" },
+          { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
           { label: "Check Candidate Detail",       href: "/recruitment/setting/candidate_detail" },
           { label: "Update interview appointment", href: "/recruitment/setting/update_interview_appointment" },
           { label: "Schedule interviews",          href: "/recruitment/setting/schedule_interviews" },

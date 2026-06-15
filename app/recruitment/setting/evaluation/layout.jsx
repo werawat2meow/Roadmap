@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import LoadingOrb from "@/app/components/LoadingOrb";
 
-function LanguageAuthGuard({ children }) {
+function EvaluationAuthGuard({ children }) {
   const { user, loadingUser } = useAuth();
   const router = useRouter();
 
@@ -30,12 +30,12 @@ function LanguageAuthGuard({ children }) {
   return <>{children}</>;
 }
 
-export default function LanguageLayout({ children }) {
+export default function EvaluationLayout({ children }) {
   return (
     <AuthProvider>
-      <LanguageAuthGuard>
+      <EvaluationAuthGuard>
         {children}
-      </LanguageAuthGuard>
+      </EvaluationAuthGuard>
     </AuthProvider>
   );
 }

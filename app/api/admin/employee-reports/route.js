@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { writeActivityLog } from "@/lib/activityLogger";
 
 export async function GET(req) {
   try {
@@ -344,6 +345,27 @@ export async function GET(req) {
       created_at: employee.created_at,
       service_years: calculateServiceYears(employee.hire_date),
     }));
+
+    if (search || status || branchId || departmentId || divisionId || unitId ) {
+      await writeActivityLog({
+        module_name: "employee_reports",
+        action_type: "search",
+        reference_table: "employees",
+        description: "ค้นหารายงานพนักงาน",
+        new_data: {
+          search,
+          status,
+          branch: branchId,
+          department: departmentId,
+          division: divisionId,
+          unit: unitId,
+          page,
+          pageSize,
+          total_records: count || 0,
+        },
+      });
+    }
+
 
     return NextResponse.json({
       success: true,

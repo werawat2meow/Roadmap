@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-
+import { writeActivityLog } from "@/lib/activityLogger";
 
 const calculateServiceYears = (hireDate) => {
   if (!hireDate) return 0;
@@ -386,6 +386,28 @@ const newJoinersRows =
         bookType: "xlsx",
       }
     );
+
+    await writeActivityLog({
+      module_name: "employee_reports",
+      action_type: "export",
+      reference_table: "employees",
+      description: "Export Employee Master Report Excel",
+      new_data: {
+        file_name: "Employee_Master_Report.xlsx",
+        file_type: "xlsx",
+        total_records: data?.length || 0,
+        total_employee_rows: rows?.length || 0,
+        total_new_joiners: newJoinersRows?.length || 0,
+        total_resigned: resignedRows?.length || 0,
+        total_branch_summary: branchRows?.length || 0,
+        total_department_summary: departmentRows?.length || 0,
+        total_division_summary: divisionRows?.length || 0,
+        total_unit_summary: unitRows?.length || 0,
+        total_position_level_summary: levelRows?.length || 0,
+        total_employment_type_summary: employmentTypeRows?.length || 0,
+        total_status_summary: statusRows?.length || 0,
+      },
+    });
 
     return new NextResponse(buffer, {
       status: 200,

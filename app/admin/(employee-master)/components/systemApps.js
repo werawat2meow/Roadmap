@@ -99,4 +99,18 @@ export const systemApps = [
     sortOrder: 4,
     gradient: "from-teal-500 to-cyan-600",
   },
+
+  {
+    code: "ROADMAP",
+    title: "Roadmap",
+    subtitle: "ระบบแผนงาน",
+    description: "ติดตามแผนงาน โครงการ และสถานะการดำเนินงาน",
+    path: "/roadmap",
+    permission: "roadmap.view",
+    icon: <FileTextOutlined />,
+    badge: "Project",
+    category: "Operation",
+    sortOrder: 7,
+    gradient: "from-indigo-500 to-sky-600",
+  },
 ];

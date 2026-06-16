@@ -20,6 +20,7 @@ async function getCurrentUser() {
     .select(`
       id,
       role_id,
+      username,
       is_active,
       roles (
         role_code
@@ -241,6 +242,9 @@ export async function GET(req) {
       bookType: "xlsx",
     });
 
+    const approvedCount = data?.filter((x) => x.status === "approved").length || 0;
+    const rejectedCount = data?.filter((x) => x.status === "rejected").length || 0;
+
     await createAuditLog({
       req,
       user,
@@ -250,6 +254,13 @@ export async function GET(req) {
       newData: {
         export_type: "xlsx",
         total_records: rows.length,
+
+        approved_records:
+          approvedCount,
+
+        rejected_records:
+          rejectedCount,
+
         filters: {
           dateFrom,
           dateTo,
@@ -259,12 +270,14 @@ export async function GET(req) {
       },
     });
 
+    const exportDate = new Date().toISOString().slice(0, 10);
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="benefit-report.xlsx"`,
+        "Content-Disposition": `attachment; filename="benefit-report-${exportDate}.xlsx"`,
       },
     });
   } catch (error) {

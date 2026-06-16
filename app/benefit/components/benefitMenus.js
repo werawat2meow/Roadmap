@@ -1,4 +1,4 @@
-import {GiftOutlined,FormOutlined,HistoryOutlined,BarChartOutlined,FileDoneOutlined,TagsOutlined,SafetyCertificateOutlined,TeamOutlined,CheckCircleOutlined,AuditOutlined,DatabaseOutlined,FileSearchOutlined,PaperClipOutlined,NumberOutlined,ApartmentOutlined,} from "@ant-design/icons";
+import {GiftOutlined,FormOutlined,HistoryOutlined,BarChartOutlined,FileDoneOutlined,TagsOutlined,SafetyCertificateOutlined,TeamOutlined,CheckCircleOutlined,AuditOutlined,DatabaseOutlined,FileSearchOutlined,PaperClipOutlined,NumberOutlined,ApartmentOutlined,BellOutlined,} from "@ant-design/icons";
 
 export const benefitSelfMenus = [
   {
@@ -25,6 +25,15 @@ export const benefitSelfMenus = [
     path: "/benefit/requests/history",
     tag: "History",
     permissions: ["benefit.request.view_own"],
+  },
+  {
+    title: "การแจ้งเตือน",
+    desc: "ดูการแจ้งเตือนคำขอ การอนุมัติ การปฏิเสธ และสถานะสวัสดิการ",
+    icon: <BellOutlined />,
+    path: "/benefit/notifications",
+    tag: "Notify",
+    permissions: ["benefit.notification.view"],
+    allowAllLogin: true,
   },
 ];
 

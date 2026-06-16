@@ -23,6 +23,7 @@ async function getCurrentUser() {
       id,
       employee_id,
       role_id,
+      username,
       is_active,
       roles (
         role_code
@@ -59,6 +60,38 @@ async function getCurrentUser() {
 function hasPermission(user, permission) {
   if (user?.roles?.role_code === "SUPER_ADMIN") return true;
   return user?.permissions?.includes(permission) || false;
+}
+
+
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "attachment",
+      action_type: actionType,
+      ref_table: "benefit_request_attachments",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_ATTACHMENT_AUDIT_LOG_ERROR:", error);
+  }
 }
 
 async function getAttachment(id) {
@@ -208,6 +241,16 @@ export async function DELETE(req, { params }) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบไฟล์แนบ: ${attachment.file_name || id}`,
+      oldData: attachment,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

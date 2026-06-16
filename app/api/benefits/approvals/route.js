@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { createNotification } from "@/lib/benefitNotification";
 
 const ALLOWED_STATUSES = [
   "draft",
@@ -689,6 +690,39 @@ export async function PUT(req) {
       },
     });
 
+    if (status === "approved") {
+      await createNotification({
+        employeeId: data.employee_id,
+        title: "คำขอสวัสดิการได้รับการอนุมัติ",
+        message: `คำขอ ${data.request_no} ได้รับการอนุมัติแล้ว`,
+        type: "approved",
+        refTable: "benefit_requests",
+        refId: data.id,
+      });
+    }
+
+    if (status === "rejected") {
+      await createNotification({
+        employeeId: data.employee_id,
+        title: "คำขอสวัสดิการถูกปฏิเสธ",
+        message: `คำขอ ${data.request_no} ถูกปฏิเสธ`,
+        type: "rejected",
+        refTable: "benefit_requests",
+        refId: data.id,
+      });
+    }
+
+    if (status === "reversed") {
+      await createNotification({
+        employeeId: data.employee_id,
+        title: "คืนสิทธิ์สวัสดิการ",
+        message: `คำขอ ${data.request_no} ถูกคืนสิทธิ์แล้ว`,
+        type: "reversed",
+        refTable: "benefit_requests",
+        refId: data.id,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data,
@@ -762,6 +796,18 @@ export async function DELETE(req) {
       oldData,
       newData: null,
     });
+
+
+    if (oldData?.employee_id) {
+      await createNotification({
+        employeeId: oldData.employee_id,
+        title: "คำขอสวัสดิการถูกลบ",
+        message: `คำขอ ${oldData.request_no} ถูกลบออกจากระบบ`,
+        type: "deleted",
+        refTable: "benefit_requests",
+        refId: oldData.id,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

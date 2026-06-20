@@ -20,7 +20,6 @@ export async function GET() {
 export async function POST(request) {
   const body = await request.json();
   const { evaluation } = body;
-  console.log(body);
   
   if (!evaluation || !evaluation.trim()) {
     return NextResponse.json(

@@ -185,7 +185,8 @@ export default function RecruitQuestionPage() {
           <div>
             <button
               onClick={openCreate}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
+              style={{ backgroundColor: "green" }}
             >
               + เพิ่มข้อมูล
             </button>

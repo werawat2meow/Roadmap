@@ -5,7 +5,45 @@ import JobDescriptionForm from "@/app/recruitment/components/JobDescriptionFormP
 export default async function EditJobDescriptionPage({ params }) {
   const { id } = await params;
 
-  const [positionsRes, descriptionRes, reqRes, respRes, benRes , lang] = await Promise.all([
+  const [
+    branchesRes,
+    departmentsRes,
+    branchDepartmentsRes,
+    divisionsRes,
+    unitsRes,
+    unitPositionsRes,
+    positionsRes,
+    descriptionRes,
+    reqRes,
+    respRes,
+    benRes,
+    lang,
+  ] = await Promise.all([
+
+    supabaseAdmin
+      .from("branches")
+      .select("id, branch_name"),
+
+    supabaseAdmin
+      .from("departments")
+      .select("id, department_name"),
+
+    supabaseAdmin
+      .from("branch_departments")
+      .select("branch_id, department_id"),
+
+    supabaseAdmin
+      .from("divisions")
+      .select("id, division_name, department_id"),
+
+    supabaseAdmin
+      .from("units")
+      .select("id, unit_name, division_id"),
+
+    supabaseAdmin
+      .from("unit_positions")
+      .select("unit_id, position_id"),
+
     supabaseAdmin
       .from("positions")
       .select("id, position_name, position_level")
@@ -13,7 +51,7 @@ export default async function EditJobDescriptionPage({ params }) {
 
     supabaseAdmin
       .from("recruit_job_description")
-      .select("id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at")
+      .select("id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at")
       .eq("id", id)
       .single(),
 
@@ -37,13 +75,14 @@ export default async function EditJobDescriptionPage({ params }) {
 
     supabaseAdmin
       .from("recruit_language")
-      .select("id, language_name, language_slug"),
+      .select("id, language_name, language_slug")
+      .order("id", { ascending: true }),
   ]);
   
   if (descriptionRes.error || !descriptionRes.data) {
     notFound();
   }
-
+  
   const initialData = {
     ...descriptionRes.data,
     requirements: reqRes.data || [],
@@ -54,6 +93,12 @@ export default async function EditJobDescriptionPage({ params }) {
   return (
       <JobDescriptionForm
         mode="edit"
+        branches={branchesRes.data || []}
+        departments={departmentsRes.data || []}
+        branchDepartments={branchDepartmentsRes.data || []}
+        divisions={divisionsRes.data || []}
+        units={unitsRes.data || []}
+        unitPositions={unitPositionsRes.data || []}
         positions={positionsRes.data || []}
         languages={lang.data || []}
         initialData={initialData}

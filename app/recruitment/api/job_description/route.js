@@ -40,7 +40,7 @@ export async function GET() {
   
   const rows = (data || []).map((row) => ({
     id: row.id,
-    position_id: row.position_id,
+    positions_id: row.positions_id,
     positions_name: row.positions?.position_name || "-",
     salary_min: row.salary_min,
     salary_max: row.salary_max,
@@ -56,11 +56,16 @@ export async function POST(request) {
     const body = await request.json();
 
     const descriptionPayload = {
-      positions_id: body.position_id,
+      positions_id: body.positions_id,
+      branch_id: body.branch_id,
+      department_id: body.department_id,
+      division_id: body.division_id,
+      unit_id: body.unit_id,
       salary_min: toNumberOrNull(body.salary_min),
       salary_max: toNumberOrNull(body.salary_max),
       salary_note: body.salary_note ?? null,
       type_of_work: body.type_of_work ?? "monthly",
+      workLocation: body.workLocation,
       status: true,
       updated_at:new Date().toISOString(),
     };
@@ -77,21 +82,21 @@ export async function POST(request) {
 
     const descriptionId = inserted.id;
 
-    const requirements = cleanRows(body.requirements, "requirement_text").map((item) => ({
+    const requirements = cleanRows(body.requirements).map((item) => ({
       job_description_id: descriptionId,
       requirement_text: item.text,
       sort_order: item.sort_order,
       updated_at:new Date().toISOString(),
     }));
 
-    const responsibilities = cleanRows(body.responsibilities, "responsibility_text").map((item) => ({
+    const responsibilities = cleanRows(body.responsibilities).map((item) => ({
       job_description_id: descriptionId,
       responsibility_text: item.text,
       sort_order: item.sort_order,
       updated_at:new Date().toISOString(),
     }));
 
-    const benefits = cleanRows(body.benefits, "benefit_text").map((item) => ({
+    const benefits = cleanRows(body.benefits).map((item) => ({
       job_description_id: descriptionId,
       benefit_text: item.text,
       sort_order: item.sort_order,

@@ -24,7 +24,7 @@ export async function GET(_request, { params }) {
 
   const { data: description, error: descError } = await supabaseAdmin
     .from("recruit_job_description")
-    .select("id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at")
+    .select("id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at")
     .eq("id", id)
     .single();
 
@@ -66,11 +66,17 @@ export async function PUT(request, { params }) {
     const body = await request.json();
 
     const descriptionPayload = {
-      positions_id: body.position_id,
+      positions_id: body.positions_id,
+      branch_id: body.branch_id,
+      department_id: body.department_id,
+      division_id: body.division_id,
+      unit_id: body.unit_id,
       salary_min: toNumberOrNull(body.salary_min),
       salary_max: toNumberOrNull(body.salary_max),
       salary_note: body.salary_note ?? null,
       type_of_work: body.type_of_work ?? "monthly",
+      workLocation: body.workLocation,
+      updated_at: new Date().toISOString(),
       status: true,
     };
     

@@ -31,11 +31,7 @@ export default function JobDescriptionPage({ initialData }) {
           throw new Error(result?.message || "Fetch failed");
         }
 
-        
-        
         setData(result || []);
-
-        console.log(result);
 
       } catch (err) {
         console.error(err);

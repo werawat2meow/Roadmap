@@ -2,9 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button, Drawer, Tooltip, Avatar, Tag } from "antd";
+import {
+  Button,
+  Drawer,
+  Tooltip,
+  Avatar,
+  Tag,
+  Badge,
+  Dropdown,
+  Empty,
+  Spin,
+  Space,
+} from "antd";
 import { AnimatePresence, motion } from "framer-motion";
-import {MenuFoldOutlined,MenuUnfoldOutlined,LogoutOutlined,DownOutlined,MenuOutlined,GiftOutlined,HomeOutlined,UserOutlined,} from "@ant-design/icons";
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  LogoutOutlined,
+  DownOutlined,
+  MenuOutlined,
+  GiftOutlined,
+  HomeOutlined,
+  UserOutlined,
+  BellOutlined,
+  CheckOutlined,
+} from "@ant-design/icons";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
@@ -19,6 +41,10 @@ function BenefitContent({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState("");
   const [navigating, setNavigating] = useState(false);
+
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const canAccessBenefit = hasPermission(user, "benefit.portal.view");
 
@@ -45,6 +71,65 @@ function BenefitContent({ children }) {
     }
     return pathname === href || pathname.startsWith(`${href}/`);
   };
+
+  const loadNotifications = async () => {
+    try {
+      setNotificationLoading(true);
+
+      const res = await fetch("/api/benefits/notifications", {
+        cache: "no-store",
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "โหลดการแจ้งเตือนไม่สำเร็จ");
+      }
+
+      setNotifications((json.data || []).slice(0, 5));
+      setUnreadCount(Number(json.unread || 0));
+    } catch (error) {
+      console.error("LOAD_LAYOUT_NOTIFICATIONS_ERROR:", error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      const res = await fetch("/api/benefits/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "อัปเดตการแจ้งเตือนไม่สำเร็จ");
+      }
+
+      await loadNotifications();
+    } catch (error) {
+      console.error("MARK_NOTIFICATION_READ_ERROR:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || loadingUser) return;
+
+    loadNotifications();
+
+    const intervalId = window.setInterval(() => {
+      loadNotifications();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [user, loadingUser]);
 
   const activeGroupTitle = useMemo(() => {
     const activeGroup = visibleMenus.find((group) =>
@@ -100,18 +185,102 @@ function BenefitContent({ children }) {
     router.replace("/admin");
   };
 
+
+  const notificationMenuItems = notifications.length > 0 ? notifications.map((item) => ({
+      key: item.id,
+      label: (
+        <button
+          type="button"
+          className="block w-[320px] rounded-xl p-2 text-left hover:bg-slate-50"
+          onClick={async () => {
+            if (!item.is_read) {
+              await markNotificationAsRead(item.id);
+            }
+
+            goTo("/benefit/notifications");
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                item.is_read
+                  ? "bg-slate-100 text-slate-500"
+                  : "bg-emerald-100 text-emerald-600"
+              }`}
+            >
+              <BellOutlined />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate font-semibold text-slate-800">
+                  {item.title || "การแจ้งเตือน"}
+                </span>
+
+                {!item.is_read && (
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                )}
+              </div>
+
+              <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+                {item.message || "-"}
+              </div>
+
+              <div className="mt-1 text-[11px] text-slate-400">
+                {item.created_at
+                  ? new Date(item.created_at).toLocaleString("th-TH")
+                  : "-"}
+              </div>
+            </div>
+          </div>
+        </button>
+      ),
+    }))
+  : [
+      {
+        key: "empty",
+        disabled: true,
+        label: (
+          <div className="w-[320px] py-6">
+            {notificationLoading ? (
+              <div className="flex justify-center">
+                <Spin size="small" />
+              </div>
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="ยังไม่มีการแจ้งเตือน"
+              />
+            )}
+          </div>
+        ),
+      },
+    ];
+
+  notificationMenuItems.push({
+    key: "view-all",
+    label: (
+      <button
+        type="button"
+        className="w-[320px] py-2 text-center font-semibold text-emerald-600"
+        onClick={() => goTo("/benefit/notifications")}
+      >
+        ดูการแจ้งเตือนทั้งหมด
+      </button>
+    ),
+  });
+
+
   const SidebarContent = ({ responsive = false } = {}) => (
     <div className="flex h-full flex-col">
-      <div className="flex h-20 items-center justify-between border-b border-slate-100 px-4">
+      <div className={`flex h-20 items-center border-b border-slate-100 px-4 ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed && (
           <button
             type="button"
             onClick={() => goTo("/benefit")}
             className="flex items-center gap-3 text-left"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-xl text-white shadow-lg shadow-emerald-100">
-              <GiftOutlined />
-            </div>
+
 
             <div>
               <div className="text-lg font-bold text-slate-800">
@@ -124,11 +293,7 @@ function BenefitContent({ children }) {
           </button>
         )}
 
-        {collapsed && !responsive && (
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-xl text-white shadow-lg shadow-emerald-100">
-            <GiftOutlined />
-          </div>
-        )}
+
 
         <Button
           type="text"
@@ -295,12 +460,40 @@ function BenefitContent({ children }) {
           </div>
         </button>
 
-        <Button
-          type="text"
-          shape="circle"
-          icon={<MenuOutlined />}
-          onClick={() => setMobileOpen(true)}
-        />
+        <Space>
+          <Dropdown
+            menu={{
+              items: notificationMenuItems,
+            }}
+            trigger={["click"]}
+            placement="bottomRight"
+            onOpenChange={(open) => {
+              if (open) {
+                loadNotifications();
+              }
+            }}
+          >
+            <Badge
+              count={unreadCount}
+              size="small"
+              overflowCount={99}
+            >
+              <Button
+                type="text"
+                shape="circle"
+                icon={<BellOutlined />}
+                aria-label="การแจ้งเตือน"
+              />
+            </Badge>
+          </Dropdown>
+
+          <Button
+            type="text"
+            shape="circle"
+            icon={<MenuOutlined />}
+            onClick={() => setMobileOpen(true)}
+          />
+        </Space>
       </div>
 
       <aside
@@ -326,7 +519,38 @@ function BenefitContent({ children }) {
         <SidebarContent responsive />
       </Drawer>
 
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1">
+        <div className="sticky top-0 z-30 hidden h-16 items-center justify-end border-b border-slate-200 bg-white/95 px-6 backdrop-blur lg:flex">
+          <Dropdown
+            menu={{
+              items: notificationMenuItems,
+            }}
+            trigger={["click"]}
+            placement="bottomRight"
+            arrow
+            onOpenChange={(open) => {
+              if (open) {
+                loadNotifications();
+              }
+            }}
+          >
+            <Badge
+              count={unreadCount}
+              size="small"
+              overflowCount={99}
+            >
+              <Button
+                type="text"
+                shape="circle"
+                size="large"
+                icon={<BellOutlined className="text-lg" />}
+                aria-label="การแจ้งเตือน"
+              />
+            </Badge>
+          </Dropdown>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }

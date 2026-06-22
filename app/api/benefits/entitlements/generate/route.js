@@ -210,15 +210,18 @@ function isEmployeeMatchedPolicy(employee, policy) {
 }
 
 function buildEntitlementRow({employee,rule,entitlementYear,month,sourceType = "rule",}) {
+  const carryForwardAmount = Number(rule.carry_forward_amount || 0);
+  const baseQuotaAmount = rule.is_unlimited ? null : Number(rule.quota_amount || 0);
+  const finalQuotaAmount = rule.is_unlimited ? null : baseQuotaAmount + carryForwardAmount;
   return {
     employee_id: employee.id,
     benefit_id: rule.benefit_id,
     benefit_rule_id: rule.benefit_rule_id || rule.id || null,
     entitlement_year: entitlementYear,
     entitlement_month: month,
-    quota_amount: rule.is_unlimited ? null : rule.quota_amount,
     used_amount: 0,
-    remaining_amount: rule.is_unlimited ? null : rule.quota_amount,
+    quota_amount: finalQuotaAmount,
+    remaining_amount: finalQuotaAmount,
     quota_unit: rule.quota_unit,
     status: "active",
     updated_at: new Date().toISOString(),
@@ -297,6 +300,9 @@ export async function POST(req) {
         quota_frequency,
         entitlement_period,
         is_unlimited,
+        allow_carry_forward,
+        max_carry_forward_amount,
+        carry_forward_expire_month,
         employee_status_id,
         is_active,
         benefits (
@@ -356,11 +362,67 @@ export async function POST(req) {
       );
     }
 
+    const previousYear = entitlementYear - 1;
+
+    const { data: previousEntitlements, error: previousError } =
+      await supabaseAdmin
+        .from("benefit_entitlements")
+        .select(`
+          employee_id,
+          benefit_id,
+          remaining_amount,
+          entitlement_year,
+          entitlement_month,
+          status
+        `)
+        .eq("entitlement_year", previousYear)
+        .eq("entitlement_month", 0)
+        .eq("status", "active");
+
+    if (previousError) {
+      return NextResponse.json(
+        { success: false, error: previousError.message },
+        { status: 500 }
+      );
+    }
+
+    const previousEntitlementMap = new Map();
+
+    for (const item of previousEntitlements || []) {
+      const key = `${item.employee_id}|${item.benefit_id}`;
+      previousEntitlementMap.set(key, item);
+    }
+
     const rows = [];
+    let totalCarryForwardAmount = 0;
+    let totalCarryForwardRows = 0;
 
     for (const employee of employees || []) {
       for (const rule of rules || []) {
         if (!isEmployeeMatchedRule(employee, rule)) continue;
+
+        let carryForwardAmount = 0;
+
+        if (rule.allow_carry_forward && !rule.is_unlimited) {
+          const key = `${employee.id}|${rule.benefit_id}`;
+          const previous = previousEntitlementMap.get(key);
+
+          const remaining = Number(previous?.remaining_amount || 0);
+          const maxCarry = Number(rule.max_carry_forward_amount || 0);
+
+          carryForwardAmount =
+            maxCarry > 0 ? Math.min(remaining, maxCarry) : remaining;
+
+          if (carryForwardAmount > 0) {
+            totalCarryForwardAmount += carryForwardAmount;
+            totalCarryForwardRows += 1;
+          }
+        }
+
+        const ruleWithCarry = {
+          ...rule,
+          carry_forward_amount: carryForwardAmount,
+        };
 
         const period = rule.entitlement_period || "yearly";
 
@@ -369,7 +431,7 @@ export async function POST(req) {
             rows.push(
               buildEntitlementRow({
                 employee,
-                rule,
+                rule: ruleWithCarry,
                 entitlementYear,
                 month,
                 sourceType: "rule",
@@ -380,7 +442,7 @@ export async function POST(req) {
           rows.push(
             buildEntitlementRow({
               employee,
-              rule,
+              rule: ruleWithCarry,
               entitlementYear,
               month: 0,
               sourceType: "rule",
@@ -400,6 +462,7 @@ export async function POST(req) {
           ...policy,
           id: null,
           entitlement_period: period === "monthly" ? "monthly" : "yearly",
+          carry_forward_amount: 0,
         };
 
         if (period === "monthly") {
@@ -494,6 +557,8 @@ export async function POST(req) {
         prepared: rows.length || 0,
         deduplicated: uniqueRows.length || 0,
         generated: data?.length || 0,
+        carry_forward_rows: totalCarryForwardRows,
+        carry_forward_amount: totalCarryForwardAmount,
       },
     });
 
@@ -507,13 +572,18 @@ export async function POST(req) {
       prepared: rows.length || 0,
       deduplicated: uniqueRows.length || 0,
       generated: data?.length || 0,
+      carry_forward_rows: totalCarryForwardRows,
+      carry_forward_amount: totalCarryForwardAmount,
       data,
     });
   } catch (error) {
     console.error("GENERATE_ENTITLEMENTS_ERROR:", error);
 
     return NextResponse.json(
-      { success: false, error: "Generate Entitlements ไม่สำเร็จ" },
+      {
+        success: false,
+        error: error.message || "Generate Entitlements ไม่สำเร็จ",
+      },
       { status: 500 }
     );
   }

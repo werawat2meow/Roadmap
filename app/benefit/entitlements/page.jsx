@@ -46,13 +46,8 @@ export default function BenefitEntitlementsPage() {
   const canView = hasPermission(user, "benefit.entitlement.view") || hasPermission(user, "benefit.entitlement.manage");
   const canCreate = hasPermission(user, "benefit.entitlement.create") || hasPermission(user, "benefit.entitlement.manage");
   const canUpdate = hasPermission(user, "benefit.entitlement.update") || hasPermission(user, "benefit.entitlement.edit") || hasPermission(user, "benefit.entitlement.manage");
-  const canDelete =
-    hasPermission(user, "benefit.entitlement.delete") ||
-    hasPermission(user, "benefit.entitlement.manage");
-
-  const canGenerate =
-    hasPermission(user, "benefit.entitlement.generate") ||
-    hasPermission(user, "benefit.entitlement.manage");
+  const canDelete = hasPermission(user, "benefit.entitlement.delete") || hasPermission(user, "benefit.entitlement.manage");
+  const canGenerate = hasPermission(user, "benefit.entitlement.generate") || hasPermission(user, "benefit.entitlement.manage");
 
   const loadData = async () => {
     try {

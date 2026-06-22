@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {Card,Col,Row,Statistic,Table,Tag,message,Button,Space,} from "antd";
+import {Card,Col,Row,Statistic,Table,Tag,message,Button,Space,Input,Select,Form,} from "antd";
 import {CheckCircleOutlined,ClockCircleOutlined,CloseCircleOutlined,DollarOutlined,FileTextOutlined,ReloadOutlined,} from "@ant-design/icons";
 import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,LineChart,Line,} from "recharts";
 import {PieChart,Pie,} from "recharts";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
+import dayjs from "dayjs";
 
 export default function BenefitDashboardPage() {
   const { user } = useAuth();
@@ -31,6 +32,11 @@ export default function BenefitDashboardPage() {
   const [usageByDepartment, setUsageByDepartment] = useState([]);
   const [usageByBranch, setUsageByBranch] = useState([]);
 
+  const [year, setYear] = useState(dayjs().year());
+  const [month, setMonth] = useState("");
+  const [benefitId, setBenefitId] = useState("");
+  const [status, setStatus] = useState("");
+  const [benefits, setBenefits] = useState([]);
 
   /*
     ดูภาพรวมคำขอ การใช้สิทธิ์ และสถานะระบบ Benefit
@@ -43,7 +49,14 @@ export default function BenefitDashboardPage() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/benefits/dashboard", {
+      const params = new URLSearchParams();
+
+      if (year) params.append("year", year);
+      if (month) params.append("month", month);
+      if (benefitId) params.append("benefitId", benefitId);
+      if (status) params.append("status", status);
+
+      const res = await fetch(`/api/benefits/dashboard?${params.toString()}`, {
         cache: "no-store",
       });
 
@@ -78,11 +91,45 @@ export default function BenefitDashboardPage() {
     }
   };
 
+  const loadBenefits = async () => {
+    try {
+      const res = await fetch("/api/benefits/master");
+
+      const json = await res.json();
+
+      if (res.ok) {
+        setBenefits(json.data || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleExportDashboard = () => {
+    const params = new URLSearchParams();
+
+    if (year) params.append("dateFrom", `${year}-01-01`);
+    if (year) params.append("dateTo", `${year}-12-31`);
+    if (benefitId) params.append("benefitId", benefitId);
+    if (status) params.append("status", status);
+
+    window.open(
+      `/api/benefits/reports/export?${params.toString()}`,
+      "_blank"
+    );
+  };
+
+  useEffect(() => {
+    if (canView) {
+      loadBenefits();
+    }
+  }, [canView]);
+
   useEffect(() => {
     if (canView) {
       loadDashboard();
     }
-  }, [canView]);
+  }, [canView, year, month, benefitId, status]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -239,6 +286,13 @@ export default function BenefitDashboardPage() {
             </Button>
 
             <Button
+              icon={<FileTextOutlined />}
+              onClick={handleExportDashboard}
+            >
+              Export Dashboard
+            </Button>
+
+            <Button
               type="primary"
               icon={<FileTextOutlined />}
               onClick={() => router.push("/benefit/reports")}
@@ -247,6 +301,151 @@ export default function BenefitDashboardPage() {
             </Button>
           </Space>
         </div>
+
+        <Card className="mb-6">
+          <Form layout="vertical">
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={6}>
+                <Form.Item
+                  label="ปี"
+                  className="mb-0"
+                >
+                  <Input
+                    value={year}
+                    onChange={(e) =>
+                      setYear(e.target.value)
+                    }
+                    placeholder="ระบุปี"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} md={6}>
+                <Form.Item
+                  label="เดือน"
+                  className="mb-0"
+                >
+                  <Select
+                    value={month || undefined}
+                    onChange={(value) => setMonth(value || "")}
+                    allowClear
+                    placeholder="ทุกเดือน"
+                    options={[
+                      {
+                        value: "01",
+                        label: "มกราคม",
+                      },
+                      {
+                        value: "02",
+                        label: "กุมภาพันธ์",
+                      },
+                      {
+                        value: "03",
+                        label: "มีนาคม",
+                      },
+                      {
+                        value: "04",
+                        label: "เมษายน",
+                      },
+                      {
+                        value: "05",
+                        label: "พฤษภาคม",
+                      },
+                      {
+                        value: "06",
+                        label: "มิถุนายน",
+                      },
+                      {
+                        value: "07",
+                        label: "กรกฎาคม",
+                      },
+                      {
+                        value: "08",
+                        label: "สิงหาคม",
+                      },
+                      {
+                        value: "09",
+                        label: "กันยายน",
+                      },
+                      {
+                        value: "10",
+                        label: "ตุลาคม",
+                      },
+                      {
+                        value: "11",
+                        label: "พฤศจิกายน",
+                      },
+                      {
+                        value: "12",
+                        label: "ธันวาคม",
+                      },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} md={6}>
+                <Form.Item
+                  label="สวัสดิการ"
+                  className="mb-0"
+                >
+                  <Select
+                    value={benefitId || undefined}
+                    onChange={(value) => setBenefitId(value || "")}
+                    allowClear
+                    placeholder="ทุกสวัสดิการ"
+                    options={benefits.map(
+                      (item) => ({
+                        value: item.id,
+                        label: `${item.benefit_code} - ${item.benefit_name}`,
+                      })
+                    )}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} md={6}>
+                <Form.Item
+                  label="สถานะ"
+                  className="mb-0"
+                >
+                  <Select
+                    value={status || undefined}
+                    onChange={(value) => setStatus(value || "")}
+                    allowClear
+                    placeholder="ทุกสถานะ"
+                    options={[
+                      {
+                        value: "pending",
+                        label: "Pending",
+                      },
+                      {
+                        value: "in_review",
+                        label: "In Review",
+                      },
+                      {
+                        value: "approved",
+                        label: "Approved",
+                      },
+                      {
+                        value: "rejected",
+                        label: "Rejected",
+                      },
+                      {
+                        value: "cancelled",
+                        label: "Cancelled",
+                      },
+                      {
+                        value: "paid",
+                        label: "Paid",
+                      },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Card>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} lg={6}>

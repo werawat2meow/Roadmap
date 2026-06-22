@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import {Card,Col,Row,Statistic,Table,Tag,message,Button,Space,} from "antd";
 import {CheckCircleOutlined,ClockCircleOutlined,CloseCircleOutlined,DollarOutlined,FileTextOutlined,ReloadOutlined,} from "@ant-design/icons";
+import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,LineChart,Line,} from "recharts";
+import {PieChart,Pie,} from "recharts";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
@@ -314,60 +316,76 @@ export default function BenefitDashboardPage() {
           <Col xs={24} lg={12}>
             <Card
               className="rounded-[24px] shadow-sm"
-              title={<div className="text-lg font-bold">Top Benefit Usage</div>}
+              title={
+                <div className="text-lg font-bold">
+                  Top Benefit Usage
+                </div>
+              }
             >
-              <Table
-                rowKey="benefit_name"
-                loading={loading}
-                dataSource={summaryByBenefit}
-                pagination={false}
-                columns={[
-                  {
-                    title: "Benefit",
-                    dataIndex: "benefit_name",
-                    render: (value) => value || "-",
-                  },
-                  {
-                    title: "Total Amount",
-                    dataIndex: "total_amount",
-                    align: "right",
-                    render: (value) =>
-                      Number(value || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      }),
-                  },
-                ]}
-              />
+              <div style={{ width: "100%", height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summaryByBenefit}>
+                    <CartesianGrid strokeDasharray="3 3" />
+
+                    <XAxis
+                      dataKey="benefit_name"
+                      tick={{ fontSize: 12 }}
+                    />
+
+                    <YAxis />
+
+                    <Tooltip
+                      formatter={(value) =>
+                        Number(value).toLocaleString()
+                      }
+                    />
+
+                    <Bar
+                      dataKey="total_amount"
+                      radius={[8, 8, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
 
           <Col xs={24} lg={12}>
             <Card
               className="rounded-[24px] shadow-sm"
-              title={<div className="text-lg font-bold">Monthly Usage Trend</div>}
+              title={
+                <div className="text-lg font-bold">
+                  Monthly Usage Trend
+                </div>
+              }
             >
-              <Table
-                rowKey="month"
-                loading={loading}
-                dataSource={usageByMonth}
-                pagination={false}
-                columns={[
-                  {
-                    title: "Month",
-                    dataIndex: "month",
-                    render: (value) => value || "-",
-                  },
-                  {
-                    title: "Total Amount",
-                    dataIndex: "total_amount",
-                    align: "right",
-                    render: (value) =>
-                      Number(value || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      }),
-                  },
-                ]}
-              />
+              <div style={{ width: "100%", height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={usageByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" />
+
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fontSize: 12 }}
+                    />
+
+                    <YAxis />
+
+                    <Tooltip
+                      formatter={(value) =>
+                        Number(value).toLocaleString()
+                      }
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="total_amount"
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
         </Row>
@@ -376,31 +394,26 @@ export default function BenefitDashboardPage() {
           <Col xs={24} lg={12}>
             <Card
               className="rounded-[24px] shadow-sm"
-              title={<div className="text-lg font-bold">Status Summary</div>}
+              title={
+                <div className="text-lg font-bold">
+                  Status Summary
+                </div>
+              }
             >
-              <Table
-                rowKey="status"
-                loading={loading}
-                dataSource={summaryByStatus}
-                pagination={false}
-                columns={[
-                  {
-                    title: "Status",
-                    dataIndex: "status",
-                    render: (value) => (
-                      <Tag color={getStatusColor(value)}>
-                        {value || "-"}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: "Total",
-                    dataIndex: "total",
-                    align: "right",
-                    render: (value) => Number(value || 0).toLocaleString(),
-                  },
-                ]}
-              />
+              <div style={{ width: "100%", height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={summaryByStatus}
+                      dataKey="total"
+                      nameKey="status"
+                      outerRadius={120}
+                      label
+                    />
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
 

@@ -92,6 +92,37 @@ function hasPermission(user, permission) {
   );
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "benefit",
+      action_type: actionType,
+      ref_table: "benefits",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_BENEFIT_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -293,6 +324,17 @@ export async function POST(req) {
       );
     }
 
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่มสวัสดิการ: ${data.benefit_code}`,
+      oldData: null,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -361,6 +403,13 @@ export async function PUT(req) {
       );
     }
 
+
+    const { data: oldData } = await supabaseAdmin
+      .from("benefits")
+      .select("*")
+      .eq("id", body.id)
+      .maybeSingle();
+
     const payload = {
       category_id:
         body.category_id || null,
@@ -409,6 +458,16 @@ export async function PUT(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไขสวัสดิการ: ${data.benefit_code}`,
+      oldData,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -465,11 +524,8 @@ export async function DELETE(req) {
       );
     }
 
-    const { searchParams } =
-      new URL(req.url);
-
-    const id =
-      searchParams.get("id");
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json(
@@ -482,11 +538,16 @@ export async function DELETE(req) {
       );
     }
 
-    const { error } =
-      await supabaseAdmin
-        .from("benefits")
-        .delete()
-        .eq("id", id);
+    const { data: oldData } = await supabaseAdmin
+      .from("benefits")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    const { error } = await supabaseAdmin
+      .from("benefits")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       console.error(
@@ -502,6 +563,16 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+    
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบสวัสดิการ: ${oldData?.benefit_code || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

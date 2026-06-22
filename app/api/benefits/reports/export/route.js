@@ -20,6 +20,7 @@ async function getCurrentUser() {
     .select(`
       id,
       role_id,
+      username,
       is_active,
       roles (
         role_code
@@ -56,6 +57,47 @@ async function getCurrentUser() {
 function hasPermission(user, permission) {
   if (user?.roles?.role_code === "SUPER_ADMIN") return true;
   return user?.permissions?.includes(permission) || false;
+}
+
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "report",
+      action_type: actionType,
+
+      ref_table: "benefit_reports",
+      ref_id: refId,
+
+      description,
+
+      old_data: oldData,
+      new_data: newData,
+
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+
+      user_agent:
+        req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error(
+      "CREATE_REPORT_AUDIT_LOG_ERROR:",
+      error
+    );
+  }
 }
 
 export async function GET(req) {
@@ -200,12 +242,42 @@ export async function GET(req) {
       bookType: "xlsx",
     });
 
+    const approvedCount = data?.filter((x) => x.status === "approved").length || 0;
+    const rejectedCount = data?.filter((x) => x.status === "rejected").length || 0;
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "export",
+      description: "Export Benefit Report Excel",
+      oldData: null,
+      newData: {
+        export_type: "xlsx",
+        total_records: rows.length,
+
+        approved_records:
+          approvedCount,
+
+        rejected_records:
+          rejectedCount,
+
+        filters: {
+          dateFrom,
+          dateTo,
+          benefitId,
+          status,
+        },
+      },
+    });
+
+    const exportDate = new Date().toISOString().slice(0, 10);
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="benefit-report.xlsx"`,
+        "Content-Disposition": `attachment; filename="benefit-report-${exportDate}.xlsx"`,
       },
     });
   } catch (error) {

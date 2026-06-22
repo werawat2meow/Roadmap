@@ -72,6 +72,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "rule",
+      action_type: actionType,
+      ref_table: "benefit_rules",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_RULE_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 function toNumberOrNull(value) {
   if (value === "" || value === undefined || value === null) return null;
   return Number(value);
@@ -253,6 +284,16 @@ export async function POST(req) {
       );
     }
 
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่ม Benefit Rule: ${data.id}`,
+      oldData: null,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -297,6 +338,13 @@ export async function PUT(req) {
       );
     }
 
+
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_rules")
+      .select("*")
+      .eq("id", body.id)
+      .maybeSingle();
+
     const payload = buildPayload(body);
 
     const { data, error } = await supabaseAdmin
@@ -314,6 +362,16 @@ export async function PUT(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไข Benefit Rule: ${data.id}`,
+      oldData,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -360,6 +418,12 @@ export async function DELETE(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_rules")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_rules")
       .delete()
@@ -373,6 +437,16 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบ Benefit Rule: ${oldData?.id || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

@@ -19,6 +19,7 @@ async function getCurrentUser() {
     .select(`
       id,
       role_id,
+      username,
       is_active,
       roles (
         role_code,
@@ -56,6 +57,37 @@ async function getCurrentUser() {
 function hasPermission(user, permission) {
   if (user?.roles?.role_code === "SUPER_ADMIN") return true;
   return user?.permissions?.includes(permission) || false;
+}
+
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "running_number",
+      action_type: actionType,
+      ref_table: "benefit_running_numbers",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_RUNNING_AUDIT_LOG_ERROR:", error);
+  }
 }
 
 export async function GET(req) {
@@ -223,6 +255,16 @@ export async function POST(req) {
 
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่มเลขรันเอกสาร: ${data.module_code}/${data.document_type}`,
+      oldData: null,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,

@@ -70,6 +70,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission);
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "workflow",
+      action_type: actionType,
+      ref_table: "benefit_approval_workflows",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_WORKFLOW_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 export async function GET(req) {
   try {
     const user = await getCurrentUser();
@@ -359,6 +390,16 @@ export async function POST(req) {
         }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `สร้าง Workflow: ${data.workflow_name} Step ${data.step_no}`,
+      oldData: null,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,

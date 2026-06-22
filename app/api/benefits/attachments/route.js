@@ -20,6 +20,7 @@ async function getCurrentUser() {
       id,
       employee_id,
       role_id,
+      username,
       is_active,
       roles (
         role_code

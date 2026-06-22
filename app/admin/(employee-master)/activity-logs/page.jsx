@@ -114,6 +114,7 @@ export default function ActivityLogsPage() {
       "positions",
       "employment_types",
       "employee_statuses",
+      "employee_reports",
     ],
     []
   );

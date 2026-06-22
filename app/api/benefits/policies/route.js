@@ -63,6 +63,42 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({req,user,actionType,refId = null,description,oldData = null,newData = null,}) {
+  try {
+    const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+    const userAgent = req.headers.get("user-agent") || null;
+
+    await supabaseAdmin
+      .from("benefit_audit_logs")
+      .insert({
+        module_name: "policy",
+        action_type: actionType,
+
+        ref_table: "benefit_policy_rules",
+        ref_id: refId,
+
+        description,
+
+        old_data: oldData,
+        new_data: newData,
+
+        created_by: user?.id || null,
+        created_by_name:
+          user?.username ||
+          user?.roles?.role_name ||
+          "Unknown",
+
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      });
+  } catch (error) {
+    console.error(
+      "CREATE_AUDIT_LOG_ERROR:",
+      error
+    );
+  }
+}
+
 function canView(user) {
   return (
     hasPermission(user, "benefit.policy.view") ||
@@ -295,6 +331,16 @@ export async function POST(req) {
       );
     }
 
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่ม Policy Rule: ${data.policy_code}`,
+      oldData: null,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       message: "เพิ่ม Policy Rule สำเร็จ",
@@ -337,6 +383,12 @@ export async function PUT(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_policy_rules")
+      .select("*")
+      .eq("id", body.id)
+      .maybeSingle();
+
     const payload = buildPayload(body);
 
     const { data, error } = await supabaseAdmin
@@ -352,6 +404,16 @@ export async function PUT(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไข Policy Rule: ${data.policy_code}`,
+      oldData,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -396,6 +458,12 @@ export async function DELETE(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_policy_rules")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_policy_rules")
       .delete()
@@ -407,6 +475,18 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบ Policy Rule: ${
+        oldData?.policy_code || id
+      }`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

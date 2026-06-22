@@ -29,6 +29,7 @@ const initialForm = {
   unit_id: "",
   position_id: "",
   employee_status_id: "",
+  resignation_date: "",
   employee_photo_url: "",
   status: "active",
   citizen_id: "",
@@ -305,6 +306,7 @@ export default function EmployeesPage() {
       unit_id: employee.unit_id || "",
       position_id: employee.position_id || "",
       employee_status_id: employee.employee_status_id || "",
+      resignation_date: employee.resignation_date || "",
       employee_photo_url: employee.employee_photo_url || "",
       status: employee.status || "active",
       citizen_id: employee.citizen_id || "",
@@ -387,6 +389,7 @@ export default function EmployeesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingEmployee;
+    const selectedStatus = employeeStatuses.find((item) => item.id === form.employee_status_id);
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
       return;
@@ -454,6 +457,11 @@ export default function EmployeesPage() {
 
     if (!form.employee_status_id) {
       swalError("กรุณาเลือกสถานะพนักงาน");
+      return;
+    }
+
+    if (selectedStatus?.status_code === "RESIGNED" && !form.resignation_date) {
+      swalError("กรุณาระบุวันที่ลาออก");
       return;
     }
 
@@ -624,7 +632,7 @@ export default function EmployeesPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหา ชื่อ / รหัสพนักงาน / สาขา / แผนก / ฝ่าย / เลขบัตรประชาชน / Passport / Line ID"
+          placeholder="ค้นหา : ชื่อ / นามสกุล / รหัสพนักงาน / สาขา / แผนก / ฝ่าย / เลขบัตรประชาชน / Passport / Line ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -1355,14 +1363,27 @@ export default function EmployeesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   สถานะพนักงาน
                 </label>
+
                 <select
                   value={form.employee_status_id}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const statusId = e.target.value;
+
+                    const selectedStatus = employeeStatuses.find(
+                      (item) => item.id === statusId
+                    );
+
                     setForm((prev) => ({
                       ...prev,
-                      employee_status_id: e.target.value,
-                    }))
-                  }
+                      employee_status_id: statusId,
+
+                      // ถ้าไม่ใช่ลาออก ให้ล้างวันที่ลาออก
+                      resignation_date:
+                        selectedStatus?.status_code === "RESIGNED"
+                          ? prev.resignation_date
+                          : "",
+                    }));
+                  }}
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="">เลือกสถานะพนักงาน</option>
@@ -1375,7 +1396,33 @@ export default function EmployeesPage() {
                       </option>
                     ))}
                 </select>
+
+                {employeeStatuses.find(
+                  (item) =>
+                    item.id === form.employee_status_id &&
+                    item.status_code === "RESIGNED"
+                ) && (
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium text-red-600">
+                      วันที่ลาออก <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="date"
+                      value={form.resignation_date || ""}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          resignation_date: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-red-300 px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                    />
+                  </div>
+                )}
               </div>
+
+
             </div>
 
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
@@ -1413,4 +1460,3 @@ export default function EmployeesPage() {
     </div>
   );
 }
-

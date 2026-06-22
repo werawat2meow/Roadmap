@@ -8,11 +8,11 @@ export default function RecruitmentPage() {
           <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">
-                Recruitment System
+                 Language Setting
               </h1>
 
               <p className="mt-2 text-slate-500">
-                หน้านี้เป็นหน้าเริ่มต้นของระบบ Recruitment
+                หน้านี้เป็นหน้า setting สำหรับแสดง ภาษาต่างๆ ของหน้ารายละเอียดการรับสมัครงาน
               </p>
             </div>
           </div>

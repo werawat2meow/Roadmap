@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { Job } from "@/app/jobs/types/job";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 
 interface Props {
   job: Job;
 }
 
 export default function JobCard({ job }: Props) {
-  const { locale } = useLanguage();
-
+  
   const salary = job.salary_note
     ? job.salary_note
     : `${job.salary_min?.toLocaleString()} – ${job.salary_max?.toLocaleString()}`;
@@ -25,7 +23,7 @@ export default function JobCard({ job }: Props) {
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-bold leading-snug text-slate-900">
-            {job.position_name}
+            {job.position_name?.trim() || job.job_name }
           </h2>
           {job.urgent && (
             <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200">
@@ -45,7 +43,7 @@ export default function JobCard({ job }: Props) {
         <div className="flex items-center gap-2 text-slate-600">
           <span className="text-base">🏢</span>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">สถานที่</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">สถานที่ทำงาน</p>
             <p className="font-medium text-slate-700">{job.workLocation}</p>
           </div>
         </div>

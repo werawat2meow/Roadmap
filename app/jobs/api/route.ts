@@ -3,22 +3,33 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+
+    const { searchParams } = new URL(request.url);
+
+    const branchId = searchParams.get("branch_id");
+
     const today = new Date().toISOString().split("T")[0];
 
     const { data: openJobs, error: openError } = await supabase
       .from("recruit_job_open")
       .select(`
         id,
+        branch_id,
+        department_id,
+        division_id,
+        unit_id,
         position_id,
         opening_count,
+        positions(position_name),
+        branches(branch_name),
         urgent
       `)
       .eq("status", true)
       .lte("start_date", today)
       .gte("end_date", today);
-
+        
     if (openError) throw openError;
 
     if (!openJobs?.length) {
@@ -26,9 +37,10 @@ export async function GET() {
     }
 
     const positionIds = openJobs.map((j) => j.position_id);
-
+    const branchsIds = [...new Set(openJobs.map((j) => j.branch_id))];
+    
     // job description
-    const { data: descriptions, error: descError } = await supabase
+    let descQuery = supabase
       .from("recruit_job_description")
       .select(`
         positions_id,
@@ -39,6 +51,14 @@ export async function GET() {
       `)
       .in("positions_id", positionIds);
 
+    if (branchId) {
+      descQuery = descQuery.eq("branch_id", branchId);
+    }else{
+      descQuery = descQuery.in("branch_id", branchsIds);
+    }
+
+    const { data: descriptions, error: descError } = await descQuery;
+    
     if (descError) throw descError;
 
     if (!descriptions?.length) {
@@ -66,7 +86,7 @@ export async function GET() {
           .map((d) => d.branch_id)
           .filter(Boolean)
       ),
-    ];
+    ];   
 
     const { data: branches, error: branchError } = await supabase
       .from("branches")
@@ -82,8 +102,9 @@ export async function GET() {
       .map((job) => {
         
         const desc = descriptions.find(
-          (d) => d.positions_id === job.position_id
-        );
+          (d) => d.positions_id === job.position_id &&
+                d.branch_id === job.branch_id
+        );        
 
         // ไม่มี description ไม่แสดง
         if (!desc) return null;
@@ -94,35 +115,22 @@ export async function GET() {
 
         const branch = branches?.find(
           (b) => b.id === desc.branch_id
-        );
-
+        );        
         return {
           id: job.id,
-
-          job_to_language:
-            lang?.job_to_language ?? {},
-
-          branch_name:
-            branch?.branch_name ?? "",
-
-          workLocation:
-            desc.workLocation ?? "",
-
-          salary_min:
-            desc.salary_min,
-
-          salary_max:
-            desc.salary_max,
-
-          opening_count:
-            job.opening_count,
-
-          urgent:
-            job.urgent,
+          branch_id: desc.branch_id,
+          job_name:job?.positions?.position_name ?? "",
+          job_to_language:lang?.job_to_language ?? {},
+          branch_name:job?.branches?.branch_name ?? "",
+          workLocation:desc.workLocation ?? "",
+          salary_min:desc.salary_min,
+          salary_max:desc.salary_max,
+          opening_count:job.opening_count,
+          urgent:job.urgent,
         };
       })
       .filter(Boolean);
-      
+
     return NextResponse.json(jobs);
   } catch (error) {
     console.error(error);

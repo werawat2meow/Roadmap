@@ -8,6 +8,12 @@ export default function MyBenefitRightsPage() {
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState(null);
   const [rights, setRights] = useState([]);
+  const [summary, setSummary] = useState({
+    totalQuota: 0,
+    totalCarryForward: 0,
+    totalUsed: 0,
+    totalRemaining: 0,
+  });
 
   const getBenefitKey = (item) => {
     return (

@@ -15,8 +15,16 @@ const calculateServiceYears = (hireDate) => {
   );
 };
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+
+    const search = searchParams.get("search")?.trim() || "";
+    const status = searchParams.get("status")?.trim() || "";
+    const branch = searchParams.get("branch_id")?.trim() || "";
+    const department = searchParams.get("department_id")?.trim() || "";
+    const division = searchParams.get("division_id")?.trim() || "";
+    const unit = searchParams.get("unit_id")?.trim() || "";
     const branchSummary = {};
     const departmentSummary = {};
     const divisionSummary = {};

@@ -209,25 +209,42 @@ function isEmployeeMatchedPolicy(employee, policy) {
   return true;
 }
 
-function buildEntitlementRow({employee,rule,entitlementYear,month,sourceType = "rule",}) {
-  const carryForwardAmount = Number(rule.carry_forward_amount || 0);
-  const baseQuotaAmount = rule.is_unlimited ? null : Number(rule.quota_amount || 0);
-  const finalQuotaAmount = rule.is_unlimited ? null : baseQuotaAmount + carryForwardAmount;
+function buildEntitlementRow({
+  employee,
+  rule,
+  entitlementYear,
+  month,
+  sourceType = "rule",
+}) {
+  const carryForwardAmount = Number(
+    rule?.carry_forward_amount || 0
+  );
+
+  const baseQuotaAmount = Number(
+    rule?.quota_amount || 0
+  );
+
+  const finalQuotaAmount = rule?.is_unlimited
+    ? null
+    : baseQuotaAmount + carryForwardAmount;
+
   return {
     employee_id: employee.id,
     benefit_id: rule.benefit_id,
-    benefit_rule_id: rule.benefit_rule_id || rule.id || null,
-    entitlement_year: entitlementYear,
-    entitlement_month: month,
-    used_amount: 0,
-    quota_amount: finalQuotaAmount,
-    remaining_amount: finalQuotaAmount,
-    quota_unit: rule.quota_unit,
-    status: "active",
-    updated_at: new Date().toISOString(),
 
+    benefit_rule_id: sourceType === "rule" ? rule.id || null : null,
+    entitlement_year: entitlementYear,
+    entitlement_month: month || 0,
+    quota_amount: finalQuotaAmount,
+    carry_forward_amount: carryForwardAmount,
+    used_amount: 0,
+    remaining_amount: finalQuotaAmount,
+    quota_unit: rule.quota_unit || null,
+    status: "active",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     source_type: sourceType,
-    priority: rule.priority || 100,
+    priority: Number(rule.priority || 100),
   };
 }
 

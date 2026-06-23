@@ -80,6 +80,7 @@ function toNumberOrNull(value) {
 function buildPayload(body) {
   const quotaAmount = toNumberOrNull(body.quota_amount) || 0;
   const usedAmount = toNumberOrNull(body.used_amount) || 0;
+  const carryForwardAmount = toNumberOrNull(body.carry_forward_amount) || 0;
 
   const remainingAmount =
     body.remaining_amount !== undefined && body.remaining_amount !== null && body.remaining_amount !== ""
@@ -92,6 +93,7 @@ function buildPayload(body) {
     entitlement_year: Number(body.entitlement_year || new Date().getFullYear()),
 
     quota_amount: quotaAmount,
+    carry_forward_amount: carryForwardAmount,
     used_amount: usedAmount,
     remaining_amount: remainingAmount,
     quota_unit: body.quota_unit || null,
@@ -132,6 +134,7 @@ export async function GET() {
         benefit_id,
         entitlement_year,
         quota_amount,
+        carry_forward_amount,
         used_amount,
         remaining_amount,
         quota_unit,

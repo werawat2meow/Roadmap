@@ -60,6 +60,7 @@ export default function EmployeeReportsPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
   const canView = hasPermission(user, "ems.employee_reports.view");
+  const canExportreport = hasPermission(user, "ems.employee_reports.export");
 
   useEffect(() => {
     if (loadingUser) return;
@@ -425,6 +426,22 @@ export default function EmployeeReportsPage() {
     ...new Set(employees.map((x) => x.gender).filter(Boolean)),
   ];
 
+  const getNationalityLabel = (value) => {
+    switch (value?.toLowerCase()) {
+      case "thai":
+        return "ไทย";
+
+      case "myanmar":
+        return "เมียนมา";
+
+      case "non_b":
+        return "ต่างชาติ (Non-B)";
+
+      default:
+        return value;
+    }
+  };
+
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
@@ -447,20 +464,24 @@ export default function EmployeeReportsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-700"
-            >
-              <DownloadOutlined />
-              Export Excel
-            </button>
+            {canExportreport && (
+              <>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  <DownloadOutlined />
+                  Export Excel
+                </button>
 
-            <button
-              onClick={handleResetFilters}
-              className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm hover:bg-slate-50"
-            >
-              ล้างตัวกรอง
-            </button>
+                <button
+                  onClick={handleResetFilters}
+                  className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm hover:bg-slate-50"
+                >
+                  ล้างตัวกรอง
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -611,7 +632,7 @@ export default function EmployeeReportsPage() {
             <option value="">ทุกสัญชาติ</option>
             {nationalityOptions.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {getNationalityLabel(item)}
               </option>
             ))}
           </select>

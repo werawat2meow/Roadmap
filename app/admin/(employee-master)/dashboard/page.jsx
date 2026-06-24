@@ -69,6 +69,10 @@ export default function AdminPage() {
   const { user, loadingUser } = useAuth();
 
   const canViewDashboard = hasPermission(user, "ems.dashboard.view");
+  const canViewEmployees = hasPermission(user, "ems.employees.view");
+  const canViewUsers = hasPermission(user,"access.user_accounts.view");
+  const canViewManpower = hasPermission(user,"ems.manpower.view");
+  const canExportDashboard = hasPermission(user, "ems.dashboard.export");
 
   const [dashboard, setDashboard] = useState({
     employees: 0,
@@ -316,31 +320,38 @@ export default function AdminPage() {
                 </Text>
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Button
-                    type="primary"
-                    size="large"
-                    className="!h-[50px] !rounded-2xl !border-0 !bg-sky-500 !px-6 !font-medium hover:!bg-sky-600"
-                    onClick={() => router.push("/admin/employees")}
-                  >
-                    ไปหน้าพนักงาน
-                  </Button>
+                  {canViewEmployees && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      className="!h-[50px] !rounded-2xl !border-0 !bg-sky-500 !px-6 !font-medium hover:!bg-sky-600"
+                      onClick={() => router.push("/admin/employees")}
+                    >
+                      ไปหน้าพนักงาน
+                    </Button>
+                  )}
 
-                  <Button
-                    size="large"
-                    className="!h-[50px] !rounded-2xl !border-slate-200 !bg-white !px-6 !text-slate-700 shadow-sm hover:!border-sky-200 hover:!text-sky-600"
-                    onClick={() => router.push("/admin/user-accounts")}
-                  >
-                    จัดการผู้ใช้งาน
-                  </Button>
+                  {canViewUsers && (
+                    <Button
+                      size="large"
+                      className="!h-[50px] !rounded-2xl !border-slate-200 !bg-white !px-6 !text-slate-700 shadow-sm hover:!border-sky-200 hover:!text-sky-600"
+                      onClick={() => router.push("/admin/user-accounts")}
+                    >
+                      จัดการผู้ใช้งาน
+                    </Button>
+                  )}
 
-                  <Button
-                    size="large"
-                    className="!h-[50px] !rounded-2xl !border-slate-200 !bg-white !px-6 !text-slate-700 shadow-sm hover:!border-sky-200 hover:!text-sky-600"
-                    onClick={() => router.push("/admin/manpower")}
-                  >
-                    ไปหน้ากำลังคน
-                  </Button>
+                  {canViewManpower && (
+                    <Button
+                      size="large"
+                      className="!h-[50px] !rounded-2xl !border-slate-200 !bg-white !px-6 !text-slate-700 shadow-sm hover:!border-sky-200 hover:!text-sky-600"
+                      onClick={() => router.push("/admin/manpower")}
+                    >
+                      ไปหน้ากำลังคน
+                    </Button>
+                  )}
 
+                  {canExportDashboard && (
                   <a
                     href="/api/admin/dashboard/export"
                     className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
@@ -348,6 +359,7 @@ export default function AdminPage() {
                     <DownloadOutlined />
                     Export Excel
                   </a>
+                  )}
 
                 </div>
               </div>

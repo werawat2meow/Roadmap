@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
-import { ChevronRight, Users, Target, ClipboardCheck, TrendingUp } from 'lucide-react';
+// import React from 'react';
+import { Users, Target, ClipboardCheck, TrendingUp } from 'lucide-react';
 import StatCard from './components/StatCard';
 import EvaluationChart from './components/EvaluationChart';
 import RecentEvaluations from './components/RecentEvaluations';
-import { isHoliday } from '../../leave-system/src/lib/leave-utils';
+// import { isHoliday } from '../../leave-system/src/lib/leave-utils';
 
 // Mock data for Stat Cards
 const stats = [

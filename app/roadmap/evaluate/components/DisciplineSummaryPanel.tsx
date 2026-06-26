@@ -17,52 +17,188 @@ export default function DisciplineSummaryPanel() {
             <span className="h-2 w-2 rounded-full bg-blue-600" />
             ข้อมูลสาย / Late Data
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-600 pl-4">
-            <div>เดือนที่ 1: - ครั้ง รวม - นาที</div>
-            <div>เดือนที่ 2: - ครั้ง รวม - นาที</div>
-            <div>เดือนที่ 3: - ครั้ง รวม - นาที</div>
-            <div>ช่วงต่อโปร เดือนที่ 1: - ครั้ง รวม - นาที</div>
-            <div className="md:col-span-2">ช่วงต่อโปร เดือนที่ 2: - ครั้ง รวม - นาที</div>
+          <div className="space-y-6 text-sm text-slate-600">
+            {/* กลุ่มที่ 1: ช่วงโปรโมชันปกติ (3 เดือนแรก) */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((month) => (
+                <div key={month} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col justify-between gap-2">
+                  <span className="font-medium text-slate-700">เดือนที่ {month}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
+                      <span className="text-xs text-slate-500 shrink-0">ครั้ง</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
+                      <span className="text-xs text-slate-500 shrink-0">นาที</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* เส้นคั่นบางๆ แบ่งกลุ่ม */}
+            <div className="border-t border-dashed border-slate-200" />
+
+            {/* กลุ่มที่ 2: ช่วงต่อโปรโมชัน */}
+            <div>
+              <span className="inline-block mb-3 font-medium text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded text-xs border border-amber-200">
+                กรณีขยายเวลาทดลองงาน (ต่อโปร)
+              </span>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2].map((month) => (
+                  <div key={month} className="bg-amber-50/30 p-3 rounded-lg border border-amber-100/70 flex flex-col justify-between gap-2">
+                    <span className="font-medium text-slate-700">ช่วงต่อโปร เดือนที่ {month}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
+                        <span className="text-xs text-slate-500 shrink-0">ครั้ง</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
+                        <span className="text-xs text-slate-500 shrink-0">นาที</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ส่วนที่ 2: การ์ดตารางการลงโทษ / Discipline */}
-      <div className="overflow-hidden rounded-[16px] border border-blue-200 bg-white shadow-sm">
+      <div>
+  {/* 1. แสดงผลแบบ CARD LAYOUT (เฉพาะบนจอมือถือขนาดเล็ก sm:hidden) */}
+  <div className="block sm:hidden space-y-3">
+    {[
+      { code: 'ว.91', score: '-5', unit: 'ครั้ง' },
+      { code: 'ว.92', score: '-10', unit: 'ครั้ง' },
+      { code: 'ว.93', score: '-15', unit: 'ครั้ง' },
+      { code: 'ว.94', score: '-100', unit: 'ครั้ง' },
+      { code: 'Warning 1', score: '-25', unit: 'ฉบับ' },
+      { code: 'Warning 2', score: '-50', unit: 'ฉบับ' },
+      { code: 'Last Warning', score: '-100', unit: 'ฉบับ' },
+      { code: 'ลาป่วย / ลากิจ', score: '-1', unit: 'วัน' },
+    ].map((item, index) => (
+      <div key={index} className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm space-y-3">
+        {/* หัวข้อและการหักคะแนน */}
+        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+          <span className="font-semibold text-slate-800">{item.code}</span>
+          <span className="text-xs font-medium text-rose-500 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+            หัก {item.score} คะแนน
+          </span>
+        </div>
+        
+        {/* ช่องกรอกข้อมูล */}
+        <div className="grid grid-cols-1 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 shrink-0 w-16">จำนวน:</span>
+            <input 
+              type="number" 
+              placeholder="0" 
+              min="0"
+              className="w-20 rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none"
+            />
+            <span className="text-slate-500 text-xs">{item.unit}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 shrink-0 w-16">หัวข้อ:</span>
+            <input 
+              type="text" 
+              placeholder="ระบุรายละเอียด..." 
+              className="w-full rounded border border-slate-300 px-2 py-1 text-left text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+    ))}
+    
+    {/* สรุปคะแนนท้ายการ์ดบนมือถือ */}
+      <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 flex justify-between items-center font-semibold text-blue-900">
+        <span>รวมคะแนนระเบียบวินัย</span>
+        <span className="text-lg font-bold text-blue-700">0</span>
+      </div>
+    </div>
+
+  {/* 2. แสดงผลแบบ TABLE LAYOUT เดิม (จะแสดงเมื่อจอใหญ่ขึ้น sm:block) */}
+      <div className="hidden sm:block overflow-hidden rounded-[16px] border border-blue-200 bg-white shadow-sm">
         <table className="min-w-full text-sm text-center">
           <thead>
             <tr className="bg-blue-600 text-white font-medium">
-              <th className="px-5 py-2.5 text-left w-[50%]">การลงโทษ / Discipline</th>
-              <th className="px-5 py-2.5 w-[16%]">จำนวนครั้ง</th>
-              <th className="px-5 py-2.5 w-[16%]">หักคะแนน</th>
-              <th className="px-5 py-2.5 text-right w-[18%] pr-6">คะแนนที่หัก</th>
+              <th className="px-5 py-3 text-left w-[60%]">การลงโทษ / Discipline</th>
+              <th className="px-5 py-3 w-[15%]">จำนวนครั้ง</th>
+              <th className="px-5 py-3 w-[10%]">หักคะแนน</th>
+              <th className="px-5 py-3 text-right w-[15%] pr-6">คะแนนที่หัก</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-blue-50 bg-white text-slate-700 [&>tr:nth-child(even)]:bg-[#eef4ff]">
             {[
-              ['ว.91 : - ครั้ง หัวข้อ : -', '-', '-5'],
-              ['ว.92 : - ครั้ง หัวข้อ : -', '-', '-10'],
-              ['ว.93 : - ครั้ง หัวข้อ : -', '-', '-15'],
-              ['ว.94 : - ครั้ง หัวข้อ : -', '-', '-100'],
-              ['Warning 1 : 1 ฉบับ หัวข้อ : -', '-', '-25'],
-              ['Warning 2 : - ฉบับ หัวข้อ : -', '-', '-50'],
-              ['Last Warning : 1 ฉบับ หัวข้อ : -', '-', '-100'],
-              ['ลาป่วย : -วัน / ลากิจ : - วัน', '-', '-1'],
-            ].map(([title, count, score], index) => (
-              <tr key={index}>
-                <td className="px-5 py-2.5 text-left font-light text-slate-600">{title}</td>
-                <td className="px-5 py-2.5">{count}</td>
-                <td className="px-5 py-2.5 font-medium text-rose-500">{score}</td>
-                <td className="px-5 py-2.5 text-right pr-6 font-semibold">0</td>
+              { code: 'ว.91', score: '-5', unit: 'ครั้ง' },
+              { code: 'ว.92', score: '-10', unit: 'ครั้ง' },
+              { code: 'ว.93', score: '-15', unit: 'ครั้ง' },
+              { code: 'ว.94', score: '-100', unit: 'ครั้ง' },
+              { code: 'Warning 1', score: '-25', unit: 'ฉบับ' },
+              { code: 'Warning 2', score: '-50', unit: 'ฉบับ' },
+              { code: 'Last Warning', score: '-100', unit: 'ฉบับ' },
+              { code: 'ลาป่วย / ลากิจ', score: '-1', unit: 'วัน' },
+            ].map((item, index) => (
+              <tr key={index} className="transition-colors hover:bg-blue-50/50">
+                <td className="px-5 py-3 text-left font-light text-slate-600">
+                  <div className="grid grid-cols-[110px_85px_25px_1fr] items-center gap-x-2 text-sm w-full">
+                    {/* ส่วนที่ 1: ชื่อรหัส */}
+                    <span className="font-medium text-slate-700 truncate">{item.code} :</span>
+                    
+                    {/* ส่วนที่ 2: ช่องกรอกจำนวน */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input type="number" placeholder="0" min="0" className="w-12 rounded border border-slate-300 px-1 py-0.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner" />
+                      <span className="text-slate-500 text-xs">{item.unit}</span>
+                    </div>
+
+                    {/* ส่วนที่ 3: เส้นกั้นกลาง */}
+                    <span className="text-slate-300 text-center">|</span>
+
+                    {/* ส่วนที่ 4: ช่องกรอกหัวข้อขนาดยาว (เพิ่ม w-full คลุมช่อง input ให้ยืดสุดตัว) */}
+                    <div className="flex items-center gap-1.5 w-full">
+                      <span className="text-slate-500 shrink-0">หัวข้อ :</span>
+                      <input 
+                        type="text" 
+                        placeholder="ระบุรายละเอียดการลงโทษ..." 
+                        className="w-full flex-1 rounded border border-slate-300 px-2 py-0.5 text-left text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner font-light" 
+                      />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex items-center justify-center pl-7">
+                    <div className="flex items-center gap-1.5 w-[100px]">
+                      <input type="number" placeholder="0" min="0" className="w-full rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none bg-white font-medium transition-all shadow-inner" />
+                      <span className="text-xs text-slate-400 shrink-0 w-[30px] text-left">{item.unit}</span>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex items-center justify-center gap-1 mx-auto max-w-[85px]">
+                    <input 
+                      type="number" 
+                      defaultValue={item.score} // นำค่าคะแนนติดลบเดิมจาก Array มาตั้งเป็นค่าเริ่มต้น
+                      placeholder="0"
+                      className="w-full rounded border border-rose-200 px-1.5 py-0.5 text-center text-sm font-medium text-rose-600 focus:border-rose-500 focus:outline-none bg-rose-50/20 shadow-inner transition-all"
+                    />
+                  </div>
+                </td>
+                <td className="px-5 py-3 text-right pr-6 font-semibold text-rose-500">0</td>
               </tr>
             ))}
-            <tr className="bg-blue-50 font-semibold text-blue-900 border-t border-blue-200">
-              <td colSpan={3} className="px-5 py-3 text-center">รวมคะแนนระเบียบวินัย</td>
-              <td className="px-5 py-3 text-right pr-6 font-bold text-blue-700">0</td>
+            <tr className="bg-blue-50/80 font-semibold text-blue-900 border-t border-blue-200">
+              <td colSpan={3} className="px-5 py-3.5 text-center font-medium tracking-wide">รวมคะแนนระเบียบวินัย</td>
+              <td className="px-5 py-3.5 text-right pr-6 font-bold text-rose-500 text-base">0</td>
             </tr>
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* ส่วนที่ 3: สรุปคะแนน และ ความคาดหวังวินัย */}
       <div className="grid gap-6 md:grid-cols-2">

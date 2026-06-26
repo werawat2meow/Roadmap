@@ -20,9 +20,9 @@ export default function EmployeeInfoCard() {
             {/* ... (ส่วน Middle เหมือนเดิม) ... */}
             <div className="text-sm text-gray-600 grid grid-cols-4 gap-x-6 gap-y-2 flex-grow mx-8">
                 <span className="text-gray-500">Employee ID:</span><span className="font-semibold text-gray-800">50096</span>
-                <span className="text-gray-500">Position:</span><span className="font-semibold text-gray-800">Hostess</span>
+                <span className="text-gray-500">Position:</span><span className="font-semibold text-gray-800">Web Developer</span>
                 <span className="text-gray-500">Start Date:</span><span className="font-semibold text-gray-800">21-01-2025</span>
-                <span className="text-gray-500">Level:</span><span className="font-semibold text-gray-800">P3</span>
+                <span className="text-gray-500">Level:</span><span className="font-semibold text-gray-800">P6</span>
                 <span className="text-gray-500">Company:</span><span className="font-semibold text-gray-800">Your Company</span>
             </div>
 

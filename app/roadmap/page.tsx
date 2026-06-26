@@ -21,13 +21,9 @@ export default function DashboardPage() {
   return (
     <div className="p-4 md:p-8 space-y-8">
       {/* Header */}
-      <div>
-        <div className="hidden md:flex items-center text-sm text-gray-500 mb-2">
-          <span>Roadmap</span>
-          <ChevronRight className="h-4 w-4 mx-1" />
-          <span className="font-semibold text-gray-700">Dashboard</span>
-        </div>
-        <h1 className="text-3xl md:text-4xl font-serif text-gray-800">Dashboard</h1>
+      <div className="space-y-2">
+          <h1 className="text-4xl font-black text-slate-900">Dashboard</h1>
+          <p className="mt-2 text-sm text-slate-700">ภาพรวมผลการประเมินพนักงานที่ดำเนินการเสร็จสิ้นแล้ว</p>
       </div>
 
       {/* Stat Cards Grid */}

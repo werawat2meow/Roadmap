@@ -5,7 +5,7 @@ type Props = {
   onChange: (tab: string) => void;
 };
 
-const tabs = ['ทั้งหมด', 'Company', 'Department', 'Expectations'];
+const tabs = ['ทั้งหมด', 'Company', 'Department', 'Expectations', 'สิทธิ์การเข้าถึง'];
 
 export default function SettingsTabs({ activeTab, onChange }: Props) {
   return (

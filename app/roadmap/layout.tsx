@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import { Menu } from 'lucide-react';
+import RoadmapHelpWidget from './components/RoadmapHelpWidget';
 
 export default function RoadmapLayout({ children }: { children: React.ReactNode }) {
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
@@ -55,6 +56,7 @@ export default function RoadmapLayout({ children }: { children: React.ReactNode 
         {/* Content */}
         <main className="flex-1">
           {children}
+          <RoadmapHelpWidget />
         </main>
       </div>
     </div>

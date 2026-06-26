@@ -1,5 +1,4 @@
 import EvaluationSection from './EvaluationSection';
-import EvaluationSummaryPanel from './EvaluationSummaryPanel';
 import { Target, Users, Gem } from 'lucide-react';
 
 const kpiTargets = {
@@ -55,7 +54,6 @@ export default function PerformanceForm() {
         icon={<Gem size={20} />}
         {...coreValues}
       />
-      <EvaluationSummaryPanel />
     </div>
   );
 }

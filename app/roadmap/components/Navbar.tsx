@@ -2,15 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { GanttChartSquare, LayoutDashboard, BarChart3, Settings, ChevronLeft, Users, ArrowLeftSquare } from 'lucide-react';
+import { GanttChartSquare, LayoutDashboard, BarChart3, ClipboardCheck, Crown, Banknote, Settings, ChevronLeft, Users, ArrowLeftSquare } from 'lucide-react';
 
 // ... (menuItems and user constants remain the same)
 const menuItems = [
   { name: 'Dashboard', href: '/roadmap', icon: LayoutDashboard },
   { name: 'Employee', href: '/roadmap/employee', icon: Users },
-  { name: 'Evaluate', href: '/roadmap/evaluate', icon: GanttChartSquare },
-    { name: 'Settings', href: '/roadmap/settings', icon: Settings },
+  { name: 'Evaluate HR', href: '/roadmap/evaluate', icon: GanttChartSquare },
+  { name: 'Evaluate MGR', href: '/roadmap/evaluatemgr', icon: ClipboardCheck },
   { name: 'Reports', href: '/roadmap/reports', icon: BarChart3 },
+  { name: 'Executive', href: '/roadmap/executive', icon: Crown },
+  { name: 'Send Account', href: '/roadmap/payroll', icon: Banknote },
+  { name: 'Settings', href: '/roadmap/settings', icon: Settings },
   { name: 'Main Website', href: '/admin', icon: ArrowLeftSquare },
 ];
 const user = { name: 'Super Admin', role: 'Super Admin', avatar: 'SA' };
@@ -36,7 +39,7 @@ export default function Navbar({ isCollapsed, toggleSidebar, onLinkClick }: Navb
         {/* Show full logo on mobile overlay and expanded desktop */}
         {!isCollapsed && <h1 className="text-2xl font-bold text-white ml-2">Roadmap</h1>}
         {/* Show small logo only on collapsed desktop */}
-        {isCollapsed && <div className="hidden md:block p-2 font-bold bg-gray-700 rounded-md">H</div>}
+        {isCollapsed && <div className="hidden md:block p-2 font-bold bg-gray-700 rounded-md">R</div>}
       </div>
 
       {/* --- Collapse Button (Desktop Only) --- */}
@@ -52,22 +55,27 @@ export default function Navbar({ isCollapsed, toggleSidebar, onLinkClick }: Navb
       {/* --- Navigation Links --- */}
       <nav className="grow px-3 pt-4">
         <ul>
-          {menuItems.map((item) => (
-            <li key={item.name} onClick={onLinkClick}>
-              <Link href={item.href} title={isCollapsed ? item.name : ''}>
-                <span
-                  className={`flex items-center px-3 py-3 my-1 rounded-lg transition-colors
-                    ${pathname === item.href ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}
-                    ${pathname === '/' && item.href === '/' ? 'bg-gray-800 text-white' : ''}
-                    ${isCollapsed ? 'justify-center' : ''}
-                  `}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {!isCollapsed && <span className="ml-3">{item.name}</span>}
-                </span>
-              </Link>
-            </li>
-          ))}
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href || (pathname === '/' && item.href === '/');
+            return (
+              <li key={item.name} onClick={onLinkClick} className="relative">
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-md z-10" />
+                )}
+                <Link href={item.href} title={isCollapsed ? item.name : ''}>
+                  <span
+                    className={`flex items-center py-3 my-1 rounded-lg transition-colors
+                      ${isCollapsed ? 'justify-center px-3' : 'pl-6 pr-3'} {/* 🛠️ แก้ไขบรรทัดนี้เพื่อดันไอคอนหลบขีดส้มครับ */}
+                      ${isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}
+                    `}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 

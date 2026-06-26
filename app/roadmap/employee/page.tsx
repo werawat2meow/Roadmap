@@ -34,11 +34,12 @@ export default function EmployeePage() {
   return (
     <div className="p-4 md:p-8">
       {/* ... (Breadcrumbs and Header) ... */}
-      <div className="hidden md:flex items-center text-sm text-gray-500 mb-6">
-        <span>Roadmap</span><ChevronRight className="h-4 w-4 mx-1" /><span>Employees</span>
+      <div className="space-y-2">
+          <h1 className="text-4xl font-black text-slate-900">Employee</h1>
+          <p className="mt-2 text-sm text-slate-700">รายชื่อพนักงานที่ต้องการประเมิน</p>
       </div>
 
-      <div className="mb-6 text-gray-500">
+      <div className="mb-6 mt-2 text-gray-500">
         {/* เรียกใช้ SearchBar พร้อมส่ง props ที่ถูกต้อง */}
         <SearchBar
           placeholder="Search employees..."

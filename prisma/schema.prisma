@@ -3,7 +3,115 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+}
+
+model RmUserAccess {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuPermissions RmUserMenuPermission[]
+
+  @@map("rm_user_access")
+}
+
+model RmUserMenuPermission {
+  id           String @id @default(uuid()) @db.Uuid
+  userAccessId String @db.Uuid
+  menuName     String
+
+  userAccess RmUserAccess @relation(fields: [userAccessId], references: [id])
+
+  @@map("rm_user_menu_permissions")
+}
+
+model RmEvaluationType {
+  id        String  @id @default(uuid()) @db.Uuid
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  categories  RmCategory[]
+  evaluations RmEvaluation[]
+
+  @@map("rm_evaluation_types")
+}
+
+model RmCategory {
+  id               String   @id @default(uuid()) @db.Uuid
+  title            String
+  evaluationTypeId String   @db.Uuid
+  level            String
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  evaluationType RmEvaluationType @relation(fields: [evaluationTypeId], references: [id])
+  items          RmCategoryItem[]
+
+  @@map("rm_categories")
+}
+
+model RmCategoryItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @db.Uuid
+  topic      String
+  weight     Int
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  category RmCategory          @relation(fields: [categoryId], references: [id])
+  scores   RmEvaluationScore[]
+
+  @@map("rm_category_items")
+}
+
+model RmEvaluation {
+  id                   String    @id @default(uuid()) @db.Uuid
+  employeeId           String    @db.Uuid
+  evaluatorId          String    @db.Uuid
+  evaluationTypeId     String    @db.Uuid
+  status               String    @default("Draft")
+  quarter              String?
+  companyScore         Float?
+  departmentScore      Float?
+  expectationScore     Float?
+  totalScore           Float?
+  grade                String?
+  currentSalary        Float?
+  newSalary            Float?
+  newDesignation       String?
+  newLevel             String?
+  managerComment       String?
+  employeeAcknowledged Boolean   @default(false)
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  evaluationType RmEvaluationType    @relation(fields: [evaluationTypeId], references: [id])
+  scores         RmEvaluationScore[]
+
+  @@map("rm_evaluations")
+}
+
+model RmEvaluationScore {
+  id             String  @id @default(uuid()) @db.Uuid
+  evaluationId   String  @db.Uuid
+  categoryItemId String  @db.Uuid
+  isIncluded     Boolean @default(true)
+  score          Int
+  remark         String?
+
+  evaluation   RmEvaluation   @relation(fields: [evaluationId], references: [id])
+  categoryItem RmCategoryItem @relation(fields: [categoryItemId], references: [id])
+
+  @@unique([evaluationId, categoryItemId])
+  @@map("rm_evaluation_scores")
 }

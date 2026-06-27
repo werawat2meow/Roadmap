@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import SettingsHeader from './components/SettingsHeader';
 import SettingsTabs from './components/SettingsTabs';
 import CategoryCard from './components/CategoryCard';
@@ -23,50 +23,30 @@ const initialCategories = [
 const menuOptions = [
   'Dashboard',
   'Employee',
-  'Evaluate',
-  'Settings',
+  'Evaluate HR',
+  'Evaluate MGR',
   'Reports',
   'Executive',
+  'Send Account',
+  'Settings',
 ];
 
 type User = {
   id: string;
+  accessId?: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Staff' | 'ยังไม่กำหนด';
+  role: 'Admin' | 'Manager' | 'Executive' | 'ยังไม่กำหนด';
   menus: string[];
 };
-
-const initialUsers: User[] = [
-  {
-    id: 'user-1',
-    name: 'ทดสอบ เว็บไซต์1',
-    email: 'todsop@gmail.com',
-    role: 'Manager',
-    menus: ['Dashboard', 'Employee', 'Evaluate', 'Settings', 'Reports', 'Executive'],
-  },
-  {
-    id: 'user-2',
-    name: 'ทดสอบ เว็บไซต์2',
-    email: 'todsop2@gmail.com',
-    role: 'Staff',
-    menus: ['Dashboard', 'Employee'],
-  },
-  {
-    id: 'user-3',
-    name: 'ทดสอบ เว็บไซต์3',
-    email: 'todsop3@gmail.com',
-    role: 'Admin',
-    menus: menuOptions,
-  },
-];
 
 export default function SettingsPage() {
   const [tab, setTab] = useState('ทั้งหมด');
   const [categories, setCategories] = useState(initialCategories);
   const [modalOpen, setModalOpen] = useState(false);
-  const [users, setUsers] = useState(initialUsers);
-  const [selectedUserId, setSelectedUserId] = useState(initialUsers[0].id);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
   const visibleCategories = useMemo(
     () =>
@@ -76,11 +56,105 @@ export default function SettingsPage() {
     [tab, categories]
   );
 
-  const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0];
+  const selectedUser =
+    users.find((user) => user.id === selectedUserId) ??
+    users[0] ??
+    { id: '', name: '', email: '', role: 'ยังไม่กำหนด', menus: [] };
 
-  const handleUpdateUser = (updatedUser: typeof initialUsers[number]) => {
-    setUsers((prev) => prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      const hasValidAccessId =
+      typeof updatedUser.accessId === 'string' &&
+      updatedUser.accessId.length > 0 &&
+      updatedUser.accessId !== 'undefined';
+
+    const url = hasValidAccessId
+      ? `/roadmap/api/user-access/${updatedUser.accessId}`
+      : '/roadmap/api/user-access';
+    const method = hasValidAccessId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: updatedUser.id,
+          role: updatedUser.role,
+          menus: updatedUser.menus,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        console.error('Save failed', json.error || `Status ${res.status}`);
+        return;
+      }
+
+      const nextUser: User = {
+        ...updatedUser,
+        accessId: json.data?.id ?? updatedUser.accessId,
+      };
+
+      setUsers((prev) =>
+        prev.map((user) => (user.id === nextUser.id ? nextUser : user))
+      );
+    } catch (error) {
+      console.error('Failed to save user access', error);
+    }
   };
+
+  useEffect(() => {
+    async function loadUsers() {
+      setLoading(true);
+
+      try {
+        const [employeesRes, accessRes] = await Promise.all([
+          fetch('/roadmap/api/employees'),
+          fetch('/roadmap/api/user-access'),
+        ]);
+
+        const employeesJson = await employeesRes.json();
+        const accessJson = await accessRes.json();
+
+        const accessMap = new Map<string, any>();
+
+        if (accessJson.success && Array.isArray(accessJson.data)) {
+          for (const item of accessJson.data) {
+            if (item.employee_id) {
+              accessMap.set(item.employee_id, item);
+            }
+          }
+        }
+
+        const mappedUsers =
+          employeesJson.success && Array.isArray(employeesJson.data)
+            ? employeesJson.data.map((item: any) => {
+                const access = accessMap.get(item.id);
+
+                return {
+                  id: item.id,
+                  accessId: access?.id,
+                  name: item.name,
+                  email: item.email ?? '',
+                  role: access?.role ?? 'ยังไม่กำหนด',
+                  menus: access?.menus ?? [],
+                } as User;
+              })
+            : [];
+
+        setUsers(mappedUsers);
+        if (mappedUsers.length > 0) {
+          setSelectedUserId(mappedUsers[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to load users', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUsers();
+  }, []);
 
   return (
     <div className="p-6 lg:p-10">

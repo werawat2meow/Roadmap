@@ -11,6 +11,7 @@ export interface Roadmap {
 
 export interface Employee {
   id: string;
+  employeeCode: string;
   name: string;
   avatar: string;
   department: string;

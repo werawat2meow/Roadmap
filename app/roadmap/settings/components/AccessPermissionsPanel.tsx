@@ -1,18 +1,16 @@
 'use client';
-
-import { Check, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { swalSuccess, swalError } from '../../../components/Swal';
+import { Check, Crown, Banknote, X } from 'lucide-react';
 import {
   Shield,
   ShieldCheck,
-  ShieldAlert,
   ShieldOff,
   LayoutDashboard,
   Users,
-  Target,
   ClipboardCheck,
-  TrendingUp,
-  Gift,
   BarChart3,
+  GanttChartSquare,
   Settings,
 } from 'lucide-react';
 
@@ -20,7 +18,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Staff' | 'ยังไม่กำหนด';
+  role: 'Admin' | 'Manager' | 'Executive' | 'ยังไม่กำหนด';
   menus: string[];
 };
 
@@ -30,45 +28,43 @@ type Props = {
   selectedUser: User;
   menuOptions: string[];
   onSelectUser: (id: string) => void;
-  onUpdateUser: (user: User) => void;
-};
-
-const roleIcons = {
-  Admin: Shield,
-  Manager: ShieldCheck,
-  Staff: ShieldAlert,
-  'ยังไม่กำหนด': ShieldOff,
+  onUpdateUser: (user: User) => void | Promise<void>;
 };
 
 const menuIconMap: Record<string, typeof LayoutDashboard> = {
   Dashboard: LayoutDashboard,
   Employee: Users,
-  Evaluate: ClipboardCheck,
+  'Evaluate HR': GanttChartSquare,
+  'Evaluate MGR': ClipboardCheck,
   Settings: Settings,
   Reports: BarChart3,
-  Executive: Gift,
+  Executive: Crown,
+  'Send Account': Banknote,
 };
 
 const menuIconStyles: Record<string, string> = {
   Dashboard: 'text-cyan-700',
-  Employee: 'text-orange-700',
-  Evaluate: 'text-amber-700',
+  Employee: 'text-amber-700',
+  'Evaluate HR': 'text-pink-700',
+  'Evaluate MGR': 'text-orange-700',
   Settings: 'text-rose-700',
-  Reports: 'text-emerald-700',
+  Reports: 'text-blue-700',
   Executive: 'text-violet-700',
+  'Send Account': 'text-green-700',
 };
 
 const menuIconBgStyles: Record<string, string> = {
   Dashboard: 'bg-cyan-100',
-  Employee: 'bg-orange-100',
-  Evaluate: 'bg-amber-100',
+  Employee: 'bg-amber-100',
+  'Evaluate HR': 'bg-pink-100',
+  'Evaluate MGR': 'bg-orange-100',
   Settings: 'bg-rose-100',
-  Reports: 'bg-emerald-100',
+  Reports: 'bg-blue-100',
   Executive: 'bg-violet-100',
+  'Send Account': 'bg-green-100',
 };
 
-
-const roleOptions: User['role'][] = ['Admin', 'Manager', 'Staff'];
+const roleOptions: User['role'][] = ['Admin', 'Manager', 'Executive', 'ยังไม่กำหนด'];
 
 export default function AccessPermissionsPanel({
   users,
@@ -78,22 +74,43 @@ export default function AccessPermissionsPanel({
   onSelectUser,
   onUpdateUser,
 }: Props) {
+  const [draftUser, setDraftUser] = useState<User>(selectedUser);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setDraftUser(selectedUser);
+  }, [selectedUser]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdateUser(draftUser);
+      swalSuccess('บันทึกสำเร็จ');
+    } catch (error){
+      swalError('บันทึกไม่สำเร็จ', 'กรุณาลองอีกครั้ง');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const counts = {
     Admin: users.filter((user) => user.role === 'Admin').length,
     Manager: users.filter((user) => user.role === 'Manager').length,
-    Staff: users.filter((user) => user.role === 'Staff').length,
+    Executive: users.filter((user) => user.role === 'Executive').length,
     unassigned: users.filter((user) => user.role === 'ยังไม่กำหนด').length,
   };
 
   const handleRoleChange = (role: User['role']) => {
-    onUpdateUser({ ...selectedUser, role });
+    setDraftUser((prev) => ({ ...prev, role }));
   };
 
   const handleToggleMenu = (menu: string) => {
-    const menus = selectedUser.menus.includes(menu)
-      ? selectedUser.menus.filter((item) => item !== menu)
-      : [...selectedUser.menus, menu];
-    onUpdateUser({ ...selectedUser, menus });
+    setDraftUser((prev) => {
+      const menus = prev.menus.includes(menu)
+        ? prev.menus.filter((item) => item !== menu)
+        : [...prev.menus, menu];
+      return { ...prev, menus };
+    });
   };
 
   return (
@@ -116,11 +133,11 @@ export default function AccessPermissionsPanel({
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-slate-600 bg-slate-100 border-slate-200">
-            <ShieldAlert className="h-4 w-4" />
-            Staff
+          <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-violet-700 bg-violet-50 border-violet-100">
+            <Crown className="h-4 w-4" />
+            Executive
           </div>
-          <p className="mt-4 text-3xl font-bold text-slate-900">{counts.Staff}</p>
+          <p className="mt-4 text-3xl font-bold text-slate-900">{counts.Executive}</p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -181,8 +198,8 @@ export default function AccessPermissionsPanel({
           <div className="flex flex-col gap-6">
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-500">ชื่อพนักงาน</p>
-              <h2 className="text-2xl font-semibold text-slate-900">{selectedUser.name}</h2>
-              <p className="text-sm text-slate-500">{selectedUser.email}</p>
+              <h2 className="text-2xl font-semibold text-slate-900">{draftUser.name}</h2>
+              <p className="text-sm text-slate-500">{draftUser.email}</p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -192,7 +209,7 @@ export default function AccessPermissionsPanel({
                   type="button"
                   onClick={() => handleRoleChange(role)}
                   className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    selectedUser.role === role
+                    draftUser.role === role
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                   }`}
@@ -206,8 +223,10 @@ export default function AccessPermissionsPanel({
               <p className="text-sm font-medium text-slate-500 mb-4">กำหนดเมนู</p>
               <div className="grid gap-3 lg:grid-cols-2">
                 {menuOptions.map((menu) => {
-                  const Icon = menuIconMap[menu];
-                  const active = selectedUser.menus.includes(menu);
+                  const Icon = menuIconMap[menu] ?? LayoutDashboard;
+                  const iconStyle = menuIconStyles[menu] ?? 'text-slate-700';
+                  const iconBgStyle = menuIconBgStyles[menu] ?? 'bg-slate-100';
+                  const active = draftUser.menus.includes(menu);
 
                   return (
                     <button
@@ -221,19 +240,19 @@ export default function AccessPermissionsPanel({
                       }`}
                     >
                       <span
-                          className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                            active
-                            ? `bg-cyan-200 ${menuIconStyles[menu]}`
-                            : `${menuIconBgStyles[menu]} ${menuIconStyles[menu]}`
-                          }`}
-                        >
+                        className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                          active ? `bg-cyan-200 ${iconStyle}` : `${iconBgStyle} ${iconStyle}`
+                        }`}
+                      >
                         <Icon className="h-5 w-5" />
                       </span>
 
                       <span>{menu}</span>
 
-                      <span className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition
-                        ${active ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-slate-100 text-slate-500'}"
+                      <span
+                        className={`ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                          active ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-slate-100 text-slate-500'
+                        }`}
                       >
                         {active ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
                       </span>
@@ -246,10 +265,12 @@ export default function AccessPermissionsPanel({
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => onUpdateUser(selectedUser)}
-                className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`relative z-10 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 
+                  ${isSaving ? 'cursor-not-allowed bg-slate-400' : 'cursor-pointer'}`}
               >
-                บันทึก
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>
             </div>
           </div>

@@ -33,7 +33,7 @@ export default function SearchBar({ placeholder, onSearch, onFilter, filterOptio
           type="text"
           placeholder={placeholder} // <-- ใช้ placeholder จาก props
           onChange={(e) => onSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
+          className="text-black w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
         />
       </div>
       

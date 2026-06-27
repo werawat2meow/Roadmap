@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const id = params.id;
+// 🛠️ 1. แก้ไขฟังก์ชัน GET: ปรับชนิดข้อมูล params ให้เป็น Promise
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // ใช้ await ถอดเอาค่า id ออกมาจาก Promise ตามเงื่อนไขของ Next.js 16
+  const { id } = await params;
+  
   const { data, error } = await supabaseAdmin
     .from('rm_user_access')
     .select(`
@@ -47,8 +50,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ success: true, data: mapped });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const idFromParams = params.id;
+// 🛠️ 2. แก้ไขฟังก์ชัน PUT: ปรับชนิดข้อมูล params ให้เป็น Promise เช่นกัน
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // ใช้ await เพื่อแกะเอาค่า id จาก Promise มาใช้งาน
+  const { id: idFromParams } = await params;
+  
   const body = await req.json();
   const { employee_id, role, menus } = body as {
     employee_id: string;

@@ -110,7 +110,7 @@ export default function EvaluatePage() {
                         {renderFormContent()}
                     </div>
                     <div>
-                        <SummarySidebar />
+                        <SummarySidebar allFormData={{}} />
                     </div>
                 </div>
             </div>

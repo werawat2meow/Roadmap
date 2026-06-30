@@ -130,7 +130,7 @@ export default function BranchesPage() {
 
   const handleOpenCreate = () => {
     if (!canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสาขา");
+      swalError("คุณไม่มีสิทธิ์เพิ่มสังกัด");
       return;
     }
     resetForm();
@@ -139,7 +139,7 @@ export default function BranchesPage() {
 
   const handleOpenEdit = (branch) => {
     if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสาขา");
+      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัด");
       return;
     }
     setEditingBranch(branch);
@@ -161,12 +161,12 @@ export default function BranchesPage() {
   const handleSave = async () => {
     const isEdit = !!editingBranch;
     if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสาขา");
+      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัด");
       return;
     }
 
     if (!isEdit && !canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสาขา");
+      swalError("คุณไม่มีสิทธิ์เพิ่มสังกัด");
       return;
     }
     
@@ -243,7 +243,7 @@ export default function BranchesPage() {
 
   const handleDelete = async (branch) => {
     if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบสาขา");
+      swalError("คุณไม่มีสิทธิ์ลบสังกัด");
       return;
     }
 
@@ -285,13 +285,13 @@ export default function BranchesPage() {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">สาขา</h1>
+            <h1 className="text-2xl font-bold text-slate-800">สังกัด</h1>
             <p className="text-sm text-slate-500 mt-1">
               จัดการข้อมูลสังกัดของพนักงานในระบบ Employee Master
             </p>
             {!canCreate && !canEdit && !canDelete ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบสาขาได้
+                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบสังกัดได้
               </div>
             ) : null}
           </div>
@@ -302,7 +302,7 @@ export default function BranchesPage() {
               onClick={handleOpenCreate}
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition"
             >
-              + เพิ่มสาขา
+              + เพิ่มสังกัด
             </button>
           )}
         </div>
@@ -312,7 +312,7 @@ export default function BranchesPage() {
       <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหารหัสสังกัด / ชื่อสังกัด / บริษัท"
+          placeholder="ค้นหารหัสสังกัด / ชื่อสังกัด / ชื่อบริษัท"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -333,8 +333,8 @@ export default function BranchesPage() {
               <tr>
                 <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
                 <th className="px-6 py-4 text-left font-semibold">รหัส</th>
-                <th className="px-6 py-4 text-left font-semibold">ชื่อสาขา</th>
-                <th className="px-6 py-4 text-left font-semibold">บริษัท</th>
+                <th className="px-6 py-4 text-left font-semibold">ชื่อสังกัด</th>
+                <th className="px-6 py-4 text-left font-semibold">ชื่อบริษัท</th>
                 <th className="px-6 py-4 text-left font-semibold">เบอร์โทร</th>
                 <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
                 <th className="px-6 py-4 text-right font-semibold">จัดการ</th>

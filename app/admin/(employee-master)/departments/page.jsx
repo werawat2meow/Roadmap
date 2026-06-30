@@ -360,7 +360,7 @@ export default function DepartmentsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหารหัสแผนก / ชื่อแผนก / สาขา"
+          placeholder="ค้นหารหัสแผนก / ชื่อแผนก / ชื่อหรือรหัสสังกัด"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -382,7 +382,7 @@ export default function DepartmentsPage() {
                 <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
                 <th className="px-6 py-4 text-left font-semibold">รหัสแผนก</th>
                 <th className="px-6 py-4 text-left font-semibold">ชื่อแผนก</th>
-                <th className="px-6 py-4 text-left font-semibold">สาขาที่ดูแล</th>
+                <th className="px-6 py-4 text-left font-semibold">สังกัดที่ดูแล</th>
                 <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
                 <th className="px-6 py-4 text-right font-semibold">จัดการ</th>
               </tr>

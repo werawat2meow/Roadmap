@@ -1,6 +1,6 @@
 "use client";
 
-import {HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,} from "@ant-design/icons";
+import {HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -33,7 +33,7 @@ export const sidebarMenus = [
         permission: "ems.companies.view",
       },
       {
-        label: "สาขา",
+        label: "สังกัด",
         href: "/admin/branches",
         icon: <BankOutlined />,
         permission: "ems.branches.view",
@@ -92,6 +92,12 @@ export const sidebarMenus = [
         href: "/admin/employee-statuses",
         icon: <SafetyOutlined />,
         permission: "ems.employee_statuses.view",
+      },
+      {
+        label: "ทักษะ / Skills",
+        href: "/admin/skills",
+        icon: <ToolOutlined />,
+        permission: "ems.skills.view",
       },
       {
         label: "รายงานพนักงาน",

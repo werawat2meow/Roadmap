@@ -241,3 +241,229 @@ export async function GET(req) {
     );
   }
 }
+
+export async function POST(req) {
+  const url = new URL(req.url);
+  const requestIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+  const userAgent = req.headers.get("user-agent") || null;
+
+  let body = {};
+
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  const requestQuery = body || {};
+
+  // 🔐 validate token
+  const auth = await validateApiKey(req);
+
+  if (!auth.success) {
+    await logApiAccess({
+      clientId: null,
+      tokenId: null,
+      method: "POST",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 401,
+      isSuccess: false,
+      requestQuery,
+      errorMessage: "Unauthorized: Invalid or missing API token",
+    });
+
+    return auth.response;
+  }
+
+  try {
+    const employee_code = body?.employee_code?.trim() || "";
+    const status = body?.status?.trim() || "";
+    const branch_id = body?.branch_id?.trim() || "";
+
+    let query = supabaseAdmin
+      .from("employees")
+      .select(`
+        id,
+        employee_code,
+        first_name_th,
+        last_name_th,
+        first_name_en,
+        last_name_en,
+        nick_name,
+        gender,
+        phone,
+        email,
+        employee_photo_url,
+        hire_date,
+        employment_type,
+        nationality,
+        status,
+        branch_id,
+        department_id,
+        division_id,
+        unit_id,
+        position_id,
+        employee_status_id,
+        branches (
+          branch_code,
+          branch_name
+        ),
+        departments (
+          department_code,
+          department_name
+        ),
+        divisions (
+          division_code,
+          division_name
+        ),
+        units (
+          unit_code,
+          unit_name
+        ),
+        positions (
+          position_code,
+          position_name,
+          position_group,
+          position_level
+        ),
+        employee_statuses (
+          status_code,
+          status_name,
+          color
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (employee_code) {
+      query = query.eq("employee_code", employee_code);
+    }
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    if (branch_id) {
+      query = query.eq("branch_id", branch_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    const mappedData = (data || []).map((item) => ({
+      id: item.id,
+      employee_code: item.employee_code,
+      first_name_th: item.first_name_th,
+      last_name_th: item.last_name_th,
+      first_name_en: item.first_name_en,
+      last_name_en: item.last_name_en,
+      nick_name: item.nick_name,
+      gender: item.gender,
+      phone: item.phone,
+      email: item.email,
+      employee_photo_url: item.employee_photo_url || "",
+      nationality: item.nationality,
+      hire_date: item.hire_date,
+      employment_type: item.employment_type,
+      status: item.status,
+
+      branch: {
+        id: item.branch_id,
+        code: item.branches?.branch_code || null,
+        name: item.branches?.branch_name || null,
+      },
+
+      department: {
+        id: item.department_id,
+        code: item.departments?.department_code || null,
+        name: item.departments?.department_name || null,
+      },
+
+      division: {
+        id: item.division_id,
+        code: item.divisions?.division_code || null,
+        name: item.divisions?.division_name || null,
+      },
+
+      unit: {
+        id: item.unit_id,
+        code: item.units?.unit_code || null,
+        name: item.units?.unit_name || null,
+      },
+
+      position: {
+        id: item.position_id,
+        code: item.positions?.position_code || null,
+        name: item.positions?.position_name || null,
+        group: item.positions?.position_group || null,
+        level: item.positions?.position_level || null,
+      },
+
+      employee_status: {
+        id: item.employee_status_id,
+        code: item.employee_statuses?.status_code || null,
+        name: item.employee_statuses?.status_name || null,
+        color: item.employee_statuses?.color || null,
+      },
+    }));
+
+    const responseBody = {
+      success: true,
+      client: {
+        id: auth.client.id,
+        client_code: auth.client.client_code,
+        client_name: auth.client.client_name,
+      },
+      filter: {
+        employee_code: employee_code || null,
+        status: status || null,
+        branch_id: branch_id || null,
+      },
+      count: mappedData.length,
+      data: mappedData,
+    };
+
+    await logApiAccess({
+      clientId: auth.client.id,
+      tokenId: auth.token.id,
+      method: "POST",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 200,
+      isSuccess: true,
+      requestQuery,
+      responseBody: {
+        success: true,
+        count: mappedData.length,
+      },
+    });
+
+    return NextResponse.json(responseBody);
+  } catch (error) {
+    console.error("INTEGRATION_EMPLOYEES_POST_API_ERROR:", error);
+
+    await logApiAccess({
+      clientId: auth.client?.id || null,
+      tokenId: auth.token?.id || null,
+      method: "POST",
+      endpoint: url.pathname,
+      requestIp,
+      userAgent,
+      statusCode: 500,
+      isSuccess: false,
+      requestQuery,
+      errorMessage: error.message || "ไม่สามารถดึงข้อมูลพนักงานได้",
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "ไม่สามารถดึงข้อมูลพนักงานได้",
+      },
+      { status: 500 }
+    );
+  }
+}

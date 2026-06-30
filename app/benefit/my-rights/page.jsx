@@ -15,31 +15,6 @@ export default function MyBenefitRightsPage() {
     totalRemaining: 0,
   });
 
-  const getBenefitKey = (item) => {
-    return (
-      item?.benefit_id ||
-      item?.benefits?.id ||
-      item?.benefit_code ||
-      item?.benefits?.benefit_code ||
-      item?.id
-    );
-  };
-
-  const removeDuplicateRights = (items = []) => {
-    const map = new Map();
-
-    items.forEach((item) => {
-      const key = getBenefitKey(item);
-      if (!key) return;
-
-      if (!map.has(key)) {
-        map.set(key, item);
-      }
-    });
-
-    return Array.from(map.values());
-  };
-
   const loadMyRights = async () => {
     try {
       setLoading(true);
@@ -54,11 +29,16 @@ export default function MyBenefitRightsPage() {
         throw new Error(data?.error || "โหลดสิทธิ์ไม่สำเร็จ");
       }
 
-      const rawRights = data.data?.rights || [];
-      const uniqueRights = removeDuplicateRights(rawRights);
-
       setEmployee(data.data?.employee || null);
-      setRights(uniqueRights);
+      setRights(data.data?.rights || []);
+      setSummary(
+        data.data?.summary || {
+          totalQuota: 0,
+          totalCarryForward: 0,
+          totalUsed: 0,
+          totalRemaining: 0,
+        }
+      );
     } catch (error) {
       console.error("LOAD_MY_RIGHTS_ERROR:", error);
       setEmployee(null);
@@ -147,11 +127,41 @@ export default function MyBenefitRightsPage() {
           </div>
         </Card>
 
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <Card variant="borderless" className="rounded-[22px] shadow-sm">
+            <div className="text-sm text-slate-400">สิทธิ์รวม</div>
+            <div className="mt-1 text-2xl font-bold text-slate-800">
+              {Number(summary.totalQuota || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card variant="borderless" className="rounded-[22px] shadow-sm">
+            <div className="text-sm text-slate-400">ยอดยกมาจากปีก่อน</div>
+            <div className="mt-1 text-2xl font-bold text-blue-600">
+              {Number(summary.totalCarryForward || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card variant="borderless" className="rounded-[22px] shadow-sm">
+            <div className="text-sm text-slate-400">ใช้ไปแล้ว</div>
+            <div className="mt-1 text-2xl font-bold text-amber-600">
+              {Number(summary.totalUsed || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card variant="borderless" className="rounded-[22px] shadow-sm">
+            <div className="text-sm text-slate-400">คงเหลือ</div>
+            <div className="mt-1 text-2xl font-bold text-emerald-600">
+              {Number(summary.totalRemaining || 0).toLocaleString()}
+            </div>
+          </Card>
+        </div>
+
         {rights.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rights.map((item) => (
               <Card
-                key={getBenefitKey(item)}
+                key={item.id}
                 variant="borderless"
                 className="rounded-[24px] shadow-sm"
               >
@@ -182,16 +192,36 @@ export default function MyBenefitRightsPage() {
                   </div>
 
                   <div className="rounded-2xl bg-slate-50 p-3 text-sm">
-                    <span className="text-slate-400">Quota: </span>
+                    <span className="text-slate-400">สิทธิ์รวม: </span>
                     <span className="font-semibold text-slate-700">
                       {formatQuota(item)}
                     </span>
                   </div>
 
-                  <div className="rounded-2xl bg-slate-50 p-3 text-sm">
-                    <span className="text-slate-400">รอบการใช้สิทธิ์: </span>
-                    <span className="font-semibold text-slate-700">
-                      {item.quota_frequency || "-"}
+                  <div className="rounded-2xl bg-blue-50 p-3 text-sm">
+                    <span className="text-blue-500">ยอดยกมาจากปีก่อน: </span>
+                    <span className="font-semibold text-blue-700">
+                      {Number(item.carry_forward_amount || 0).toLocaleString()}{" "}
+                      {item.quota_unit || ""}
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl bg-amber-50 p-3 text-sm">
+                    <span className="text-amber-500">ใช้ไปแล้ว: </span>
+                    <span className="font-semibold text-amber-700">
+                      {Number(item.used_amount || 0).toLocaleString()}{" "}
+                      {item.quota_unit || ""}
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl bg-emerald-50 p-3 text-sm">
+                    <span className="text-emerald-500">คงเหลือ: </span>
+                    <span className="font-semibold text-emerald-700">
+                      {item.is_unlimited
+                        ? "ไม่จำกัด"
+                        : `${Number(item.remaining_amount || 0).toLocaleString()} ${
+                            item.quota_unit || ""
+                          }`}
                     </span>
                   </div>
                 </div>

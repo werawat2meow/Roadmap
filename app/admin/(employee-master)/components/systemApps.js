@@ -20,7 +20,7 @@ export const systemApps = [
     title: "Benefit",
     subtitle: "ระบบสวัสดิการ",
     description: "เบิกสิทธิ์ ตรวจสอบสิทธิ์ และอนุมัติสวัสดิการ",
-    path: "/benefit",
+    path: "/admin/benefit",
     permission: "benefit.portal.view",
     matchPrefixes: ["benefit."],
     icon: <GiftOutlined />,

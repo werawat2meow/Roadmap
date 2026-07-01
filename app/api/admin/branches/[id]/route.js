@@ -12,6 +12,8 @@ export async function PATCH(req, { params }) {
     const company_id = body?.company_id || null;
     const phone = body?.phone?.trim() || null;
     const status = body?.status || "active";
+    const branch_image_url = body?.branch_image_url || null;
+    const branch_image_path = body?.branch_image_path || null;
 
     if (!branch_code || !branch_name) {
       return NextResponse.json(
@@ -36,6 +38,8 @@ export async function PATCH(req, { params }) {
         company_id,
         phone,
         status,
+        branch_image_url,
+        branch_image_path,
         companies (
           id,
           company_code,
@@ -56,6 +60,8 @@ export async function PATCH(req, { params }) {
         company_id,
         phone,
         status,
+        branch_image_url,
+        branch_image_path,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -67,6 +73,8 @@ export async function PATCH(req, { params }) {
         phone,
         status,
         sort_order,
+        branch_image_url,
+        branch_image_path,
         created_at,
         updated_at,
         companies (
@@ -100,6 +108,8 @@ export async function PATCH(req, { params }) {
         branch_name: oldBranch.branch_name,
         company_id: oldBranch.company_id,
         company_code: oldBranch.companies?.company_code || "",
+        branch_image_url: oldBranch.branch_image_url,
+        branch_image_path: oldBranch.branch_image_path,
         company_name:
           oldBranch.companies?.company_name_th ||
           oldBranch.companies?.company_name_en ||
@@ -112,6 +122,8 @@ export async function PATCH(req, { params }) {
         branch_name: data.branch_name,
         company_id: data.company_id,
         company_code: data.companies?.company_code || "",
+        branch_image_url: data.branch_image_url,
+        branch_image_path: data.branch_image_path,
         company_name:
           data.companies?.company_name_th ||
           data.companies?.company_name_en ||
@@ -137,6 +149,8 @@ export async function PATCH(req, { params }) {
         phone: data.phone,
         status: data.status,
         sort_order: data.sort_order,
+        branch_image_url: data.branch_image_url || "",
+        branch_image_path: data.branch_image_path || "",
         created_at: data.created_at,
         updated_at: data.updated_at,
       },

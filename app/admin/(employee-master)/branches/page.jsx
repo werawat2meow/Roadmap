@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import ImageCropModal from "../components/ImageCropModal";
 
 const initialForm = {
   code: "",
@@ -17,6 +18,8 @@ const initialForm = {
   company_id: "",
   phone: "",
   status: "active",
+  branch_image_url: "",
+  branch_image_path: "",
 };
 
 export default function BranchesPage() {
@@ -32,6 +35,10 @@ export default function BranchesPage() {
   const [editingBranch, setEditingBranch] = useState(null);
   const [phoneError, setPhoneError] = useState("");
   const [companies, setCompanies] = useState([]);
+
+  // crop image
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState("");
 
   // #region Permission
   const router = useRouter();
@@ -99,6 +106,8 @@ export default function BranchesPage() {
         company: branch.company_name || "",
         phone: branch.phone || "",
         status: branch.status,
+        branch_image_url: branch.branch_image_url || "",
+        branch_image_path: branch.branch_image_path || "",
       }));
 
       setBranches(mapped);
@@ -149,6 +158,8 @@ export default function BranchesPage() {
       company_id: branch.company_id || "",
       phone: branch.phone || "",
       status: branch.status || "active",
+      branch_image_url: branch.branch_image_url || "",
+      branch_image_path: branch.branch_image_path || "",
     });
     setOpenModal(true);
   };
@@ -203,6 +214,8 @@ export default function BranchesPage() {
           company_id: form.company_id || null,
           phone: form.phone.trim(),
           status: form.status,
+          branch_image_url: form.branch_image_url || null,
+          branch_image_path: form.branch_image_path || null,
         }),
       });
 
@@ -220,6 +233,8 @@ export default function BranchesPage() {
         company: data.data.company_name || "",
         phone: data.data.phone || "",
         status: data.data.status,
+        branch_image_url: data.data.branch_image_url || null,
+        branch_image_path: data.data.branch_image_path || null,
       };
 
       if (isEdit) {
@@ -276,6 +291,76 @@ export default function BranchesPage() {
     }
   };
 
+  const handleUploadImage = async (file) => {
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("branchId", editingBranch?.id || "temp");
+
+      const res = await fetch("/api/admin/branches/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "อัปโหลดรูปไม่สำเร็จ");
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        branch_image_url: data.url,
+        branch_image_path: data.path,
+      }));
+
+      swalSuccess("อัปโหลดรูปสำเร็จ");
+    } catch (err) {
+      swalError(err.message || "อัปโหลดรูปไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectImage = (file) => {
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setImageSrc(reader.result);
+      setCropModalOpen(true);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
@@ -325,78 +410,62 @@ export default function BranchesPage() {
         </div>
       ) : null}
 
-      {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
-                <th className="px-6 py-4 text-left font-semibold">รหัส</th>
-                <th className="px-6 py-4 text-left font-semibold">ชื่อสังกัด</th>
-                <th className="px-6 py-4 text-left font-semibold">ชื่อบริษัท</th>
-                <th className="px-6 py-4 text-left font-semibold">เบอร์โทร</th>
-                <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
-                <th className="px-6 py-4 text-right font-semibold">จัดการ</th>
-              </tr>
-            </thead>
+      {/* Card Group By Company */}
+      <div className="space-y-6">
+        {loading ? (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm"
+              />
+            ))}
+          </div>
+        ) : branches.length > 0 ? (
+          Object.entries(
+            branches.reduce((acc, branch) => {
+              const key = branch.company || "ไม่ระบุบริษัท";
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(branch);
+              return acc;
+            }, {})
+          ).map(([companyName, companyBranches]) => (
+            <div
+              key={companyName}
+              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    {companyName}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    ทั้งหมด {companyBranches.length} สังกัด
+                  </p>
+                </div>
+              </div>
 
-            <tbody>
-              {loading ? (
-                <>
-                  {[...Array(5)].map((_, i) => (
-                    <tr key={i} className="border-t border-slate-200">
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-12 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-24 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-end gap-2">
-                          <div className="h-7 w-11 animate-pulse rounded-xl bg-slate-200" />
-                          <div className="h-7 w-14 animate-pulse rounded-xl bg-slate-200" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </>
-              ) : branches.length > 0 ? (
-                branches.map((branch,index) => (
-                  <tr
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {companyBranches.map((branch) => (
+                  <div
                     key={branch.id}
-                    className="border-t border-slate-200 hover:bg-slate-50"
+                    className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {index + 1}
-                    </td>
+                    <div className="relative h-44 bg-slate-100">
+                      {branch.branch_image_url ? (
+                        <img
+                          src={branch.branch_image_url}
+                          alt={branch.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                          ไม่มีรูปสังกัด
+                        </div>
+                      )}
 
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {branch.code}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-700">{branch.name}</td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {branch.company || "-"}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {branch.phone || "-"}
-                    </td>
-
-                    <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
                           branch.status === "active"
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-600"
@@ -404,11 +473,29 @@ export default function BranchesPage() {
                       >
                         {branch.status === "active" ? "Active" : "Inactive"}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="px-6 py-4">
+                    <div className="space-y-4 p-5">
+                      <div>
+                        <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                          {branch.code}
+                        </div>
+
+                        <h3 className="mt-3 text-lg font-bold text-slate-800">
+                          {branch.name}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          บริษัท: {branch.company || "-"}
+                        </p>
+
+                        <p className="text-sm text-slate-500">
+                          เบอร์โทร: {branch.phone || "-"}
+                        </p>
+                      </div>
+
                       {(canEdit || canDelete) ? (
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
                           {canEdit && (
                             <button
                               type="button"
@@ -426,7 +513,7 @@ export default function BranchesPage() {
                               disabled={deletingId === branch.id}
                               className={`rounded-xl border px-3 py-2 text-xs font-medium ${
                                 deletingId === branch.id
-                                  ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                                  ? "cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-red-200 text-red-600 hover:bg-red-50"
                               }`}
                             >
@@ -434,25 +521,18 @@ export default function BranchesPage() {
                             </button>
                           )}
                         </div>
-                      ) : (
-                        <div className="text-right text-slate-400">-</div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-slate-400"
-                  >
-                    ไม่พบข้อมูลสังกัด
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">
+            ไม่พบข้อมูลสังกัด
+          </div>
+        )}
       </div>
       
       {/* Madal แสดงข้อมูล  */}
@@ -470,6 +550,39 @@ export default function BranchesPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+
+              {/* รูปภาพสังกัด */}
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  รูปภาพสังกัด
+                </label>
+
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  {form.branch_image_url ? (
+                    <img
+                      src={form.branch_image_url}
+                      alt="Branch preview"
+                      className="mb-4 h-48 w-full rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <div className="mb-4 flex h-48 items-center justify-center rounded-2xl bg-white text-sm text-slate-400">
+                      ยังไม่มีรูปภาพ
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => handleSelectImage(e.target.files?.[0])}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm"
+                  />
+
+                  <p className="mt-2 text-xs text-slate-400">
+                    รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 50MB
+                  </p>
+                </div>
+              </div>
+
               {/* สังกัด */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -648,6 +761,24 @@ export default function BranchesPage() {
           </div>
         </div>
       )}
+
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={imageSrc}
+        aspect={16 / 9}
+        outputWidth={1200}
+        outputHeight={675}
+        saving={saving}
+        onClose={() => {
+          setCropModalOpen(false);
+          setImageSrc("");
+        }}
+        onComplete={async (croppedFile) => {
+          await handleUploadImage(croppedFile);
+          setCropModalOpen(false);
+          setImageSrc("");
+        }}
+      />
     </div>
   );
 }

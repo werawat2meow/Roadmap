@@ -17,6 +17,8 @@ export async function GET(req) {
         phone,
         status,
         sort_order,
+        branch_image_url,
+        branch_image_path,
         created_at,
         companies (
           id,
@@ -43,6 +45,8 @@ export async function GET(req) {
       phone: branch.phone,
       status: branch.status,
       sort_order: branch.sort_order,
+      branch_image_url: branch.branch_image_url || "",
+      branch_image_path: branch.branch_image_path || "",
       created_at: branch.created_at,
     }));
 
@@ -104,6 +108,8 @@ export async function POST(req) {
           company_id,
           phone,
           status,
+          branch_image_url,
+          branch_image_path,
         },
       ])
       .select(`
@@ -114,6 +120,8 @@ export async function POST(req) {
         phone,
         status,
         sort_order,
+        branch_image_url,
+        branch_image_path,
         created_at,
         companies (
           id,
@@ -152,6 +160,8 @@ export async function POST(req) {
           "",
         phone: data.phone,
         status: data.status,
+        branch_image_url: data.branch_image_url,
+        branch_image_path: data.branch_image_path,
       },
     });
 
@@ -171,6 +181,8 @@ export async function POST(req) {
         phone: data.phone,
         status: data.status,
         sort_order: data.sort_order,
+        branch_image_url: data.branch_image_url || "",
+        branch_image_path: data.branch_image_path || "",
         created_at: data.created_at,
       },
     });

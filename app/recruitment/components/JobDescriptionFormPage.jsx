@@ -17,6 +17,14 @@ const normalizeLocalizedRows = (rows, languages = [], textField = "") => {
   return [base];
 };
 
+// Same idea as normalizeLocalizedRows but for a single localized object
+// (e.g. { th: "...", en: "..." }) instead of a repeatable list of rows.
+const normalizeLocalizedObject = (data, languages = [], textField = "") => {
+  const base = buildLocalizedRow(languages);
+  const source = (textField && data?.[textField]) || data || {};
+  return { ...base, ...(typeof source === "object" && !Array.isArray(source) ? source : {}) };
+};
+
 const createEmptyForm = (languages = []) => ({
   branch_id: "",
   department_id: "",
@@ -28,6 +36,7 @@ const createEmptyForm = (languages = []) => ({
   type_of_work: "monthly",
   salary_note: "",
   workLocation: "",
+  description: buildLocalizedRow(languages),
   requirements: [buildLocalizedRow(languages)],
   responsibilities: [buildLocalizedRow(languages)],
   benefits: [buildLocalizedRow(languages)],
@@ -44,6 +53,7 @@ const buildFormData = (initialData, languages) => ({
   type_of_work: initialData?.type_of_work || "monthly",
   salary_note: initialData?.salary_note || "",
   workLocation: initialData?.workLocation || "",
+  description: normalizeLocalizedObject(initialData?.description, languages, "description_text"),
   requirements: normalizeLocalizedRows(initialData?.requirements, languages, "requirement_text"),
   responsibilities: normalizeLocalizedRows(initialData?.responsibilities, languages, "responsibility_text"),
   benefits: normalizeLocalizedRows(initialData?.benefits, languages, "benefit_text"),
@@ -97,6 +107,14 @@ export default function JobDescriptionForm({
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  // Update a single localized field that is stored as one object (not a list of rows)
+  function updateLocalizedField(name, langSlug, value) {
+    setForm((prev) => ({
+      ...prev,
+      [name]: { ...prev[name], [langSlug]: value },
+    }));
   }
 
   function handleBranchChange(value) {
@@ -240,6 +258,7 @@ export default function JobDescriptionForm({
       salary_note: form.salary_note || null,
       workLocation: form.workLocation,
       type_of_work: form.type_of_work,
+      description: form.description,
       requirements: form.requirements,
       responsibilities: form.responsibilities,
       benefits: form.benefits,
@@ -416,6 +435,14 @@ export default function JobDescriptionForm({
             </div>
           </div>
 
+          {/* Description (localized per language) */}
+          <LocalizedTextareaGroup
+            title="รายละเอียดงาน"
+            value={form.description}
+            languages={languages}
+            onChange={(langSlug, value) => updateLocalizedField("description", langSlug, value)}
+          />
+
           <div className="grid gap-4">
             <SectionList
               title="คุณสมบัติ"
@@ -478,6 +505,32 @@ export default function JobDescriptionForm({
   );
 }
 
+// A single localized field (not a repeatable list) rendered as one textarea per language.
+// The resulting value is stored/saved as a plain JSON object, e.g. { "th": "...", "en": "..." }.
+function LocalizedTextareaGroup({ title, value = {}, languages = [], onChange }) {
+  return (
+    <div>
+      <h3 className="mb-4 text-base font-semibold">{title}</h3>
+      <div className={`grid gap-3 ${languages.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+        {languages.map((lang) => (
+          <div key={lang.language_slug}>
+            <label className="mb-2 block text-sm font-medium">
+              {lang.language_name || lang.language_slug}
+            </label>
+            <textarea
+              value={value[lang.language_slug] ?? ""}
+              onChange={(e) => onChange(lang.language_slug, e.target.value)}
+              rows={4}
+              className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+              placeholder={`กรอก${title} (${lang.language_slug})`}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SectionList({ title, items, languages = [], onAdd, onRemove, onChange }) {
   return (
     <div>
@@ -489,7 +542,7 @@ function SectionList({ title, items, languages = [], onAdd, onRemove, onChange }
       </div>
       <div className="space-y-4">
         {items.map((item, index) => (
-          <div key={index} className="rounded-2xl border bg-gray-50 p-4">
+          <div key={index} className="rounded-2xl border  p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-medium text-gray-700">รายการที่ {index + 1}</p>
               <button type="button" onClick={() => onRemove(index)} className="rounded-xl border px-4 py-2 text-sm text-red-600">

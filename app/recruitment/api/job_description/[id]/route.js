@@ -24,7 +24,7 @@ export async function GET(_request, { params }) {
 
   const { data: description, error: descError } = await supabaseAdmin
     .from("recruit_job_description")
-    .select("id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at")
+    .select("id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at, description")
     .eq("id", id)
     .single();
 
@@ -78,6 +78,7 @@ export async function PUT(request, { params }) {
       workLocation: body.workLocation,
       updated_at: new Date().toISOString(),
       status: true,
+      description: body.description ?? null,
     };
     
     const { error: updateError } = await supabaseAdmin

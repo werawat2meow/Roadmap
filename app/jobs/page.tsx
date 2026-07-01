@@ -41,6 +41,9 @@ export default function JobsPage() {
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [loadingBranches, setLoadingBranches] = useState(true);
 
+  const [urgentFilter, setUrgentFilter] = useState(false);
+  const urgentCount = jobs.filter(job => job.urgent === true).length;
+
   const { locale } = useLanguage();
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export default function JobsPage() {
     fetchJobs(selectedBranchId);
     fetchBranches();
   }, [selectedBranchId]);
+  
 
   async function fetchJobs(branchId?: string) {
     try {
@@ -72,8 +76,7 @@ export default function JobsPage() {
         url += `?branch_id=${branchId}`;
       }
       const res = await fetch(url);
-      const data = await res.json();
-      console.log(data);      
+      const data = await res.json();  
       setJobs(data);
     } catch (err) {
       console.error(err);
@@ -179,20 +182,41 @@ export default function JobsPage() {
   };
 
   const filteredJobs = useMemo(() => {
-    const search = keyword.trim().toLowerCase();
-
+    const search = keyword.trim();
+    
     return jobs.filter((job) => {
-      const positionName = getText(job.job_to_language, locale).toLowerCase();
+      const positionName = getText(
+        job.job_to_language,
+        locale
+      ).toLowerCase();
+      
       const branchName = job.branch_name.toLowerCase();
 
       const matchesKeyword =
-        !search || positionName.includes(search) || branchName.includes(search);
+        !search ||
+        positionName.includes(search) ||
+        branchName.includes(search);
 
-      const matchesBranch = !selectedBranchId || job.branch_id === selectedBranchId;
+      const matchesBranch =
+        selectedBranchId === "" ||
+        job.branch_id === selectedBranchId;
 
-      return matchesKeyword && matchesBranch;
+      const matchesUrgent =
+        !urgentFilter || job.urgent;
+
+      return (
+        matchesKeyword &&
+        matchesBranch &&
+        matchesUrgent
+      );
     });
-  }, [jobs, keyword, locale, selectedBranchId]);
+  }, [
+    jobs,
+    keyword,
+    locale,
+    selectedBranchId,
+    urgentFilter,
+  ]);
 
   if (loadingJobs || loadingBranches) {
     return (
@@ -206,25 +230,45 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 lg:px-6">
-        <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:block">
+      <div className="mx-auto flex w-full gap-6 px-4 py-6 lg:px-6">
+        <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-[#0d47a1] p-4 shadow-sm md:block">
           <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">สาขางาน</h3>
-            <p className="text-sm text-gray-500">เลือกสาขาเพื่อกรองตำแหน่งงาน</p>
+            <h3 className="text-lg font-semibold text-white">สาขางาน</h3>
+            <p className="text-sm text-gray-50">เลือกสาขาเพื่อกรองตำแหน่งงาน</p>
           </div>
 
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => setBranchFilter("")}
+              onClick={() => {
+                setUrgentFilter(false);
+                setBranchFilter("");
+              }}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                selectedBranchId === ""
+                selectedBranchId === "" && !urgentFilter
                   ? "bg-blue-50 text-blue-700"
                   : "bg-gray-50 text-gray-700 hover:bg-gray-100"
               }`}
             >
               <span>ทั้งหมด</span>
               <span className="text-xs text-gray-500">{jobs.length}</span>
+            </button>
+
+
+            <button
+              type="button"
+              onClick={() => setUrgentFilter(prev => !prev)}
+              disabled={urgentCount === 0}
+              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition 
+                ${urgentCount === 0 
+                  ? "cursor-not-allowed bg-gray-100 text-gray-400" 
+                  : urgentFilter 
+                    ? "bg-blue-50 text-blue-700" 
+                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                }`}
+            >
+              <span>🔥 งานด่วน</span>
+              <span className="ml-3 shrink-0 text-xs">({urgentCount})</span>
             </button>
 
             {branches.map((branch) => {
@@ -277,7 +321,7 @@ export default function JobsPage() {
               ไม่พบตำแหน่งงานที่ค้นหา
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1">
               {filteredJobs.map((job) => (
                 <JobCard
                   key={job.id}

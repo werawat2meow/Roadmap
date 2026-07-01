@@ -28,7 +28,9 @@ export async function GET(request: Request) {
       `)
       .eq("status", true)
       .lte("start_date", today)
-      .gte("end_date", today);
+      .gte("end_date", today)
+      .order("urgent", { ascending: false })
+      .order("created_at", { ascending: false });
         
     if (openError) throw openError;
 

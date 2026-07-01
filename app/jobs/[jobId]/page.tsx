@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 
 import { getText } from "@/app/jobs/lib/i18n";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +50,7 @@ export default function JobDetailPage() {
           throw new Error(body?.error ?? `HTTP ${res.status}`);
         }
         const data: JobDetail = await res.json();
-        
+        console.log("Fetched job data:", data);
         setJob(data);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -99,37 +101,44 @@ export default function JobDetailPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="grid gap-6 ">          
           <div>
             {/* ── Header Card ── */}
-            <Card>
+            <Card className="rounded-2xl shadow-sm border-0">
               <div className="flex items-start gap-4">
-
                 <div>
-                  <p className="text-sm text-gray-500">
-                    {job.companyName}
-                  </p>
+                  <p className="text-sm text-gray-500">{job.companyName}</p>
+                  <h1 className="text-3xl font-bold">{job.positionTitle}</h1>
+                  <div className="mt-5">
+                    <div className="space-y-2">
+                      {job.type_of_work && (
+                        <p>
+                          <span className="font-medium">💼 {getUIText(uiText.workType, locale)}:</span>{" "}
+                          {job.type_of_work}
+                        </p>
+                      )}
 
-                  <h1 className="text-3xl font-bold">
-                    {job.positionTitle}
-                  </h1>
+                      {job.workLocation && (
+                        <p>
+                          <span className="font-medium">📍 {getUIText(uiText.workLocation, locale)}:</span>{" "}
+                          {job.workLocation}
+                        </p>
+                      )}
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {job.type_of_work && (
-                      <Tag color="blue">{job.type_of_work}</Tag>
-                    )}
-                    {job.workLocation && (
-                      <Tag color="green">{job.workLocation}</Tag>
-                    )}
-                    {job.salary_min && (
-                      <Tag color="green">{job.salary_min}</Tag>
-                    )}
-                    {job.salary_max && (
-                      <Tag color="green">{job.salary_max}</Tag>
-                    )}
-                    {job.opening_count && (
-                      <Tag color="green">{job.opening_count}</Tag>
-                    )}
+                      {job.salary_min && job.salary_max && (
+                        <p>
+                          <span className="font-medium">💰 {getUIText(uiText.salary, locale)}:</span>{" "}
+                          {job.salary_min} - {job.salary_max}
+                        </p>
+                      )}
+
+                      {job.opening_count && (
+                        <p>
+                          <span className="font-medium">👥 {getUIText(uiText.openings, locale)}:</span>{" "}
+                          {job.opening_count} ตำแหน่ง
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -137,24 +146,29 @@ export default function JobDetailPage() {
 
             {/* ── About Position ── */}
             {getText(job.description, locale) && (
-              <Card className="mt-6">
-                <h2 className="text-xl font-semibold">About Position</h2>
-                <Divider />
-                <p className="whitespace-pre-line leading-relaxed">
-                  {getText(job.description, locale)}
-                </p>
-              </Card>
+              <div className="pt-6">
+                <Card className="rounded-2xl shadow-sm border-0">
+                  <h2 className="text-xl font-semibold">{getUIText(uiText.aboutPosition, locale)}</h2>
+                  <Divider />
+                  <p className="whitespace-pre-line leading-relaxed">
+                    {getText(job.description, locale)}
+                  </p>
+                </Card>
+              </div>
             )}
 
             {/* ── Responsibilities ── */}
             {job.responsibilities.length > 0 && (
               <div className="pt-6">
-                <Card className="mt-6">
-                  <h2 className="text-xl font-semibold">Responsibilities</h2>
+                <Card className="rounded-2xl shadow-sm border-0">
+                  <h2 className="text-xl font-semibold">{getUIText(uiText.responsibilities, locale)}</h2>
                   <Divider />
-                  <ul className="list-disc pl-5 space-y-1">
+                  <ul className="space-y-3">
                     {job.responsibilities.map((item, idx) => (
-                      <li key={idx}>{getText(item, locale)}</li>
+                      <li className="flex gap-3" key={idx}>
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span> {getText(item, locale)} </span>
+                      </li>
                     ))}
                   </ul>
                 </Card>
@@ -164,12 +178,15 @@ export default function JobDetailPage() {
             {/* ── Qualifications / Requirements ── */}
             {job.requirements.length > 0 && (
               <div className="pt-6">
-                <Card className="mt-6">
-                  <h2 className="text-xl font-semibold">Qualifications</h2>
+                <Card className="rounded-2xl shadow-sm border-0">
+                  <h2 className="text-xl font-semibold">{getUIText(uiText.qualifications, locale)}</h2>
                   <Divider />
-                  <ul className="list-disc pl-5 space-y-1">
+                  <ul className="space-y-3">
                     {job.requirements.map((item, idx) => (
-                      <li key={idx}>{getText(item, locale)}</li>
+                      <li className="flex gap-3" key={idx}>
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span> {getText(item, locale)} </span>
+                      </li>
                     ))}
                   </ul>
                 </Card>
@@ -179,19 +196,27 @@ export default function JobDetailPage() {
             {/* ── Benefits ── */}
             {job.benefits.length > 0 && (
               <div className="pt-6">
-                <Card className="mt-6">
-                  <h2 className="text-xl font-semibold">Benefits</h2>
+                <Card className="rounded-2xl shadow-sm border-0">
+                  <h2 className="text-xl font-semibold">{getUIText(uiText.benefits, locale)}</h2>
                   <Divider />
-                  <ul className="list-disc pl-5 space-y-1">
+                  <ul className="space-y-3">
                     {job.benefits.map((item, idx) => (
-                      <li key={idx}>{getText(item, locale)}</li>
+                      <li className="flex gap-3" key={idx}>
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span> {getText(item, locale)} </span>
+                      </li>
                     ))}
                   </ul>
                 </Card>
               </div>
             )}
-          </div>
 
+            <div className="pt-6 flex justify-center">
+              <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                {getUIText(uiText.apply, locale)}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -138,6 +138,7 @@ export async function GET(
         workLocation: jobDesc.workLocation,
         companyName: jobOpen?.branches.branch_name,
         positionTitle: (jobOpen as any).positions?.position_name,
+        description: (jobDesc as any).description,
         requirements,
         responsibilities,
         benefits,

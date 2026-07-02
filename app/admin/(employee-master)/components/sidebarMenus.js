@@ -1,6 +1,6 @@
 "use client";
 
-import {HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
+import {AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -31,6 +31,12 @@ export const sidebarMenus = [
         href: "/admin/companies",
         icon: <ShopOutlined />,
         permission: "ems.companies.view",
+      },
+      {
+        label: "กลุ่มสังกัด",
+        href: "/admin/branch-groups",
+        icon: <AppstoreOutlined />,
+        permission: "ems.branch_groups.view",
       },
       {
         label: "สังกัด",

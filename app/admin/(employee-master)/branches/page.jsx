@@ -16,6 +16,7 @@ const initialForm = {
   code: "",
   name: "",
   company_id: "",
+  group_id: "",
   phone: "",
   status: "active",
   branch_image_url: "",
@@ -35,6 +36,7 @@ export default function BranchesPage() {
   const [editingBranch, setEditingBranch] = useState(null);
   const [phoneError, setPhoneError] = useState("");
   const [companies, setCompanies] = useState([]);
+  const [branchGroups, setBranchGroups] = useState([]);
 
   // crop image
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -62,6 +64,17 @@ export default function BranchesPage() {
     }
   }, [user, canView, loadingUser, router]);
   // #endregion
+
+
+  const loadBranchGroups = async () => {
+    const res = await fetch("/api/admin/branch-groups");
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setBranchGroups(data.data || []);
+    }
+  };
 
   const loadCompanies = async () => {
     try {
@@ -108,6 +121,9 @@ export default function BranchesPage() {
         status: branch.status,
         branch_image_url: branch.branch_image_url || "",
         branch_image_path: branch.branch_image_path || "",
+        group_id: branch.group_id || "",
+        group_name: branch.group_name || "",
+        group_color: branch.group_color || "#E2E8F0",
       }));
 
       setBranches(mapped);
@@ -121,6 +137,7 @@ export default function BranchesPage() {
   useEffect(() => {
     loadBranches();
     loadCompanies();
+    loadBranchGroups();
   }, []);
 
   useEffect(() => {
@@ -160,6 +177,7 @@ export default function BranchesPage() {
       status: branch.status || "active",
       branch_image_url: branch.branch_image_url || "",
       branch_image_path: branch.branch_image_path || "",
+      group_id: branch.group_id || "",
     });
     setOpenModal(true);
   };
@@ -212,10 +230,11 @@ export default function BranchesPage() {
           branch_code: form.code.trim(),
           branch_name: form.name.trim(),
           company_id: form.company_id || null,
-          phone: form.phone.trim(),
+          phone: form.phone.trim() || null,
           status: form.status,
           branch_image_url: form.branch_image_url || null,
           branch_image_path: form.branch_image_path || null,
+          group_id: form.group_id || null,
         }),
       });
 
@@ -235,6 +254,9 @@ export default function BranchesPage() {
         status: data.data.status,
         branch_image_url: data.data.branch_image_url || null,
         branch_image_path: data.data.branch_image_path || null,
+        group_id: data.data.group_id || "",
+        group_name: data.data.group_name || "",
+        group_color: data.data.group_color || "#E2E8F0",
       };
 
       if (isEdit) {
@@ -370,13 +392,13 @@ export default function BranchesPage() {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">สังกัด</h1>
+            <h1 className="text-2xl font-bold text-slate-800">แบรนด์</h1>
             <p className="text-sm text-slate-500 mt-1">
-              จัดการข้อมูลสังกัดของพนักงานในระบบ Employee Master
+              จัดการข้อมูลแบรนด์ของบริษัท
             </p>
             {!canCreate && !canEdit && !canDelete ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบสังกัดได้
+                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบแบรนด์ได้
               </div>
             ) : null}
           </div>
@@ -413,7 +435,7 @@ export default function BranchesPage() {
       {/* Card Group By Company */}
       <div className="space-y-6">
         {loading ? (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
             {[...Array(6)].map((_, i) => (
               <div
                 key={i}
@@ -445,22 +467,33 @@ export default function BranchesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
                 {companyBranches.map((branch) => (
                   <div
                     key={branch.id}
-                    className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
-                    <div className="relative h-44 bg-slate-100">
+                    <div
+                      className="relative flex h-28 items-center justify-center"
+                      style={{ backgroundColor: branch.group_color || "#F8FAFC" }}
+                    >
+                      {branch.group_name ? (
+                        <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 shadow">
+                          {branch.group_name}
+                        </div>
+                      ) : null}
+                      
                       {branch.branch_image_url ? (
-                        <img
-                          src={branch.branch_image_url}
-                          alt={branch.name}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        />
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                          <img
+                            src={branch.branch_image_url}
+                            alt={branch.name}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
                       ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                          ไม่มีรูปสังกัด
+                        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+                          ไม่มีรูป
                         </div>
                       )}
 
@@ -475,7 +508,7 @@ export default function BranchesPage() {
                       </span>
                     </div>
 
-                    <div className="space-y-4 p-5">
+                    <div className="flex flex-1 flex-col space-y-2 p-4">
                       <div>
                         <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
                           {branch.code}
@@ -485,17 +518,13 @@ export default function BranchesPage() {
                           {branch.name}
                         </h3>
 
-                        <p className="mt-1 text-sm text-slate-500">
-                          บริษัท: {branch.company || "-"}
-                        </p>
-
                         <p className="text-sm text-slate-500">
                           เบอร์โทร: {branch.phone || "-"}
                         </p>
                       </div>
 
                       {(canEdit || canDelete) ? (
-                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                        <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
                           {canEdit && (
                             <button
                               type="button"
@@ -536,7 +565,7 @@ export default function BranchesPage() {
       </div>
       
       {/* Madal แสดงข้อมูล  */}
-      {openModal && (
+      {openModal && ( 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
 
@@ -559,11 +588,15 @@ export default function BranchesPage() {
 
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
                   {form.branch_image_url ? (
-                    <img
-                      src={form.branch_image_url}
-                      alt="Branch preview"
-                      className="mb-4 h-48 w-full rounded-2xl object-cover"
-                    />
+                    <div className="mb-4 flex h-48 w-full items-center justify-center rounded-2xl bg-white">
+                      <div className="flex h-36 w-36 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3">
+                        <img
+                          src={form.branch_image_url}
+                          alt="Branch preview"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="mb-4 flex h-48 items-center justify-center rounded-2xl bg-white text-sm text-slate-400">
                       ยังไม่มีรูปภาพ
@@ -639,6 +672,30 @@ export default function BranchesPage() {
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>
                       {company.company_name_th}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  กลุ่มแบรนด์
+                </label>
+
+                <select
+                  value={form.group_id}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      group_id: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">เลือกกลุ่มแบรนด์</option>
+                  {branchGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.group_name}
                     </option>
                   ))}
                 </select>
@@ -765,9 +822,7 @@ export default function BranchesPage() {
       <ImageCropModal
         open={cropModalOpen}
         imageSrc={imageSrc}
-        aspect={16 / 9}
-        outputWidth={1200}
-        outputHeight={675}
+        aspect={1}
         saving={saving}
         onClose={() => {
           setCropModalOpen(false);

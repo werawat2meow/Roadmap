@@ -8,8 +8,6 @@ export default function ImageCropModal({
   open,
   imageSrc,
   aspect = 16 / 9,
-  outputWidth = 1200,
-  outputHeight = 675,
   saving = false,
   onClose,
   onComplete,
@@ -26,8 +24,7 @@ export default function ImageCropModal({
     const croppedFile = await getCroppedBranchImage(
       imageSrc,
       croppedAreaPixels,
-      outputWidth,
-      outputHeight
+      aspect
     );
 
     onComplete(croppedFile);

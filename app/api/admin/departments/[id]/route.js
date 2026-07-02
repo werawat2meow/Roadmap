@@ -9,6 +9,8 @@ export async function PATCH(req, { params }) {
 
     const department_code = body?.department_code?.trim();
     const department_name = body?.department_name?.trim();
+    const department_color = body?.department_color?.trim() || "#E2E8F0";
+    const department_icon = body?.department_icon?.trim() || null;
     const branch_ids = Array.isArray(body?.branch_ids) ? body.branch_ids : [];
     const status = body?.status || "active";
 
@@ -46,6 +48,8 @@ export async function PATCH(req, { params }) {
         id,
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         branch_departments (
           branch_id,
@@ -66,6 +70,8 @@ export async function PATCH(req, { params }) {
       .update({
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         updated_at: new Date().toISOString(),
       })
@@ -98,6 +104,8 @@ export async function PATCH(req, { params }) {
         id,
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         sort_order,
         created_at,
@@ -125,6 +133,8 @@ export async function PATCH(req, { params }) {
       old_data: {
         department_code: oldDepartment.department_code,
         department_name: oldDepartment.department_name,
+        department_color: oldDepartment.department_color,
+        department_icon: oldDepartment.department_icon,
         status: oldDepartment.status,
         branch_ids: (oldDepartment.branch_departments || []).map((row) => row.branch_id),
         branch_codes: (oldDepartment.branch_departments || [])
@@ -137,6 +147,8 @@ export async function PATCH(req, { params }) {
       new_data: {
         department_code: data.department_code,
         department_name: data.department_name,
+        department_color: data.department_color,
+        department_icon: data.department_icon,
         status: data.status,
         branch_ids: branchRows.map((row) => row.branch_id),
         branch_codes: branchRows
@@ -156,6 +168,8 @@ export async function PATCH(req, { params }) {
         id: data.id,
         department_code: data.department_code,
         department_name: data.department_name,
+        department_color: data.department_color || "#E2E8F0",
+        department_icon: data.department_icon || "",
         branch_ids: branchRows.map((row) => row.branch_id),
         branch_names: branchRows
           .map((row) => row.branches?.branch_name)

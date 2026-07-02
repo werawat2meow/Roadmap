@@ -11,6 +11,8 @@ import LoadingOrb from "../../../components/LoadingOrb";
 const initialForm = {
   code: "",
   name: "",
+  department_color: "#E2E8F0",
+  department_icon: "",
   branch_ids: [],
   status: "active",
 };
@@ -27,6 +29,8 @@ export default function DepartmentsPage() {
   const [form, setForm] = useState(initialForm);
   const [openModal, setOpenModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
+
+  const [viewMode, setViewMode] = useState("matrix");
 
   // #region Permission
   const router = useRouter();
@@ -67,7 +71,7 @@ export default function DepartmentsPage() {
       setBranches(data.data || []);
     } catch (err) {
       console.error(err);
-      swalError(err.message || "ไม่สามารถโหลดข้อมูลสาขาได้");
+      swalError(err.message || "ไม่สามารถโหลดข้อมูลสังกัดได้");
     }
   };
 
@@ -76,9 +80,7 @@ export default function DepartmentsPage() {
       setLoading(true);
       setError("");
 
-      const url = keyword
-        ? `/api/admin/departments?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/departments";
+      const url = keyword ? `/api/admin/departments?search=${encodeURIComponent(keyword)}` : "/api/admin/departments";
 
       const res = await fetch(url, {
         method: "GET",
@@ -97,6 +99,8 @@ export default function DepartmentsPage() {
         name: department.department_name,
         branch_ids: department.branch_ids || [],
         branch_names: department.branch_names || [],
+        department_color: department.department_color || "#E2E8F0",
+        department_icon: department.department_icon || "",
         status: department.status,
       }));
 
@@ -148,6 +152,8 @@ export default function DepartmentsPage() {
     setForm({
       code: department.code || "",
       name: department.name || "",
+      department_color: department.department_color || "#E2E8F0",
+      department_icon: department.department_icon || "",
       branch_ids: department.branch_ids || [],
       status: department.status || "active",
     });
@@ -180,7 +186,7 @@ export default function DepartmentsPage() {
     }
 
     if (!form.branch_ids.length) {
-      swalError("กรุณาเลือกสาขาอย่างน้อย 1 รายการ");
+      swalError("กรุณาเลือกสังกัดอย่างน้อย 1 รายการ");
       return;
     }
 
@@ -202,6 +208,8 @@ export default function DepartmentsPage() {
         body: JSON.stringify({
           department_code: form.code.trim(),
           department_name: form.name.trim(),
+          department_color: form.department_color || "#E2E8F0",
+          department_icon: form.department_icon || null,
           branch_ids: form.branch_ids,
           status: form.status,
         }),
@@ -336,7 +344,7 @@ export default function DepartmentsPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-800">แผนก</h1>
             <p className="mt-1 text-sm text-slate-500">
-              จัดการข้อมูลแผนกในแต่ละสาขา
+              จัดการข้อมูลแผนกในแต่ละสังกัด สามารถเพิ่ม แก้ไข หรือลบแผนกได้ตามสิทธิ์ที่ได้รับ
             </p>
             {!canCreate && !canEdit && !canDelete ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -367,6 +375,32 @@ export default function DepartmentsPage() {
         />
       </div>
 
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setViewMode("matrix")}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+            viewMode === "matrix"
+              ? "bg-slate-900 text-white"
+              : "border border-slate-300 bg-white text-slate-600"
+          }`}
+        >
+          Matrix View
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setViewMode("table")}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+            viewMode === "table"
+              ? "bg-slate-900 text-white"
+              : "border border-slate-300 bg-white text-slate-600"
+          }`}
+        >
+          Table View
+        </button>
+      </div>
+
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
@@ -374,6 +408,7 @@ export default function DepartmentsPage() {
       ) : null}
 
       {/* Table */}
+      {viewMode === "table" && (
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -495,6 +530,115 @@ export default function DepartmentsPage() {
           </table>
         </div>
       </div>
+      )}
+
+      {viewMode === "matrix" && (
+        <div className="space-y-6">
+          {departments.map((department) => {
+            const selectedBranches = branches.filter((b) =>
+              department.branch_ids?.includes(b.id)
+            );
+
+            const groupedBranches = selectedBranches.reduce((acc, branch) => {
+              const groupName = branch.group_name || "ไม่ระบุกลุ่ม";
+              if (!acc[groupName]) {
+                acc[groupName] = {
+                  color: branch.group_color || "#E2E8F0",
+                  branches: [],
+                };
+              }
+              acc[groupName].branches.push(branch);
+              return acc;
+            }, {});
+
+            return (
+              <div
+                key={department.id}
+                className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm"
+                style={{ backgroundColor: department.department_color || "#E2E8F0" }}
+              >
+                <div className="flex items-center justify-between border-b border-white/40 px-6 py-5">
+                  <div>
+                    <div className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
+                      {department.code}
+                    </div>
+                    <h2 className="mt-2 text-xl font-bold text-slate-800">
+                      {department.name}
+                    </h2>
+                  </div>
+
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                    {department.status === "active" ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
+                  {Object.entries(groupedBranches).map(([groupName, group]) => (
+                    <div
+                      key={groupName}
+                      className="min-h-[260px] rounded-3xl border border-white/50 p-4 shadow-sm"
+                      style={{ backgroundColor: group.color }}
+                    >
+                      <h3 className="mb-4 text-center text-base font-bold text-slate-800">
+                        {groupName}
+                      </h3>
+
+                      <div className="space-y-4">
+                        {group.branches.map((branch) => (
+                          <div key={branch.id} className="text-center">
+                            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white/80 p-2 shadow-sm">
+                              {branch.branch_image_url ? (
+                                <img
+                                  src={branch.branch_image_url}
+                                  alt={branch.branch_name}
+                                  className="max-h-full max-w-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[10px] text-slate-400">
+                                  No Logo
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-2 text-xs font-bold text-blue-700">
+                              {branch.branch_code} : -
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {(canEdit || canDelete) && (
+                  <div className="flex justify-end gap-2 border-t border-white/40 px-5 py-4">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(department)}
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        Edit
+                      </button>
+                    )}
+
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(department)}
+                        disabled={deletingId === department.id}
+                        className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
+                      >
+                        {deletingId === department.id ? "Deleting..." : "Delete"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -547,7 +691,7 @@ export default function DepartmentsPage() {
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  สาขา
+                  สังกัดที่ดูแล
                 </label>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -583,7 +727,7 @@ export default function DepartmentsPage() {
                         );
                       })
                     ) : (
-                      <p className="text-sm text-slate-400">ยังไม่ได้เลือกสาขา</p>
+                      <p className="text-sm text-slate-400">ยังไม่ได้เลือกสังกัดที่ดูแล</p>
                     )}
                   </div>
 
@@ -641,7 +785,7 @@ export default function DepartmentsPage() {
 
                   <div className="mt-3 flex items-center justify-between">
                     <p className="text-xs text-slate-400">
-                      เลือกได้มากกว่า 1 สาขา
+                      เลือกได้มากกว่า 1 สังกัดที่ดูแล
                     </p>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                       เลือกแล้ว {form.branch_ids.length} รายการ

@@ -12,6 +12,7 @@ export async function PATCH(req, { params }) {
     const company_id = body?.company_id || null;
     const phone = body?.phone?.trim() || null;
     const status = body?.status || "active";
+    const group_id = body?.group_id || null;
     const branch_image_url = body?.branch_image_url || null;
     const branch_image_path = body?.branch_image_path || null;
 
@@ -36,6 +37,7 @@ export async function PATCH(req, { params }) {
         branch_code,
         branch_name,
         company_id,
+        group_id,
         phone,
         status,
         branch_image_url,
@@ -45,6 +47,12 @@ export async function PATCH(req, { params }) {
           company_code,
           company_name_th,
           company_name_en
+        ),
+        branch_groups (
+          id,
+          group_code,
+          group_name,
+          group_color
         )
       `)
       .eq("id", id)
@@ -59,6 +67,7 @@ export async function PATCH(req, { params }) {
         branch_name,
         company_id,
         phone,
+        group_id,
         status,
         branch_image_url,
         branch_image_path,
@@ -70,6 +79,7 @@ export async function PATCH(req, { params }) {
         branch_code,
         branch_name,
         company_id,
+        group_id,
         phone,
         status,
         sort_order,
@@ -82,6 +92,12 @@ export async function PATCH(req, { params }) {
           company_code,
           company_name_th,
           company_name_en
+        ),
+        branch_groups (
+          id,
+          group_code,
+          group_name,
+          group_color
         )
       `)
       .single();
@@ -110,6 +126,10 @@ export async function PATCH(req, { params }) {
         company_code: oldBranch.companies?.company_code || "",
         branch_image_url: oldBranch.branch_image_url,
         branch_image_path: oldBranch.branch_image_path,
+        group_id: oldBranch.group_id,
+        group_code: oldBranch.branch_groups?.group_code || "",
+        group_name: oldBranch.branch_groups?.group_name || "",
+        group_color: oldBranch.branch_groups?.group_color || "",
         company_name:
           oldBranch.companies?.company_name_th ||
           oldBranch.companies?.company_name_en ||
@@ -124,6 +144,10 @@ export async function PATCH(req, { params }) {
         company_code: data.companies?.company_code || "",
         branch_image_url: data.branch_image_url,
         branch_image_path: data.branch_image_path,
+        group_id: data.group_id,
+        group_code: data.branch_groups?.group_code || "",
+        group_name: data.branch_groups?.group_name || "",
+        group_color: data.branch_groups?.group_color || "",
         company_name:
           data.companies?.company_name_th ||
           data.companies?.company_name_en ||
@@ -151,6 +175,10 @@ export async function PATCH(req, { params }) {
         sort_order: data.sort_order,
         branch_image_url: data.branch_image_url || "",
         branch_image_path: data.branch_image_path || "",
+        group_id: data.group_id || "",
+        group_code: data.branch_groups?.group_code || "",
+        group_name: data.branch_groups?.group_name || "",
+        group_color: data.branch_groups?.group_color || "#E2E8F0",
         created_at: data.created_at,
         updated_at: data.updated_at,
       },
@@ -169,12 +197,6 @@ export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
 
-    const { error } = await supabaseAdmin
-      .from("branches")
-      .delete()
-      .eq("id", id);
-
-    
     const { data: oldBranch, error: oldBranchError } = await supabaseAdmin
       .from("branches")
       .select(`
@@ -182,13 +204,22 @@ export async function DELETE(req, { params }) {
         branch_code,
         branch_name,
         company_id,
+        group_id,
         phone,
         status,
+        branch_image_url,
+        branch_image_path,
         companies (
           id,
           company_code,
           company_name_th,
           company_name_en
+        ),
+        branch_groups (
+          id,
+          group_code,
+          group_name,
+          group_color
         )
       `)
       .eq("id", id)
@@ -196,8 +227,12 @@ export async function DELETE(req, { params }) {
 
     if (oldBranchError) throw oldBranchError;
 
-    if (error) throw error;
+    const { error } = await supabaseAdmin
+      .from("branches")
+      .delete()
+      .eq("id", id);
 
+    if (error) throw error;
 
     await writeActivityLog({
       module_name: "branches",
@@ -214,8 +249,14 @@ export async function DELETE(req, { params }) {
           oldBranch.companies?.company_name_th ||
           oldBranch.companies?.company_name_en ||
           "",
+        group_id: oldBranch.group_id,
+        group_code: oldBranch.branch_groups?.group_code || "",
+        group_name: oldBranch.branch_groups?.group_name || "",
+        group_color: oldBranch.branch_groups?.group_color || "",
         phone: oldBranch.phone,
         status: oldBranch.status,
+        branch_image_url: oldBranch.branch_image_url,
+        branch_image_path: oldBranch.branch_image_path,
       },
     });
 
@@ -227,7 +268,7 @@ export async function DELETE(req, { params }) {
     console.error("DELETE_BRANCH_ERROR:", error);
 
     return NextResponse.json(
-      { error: "ไม่สามารถลบข้อมูลสังกัดได้" },
+      { error: error.message || "ไม่สามารถลบข้อมูลสังกัดได้" },
       { status: 500 }
     );
   }

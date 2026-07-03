@@ -28,7 +28,7 @@ type Props = {
   selectedUser: User;
   menuOptions: string[];
   onSelectUser: (id: string) => void;
-  onUpdateUser: (user: User) => void | Promise<void>;
+  onUpdateUser: (user: User) => Promise<User>;
 };
 
 const menuIconMap: Record<string, typeof LayoutDashboard> = {
@@ -66,6 +66,37 @@ const menuIconBgStyles: Record<string, string> = {
 
 const roleOptions: User['role'][] = ['Admin', 'Manager', 'Executive', 'ยังไม่กำหนด'];
 
+  const getRoleButtonClass = (role: User['role'], selectedRole: User['role']) => {
+    if (selectedRole === role) {
+      switch (role) {
+        case 'Admin':
+          return 'bg-red-600 text-white border-red-600';
+        case 'Manager':
+          return 'bg-blue-600 text-white border-blue-600';
+        case 'Executive':
+          return 'bg-violet-600 text-white border-violet-600';
+        case 'ยังไม่กำหนด':
+          return 'bg-slate-700 text-white border-slate-700';
+      }
+    }
+    return 'bg-white text-slate-700 border-slate-200 hover:border-slate-300';
+  };
+
+  const getRoleBadgeClass = (role: User['role']) => {
+    switch (role) {
+      case 'Admin':
+        return 'text-red-700 bg-red-100 border-red-200';
+      case 'Manager':
+        return 'text-blue-700 bg-blue-100 border-blue-200';
+      case 'Executive':
+        return 'text-violet-700 bg-violet-100 border-violet-200';
+      case 'ยังไม่กำหนด':
+        return 'text-slate-600 bg-slate-100 border-slate-200';
+      default:
+        return 'text-slate-700 bg-slate-100 border-slate-200';
+    }
+  };
+
 export default function AccessPermissionsPanel({
   users,
   selectedUserId,
@@ -84,9 +115,23 @@ export default function AccessPermissionsPanel({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onUpdateUser(draftUser);
-      swalSuccess('บันทึกสำเร็จ');
-    } catch (error){
+      const updated = await onUpdateUser(draftUser);
+      const newUser = updated ?? draftUser;
+
+      setDraftUser(newUser);
+
+      swalSuccess(
+        'บันทึกสำเร็จ',
+        `เมนูที่อนุญาต: ${newUser.menus.join(', ') || 'ไม่มีเมนู'}`
+      );
+
+      onSelectUser(newUser.id);
+
+      // รีเฟรชหน้าหลัง popup ขึ้น
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+    } catch (error) {
       swalError('บันทึกไม่สำเร็จ', 'กรุณาลองอีกครั้ง');
     } finally {
       setIsSaving(false);
@@ -158,7 +203,7 @@ export default function AccessPermissionsPanel({
                 key={user.id}
                 type="button"
                 onClick={() => onSelectUser(user.id)}
-                className={`w-full rounded-3xl border p-5 text-left transition ${
+                className={`cursor-pointer w-full rounded-3xl border p-5 text-left transition ${
                   isSelected
                     ? 'border-blue-500 bg-blue-50 shadow-sm'
                     : 'border-slate-200 bg-white hover:border-slate-300'
@@ -181,7 +226,7 @@ export default function AccessPermissionsPanel({
                   </div>
 
                   <div className="text-right">
-                    <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    <div className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(user.role)}`}>
                       {user.role}
                     </div>
                     <p className="mt-2 text-xs text-slate-500">
@@ -208,11 +253,7 @@ export default function AccessPermissionsPanel({
                   key={role}
                   type="button"
                   onClick={() => handleRoleChange(role)}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    draftUser.role === role
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                  }`}
+                  className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition ${getRoleButtonClass(role, draftUser.role)}`}
                 >
                   {role}
                 </button>
@@ -267,8 +308,12 @@ export default function AccessPermissionsPanel({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`relative z-10 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 
-                  ${isSaving ? 'cursor-not-allowed bg-slate-400' : 'cursor-pointer'}`}
+                /* 🎨 ขนาดพิกเซลตัวหนังสือ, ระยะเว้น (px-6 py-3) และฟอนต์คงเดิมเป๊ะ เปลี่ยนแค่เฉดสีพื้นหลัง */
+                className={`relative z-10 rounded-full px-6 py-3 text-sm font-semibold text-white transition 
+                  ${isSaving 
+                    ? 'cursor-not-allowed bg-slate-400' 
+                    : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 cursor-pointer'
+                  }`}
               >
                 {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>

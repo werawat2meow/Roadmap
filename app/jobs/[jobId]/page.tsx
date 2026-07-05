@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, Tag, Divider, Skeleton, Alert } from "antd";
+import { Card, Divider, Skeleton, Alert } from "antd";
 import { useParams } from "next/navigation";
-
 import { getText } from "@/app/jobs/lib/i18n";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
+import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,10 +29,11 @@ interface JobDetail {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function JobDetailPage() {
+  const router = useRouter();
+
   const { locale } = useLanguage();
   const params = useParams();
   const jobId = params?.jobId as string | undefined;
-
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,6 @@ export default function JobDetailPage() {
           throw new Error(body?.error ?? `HTTP ${res.status}`);
         }
         const data: JobDetail = await res.json();
-        console.log("Fetched job data:", data);
         setJob(data);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -96,6 +96,8 @@ export default function JobDetailPage() {
       </div>
     );
   }
+
+  
     
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -113,8 +115,10 @@ export default function JobDetailPage() {
                     <div className="space-y-2">
                       {job.type_of_work && (
                         <p>
-                          <span className="font-medium">💼 {getUIText(uiText.workType, locale)}:</span>{" "}
-                          {job.type_of_work}
+                          <span className="font-medium">
+                            💼 {getUIText(uiText.workType, locale)}:
+                          </span>{" "}
+                          {job.type_of_work.charAt(0).toUpperCase() + job.type_of_work.slice(1)}
                         </p>
                       )}
 
@@ -128,7 +132,7 @@ export default function JobDetailPage() {
                       {job.salary_min && job.salary_max && (
                         <p>
                           <span className="font-medium">💰 {getUIText(uiText.salary, locale)}:</span>{" "}
-                          {job.salary_min} - {job.salary_max}
+                          {job.salary_min} - {job.salary_max} {getUIText(uiText.type_salary, locale)}
                         </p>
                       )}
 
@@ -212,7 +216,10 @@ export default function JobDetailPage() {
             )}
 
             <div className="pt-6 flex justify-center">
-              <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+              <button 
+                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                onClick={() => router.push('/jobs/register/' + job.id)}
+              >
                 {getUIText(uiText.apply, locale)}
               </button>
             </div>

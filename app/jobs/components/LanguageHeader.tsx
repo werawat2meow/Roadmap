@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 
 interface Language {
   id: string;
@@ -39,6 +40,9 @@ export default function LanguageHeader() {
   const [urgentFilter, setUrgentFilter] = useState( readSavedUrgent());
 
   const { locale, setLocale } = useLanguage();
+
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const loadData = async () => {
@@ -126,16 +130,39 @@ export default function LanguageHeader() {
     localStorage.setItem("language_slug", value);
   };
 
+  // const selectBranch = (branchId: string) => {
+  //   localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
+  //   window.dispatchEvent(new Event("branch-change"));
+  //   setMenuOpen(false);
+  // };
+
   const selectBranch = (branchId: string) => {
     localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
-    window.dispatchEvent(new Event("branch-change"));
+
     setMenuOpen(false);
+
+    if (pathname === "/jobs") {
+      // อยู่หน้า jobs แล้ว
+      window.dispatchEvent(new Event("branch-change"));
+    } else {
+      // ไปหน้า jobs แล้วให้ JobsPage อ่าน localStorage
+      router.push("/jobs");
+    }
   };
 
   const selectedBranchId = readSavedBranch();
 
   return (
-    <header className="border-b border-gray-200 bg-[#0d47a1]" >
+    <header 
+      className="
+      border-b 
+      border-gray-200 
+      bg-[#0d47a1]
+      sticky top-0 z-50
+      backdrop-blur-md
+      shadow-sm
+    " 
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-6">
         <div className="flex items-center gap-3">
           <button
@@ -164,7 +191,7 @@ export default function LanguageHeader() {
           <span className="hidden text-sm text-gray-50 sm:block">Language</span>
 
           <select
-            className="min-w-[140px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
             value={locale}
             onChange={handleChange}
           >
@@ -206,7 +233,7 @@ export default function LanguageHeader() {
               </button>
             </div>
 
-            <div className="max-h-[calc(100vh-64px)] overflow-y-auto p-4">
+            <div className="max-h-[calc(100vh-64px)] overflow-y-auto p-4 bg-gray-900/70 border-b border-gray-200 backdrop-blur-md shadow-sm rounded-b-lg">
               <div className="space-y-2">
                 <button
                   type="button"

@@ -27,6 +27,7 @@ export default function DivisionsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [editingDivision, setEditingDivision] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const [viewMode, setViewMode] = useState("matrix");
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
@@ -104,6 +105,8 @@ export default function DivisionsPage() {
         name: division.division_name,
         department_id: division.department_id,
         department_name: division.department_name,
+        department_color: division.department_color || "#E2E8F0",
+        department_icon: division.department_icon || "",
         status: division.status,
       }));
 
@@ -317,162 +320,303 @@ export default function DivisionsPage() {
         />
       </div>
 
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setViewMode("matrix")}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+            viewMode === "matrix"
+              ? "bg-[#123A63] text-white"
+              : "border border-slate-300 bg-white text-slate-600"
+          }`}
+        >
+          Matrix View
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setViewMode("table")}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+            viewMode === "table"
+              ? "bg-[#123A63] text-white"
+              : "border border-slate-300 bg-white text-slate-600"
+          }`}
+        >
+          Table View
+        </button>
+      </div>
+
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
-                <th className="px-6 py-4 text-left font-semibold">รหัสฝ่าย</th>
-                <th className="px-6 py-4 text-left font-semibold">ชื่อฝ่าย</th>
-                <th className="px-6 py-4 text-left font-semibold">แผนก</th>
-                <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
-                <th className="px-6 py-4 text-right font-semibold">จัดการ</th>
-              </tr>
-            </thead>
+      {viewMode === "matrix" && (
+        <div className="space-y-6">
+          {loading ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-56 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm"
+                />
+              ))}
+            </div>
+          ) : divisions.length > 0 ? (
+            Object.entries(
+              divisions.reduce((acc, division) => {
+                const key = division.department_name || "ไม่ระบุแผนก";
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(division);
+                return acc;
+              }, {})
+            ).map(([departmentName, departmentDivisions]) => (
+              <div
+                key={departmentName}
+                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+                style={{
+                  backgroundColor:
+                    departmentDivisions[0]?.department_color || "#E2E8F0",
+                }}
+              >
+                <div className="mb-5">
+                  <h2 className="text-lg font-bold text-slate-800">
+                    {departmentName}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    ทั้งหมด {departmentDivisions.length} ฝ่าย
+                  </p>
+                </div>
 
-            <tbody>
-              {loading ? (
-                [...Array(pageSize)].map((_, i) => (
-                  <tr key={i} className="border-t border-slate-200">
-                    <td className="px-6 py-4">
-                      <div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-3.5 w-40 animate-pulse rounded-md bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="ml-auto h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
-                    </td>
-                  </tr>
-                ))
-              ) : divisions.length > 0 ? (
-                divisions.map((division, index) => (
-                  <tr
-                    key={division.id}
-                    className="border-t border-slate-200 hover:bg-slate-50"
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {(page - 1) * pageSize + index + 1}
-                    </td>
-
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {division.code}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-700">
-                      {division.name}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {division.department_name || "-"}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          division.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {division.status === "active" ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {canEdit || canDelete ? (
-                        <div className="flex justify-end gap-2">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(division)}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                            >
-                              Edit
-                            </button>
-                          )}
-
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(division)}
-                              disabled={deletingId === division.id}
-                              className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === division.id
-                                  ? "cursor-not-allowed border-slate-200 text-slate-400"
-                                  : "border-red-200 text-red-600 hover:bg-red-50"
-                              }`}
-                            >
-                              {deletingId === division.id ? "Deleting..." : "Delete"}
-                            </button>
-                          )}
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                  {departmentDivisions.map((division) => (
+                    <div
+                      key={division.id}
+                      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      <div className="bg-slate-100 px-5 py-4">
+                        <div className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+                          {division.code}
                         </div>
-                      ) : (
-                        <div className="text-right text-slate-400">-</div>
-                      )}
+
+                        <h3 className="mt-3 text-lg font-bold text-slate-800">
+                          {division.name}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-4 p-5">
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <p className="text-xs text-slate-400">Department</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-700">
+                            {division.department_name || "-"}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            division.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-600"
+                          }`}
+                        >
+                          {division.status === "active" ? "Active" : "Inactive"}
+                        </span>
+
+                        {(canEdit || canDelete) && (
+                          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(division)}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                              >
+                                Edit
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(division)}
+                                disabled={deletingId === division.id}
+                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                                  deletingId === division.id
+                                    ? "cursor-not-allowed border-slate-200 text-slate-400"
+                                    : "border-red-200 text-red-600 hover:bg-red-50"
+                                }`}
+                              >
+                                {deletingId === division.id ? "Deleting..." : "Delete"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">
+              ไม่พบข้อมูลฝ่าย
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === "table" && (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
+                  <th className="px-6 py-4 text-left font-semibold">รหัสฝ่าย</th>
+                  <th className="px-6 py-4 text-left font-semibold">ชื่อฝ่าย</th>
+                  <th className="px-6 py-4 text-left font-semibold">แผนก</th>
+                  <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
+                  <th className="px-6 py-4 text-right font-semibold">จัดการ</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  [...Array(pageSize)].map((_, i) => (
+                    <tr key={i} className="border-t border-slate-200">
+                      <td className="px-6 py-4">
+                        <div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-3.5 w-40 animate-pulse rounded-md bg-slate-200" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="ml-auto h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
+                      </td>
+                    </tr>
+                  ))
+                ) : divisions.length > 0 ? (
+                  divisions.map((division, index) => (
+                    <tr
+                      key={division.id}
+                      className="border-t border-slate-200 hover:bg-slate-50"
+                    >
+                      <td className="px-6 py-4 font-medium text-slate-700">
+                        {(page - 1) * pageSize + index + 1}
+                      </td>
+
+                      <td className="px-6 py-4 font-medium text-slate-700">
+                        {division.code}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-700">
+                        {division.name}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {division.department_name || "-"}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            division.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-600"
+                          }`}
+                        >
+                          {division.status === "active" ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {canEdit || canDelete ? (
+                          <div className="flex justify-end gap-2">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(division)}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                              >
+                                Edit
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(division)}
+                                disabled={deletingId === division.id}
+                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                                  deletingId === division.id
+                                    ? "cursor-not-allowed border-slate-200 text-slate-400"
+                                    : "border-red-200 text-red-600 hover:bg-red-50"
+                                }`}
+                              >
+                                {deletingId === division.id ? "Deleting..." : "Delete"}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-right text-slate-400">-</div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-10 text-center text-slate-400"
+                    >
+                      ไม่พบข้อมูลฝ่าย
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-slate-400"
-                  >
-                    ไม่พบข้อมูลฝ่าย
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
 
-          <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
-            <p className="text-sm text-slate-500">
-              ทั้งหมด {total} รายการ
-            </p>
+            <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+              <p className="text-sm text-slate-500">
+                ทั้งหมด {total} รายการ
+              </p>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1 || loading}
-                onClick={() => loadDivisions(search, page - 1)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ก่อนหน้า
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1 || loading}
+                  onClick={() => loadDivisions(search, page - 1)}
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ก่อนหน้า
+                </button>
 
-              <span className="text-sm text-slate-600">
-                หน้า {page} / {totalPages}
-              </span>
+                <span className="text-sm text-slate-600">
+                  หน้า {page} / {totalPages}
+                </span>
 
-              <button
-                type="button"
-                disabled={page >= totalPages || loading}
-                onClick={() => loadDivisions(search, page + 1)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ถัดไป
-              </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => loadDivisions(search, page + 1)}
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ถัดไป
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

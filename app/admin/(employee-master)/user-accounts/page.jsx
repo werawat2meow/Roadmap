@@ -49,6 +49,7 @@ export default function UserAccountsPage() {
   const canCreate = hasPermission(user, "access.user_accounts.create");
   const canEdit = hasPermission(user, "access.user_accounts.edit");
   const canDelete = hasPermission(user, "access.user_accounts.delete");
+  const canResetPassword = hasPermission(user, "access.user_accounts.reset_password");
 
   
   useEffect(() => {
@@ -329,6 +330,52 @@ export default function UserAccountsPage() {
     }
   };
 
+  const handleResetPassword = async (item) => {
+    if (!canResetPassword) {
+      swalError("คุณไม่มีสิทธิ์ Reset Password");
+      return;
+    }
+
+    if (item.username?.toLowerCase() === "admin") {
+      swalError("ไม่สามารถ Reset Password ผู้ใช้งาน admin ได้");
+      return;
+    }
+
+    const confirmed = await swalConfirm(
+      `ต้องการ Reset Password ผู้ใช้งาน "${item.username}" ใช่หรือไม่?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+
+      const res = await fetch(
+        `/api/admin/user-accounts/${item.id}/reset-password`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Reset Password failed");
+      }
+
+      await swalSuccess(
+        `Reset Password สำเร็จ\n\nUsername: ${data.data?.username}\nPassword ใหม่: ${data.data?.temporary_password}`
+      );
+
+      await loadUserAccounts(search, currentPage);
+    } catch (err) {
+      console.error(err);
+      swalError(err.message || "เกิดข้อผิดพลาดในการ Reset Password");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const pageStart = total === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const pageEnd = Math.min(currentPage * ITEMS_PER_PAGE, total);
 
@@ -459,7 +506,7 @@ export default function UserAccountsPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        {(canEdit || canDelete) ? (
+                        {(canEdit || canDelete || canResetPassword) ? (
                           <div className="flex justify-end gap-2">
                             {canEdit && (
                               <button
@@ -492,6 +539,21 @@ export default function UserAccountsPage() {
                                   : deletingId === item.id
                                     ? "Deleting..."
                                     : "Delete"}
+                              </button>
+                            )}
+
+                            {canResetPassword && (
+                              <button
+                                type="button"
+                                onClick={() => handleResetPassword(item)}
+                                disabled={saving || isProtectedAdmin}
+                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                                  saving || isProtectedAdmin
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
+                                    : "border-amber-200 text-amber-600 hover:bg-amber-50"
+                                }`}
+                              >
+                                {isProtectedAdmin ? "Protected" : "Reset Password"}
                               </button>
                             )}
                           </div>

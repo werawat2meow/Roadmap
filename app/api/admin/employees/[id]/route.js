@@ -36,6 +36,9 @@ export async function PATCH(req, { params }) {
     const division_id = body?.division_id || null;
     const unit_id = body?.unit_id || null;
     const position_id = body?.position_id || null;
+    const branch_group_id = body?.branch_group_id || null;
+    const job_id = body?.job_id || null;
+    const management_assignment_id = body?.management_assignment_id || null;
 
     if (!first_name_th || !last_name_th) {
       return NextResponse.json(
@@ -113,6 +116,9 @@ export async function PATCH(req, { params }) {
         resignation_date,
         status,
         branch_id,
+        branch_group_id,
+        job_id,
+        management_assignment_id,
         department_id,
         division_id,
         unit_id,
@@ -153,6 +159,21 @@ export async function PATCH(req, { params }) {
         unit_id,
         position_id,
         created_at,
+        branch_groups (
+          group_name
+        ),
+
+        jobs (
+          job_code,
+          job_name,
+          management_level,
+          scope_type
+        ),
+
+        management_assignments (
+          id,
+          assignment_name
+        ),
         employee_statuses (
           status_name,
           color

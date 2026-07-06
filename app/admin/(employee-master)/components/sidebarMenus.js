@@ -1,6 +1,6 @@
 "use client";
 
-import {HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,} from "@ant-design/icons";
+import {PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -33,9 +33,15 @@ export const sidebarMenus = [
         permission: "ems.companies.view",
       },
       {
-        label: "สาขา",
+        label: "กรุ๊ปสังกัด",
+        href: "/admin/branch-groups",
+        icon: <AppstoreOutlined />,
+        permission: "ems.branch_groups.view",
+      },
+      {
+        label: "สังกัด",
         href: "/admin/branches",
-        icon: <BankOutlined />,
+        icon: <EnvironmentOutlined />,
         permission: "ems.branches.view",
       },
       {
@@ -63,9 +69,15 @@ export const sidebarMenus = [
         permission: "ems.positions.view",
       },
       {
+        label: "Job / บทบาทงาน",
+        href: "/admin/jobs",
+        icon: <ProfileOutlined  />,
+        permission: "ems.jobs.view",
+      },
+      {
         label: "ตำแหน่งตามหน่วย",
         href: "/admin/unit-positions",
-        icon: <ApartmentOutlined />,
+        icon: <PartitionOutlined />,
         permission: "ems.unit_positions.view",
       },
     ],
@@ -82,6 +94,12 @@ export const sidebarMenus = [
         permission: "ems.employees.view",
       },
       {
+        label: "สายบังคับบัญชา",
+        href: "/admin/management-assignments",
+        icon: <ApartmentOutlined />,
+        permission: "ems.management_assignments.view",
+      },
+      {
         label: "ประเภทการจ้าง",
         href: "/admin/employment-types",
         icon: <UsergroupAddOutlined />,
@@ -92,6 +110,12 @@ export const sidebarMenus = [
         href: "/admin/employee-statuses",
         icon: <SafetyOutlined />,
         permission: "ems.employee_statuses.view",
+      },
+      {
+        label: "ทักษะ / Skills",
+        href: "/admin/skills",
+        icon: <ToolOutlined />,
+        permission: "ems.skills.view",
       },
       {
         label: "รายงานพนักงาน",

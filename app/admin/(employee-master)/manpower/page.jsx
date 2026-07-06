@@ -13,7 +13,9 @@ export default function ManpowerPage() {
   const { user, loadingUser } = useAuth();
 
   const canView = hasPermission(user, "ems.manpower.view");
-
+  const canViewDashboard = hasPermission(user, "ems.dashboard.view");
+  const canExportDashboard = hasPermission(user, "ems.manpower.export");
+  
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dashboard, setDashboard] = useState({
@@ -126,22 +128,25 @@ export default function ManpowerPage() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/admin/dashboard")}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
-                  >
-                    <ArrowLeftOutlined />
-                    กลับหน้า Dashboard
-                  </button>
-
-                  <a
-                    href="/api/admin/dashboard/export"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-                  >
-                    <DownloadOutlined />
-                    Export Excel
-                  </a>
+                  {canViewDashboard && (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/admin/dashboard")}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
+                    >
+                      <ArrowLeftOutlined />
+                      กลับหน้า Dashboard
+                    </button>
+                  )}
+                  {canExportDashboard && (
+                    <a
+                      href="/api/admin/dashboard/export"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+                    >
+                      <DownloadOutlined />
+                      Export Excel
+                    </a>
+                  )}
                 </div>
               </div>
 

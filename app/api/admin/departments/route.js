@@ -13,6 +13,8 @@ export async function GET(req) {
         id,
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         sort_order,
         created_at,
@@ -37,6 +39,8 @@ export async function GET(req) {
         id: department.id,
         department_code: department.department_code,
         department_name: department.department_name,
+        department_color: department.department_color || "#E2E8F0",
+        department_icon: department.department_icon || "",
         branch_ids: branchRows.map((row) => row.branch_id),
         branch_names: branchRows
           .map((row) => row.branches?.branch_name)
@@ -85,8 +89,11 @@ export async function POST(req) {
 
     const department_code = body?.department_code?.trim();
     const department_name = body?.department_name?.trim();
+    const department_color = body?.department_color?.trim() || "#E2E8F0";
+    const department_icon = body?.department_icon?.trim() || null;
     const branch_ids = Array.isArray(body?.branch_ids) ? body.branch_ids : [];
     const status = body?.status || "active";
+    
 
     if (!department_code || !department_name) {
       return NextResponse.json(
@@ -121,6 +128,8 @@ export async function POST(req) {
         {
           department_code,
           department_name,
+          department_color,
+          department_icon,
           status,
         },
       ])
@@ -128,6 +137,8 @@ export async function POST(req) {
         id,
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         sort_order,
         created_at
@@ -154,6 +165,8 @@ export async function POST(req) {
         id,
         department_code,
         department_name,
+        department_color,
+        department_icon,
         status,
         sort_order,
         created_at,
@@ -181,6 +194,8 @@ export async function POST(req) {
       new_data: {
         department_code: fullDepartment.department_code,
         department_name: fullDepartment.department_name,
+        department_color: fullDepartment.department_color,
+        department_icon: fullDepartment.department_icon,
         status: fullDepartment.status,
         branch_ids: branchRows.map((row) => row.branch_id),
         branch_codes: branchRows
@@ -200,6 +215,8 @@ export async function POST(req) {
         id: fullDepartment.id,
         department_code: fullDepartment.department_code,
         department_name: fullDepartment.department_name,
+        department_color: fullDepartment.department_color,
+        department_icon:fullDepartment.department_icon,
         branch_ids: branchRows.map((row) => row.branch_id),
         branch_names: branchRows
           .map((row) => row.branches?.branch_name)

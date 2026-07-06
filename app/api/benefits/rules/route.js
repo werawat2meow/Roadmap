@@ -126,6 +126,9 @@ function buildPayload(body) {
 
     discount_percent: toNumberOrNull(body.discount_percent),
     is_unlimited: body.is_unlimited ?? false,
+    allow_carry_forward: body.allow_carry_forward ?? false,
+    max_carry_forward_amount: toNumberOrNull(body.max_carry_forward_amount),
+    carry_forward_expire_month: toNumberOrNull(body.carry_forward_expire_month),
 
     rule_note: body.rule_note || null,
     is_active: body.is_active ?? true,
@@ -173,6 +176,9 @@ export async function GET() {
         quota_frequency,
         discount_percent,
         is_unlimited,
+        allow_carry_forward,
+        max_carry_forward_amount,
+        carry_forward_expire_month,
         rule_note,
         is_active,
         created_at,
@@ -221,12 +227,31 @@ export async function GET() {
       .select("id, type_code, type_name")
       .order("type_name", { ascending: true });
 
+    const { data: positionRows } = await supabaseAdmin
+      .from("positions")
+      .select("position_level")
+      .eq("status", "active")
+      .not("position_level", "is", null);
+
+    const positionLevels = [
+      ...new Set(
+        (positionRows || [])
+          .map((item) => item.position_level)
+          .filter(Boolean)
+      ),
+    ].sort(
+      (a, b) =>
+        Number(b.replace("P", "")) -
+        Number(a.replace("P", ""))
+    );
+    
     return NextResponse.json({
       success: true,
       data: data || [],
       benefits: benefits || [],
       employeeStatuses: employeeStatuses || [],
       employmentTypes: employmentTypes || [],
+      positionLevels,
     });
   } catch (error) {
     console.error("BENEFIT_RULES_GET_FATAL:", error);

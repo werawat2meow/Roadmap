@@ -46,13 +46,8 @@ export default function BenefitEntitlementsPage() {
   const canView = hasPermission(user, "benefit.entitlement.view") || hasPermission(user, "benefit.entitlement.manage");
   const canCreate = hasPermission(user, "benefit.entitlement.create") || hasPermission(user, "benefit.entitlement.manage");
   const canUpdate = hasPermission(user, "benefit.entitlement.update") || hasPermission(user, "benefit.entitlement.edit") || hasPermission(user, "benefit.entitlement.manage");
-  const canDelete =
-    hasPermission(user, "benefit.entitlement.delete") ||
-    hasPermission(user, "benefit.entitlement.manage");
-
-  const canGenerate =
-    hasPermission(user, "benefit.entitlement.generate") ||
-    hasPermission(user, "benefit.entitlement.manage");
+  const canDelete = hasPermission(user, "benefit.entitlement.delete") || hasPermission(user, "benefit.entitlement.manage");
+  const canGenerate = hasPermission(user, "benefit.entitlement.generate") || hasPermission(user, "benefit.entitlement.manage");
 
   const loadData = async () => {
     try {
@@ -131,6 +126,7 @@ export default function BenefitEntitlementsPage() {
       entitlement_year: new Date().getFullYear(),
       entitlement_month: null,
       quota_amount: 0,
+      carry_forward_amount: 0,
       used_amount: 0,
       remaining_amount: 0,
       quota_unit: "บาท",
@@ -149,6 +145,7 @@ export default function BenefitEntitlementsPage() {
       entitlement_year: record.entitlement_year,
       entitlement_month: record.entitlement_month ?? null,
       quota_amount: record.quota_amount,
+      carry_forward_amount: record.carry_forward_amount,
       used_amount: record.used_amount,
       remaining_amount: record.remaining_amount,
       quota_unit: record.quota_unit,
@@ -270,12 +267,26 @@ export default function BenefitEntitlementsPage() {
         render: (_, record) => record?.benefits?.benefit_name || "-",
       },
       {
-        title: "Quota",
+        title: "สิทธิ์รวม",
+        dataIndex: "quota_amount",
         width: 160,
-        render: (_, record) =>
+        align: "right",
+        render: (value, record) =>
           record.is_unlimited
             ? "ไม่จำกัด"
-            : `${Number(record.quota_amount || 0).toLocaleString()} ${
+            : `${Number(value || 0).toLocaleString()} ${
+                record.quota_unit || ""
+              }`,
+      },
+      {
+        title: "ยอดยกมาจากปีก่อน",
+        dataIndex: "carry_forward_amount",
+        width: 180,
+        align: "right",
+        render: (value, record) =>
+          record.is_unlimited
+            ? "-"
+            : `${Number(value || 0).toLocaleString()} ${
                 record.quota_unit || ""
               }`,
       },
@@ -397,7 +408,7 @@ export default function BenefitEntitlementsPage() {
           loading={loading}
           dataSource={rows}
           columns={columns}
-          scroll={{ x: 1750 }}
+          scroll={{ x: 1950 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -475,6 +486,21 @@ export default function BenefitEntitlementsPage() {
               extra="กรอกจำนวนสิทธิ์ที่พนักงานควรได้รับทั้งหมด"
             >
               <InputNumber className="w-full" min={0} precision={2} />
+            </Form.Item>
+
+
+            <Form.Item
+              label="ยอดยกมาจากปีก่อน"
+              name="carry_forward_amount"
+              tooltip="ยอดสิทธิ์คงเหลือจากปีก่อนที่ระบบยกมาให้อัตโนมัติ"
+              extra="ข้อมูลนี้มาจากระบบ Carry Forward"
+            >
+              <InputNumber
+                className="w-full"
+                min={0}
+                precision={2}
+                disabled
+              />
             </Form.Item>
 
             <Form.Item

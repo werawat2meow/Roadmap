@@ -333,6 +333,27 @@ export default function DepartmentsPage() {
     );
   };
 
+
+  const branchGroups = Array.from(
+    new Map(
+      branches.map((branch) => [
+        branch.group_name || "ไม่ระบุกลุ่ม",
+        {
+          name: branch.group_name || "ไม่ระบุกลุ่ม",
+          color: branch.group_color || "#E2E8F0",
+        },
+      ])
+    ).values()
+  );
+
+  const getDepartmentBranchesByGroup = (department, groupName) => {
+    return branches.filter(
+      (branch) =>
+        department.branch_ids?.includes(branch.id) &&
+        (branch.group_name || "ไม่ระบุกลุ่ม") === groupName
+    );
+  };
+
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
@@ -357,7 +378,7 @@ export default function DepartmentsPage() {
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="rounded-2xl bg-[#0D2842] px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               + เพิ่มแผนก
             </button>
@@ -381,7 +402,7 @@ export default function DepartmentsPage() {
           onClick={() => setViewMode("matrix")}
           className={`rounded-xl px-4 py-2 text-sm font-semibold ${
             viewMode === "matrix"
-              ? "bg-slate-900 text-white"
+              ? "bg-[#123A63] text-white"
               : "border border-slate-300 bg-white text-slate-600"
           }`}
         >
@@ -393,7 +414,7 @@ export default function DepartmentsPage() {
           onClick={() => setViewMode("table")}
           className={`rounded-xl px-4 py-2 text-sm font-semibold ${
             viewMode === "table"
-              ? "bg-slate-900 text-white"
+              ? "bg-[#123A63] text-white"
               : "border border-slate-300 bg-white text-slate-600"
           }`}
         >
@@ -532,114 +553,435 @@ export default function DepartmentsPage() {
       </div>
       )}
 
+      {/* Matrix View */}
       {viewMode === "matrix" && (
-        <div className="space-y-6">
-          {departments.map((department) => {
-            const selectedBranches = branches.filter((b) =>
-              department.branch_ids?.includes(b.id)
-            );
-
-            const groupedBranches = selectedBranches.reduce((acc, branch) => {
-              const groupName = branch.group_name || "ไม่ระบุกลุ่ม";
-              if (!acc[groupName]) {
-                acc[groupName] = {
-                  color: branch.group_color || "#E2E8F0",
-                  branches: [],
-                };
-              }
-              acc[groupName].branches.push(branch);
-              return acc;
-            }, {});
-
-            return (
-              <div
-                key={department.id}
-                className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm"
-                style={{ backgroundColor: department.department_color || "#E2E8F0" }}
-              >
-                <div className="flex items-center justify-between border-b border-white/40 px-6 py-5">
-                  <div>
-                    <div className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
-                      {department.code}
-                    </div>
-                    <h2 className="mt-2 text-xl font-bold text-slate-800">
-                      {department.name}
-                    </h2>
+        <div className="space-y-4">
+          {/* Mobile Matrix Card */}
+          <div className="space-y-4 lg:hidden">
+            {loading ? (
+              [...Array(4)].map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="h-5 w-36 animate-pulse rounded bg-slate-200" />
+                  <div className="mt-3 h-4 w-24 animate-pulse rounded bg-slate-100" />
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+                    <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
                   </div>
-
-                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                    {department.status === "active" ? "Active" : "Inactive"}
-                  </span>
                 </div>
+              ))
+            ) : departments.length > 0 ? (
+              departments.map((department, index) => (
+                <div
+                  key={department.id}
+                  className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm"
+                  style={{
+                    backgroundColor: department.department_color || "#F8FAFC",
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3 border-b border-white/50 p-4">
+                    <div>
+                      <div className="inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold text-slate-600">
+                        #{index + 1} · {department.code}
+                      </div>
 
-                <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
-                  {Object.entries(groupedBranches).map(([groupName, group]) => (
-                    <div
-                      key={groupName}
-                      className="min-h-[260px] rounded-3xl border border-white/50 p-4 shadow-sm"
-                      style={{ backgroundColor: group.color }}
-                    >
-                      <h3 className="mb-4 text-center text-base font-bold text-slate-800">
-                        {groupName}
+                      <h3 className="mt-2 text-base font-bold text-slate-800">
+                        {department.name}
                       </h3>
 
-                      <div className="space-y-4">
-                        {group.branches.map((branch) => (
-                          <div key={branch.id} className="text-center">
-                            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white/80 p-2 shadow-sm">
-                              {branch.branch_image_url ? (
-                                <img
-                                  src={branch.branch_image_url}
-                                  alt={branch.branch_name}
-                                  className="max-h-full max-w-full object-contain"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-slate-400">
-                                  No Logo
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="mt-2 text-xs font-bold text-blue-700">
-                              {branch.branch_code} : -
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        ดูแล {department.branch_ids?.length || 0} สาขา
+                      </p>
                     </div>
-                  ))}
+
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold ${
+                        department.status === "active"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      {department.status === "active" ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 p-4">
+                    {branchGroups.map((group) => {
+                      const groupBranches = getDepartmentBranchesByGroup(
+                        department,
+                        group.name
+                      );
+
+                      if (!groupBranches.length) return null;
+
+                      return (
+                        <div
+                          key={group.name}
+                          className="rounded-3xl border border-white/60 p-3"
+                          style={{
+                            backgroundColor: group.color || "#F8FAFC",
+                          }}
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-slate-800">
+                              {group.name}
+                            </h4>
+
+                            <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                              {groupBranches.length} สาขา
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {groupBranches.map((branch) => (
+                              <Tooltip
+                                key={branch.id}
+                                title={`${branch.branch_code || ""} ${
+                                  branch.branch_name || ""
+                                }`}
+                                placement="top"
+                                color="#0f172a"
+                              >
+                                <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-center shadow-sm">
+                                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2">
+                                    {branch.branch_image_url ? (
+                                      <img
+                                        src={branch.branch_image_url}
+                                        alt={branch.branch_name}
+                                        className="max-h-full max-w-full object-contain"
+                                      />
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">
+                                        No Logo
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="mt-2 truncate text-[11px] font-bold text-blue-700">
+                                    {branch.branch_code || "-"}
+                                  </div>
+
+                                  <div className="mt-0.5 truncate text-[10px] text-slate-500">
+                                    {branch.branch_name || "-"}
+                                  </div>
+                                </div>
+                              </Tooltip>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {(canEdit || canDelete) && (
+                    <div className="flex justify-end gap-2 border-t border-white/50 p-4">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(department)}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(department)}
+                          disabled={deletingId === department.id}
+                          className={`rounded-xl border bg-white px-3 py-2 text-xs font-medium ${
+                            deletingId === department.id
+                              ? "cursor-not-allowed border-slate-200 text-slate-400"
+                              : "border-red-200 text-red-600 hover:bg-red-50"
+                          }`}
+                        >
+                          {deletingId === department.id ? "Deleting..." : "Delete"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="rounded-3xl border border-slate-200 bg-white px-6 py-10 text-center text-slate-400">
+                ไม่พบข้อมูลแผนก
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Matrix Table */}
+          <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:block">
+            <div className="overflow-x-auto">
+                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-200 bg-slate-900 px-6 py-5 text-white">
+                  <h2 className="text-xl font-bold tracking-wide">
+                    BUSINESS STRUCTURE MATRIX
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-300">
+                    แสดงโครงสร้างแผนก แยกตามกลุ่มสังกัด และสาขาที่เกี่ยวข้อง
+                  </p>
                 </div>
 
-                {(canEdit || canDelete) && (
-                  <div className="flex justify-end gap-2 border-t border-white/40 px-5 py-4">
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(department)}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                      >
-                        Edit
-                      </button>
-                    )}
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1200px] w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-700 text-white">
+                        <th className="sticky left-0 z-30 w-[70px] border border-slate-500 px-3 py-3 text-center font-bold">
+                          NO.
+                        </th>
 
-                    {canDelete && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(department)}
-                        disabled={deletingId === department.id}
-                        className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
-                      >
-                        {deletingId === department.id ? "Deleting..." : "Delete"}
-                      </button>
+                        <th className="sticky left-[70px] z-30 w-[260px] border border-slate-500 px-4 py-3 text-left font-bold">
+                          Department
+                        </th>
+
+                        {branchGroups.map((group) => (
+                          <th
+                            key={group.name}
+                            className="min-w-[210px] border border-slate-500 px-4 py-3 text-center font-bold"
+                          >
+                            {group.name}
+                          </th>
+                        ))}
+
+                        <th className="w-[110px] border border-slate-500 px-3 py-3 text-center font-bold">
+                          Status
+                        </th>
+
+                        {(canEdit || canDelete) && (
+                          <th className="w-[150px] border border-slate-500 px-3 py-3 text-center font-bold">
+                            Manage
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {loading ? (
+                        [...Array(6)].map((_, index) => (
+                          <tr key={index}>
+                            <td className="sticky left-0 z-20 border border-slate-200 bg-white px-3 py-5">
+                              <div className="mx-auto h-4 w-8 animate-pulse rounded bg-slate-200" />
+                            </td>
+
+                            <td className="sticky left-[70px] z-20 border border-slate-200 bg-white px-4 py-5">
+                              <div className="h-4 w-36 animate-pulse rounded bg-slate-200" />
+                              <div className="mt-2 h-3 w-20 animate-pulse rounded bg-slate-100" />
+                            </td>
+
+                            {branchGroups.map((group) => (
+                              <td
+                                key={group.name}
+                                className="border border-slate-200 px-4 py-5"
+                              >
+                                <div className="mx-auto h-16 w-16 animate-pulse rounded-2xl bg-slate-200" />
+                              </td>
+                            ))}
+
+                            <td className="border border-slate-200 px-3 py-5">
+                              <div className="mx-auto h-6 w-16 animate-pulse rounded-full bg-slate-200" />
+                            </td>
+
+                            {(canEdit || canDelete) && (
+                              <td className="border border-slate-200 px-3 py-5">
+                                <div className="mx-auto h-8 w-20 animate-pulse rounded-xl bg-slate-200" />
+                              </td>
+                            )}
+                          </tr>
+                        ))
+                      ) : departments.length > 0 ? (
+                        departments.map((department, index) => (
+                          <tr
+                            key={department.id}
+                            className="group hover:bg-slate-50"
+                            style={{
+                              backgroundColor: department.department_color || "#F8FAFC",
+                            }}
+                          >
+                            <td className="sticky left-0 z-20 border border-slate-300 bg-inherit px-3 py-4 text-center align-top font-bold text-slate-700">
+                              {index + 1}
+                            </td>
+
+                            <td className="sticky left-[70px] z-20 border border-slate-300 bg-inherit px-4 py-4 align-top">
+                              <div className="inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold text-slate-600 shadow-sm">
+                                {department.code}
+                              </div>
+
+                              <div className="mt-2 text-sm font-bold text-slate-800">
+                                {department.name}
+                              </div>
+
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                ดูแล {department.branch_ids?.length || 0} สาขา
+                              </div>
+                            </td>
+
+                            {branchGroups.map((group) => {
+                              const groupBranches = getDepartmentBranchesByGroup(
+                                department,
+                                group.name
+                              );
+
+                              return (
+                                <td
+                                  key={group.name}
+                                  className="border border-slate-300 px-3 py-4 align-top"
+                                  style={{ backgroundColor: group.color || "#F8FAFC" }}
+                                >
+                                  {groupBranches.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-3">
+                                      {groupBranches.map((branch) => (
+                                        <Tooltip
+                                          key={branch.id}
+                                          title={`${branch.branch_code || ""} ${
+                                            branch.branch_name || ""
+                                          }`}
+                                          placement="top"
+                                          color="#0f172a"
+                                        >
+                                          <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md">
+                                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-white p-2">
+                                              {branch.branch_image_url ? (
+                                                <img
+                                                  src={branch.branch_image_url}
+                                                  alt={branch.branch_name}
+                                                  className="max-h-full max-w-full object-contain"
+                                                />
+                                              ) : (
+                                                <span className="text-[10px] text-slate-400">
+                                                  No Logo
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="mt-2 truncate text-[11px] font-bold text-blue-700">
+                                              {branch.branch_code || "-"}
+                                            </div>
+
+                                            <div className="mt-0.5 truncate text-[10px] text-slate-500">
+                                              {branch.branch_name || "-"}
+                                            </div>
+                                          </div>
+                                        </Tooltip>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex min-h-[110px] items-center justify-center text-slate-400">
+                                      -
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+
+                            <td className="border border-slate-300 px-3 py-4 text-center align-top">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${
+                                  department.status === "active"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-red-100 text-red-600"
+                                }`}
+                              >
+                                {department.status === "active" ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+
+                            {(canEdit || canDelete) && (
+                              <td className="border border-slate-300 px-3 py-4 align-top">
+                                <div className="flex justify-center gap-2">
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(department)}
+                                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
+
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(department)}
+                                      disabled={deletingId === department.id}
+                                      className={`rounded-xl border bg-white px-3 py-2 text-xs font-medium ${
+                                        deletingId === department.id
+                                          ? "cursor-not-allowed border-slate-200 text-slate-400"
+                                          : "border-red-200 text-red-600 hover:bg-red-50"
+                                      }`}
+                                    >
+                                      {deletingId === department.id
+                                        ? "Deleting..."
+                                        : "Delete"}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={branchGroups.length + 4 + (canEdit || canDelete ? 1 : 0)}
+                            className="border border-slate-200 px-6 py-12 text-center text-slate-400"
+                          >
+                            ไม่พบข้อมูลแผนก
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+
+                    {!loading && departments.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-slate-700 text-white">
+                          <td
+                            colSpan={2}
+                            className="sticky left-0 z-30 border border-slate-500 px-4 py-3 text-right font-bold"
+                          >
+                            รวม
+                          </td>
+
+                          {branchGroups.map((group) => {
+                            const count = departments.reduce((total, department) => {
+                              return (
+                                total +
+                                getDepartmentBranchesByGroup(department, group.name).length
+                              );
+                            }, 0);
+
+                            return (
+                              <td
+                                key={group.name}
+                                className="border border-slate-500 px-4 py-3 text-center font-bold"
+                              >
+                                {count}
+                              </td>
+                            );
+                          })}
+
+                          <td className="border border-slate-500 px-4 py-3 text-center font-bold">
+                            {departments.length}
+                          </td>
+
+                          {(canEdit || canDelete) && (
+                            <td className="border border-slate-500 px-4 py-3 text-center font-bold">
+                              -
+                            </td>
+                          )}
+                        </tr>
+                      </tfoot>
                     )}
-                  </div>
-                )}
+                  </table>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
         </div>
       )}
-
+      
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">

@@ -236,14 +236,14 @@ export default function BranchGroupsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">กลุ่มแบรนด์</h1>
+            <h1 className="text-2xl font-bold text-slate-800">กรุ๊ปสังกัด</h1>
             <p className="mt-1 text-sm text-slate-500">
-              จัดการกลุ่มสีของแบรนด์ เช่น Mountain, Ocean, Factory, Cuisine
+              จัดการกรุ๊ปสังกัด เช่น Mountain, Ocean, Factory, Cuisine
             </p>
 
             {!canCreate && !canEdit && !canDelete ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบกลุ่มแบรนด์ได้
+                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบกลุ่มสังกัดได้
               </div>
             ) : null}
           </div>
@@ -254,7 +254,7 @@ export default function BranchGroupsPage() {
               onClick={handleOpenCreate}
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              + เพิ่มกลุ่มแบรนด์
+              + เพิ่มสีกรุ๊ปสังกัด
             </button>
           )}
         </div>

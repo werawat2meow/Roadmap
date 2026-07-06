@@ -355,6 +355,10 @@ export async function POST(req) {
     const unit_id = body?.unit_id || null;
     const position_id = body?.position_id || null;
 
+    const branch_group_id = body?.branch_group_id || null;
+    const job_id = body?.job_id || null;
+    const management_assignment_id = body?.management_assignment_id || null;
+
     if (!first_name_th || !last_name_th) {
       return NextResponse.json(
         { success: false, error: "กรุณากรอกชื่อและนามสกุล" },
@@ -369,12 +373,6 @@ export async function POST(req) {
       );
     }
 
-    if (!branch_id || !department_id || !division_id || !unit_id || !position_id) {
-      return NextResponse.json(
-        { success: false, error: "กรุณาเลือกสาขา แผนก ฝ่าย หน่วยงาน และตำแหน่งให้ครบ" },
-        { status: 400 }
-      );
-    }
 
     if (!nationality) {
       return NextResponse.json(

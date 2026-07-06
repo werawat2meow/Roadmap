@@ -96,9 +96,7 @@ export default function BenefitRunningNumbersPage() {
         is_active: values.is_active !== false,
       };
 
-      const url = editing
-        ? `/api/benefits/running-numbers/${editing.id}`
-        : "/api/benefits/running-numbers";
+      const url = editing ? `/api/benefits/running-numbers/${editing.id}` : "/api/benefits/running-numbers";
 
       const res = await fetch(url, {
         method: editing ? "PUT" : "POST",
@@ -108,7 +106,9 @@ export default function BenefitRunningNumbersPage() {
 
       const json = await res.json();
 
-      if (!res.ok) throw new Error(json?.error || "บันทึกเลขรันไม่สำเร็จ");
+      if (!res.ok) {
+        throw new Error(json?.error || "บันทึกเลขรันไม่สำเร็จ");
+      }
 
       message.success("บันทึกเลขรันสำเร็จ");
       setOpen(false);

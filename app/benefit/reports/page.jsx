@@ -17,6 +17,7 @@ const STATUS_OPTIONS = [
   { label: "Rejected", value: "rejected" },
   { label: "Cancelled", value: "cancelled" },
   { label: "Paid", value: "paid" },
+  { label: "Reversed", value: "reversed" },
 ];
 
 export default function BenefitReportsPage() {
@@ -37,13 +38,8 @@ export default function BenefitReportsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
-  const canView =
-    hasPermission(user, "benefit.report.view") ||
-    hasPermission(user, "benefit.report.manage");
-
-  const canExport =
-    hasPermission(user, "benefit.report.export") ||
-    hasPermission(user, "benefit.report.manage");
+  const canView = hasPermission(user, "benefit.report.view") || hasPermission(user, "benefit.report.manage");
+  const canExport = hasPermission(user, "benefit.report.export") || hasPermission(user, "benefit.report.manage");
 
   const loadBenefits = async () => {
     try {
@@ -188,6 +184,8 @@ export default function BenefitReportsPage() {
       case "cancelled":
         return "default";
       case "paid":
+        return "purple";
+      case "reversed":
         return "purple";
       default:
         return "blue";

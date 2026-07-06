@@ -29,6 +29,7 @@ const initialForm = {
   unit_id: "",
   position_id: "",
   employee_status_id: "",
+  resignation_date: "",
   employee_photo_url: "",
   status: "active",
   citizen_id: "",
@@ -57,6 +58,10 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(initialForm);
   const [employmentTypes, setEmploymentTypes] = useState([]);
   const [employeeStatuses, setEmployeeStatuses] = useState([]);
+  const [citizenIdError, setCitizenIdError] = useState("");
+  const [citizenIdSuccess, setCitizenIdSuccess] = useState("");
+  const [passportError, setPassportError] = useState("");
+  const [passportSuccess, setPassportSuccess] = useState("");
 
   // Partition
   const [page, setPage] = useState(1);
@@ -301,6 +306,7 @@ export default function EmployeesPage() {
       unit_id: employee.unit_id || "",
       position_id: employee.position_id || "",
       employee_status_id: employee.employee_status_id || "",
+      resignation_date: employee.resignation_date || "",
       employee_photo_url: employee.employee_photo_url || "",
       status: employee.status || "active",
       citizen_id: employee.citizen_id || "",
@@ -383,6 +389,7 @@ export default function EmployeesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingEmployee;
+    const selectedStatus = employeeStatuses.find((item) => item.id === form.employee_status_id);
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
       return;
@@ -428,6 +435,11 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (form.passport_no && !isValidPassportNo(form.passport_no)) {
+      swalError("รูปแบบ Passport ไม่ถูกต้อง");
+      return;
+    }
+
     if (!form.position_id) {
       swalError("กรุณาเลือกตำแหน่ง");
       return;
@@ -445,6 +457,11 @@ export default function EmployeesPage() {
 
     if (!form.employee_status_id) {
       swalError("กรุณาเลือกสถานะพนักงาน");
+      return;
+    }
+
+    if (selectedStatus?.status_code === "RESIGNED" && !form.resignation_date) {
+      swalError("กรุณาระบุวันที่ลาออก");
       return;
     }
 
@@ -570,6 +587,19 @@ export default function EmployeesPage() {
     return checkDigit === Number(digits[12]);
   };
 
+  const cleanPassportNo = (value) => {
+    return value.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 12);
+  };
+
+  const isValidPassportNo = (value) => {
+    const passport = cleanPassportNo(value);
+
+    if (!passport) return true;
+
+    // รองรับ Passport หลายประเทศ: ตัวอักษร/ตัวเลข 6-12 ตัว
+    return /^[A-Z0-9]{6,12}$/.test(passport);
+  };
+
   // #region Permission
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -602,7 +632,7 @@ export default function EmployeesPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหา ชื่อ / รหัสพนักงาน / สาขา / แผนก / ฝ่าย / เลขบัตรประชาชน / Passport / Line ID"
+          placeholder="ค้นหา : ชื่อ / นามสกุล / รหัสพนักงาน / สาขา / แผนก / ฝ่าย / เลขบัตรประชาชน / Passport / Line ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -779,7 +809,7 @@ export default function EmployeesPage() {
 
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="modal-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-xl font-bold text-slate-800">
                 {editingEmployee ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงาน"}
@@ -967,10 +997,51 @@ export default function EmployeesPage() {
                       ...prev,
                       citizen_id: val,
                     }));
+
+                    if (!val) {
+                      setCitizenIdError("");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    if (val.length < 13) {
+                      setCitizenIdError("กรุณากรอกเลขบัตรประชาชนให้ครบ 13 หลัก");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    if (!isValidThaiCitizenId(val)) {
+                      setCitizenIdError("เลขบัตรประชาชนไม่ถูกต้อง");
+                      setCitizenIdSuccess("");
+                      return;
+                    }
+
+                    setCitizenIdError("");
+                    setCitizenIdSuccess("✓ เลขบัตรประชาชนถูกต้อง");
                   }}
                   placeholder="1-2345-67890-12-3"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
+                    ${
+                      citizenIdError
+                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                        : citizenIdSuccess
+                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                    }`
+                  }
                 />
+
+                {citizenIdError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {citizenIdError}
+                  </p>
+                )}
+
+                {citizenIdSuccess && (
+                  <p className="mt-1 text-xs font-medium text-green-600">
+                    {citizenIdSuccess}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -981,15 +1052,57 @@ export default function EmployeesPage() {
                 <input
                   type="text"
                   value={form.passport_no}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = cleanPassportNo(e.target.value);
+
                     setForm((prev) => ({
                       ...prev,
-                      passport_no: e.target.value.toUpperCase(),
-                    }))
-                  }
+                      passport_no: val,
+                    }));
+
+                    if (!val) {
+                      setPassportError("");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    if (val.length < 6) {
+                      setPassportError("กรุณากรอก Passport อย่างน้อย 6 ตัวอักษร");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    if (!isValidPassportNo(val)) {
+                      setPassportError("รูปแบบ Passport ไม่ถูกต้อง");
+                      setPassportSuccess("");
+                      return;
+                    }
+
+                    setPassportError("");
+                    setPassportSuccess("Passport ถูกต้อง");
+                  }}
                   placeholder="Passport Number"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
+                    ${
+                      passportError
+                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                        : passportSuccess
+                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                    }`}
                 />
+
+                {passportError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {passportError}
+                  </p>
+                )}
+
+                {passportSuccess && (
+                  <p className="mt-1 text-xs font-medium text-green-600">
+                    ✓ {passportSuccess}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1250,14 +1363,27 @@ export default function EmployeesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   สถานะพนักงาน
                 </label>
+
                 <select
                   value={form.employee_status_id}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const statusId = e.target.value;
+
+                    const selectedStatus = employeeStatuses.find(
+                      (item) => item.id === statusId
+                    );
+
                     setForm((prev) => ({
                       ...prev,
-                      employee_status_id: e.target.value,
-                    }))
-                  }
+                      employee_status_id: statusId,
+
+                      // ถ้าไม่ใช่ลาออก ให้ล้างวันที่ลาออก
+                      resignation_date:
+                        selectedStatus?.status_code === "RESIGNED"
+                          ? prev.resignation_date
+                          : "",
+                    }));
+                  }}
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="">เลือกสถานะพนักงาน</option>
@@ -1270,7 +1396,33 @@ export default function EmployeesPage() {
                       </option>
                     ))}
                 </select>
+
+                {employeeStatuses.find(
+                  (item) =>
+                    item.id === form.employee_status_id &&
+                    item.status_code === "RESIGNED"
+                ) && (
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium text-red-600">
+                      วันที่ลาออก <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="date"
+                      value={form.resignation_date || ""}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          resignation_date: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-red-300 px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                    />
+                  </div>
+                )}
               </div>
+
+
             </div>
 
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">

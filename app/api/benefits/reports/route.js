@@ -101,6 +101,7 @@ export async function GET(req) {
       "rejected",
       "cancelled",
       "paid",
+      "reversed",
     ];
 
     if (status && !allowedStatuses.includes(status)) {

@@ -1,33 +1,18 @@
-import {
-  GiftOutlined,
-  FormOutlined,
-  HistoryOutlined,
-  BarChartOutlined,
-  FileDoneOutlined,
-  TagsOutlined,
-  SafetyCertificateOutlined,
-  TeamOutlined,
-  CheckCircleOutlined,
-  AuditOutlined,
-  DatabaseOutlined,
-  FileSearchOutlined,
-  PaperClipOutlined,
-  NumberOutlined,
-} from "@ant-design/icons";
+import {GiftOutlined,FormOutlined,HistoryOutlined,BarChartOutlined,FileDoneOutlined,TagsOutlined,SafetyCertificateOutlined,TeamOutlined,CheckCircleOutlined,AuditOutlined,DatabaseOutlined,FileSearchOutlined,PaperClipOutlined,NumberOutlined,ApartmentOutlined,BellOutlined,} from "@ant-design/icons";
 
 export const benefitSelfMenus = [
   {
     title: "ตรวจสอบสิทธิ์ของฉัน",
-    desc: "ดูสิทธิ์สวัสดิการของตนเองตามระดับพนักงาน อายุงาน และสถานะ",
+    desc: "ดูสิทธิ์สวัสดิการ ยอดคงเหลือ และสิทธิ์ที่ตนเองได้รับ",
     icon: <GiftOutlined />,
     path: "/benefit/my-rights",
-    tag: "Self Service",
+    tag: "Self",
     permissions: ["benefit.my_rights.view"],
     allowAllLogin: true,
   },
   {
     title: "ขอใช้สิทธิ์",
-    desc: "เลือกสวัสดิการ กรอกจำนวนเงิน แนบเอกสาร และส่งคำขออนุมัติ",
+    desc: "ยื่นคำขอสวัสดิการ กรอกข้อมูล และแนบเอกสารประกอบ",
     icon: <FormOutlined />,
     path: "/benefit/requests",
     tag: "Request",
@@ -35,173 +20,209 @@ export const benefitSelfMenus = [
   },
   {
     title: "ประวัติคำขอของฉัน",
-    desc: "ดูประวัติและสถานะคำขอสวัสดิการของตนเอง",
+    desc: "ดูประวัติคำขอ สถานะการอนุมัติ และผลการพิจารณา",
     icon: <HistoryOutlined />,
     path: "/benefit/requests/history",
     tag: "History",
     permissions: ["benefit.request.view_own"],
   },
+  {
+    title: "การแจ้งเตือน",
+    desc: "ดูการแจ้งเตือนคำขอ การอนุมัติ การปฏิเสธ และสถานะสวัสดิการ",
+    icon: <BellOutlined />,
+    path: "/benefit/notifications",
+    tag: "Notify",
+    permissions: ["benefit.notification.view"],
+    allowAllLogin: true,
+  },
 ];
 
-export const benefitAdminMenus = [
+export const benefitSidebarMenus = [
   {
-    title: "Dashboard Benefit",
-    desc: "ดูภาพรวมคำขอ การใช้สิทธิ์ และสถานะระบบ Benefit",
+    title: "DASHBOARD",
     icon: <BarChartOutlined />,
-    path: "/benefit/dashboard",
-    tag: "View",
-    permissions: [
-      "benefit.dashboard.view",
-      "benefit.dashboard.manage",
-      "benefit.admin.view",
+    items: [
+      {
+        label: "Dashboard Benefit",
+        desc: "ดูภาพรวมคำขอ การใช้สิทธิ์ ยอดคงเหลือ และสถานะระบบ Benefit",
+        href: "/benefit/dashboard",
+        icon: <BarChartOutlined />,
+        tag: "Overview",
+        permission: "benefit.dashboard.view",
+      },
     ],
-    executiveView: true,
   },
+
   {
-    title: "จัดการสวัสดิการ",
-    desc: "เพิ่ม แก้ไข ลบ เปิด/ปิด รายการสวัสดิการ",
+    title: "SELF SERVICE",
+    icon: <GiftOutlined />,
+    items: benefitSelfMenus.map((menu) => ({
+      label: menu.title,
+      desc: menu.desc,
+      href: menu.path,
+      icon: menu.icon,
+      tag: menu.tag,
+      permissions: menu.permissions,
+      allowAllLogin: menu.allowAllLogin,
+    })),
+  },
+
+  {
+    title: "BENEFIT SETUP",
     icon: <FileDoneOutlined />,
-    path: "/benefit/benefits",
-    tag: "CRUD",
-    permissions: [
-      "benefit.master.view",
-      "benefit.master.create",
-      "benefit.master.update",
-      "benefit.master.edit",
-      "benefit.master.delete",
-      "benefit.master.manage",
+    items: [
+      {
+        label: "จัดการหมวดหมู่",
+        desc: "กำหนดหมวดหมู่สวัสดิการ เช่น Medical, Allowance, Welfare",
+        href: "/benefit/categories",
+        icon: <TagsOutlined />,
+        tag: "Category",
+        permission: "benefit.category.view",
+      },
+      {
+        label: "จัดการสวัสดิการ",
+        desc: "สร้างรายการสวัสดิการ เช่น OPD, Dental, Fuel, Uniform",
+        href: "/benefit/benefits",
+        icon: <FileDoneOutlined />,
+        tag: "Benefit",
+        permission: "benefit.master.view",
+      },
     ],
   },
+
   {
-    title: "จัดการหมวดหมู่",
-    desc: "เพิ่ม แก้ไข ลบ หมวดหมู่สวัสดิการ",
-    icon: <TagsOutlined />,
-    path: "/benefit/categories",
-    tag: "CRUD",
-    permissions: [
-      "benefit.category.view",
-      "benefit.category.create",
-      "benefit.category.update",
-      "benefit.category.edit",
-      "benefit.category.delete",
-      "benefit.category.manage",
-    ],
-  },
-  {
-    title: "จัดการ Benefit Rules",
-    desc: "กำหนดสิทธิ์ตามระดับ P, อายุงาน, สถานะ และประเภทการจ้าง",
+    title: "RULES & POLICY ENGINE",
     icon: <SafetyCertificateOutlined />,
-    path: "/benefit/rules",
-    tag: "CRUD",
-    permissions: [
-      "benefit.rule.view",
-      "benefit.rule.create",
-      "benefit.rule.update",
-      "benefit.rule.edit",
-      "benefit.rule.delete",
-      "benefit.rule.manage",
+    items: [
+      {
+        label: "Benefit Matrix",
+        desc: "กำหนดสิทธิ์ตามปี, Level, สถานะพนักงาน และ Quota",
+        href: "/benefit/matrix",
+        icon: <ApartmentOutlined />,
+        tag: "Matrix",
+        permission: "benefit.rule.view",
+      },
+      {
+        label: "Benefit Rules",
+        desc: "จัดการเงื่อนไขสิทธิ์สวัสดิการพื้นฐาน",
+        href: "/benefit/rules",
+        icon: <SafetyCertificateOutlined />,
+        tag: "Rules",
+        permission: "benefit.rule.view",
+      },
+      {
+        label: "Policy Engine",
+        desc: "กำหนดเงื่อนไขขั้นสูง เช่น อายุงาน สาขา แผนก ประเภทการจ้าง",
+        href: "/benefit/policies",
+        icon: <AuditOutlined />,
+        tag: "Policy",
+        permission: "benefit.policy.view",
+      },
     ],
   },
+
   {
-    title: "จัดการ Entitlements",
-    desc: "จัดการสิทธิ์ประจำปีที่พนักงานได้รับจริง",
+    title: "ENTITLEMENT ENGINE",
     icon: <TeamOutlined />,
-    path: "/benefit/entitlements",
-    tag: "CRUD",
-    permissions: [
-      "benefit.entitlement.view",
-      "benefit.entitlement.create",
-      "benefit.entitlement.update",
-      "benefit.entitlement.edit",
-      "benefit.entitlement.delete",
-      "benefit.entitlement.manage",
+    items: [
+      {
+        label: "Entitlements",
+        desc: "Generate และตรวจสอบสิทธิ์จริงที่พนักงานได้รับในแต่ละปีหรือเดือน",
+        href: "/benefit/entitlements",
+        icon: <TeamOutlined />,
+        tag: "Generate",
+        permission: "benefit.entitlement.view",
+      },
     ],
   },
+
   {
-    title: "รายการรออนุมัติ",
-    desc: "ตรวจสอบ อนุมัติ หรือปฏิเสธคำขอสวัสดิการ",
+    title: "REQUEST & APPROVAL",
     icon: <CheckCircleOutlined />,
-    path: "/benefit/approvals",
-    tag: "Approve",
-    permissions: [
-      "benefit.request.view",
-      "benefit.request.approve",
-      "benefit.request.reject",
-      "benefit.approval.view",
-      "benefit.approval.manage",
+    items: [
+      {
+        label: "Workflow Approval",
+        desc: "กำหนดสายอนุมัติ เช่น Manager, HR, Finance หรือผู้บริหาร",
+        href: "/benefit/workflows",
+        icon: <AuditOutlined />,
+        tag: "Workflow",
+        permission: "benefit.workflow.view",
+      },
+      {
+        label: "รายการรออนุมัติ",
+        desc: "ตรวจสอบ อนุมัติ ปฏิเสธ หรือคืนสิทธิ์คำขอสวัสดิการ",
+        href: "/benefit/approvals",
+        icon: <CheckCircleOutlined />,
+        tag: "Approve",
+        permission: "benefit.approval.view",
+      },
     ],
   },
+
   {
-    title: "Workflow Approval",
-    desc: "กำหนดลำดับผู้อนุมัติ HR, Manager, P11-P12 หรือผู้บริหาร",
-    icon: <AuditOutlined />,
-    path: "/benefit/workflows",
-    tag: "Manage",
-    permissions: [
-      "benefit.workflow.view",
-      "benefit.workflow.create",
-      "benefit.workflow.edit",
-      "benefit.workflow.delete",
-      "benefit.workflow.manage",
-    ],
-  },
-  {
-    title: "Benefit Usage",
-    desc: "ดูประวัติการใช้สิทธิ์ ยอดคงเหลือ และรายการที่ใช้ไปแล้ว",
+    title: "USAGE & DOCUMENTS",
     icon: <DatabaseOutlined />,
-    path: "/benefit/usages",
-    tag: "Usage",
-    permissions: [
-      "benefit.usage.view",
-      "benefit.usage.create",
-      "benefit.usage.edit",
-      "benefit.usage.delete",
-      "benefit.usage.manage",
+    items: [
+      {
+        label: "Benefit Usage",
+        desc: "ดูประวัติการใช้สิทธิ์ การตัดยอด และยอดคงเหลือ",
+        href: "/benefit/usages",
+        icon: <DatabaseOutlined />,
+        tag: "Usage",
+        permission: "benefit.usage.view",
+      },
+      {
+        label: "Attachments",
+        desc: "จัดการเอกสารแนบ ใบเสร็จ หรือหลักฐานประกอบคำขอ",
+        href: "/benefit/attachments",
+        icon: <PaperClipOutlined />,
+        tag: "Files",
+        permission: "benefit.attachment.view",
+      },
     ],
   },
+
   {
-    title: "Reports",
-    desc: "รายงานสวัสดิการ ค่าใช้จ่าย การอนุมัติ และ Export Excel",
+    title: "REPORTS & CONFIG",
     icon: <FileSearchOutlined />,
-    path: "/benefit/reports",
-    tag: "Report",
-    permissions: [
-      "benefit.report.view",
-      "benefit.report.export",
-      "benefit.report.manage",
-      "benefit.admin.view",
+    items: [
+      {
+        label: "Reports",
+        desc: "รายงานการใช้สิทธิ์ ค่าใช้จ่าย การอนุมัติ และ Export Excel",
+        href: "/benefit/reports",
+        icon: <FileSearchOutlined />,
+        tag: "Report",
+        permission: "benefit.report.view",
+      },
+      {
+        label: "Running Numbers",
+        desc: "กำหนดเลขรันเอกสารคำขอสวัสดิการ",
+        href: "/benefit/running-numbers",
+        icon: <NumberOutlined />,
+        tag: "Config",
+        permission: "benefit.running.view",
+      },
     ],
-    executiveView: true,
   },
+
   {
-    title: "Attachments",
-    desc: "จัดการเอกสารแนบของคำขอสวัสดิการ",
-    icon: <PaperClipOutlined />,
-    path: "/benefit/attachments",
-    tag: "Files",
-    permissions: [
-      "benefit.attachment.view",
-      "benefit.attachment.delete",
-      "benefit.attachment.manage",
+    title: "SYSTEM AUDIT",
+    icon: <AuditOutlined />,
+    items: [
+      {
+        label: "Audit Logs",
+        desc: "ตรวจสอบประวัติการใช้งาน การอนุมัติ การแก้ไข และการ Generate ข้อมูล",
+        href: "/benefit/audit-logs",
+        icon: <AuditOutlined />,
+        tag: "Audit",
+        permission: "benefit.audit.view",
+      },
     ],
   },
-  {
-    title: "Running Numbers",
-    desc: "จัดการเลขรันเอกสารคำขอสวัสดิการ",
-    icon: <NumberOutlined />,
-    path: "/benefit/running-numbers",
-    tag: "Config",
-    permissions: [
-      "benefit.running.view",
-      "benefit.running.create",
-      "benefit.running.edit",
-      "benefit.running.delete",
-      "benefit.running.manage",
-    ],
-  },
+  
 ];
 
-export function canAccessBenefitMenu(user, menu) {
+export function canAccessBenefitSidebarItem(user, item) {
   if (!user) return false;
 
   const roleCode =
@@ -211,16 +232,26 @@ export function canAccessBenefitMenu(user, menu) {
     user?.role;
 
   if (roleCode === "SUPER_ADMIN") return true;
-
-  if (menu.allowAllLogin) return true;
+  if (item.allowAllLogin) return true;
 
   const userPermissions = user?.permissions || user?.permission_codes || [];
 
-  return menu.permissions?.some((permission) =>
-    userPermissions.includes(permission)
-  );
+  if (item.permissions?.length) {
+    return item.permissions.some((permission) =>
+      userPermissions.includes(permission)
+    );
+  }
+
+  return userPermissions.includes(item.permission);
 }
 
-export function getVisibleBenefitMenus(user, menus) {
-  return menus.filter((menu) => canAccessBenefitMenu(user, menu));
+export function getVisibleBenefitSidebarMenus(user) {
+  return benefitSidebarMenus
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        canAccessBenefitSidebarItem(user, item)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 }

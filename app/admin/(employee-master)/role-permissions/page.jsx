@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import {getSystemTitleByPermission,getSystemSelectOptions,} from "../components/systemApps";
 
 export default function RolePermissionsPage() {
   const [roles, setRoles] = useState([]);
@@ -191,7 +192,7 @@ export default function RolePermissionsPage() {
     const groups = {};
 
     permissions.filter(canManagePermissionItem).forEach((item) => {
-      const systemKey = getSystemGroup(item.module_code);
+      const systemKey = getSystemTitleByPermission(item);
       const featureKey = getFeatureGroup(item.module_code);
 
       if (!groups[systemKey]) groups[systemKey] = {};
@@ -205,7 +206,8 @@ export default function RolePermissionsPage() {
 
   const selectedRole = roles.find((item) => item.id === selectedRoleId);
 
-  const systemOptions = Object.keys(groupedPermissions);
+  // const systemOptions = Object.keys(groupedPermissions);
+  const systemOptions = getSystemSelectOptions();
 
   const visibleGroupedPermissions = useMemo(() => {
     if (!selectedSystem) return groupedPermissions;
@@ -412,7 +414,7 @@ export default function RolePermissionsPage() {
             เลือกระบบ
           </label>
 
-          <Select
+          {/* <Select
             allowClear
             placeholder="เลือกระบบ เช่น Benefit System"
             value={selectedSystem || undefined}
@@ -421,6 +423,16 @@ export default function RolePermissionsPage() {
               value: item,
               label: item,
             }))}
+            className="w-full"
+            size="large"
+          /> */}
+
+          <Select
+            allowClear
+            placeholder="เลือกระบบ เช่น Benefit System"
+            value={selectedSystem || undefined}
+            onChange={(value) => setSelectedSystem(value || "")}
+            options={systemOptions}
             className="w-full"
             size="large"
           />

@@ -1,26 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  message,
-} from "antd";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import {Button,Card,Input,Modal,Select,Space,Table,Tag,message,} from "antd";
+import {CheckCircleOutlined,CloseCircleOutlined,ReloadOutlined,EyeOutlined,EditOutlined,DeleteOutlined,PlusOutlined,UndoOutlined,} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
@@ -34,13 +16,12 @@ export default function BenefitApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
-  const canView =
-    hasPermission(user, "benefit.request.view") ||
-    hasPermission(user, "benefit.request.approve");
+  const canView = hasPermission(user, "benefit.request.view") || hasPermission(user, "benefit.request.approve");
 
   const canCreate = hasPermission(user, "benefit.request.create");
   const canApprove = hasPermission(user, "benefit.request.approve");
   const canReject = hasPermission(user, "benefit.request.reject");
+  const canReverse = hasPermission(user, "benefit.request.reverse");
   const canEdit = hasPermission(user, "benefit.request.edit");
   const canDelete = hasPermission(user, "benefit.request.delete");
 
@@ -79,7 +60,7 @@ export default function BenefitApprovalsPage() {
   }, [canView]);
 
   const updateStatus = (record, status) => {
-    const actionText = status === "approved" ? "อนุมัติ" : "ปฏิเสธ";
+    const actionText = status === "approved"? "อนุมัติ" : status === "rejected"? "ปฏิเสธ" : "คืนสิทธิ์";
 
     Modal.confirm({
       title: `ยืนยันการ${actionText}`,
@@ -87,7 +68,7 @@ export default function BenefitApprovalsPage() {
       okText: actionText,
       cancelText: "ยกเลิก",
       okButtonProps: {
-        danger: status === "rejected",
+        danger: status === "rejected" || status === "reversed",
       },
       async onOk() {
         try {
@@ -162,6 +143,8 @@ export default function BenefitApprovalsPage() {
       case "cancelled":
         return "default";
       case "paid":
+        return "purple";
+      case "reversed":
         return "purple";
       default:
         return "blue";
@@ -268,6 +251,16 @@ export default function BenefitApprovalsPage() {
               </Button>
             )}
 
+            {canReverse && record.status === "approved" && (
+              <Button
+                danger
+                icon={<UndoOutlined />}
+                onClick={() => updateStatus(record, "reversed")}
+              >
+                Reverse
+              </Button>
+            )}
+
             {canDelete && (
               <Button
                 danger
@@ -281,7 +274,7 @@ export default function BenefitApprovalsPage() {
         ),
       },
     ],
-    [canView, canEdit, canApprove, canReject, canDelete]
+    [canView, canEdit, canApprove, canReject, canReverse, canDelete]
   );
 
   if (!canView) {
@@ -349,6 +342,7 @@ export default function BenefitApprovalsPage() {
                 { label: "Rejected", value: "rejected" },
                 { label: "Cancelled", value: "cancelled" },
                 { label: "Paid", value: "paid" },
+                { label: "Reversed", value: "reversed" },
               ]}
             />
 

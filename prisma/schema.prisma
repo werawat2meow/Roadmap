@@ -51,45 +51,46 @@ model RmEvaluationType {
 }
 
 model RmCategory {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title            String
-  evaluationTypeId String             @map("evaluation_type_id") @db.Uuid
+  evaluationTypeId String   @map("evaluation_type_id") @db.Uuid
   level            String
-  departmentId     String?            @map("department_id") @db.Uuid
-  divisionId       String?            @map("division_id") @db.Uuid
-  unitId           String?            @map("unit_id") @db.Uuid
-  sortOrder        Int                @default(0)
-  isActive         Boolean            @default(true)
-  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  departmentId     String?  @map("department_id") @db.Uuid
+  divisionId       String?  @map("division_id") @db.Uuid
+  unitId           String?  @map("unit_id") @db.Uuid
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  evaluationType   RmEvaluationType   @relation(fields: [evaluationTypeId], references: [id])
-  items            RmCategoryItem[]
+  evaluationType RmEvaluationType @relation(fields: [evaluationTypeId], references: [id])
+  items          RmCategoryItem[]
 
   @@map("rm_categories")
   @@schema("public")
 }
 
 model RmCategoryItem {
-  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  categoryId String              @map("category_id") @db.Uuid
-  topic      String
-  weight     Int
-  sortOrder  Int                 @default(0)
-  isActive   Boolean             @default(true)
-  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  category   RmCategory          @relation(fields: [categoryId], references: [id])
-  scores     RmEvaluationScore[]
+  id             String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId     String                      @map("category_id") @db.Uuid
+  topic          String
+  weight         Int
+  sortOrder      Int                         @default(0)
+  isActive       Boolean                     @default(true)
+  createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  category       RmCategory                  @relation(fields: [categoryId], references: [id])
+  scores         RmEvaluationScore[]
+  reviewerScores RmEvaluationReviewerScore[]
 
   @@map("rm_category_items")
   @@schema("public")
 }
 
 model RmEvaluation {
-  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employeeId           String              @map("employee_id") @db.Uuid
-  evaluatorId          String              @map("evaluator_id") @db.Uuid
-  evaluationTypeId     String              @map("evaluation_type_id") @db.Uuid
-  status               String              @default("Draft")
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId           String                 @map("employee_id") @db.Uuid
+  evaluatorId          String                 @map("evaluator_id") @db.Uuid
+  evaluationTypeId     String                 @map("evaluation_type_id") @db.Uuid
+  status               String                 @default("Draft")
   quarter              String?
   companyScore         Float?
   departmentScore      Float?
@@ -101,12 +102,13 @@ model RmEvaluation {
   newDesignation       String?
   newLevel             String?
   managerComment       String?
-  employeeAcknowledged Boolean             @default(false)
+  employeeAcknowledged Boolean                @default(false)
   completedAt          DateTime?
-  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   scores               RmEvaluationScore[]
-  evaluationType       RmEvaluationType    @relation(fields: [evaluationTypeId], references: [id])
+  reviewers            RmEvaluationReviewer[]
+  evaluationType       RmEvaluationType       @relation(fields: [evaluationTypeId], references: [id])
 
   @@map("rm_evaluations")
   @@schema("public")
@@ -124,6 +126,39 @@ model RmEvaluationScore {
 
   @@unique([evaluationId, categoryItemId])
   @@map("rm_evaluation_scores")
+  @@schema("public")
+}
+
+model RmEvaluationReviewer {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evaluationId String    @map("evaluation_id") @db.Uuid
+  managerId    String    @map("manager_id") @db.Uuid
+  status       String    @default("Pending") // Pending, Reviewed, Approved
+  comment      String?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  scores     RmEvaluationReviewerScore[]
+  evaluation RmEvaluation                @relation(fields: [evaluationId], references: [id])
+  manager    employees                   @relation(fields: [managerId], references: [id])
+
+  @@unique([evaluationId, managerId])
+  @@map("rm_evaluation_reviewers")
+  @@schema("public")
+}
+
+model RmEvaluationReviewerScore {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewerId     String               @map("reviewer_id") @db.Uuid
+  categoryItemId String               @map("category_item_id") @db.Uuid
+  score          Int
+  remark         String?
+  reviewer       RmEvaluationReviewer @relation(fields: [reviewerId], references: [id])
+  categoryItem   RmCategoryItem       @relation(fields: [categoryItemId], references: [id])
+
+  @@unique([reviewerId, categoryItemId])
+  @@map("rm_evaluation_reviewer_scores")
   @@schema("public")
 }
 
@@ -489,6 +524,7 @@ model sessions {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_domains {
   id              String        @id @db.Uuid
   sso_provider_id String        @db.Uuid
@@ -504,6 +540,7 @@ model sso_domains {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_providers {
@@ -523,6 +560,7 @@ model sso_providers {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model users {
@@ -1110,8 +1148,12 @@ model branches {
   sort_order              Int                       @default(0)
   created_at              DateTime                  @default(now()) @db.Timestamptz(6)
   updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  branch_image_url        String?
+  branch_image_path       String?
+  group_id                String?                   @db.Uuid
   branch_departments      branch_departments[]
   companies               companies                 @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+  branch_groups           branch_groups?            @relation(fields: [group_id], references: [id], onUpdate: NoAction)
   employees               employees[]
   recruit_job_description recruit_job_description[]
   recruit_job_open        recruit_job_open[]
@@ -1147,6 +1189,8 @@ model departments {
   sort_order              Int                       @default(0)
   created_at              DateTime                  @default(now()) @db.Timestamptz(6)
   updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  department_color        String?                   @default("#E2E8F0")
+  department_icon         String?
   branch_departments      branch_departments[]
   divisions               divisions[]
   employees               employees[]
@@ -1246,6 +1290,7 @@ model employees {
   units                units?                 @relation(fields: [unit_id], references: [id], onUpdate: NoAction)
   rm_user_access       RmUserAccess[]
   user_accounts        user_accounts?
+  RmEvaluationReviewer RmEvaluationReviewer[]
 
   @@index([branch_id], map: "idx_employees_branch_id")
   @@index([citizen_id], map: "idx_employees_citizen_id")
@@ -1765,6 +1810,21 @@ model user_role_assignments {
   user_accounts   user_accounts @relation(fields: [user_account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_account_id, role_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model branch_groups {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_code  String     @unique
+  group_name  String
+  group_color String     @default("#E2E8F0")
+  sort_order  Int        @default(0)
+  status      String     @default("active")
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @default(now()) @db.Timestamptz(6)
+  branches    branches[]
+
   @@schema("public")
 }
 

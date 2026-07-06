@@ -18,11 +18,21 @@ type CategoryData = {
   items: CategoryItem[];
 };
 
+type ManagerUser = {
+  id: string;
+  employee_id: string;
+  name: string;
+  email: string;
+  role: string;
+  menus: string[];
+};
+
 type EvaluationFormProps = {
   formType: 'Probation' | 'Performance' | 'Promote' | 'Progression';
   companyGround?: CategoryData[];
   departmentGround?: CategoryData[];
   employeeLevel?: string;
+  managers?: ManagerUser[];
 };
 
 type ScoredItem = {
@@ -46,6 +56,7 @@ export default function EvaluationForm({
   companyGround = [],
   departmentGround = [],
   employeeLevel,
+  managers = [],
 }: EvaluationFormProps) {
   const selectedLevel =
     employeeLevel ||
@@ -131,6 +142,7 @@ const removeExpectationRow = (rowId: string) => {
 
   const totalScore = (items: ScoredItem[]) =>
     items.reduce((sum, item) => sum + (item.enabled ? item.score : 0), 0);
+
 
   const companyScore = totalScore(companyItems);
   const departmentScore = totalScore(departmentItems);

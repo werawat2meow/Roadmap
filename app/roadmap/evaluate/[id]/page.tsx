@@ -20,6 +20,15 @@ type SettingsCategory = {
   items: { id: string; topic: string; weight: number }[];
 };
 
+type ManagerUser = {
+  id: string;
+  employee_id: string;
+  name: string;
+  email: string;
+  role: string;
+  menus: string[];
+};
+
 export default function EvaluateEmployeePage() {
   const { id } = useParams();
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -28,6 +37,7 @@ export default function EvaluateEmployeePage() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [managers, setManagers] = useState<ManagerUser[]>([]);
   const [activeTab, setActiveTab] = useState<
     "Probation" | "Performance" | "Promote" | "Progression"
   >("Probation");
@@ -58,13 +68,15 @@ export default function EvaluateEmployeePage() {
       setError(null);
 
       try {
-        const [employeeRes, settingsRes] = await Promise.all([
+        const [employeeRes, settingsRes, userAccessRes] = await Promise.all([
           fetch(`/roadmap/api/employees/${id}`),
           fetch("/roadmap/api/settings"),
+          fetch("/roadmap/api/user-access"),
         ]);
 
         const employeeJson = await employeeRes.json();
         const settingsJson = await settingsRes.json();
+        const userAccessJson = await userAccessRes.json();
 
         if (!employeeJson.success) {
           throw new Error(employeeJson.error || "ไม่พบข้อมูลพนักงาน");
@@ -74,8 +86,18 @@ export default function EvaluateEmployeePage() {
           throw new Error(settingsJson.error || "ไม่พบข้อมูลการตั้งค่า");
         }
 
+        if (!userAccessJson.success) {
+          throw new Error(userAccessJson.error || "ไม่พบข้อมูล Manager")
+        }
+
         setEmployee(employeeJson.data);
         setSettingsCategories(settingsJson.data || []);
+        setManagers(
+          (userAccessJson.data || []).filter(
+            (user: any) => user.role === "Manager"
+          )
+        );
+
       } catch (err: any) {
         console.error(err);
         setError(err.message || "เกิดข้อผิดพลาดขณะโหลดข้อมูล");
@@ -122,6 +144,7 @@ export default function EvaluateEmployeePage() {
       employeeLevel={employee.level}
       companyGround={companyGround}
       departmentGround={departmentGround}
+      managers={managers}
     />
   );
 
@@ -204,7 +227,7 @@ export default function EvaluateEmployeePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">{renderFormContent()}</div>
         <div>
-          <SummarySidebar allFormData={{}} />
+          <SummarySidebar allFormData={{}} managers={managers} />
         </div>
       </div>
     </div>

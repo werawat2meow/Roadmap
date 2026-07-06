@@ -56,67 +56,6 @@ function getServiceMonths(hireDate) {
   return Math.max(months, 0);
 }
 
-function filterByServiceMonths(rules, serviceMonths) {
-  return (rules || []).filter((rule) => {
-    const min = rule.min_service_months;
-    const max = rule.max_service_months;
-
-    if (
-      min !== null &&
-      min !== undefined &&
-      serviceMonths < Number(min)
-    ) {
-      return false;
-    }
-
-    if (
-      max !== null &&
-      max !== undefined &&
-      serviceMonths > Number(max)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-function pickBestRulePerBenefit(rules, employee) {
-  const map = new Map();
-
-  const positionLevel =
-    employee?.positions?.position_level || null;
-
-  const employeeStatusId =
-    employee?.employee_status_id || null;
-
-  for (const rule of rules || []) {
-    const benefitId =
-      rule.benefit_id || rule.benefits?.id;
-
-    if (!benefitId) continue;
-
-    const score =
-      (rule.position_level === positionLevel ? 10 : 0) +
-      (rule.employee_status_id === employeeStatusId ? 10 : 0) +
-      Number(rule.min_service_months || 0);
-
-    const current = map.get(benefitId);
-
-    const currentScore = current
-      ? (current.position_level === positionLevel ? 10 : 0) +
-        (current.employee_status_id === employeeStatusId ? 10 : 0) +
-        Number(current.min_service_months || 0)
-      : -1;
-
-    if (!current || score > currentScore) {
-      map.set(benefitId, rule);
-    }
-  }
-
-  return Array.from(map.values());
-}
-
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -198,29 +137,29 @@ export async function GET() {
       employee.hire_date
     );
 
-    const positionLevel =
-      employee.positions?.position_level || null;
-
-    const employeeStatusId =
-      employee.employee_status_id || null;
-
-    let query = supabaseAdmin
-      .from("benefit_rules")
+    const {
+      data: entitlements,
+      error: entitlementError,
+    } = await supabaseAdmin
+      .from("benefit_entitlements")
       .select(`
         id,
+        employee_id,
         benefit_id,
-        employee_status_id,
-        employment_type_id,
-        position_level,
-        min_service_months,
-        max_service_months,
+        entitlement_year,
+        entitlement_month,
         quota_amount,
+        carry_forward_amount,
+        used_amount,
+        remaining_amount,
         quota_unit,
-        quota_frequency,
-        discount_percent,
+        status,
         is_unlimited,
-        rule_note,
-        rule_year,
+        is_active,
+        remark,
+        created_at,
+        updated_at,
+
         benefits (
           id,
           benefit_code,
@@ -234,51 +173,57 @@ export async function GET() {
           )
         )
       `)
+      .eq("employee_id", employee.id)
+      .eq("entitlement_year", currentYear)
       .eq("is_active", true)
-      .eq("rule_year", currentYear);
+      .order("entitlement_month", {
+        ascending: true,
+      });
 
-    if (positionLevel) {
-      query = query.or(
-        `position_level.eq.${positionLevel},position_level.is.null`
-      );
-    }
-
-    if (employeeStatusId) {
-      query = query.or(
-        `employee_status_id.eq.${employeeStatusId},employee_status_id.is.null`
-      );
-    }
-
-    const { data: rules, error: rulesError } =
-      await query;
-
-    if (rulesError) {
+    if (entitlementError) {
       console.error(
-        "BENEFIT_MY_RIGHTS_RULES_ERROR:",
-        rulesError
+        "BENEFIT_MY_RIGHTS_ENTITLEMENT_ERROR:",
+        entitlementError
       );
 
       return NextResponse.json(
         {
           success: false,
           error:
-            rulesError.message ||
+            entitlementError.message ||
             "โหลดสิทธิ์สวัสดิการไม่สำเร็จ",
         },
         { status: 500 }
       );
     }
 
-    const serviceMatchedRules =
-      filterByServiceMonths(
-        rules || [],
-        serviceMonths
+    const totalQuota =
+      (entitlements || []).reduce(
+        (sum, item) =>
+          sum + Number(item.quota_amount || 0),
+        0
       );
 
-    const uniqueRights =
-      pickBestRulePerBenefit(
-        serviceMatchedRules,
-        employee
+    const totalCarryForward =
+      (entitlements || []).reduce(
+        (sum, item) =>
+          sum +
+          Number(item.carry_forward_amount || 0),
+        0
+      );
+
+    const totalUsed =
+      (entitlements || []).reduce(
+        (sum, item) =>
+          sum + Number(item.used_amount || 0),
+        0
+      );
+
+    const totalRemaining =
+      (entitlements || []).reduce(
+        (sum, item) =>
+          sum + Number(item.remaining_amount || 0),
+        0
       );
 
     return NextResponse.json({
@@ -287,7 +232,15 @@ export async function GET() {
         employee,
         year: currentYear,
         serviceMonths,
-        rights: uniqueRights,
+
+        summary: {
+          totalQuota,
+          totalCarryForward,
+          totalUsed,
+          totalRemaining,
+        },
+
+        rights: entitlements || [],
       },
     });
   } catch (error) {

@@ -27,7 +27,9 @@ export async function GET(req) {
           sort_order,
           created_at,
           departments (
-            department_name
+            department_name,
+            department_color,
+            department_icon
           )
         `,
         { count: "exact" }
@@ -74,6 +76,8 @@ export async function GET(req) {
       division_name: division.division_name,
       department_id: division.department_id,
       department_name: division.departments?.department_name || "-",
+      department_color: division.departments?.department_color || "#E2E8F0",
+      department_icon: division.departments?.department_icon || "",
       status: division.status,
       sort_order: division.sort_order,
       created_at: division.created_at,
@@ -156,7 +160,9 @@ export async function POST(req) {
         sort_order,
         created_at,
         departments (
-          department_name
+          department_name,
+          department_color,
+          department_icon
         )
       `)
       .single();
@@ -174,6 +180,8 @@ export async function POST(req) {
         division_name: division.division_name,
         department_id: division.department_id,
         department_name: division.departments?.department_name || "",
+        department_color: division.departments?.department_color || "#E2E8F0",
+        department_icon: division.departments?.department_icon || "",
         status: division.status,
       },
     });
@@ -187,6 +195,8 @@ export async function POST(req) {
         division_name: division.division_name,
         department_id: division.department_id,
         department_name: division.departments?.department_name || "-",
+        department_color: division.departments?.department_color || "#E2E8F0",
+        department_icon: division.departments?.department_icon || "",
         status: division.status,
         sort_order: division.sort_order,
         created_at: division.created_at,

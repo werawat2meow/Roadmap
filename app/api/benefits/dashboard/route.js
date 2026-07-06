@@ -82,38 +82,38 @@ function groupSum(rows = [], keyGetter, amountField = "used_amount") {
     .sort((a, b) => b.total_amount - a.total_amount);
 }
 
-const applyRequestFilters = (query, fixedStatus = "") => {
-  if (dateFrom) query = query.gte("request_date", dateFrom);
-  if (dateTo) query = query.lte("request_date", dateTo);
-  if (benefitId) query = query.eq("benefit_id", benefitId);
-
-  if (fixedStatus) {
-    query = query.eq("status", fixedStatus);
-  } else if (status) {
-    query = query.eq("status", status);
-  }
-
-  return query;
-};
-
-const applyUsageFilters = (query) => {
-  if (dateFrom) query = query.gte("usage_date", dateFrom);
-  if (dateTo) query = query.lte("usage_date", dateTo);
-  if (benefitId) query = query.eq("benefit_id", benefitId);
-
-  return query;
-};
 
 export async function GET(req) {
   try {
     const user = await getCurrentUser();
     const { searchParams } = new URL(req.url);
-
+    
     const year = searchParams.get("year") || "";
     const month = searchParams.get("month") || "";
     const benefitId = searchParams.get("benefitId") || "";
     const status = (searchParams.get("status") || "").trim().toLowerCase();
-
+    
+    const applyRequestFilters = (query, fixedStatus = "") => {
+      if (dateFrom) query = query.gte("request_date", dateFrom);
+      if (dateTo) query = query.lte("request_date", dateTo);
+      if (benefitId) query = query.eq("benefit_id", benefitId);
+    
+      if (fixedStatus) {
+        query = query.eq("status", fixedStatus);
+      } else if (status) {
+        query = query.eq("status", status);
+      }
+    
+      return query;
+    };
+    
+    const applyUsageFilters = (query) => {
+      if (dateFrom) query = query.gte("usage_date", dateFrom);
+      if (dateTo) query = query.lte("usage_date", dateTo);
+      if (benefitId) query = query.eq("benefit_id", benefitId);
+    
+      return query;
+    };
 
     const dateFrom = year && month ? `${year}-${String(month).padStart(2, "0")}-01` : year ? `${year}-01-01` : "";
     const dateTo = year && month ? `${year}-${String(month).padStart(2, "0")}-31` : year ? `${year}-12-31` : "";
@@ -136,165 +136,165 @@ export async function GET(req) {
       );
     }
 
-   const [
-  totalRequestsResult,
-  pendingResult,
-  inReviewResult,
-  approvedResult,
-  rejectedResult,
-  cancelledResult,
-  paidResult,
-  reversedResult,
-  totalUsageResult,
-  totalBenefitsResult,
-  recentRequestsResult,
-  usageWithBenefitResult,
-  usageByMonthResult,
-  usageWithEmployeeResult,
-  usageWithOrgResult,
-] = await Promise.all([
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true })
-  ),
+    const [
+      totalRequestsResult,
+      pendingResult,
+      inReviewResult,
+      approvedResult,
+      rejectedResult,
+      cancelledResult,
+      paidResult,
+      reversedResult,
+      totalUsageResult,
+      totalBenefitsResult,
+      recentRequestsResult,
+      usageWithBenefitResult,
+      usageByMonthResult,
+      usageWithEmployeeResult,
+      usageWithOrgResult,
+    ] = await Promise.all([
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true })
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "pending"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "pending"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "in_review"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "in_review"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "approved"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "approved"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "rejected"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "rejected"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "cancelled"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "cancelled"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "paid"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "paid"
+      ),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select("*", { count: "exact", head: true }),
-    "reversed"
-  ),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select("*", { count: "exact", head: true }),
+        "reversed"
+      ),
 
-  applyUsageFilters(
-    supabaseAdmin
-      .from("benefit_usages")
-      .select("used_amount")
-  ),
+      applyUsageFilters(
+        supabaseAdmin
+          .from("benefit_usages")
+          .select("used_amount")
+      ),
 
-  supabaseAdmin
-    .from("benefits")
-    .select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("benefits")
+        .select("*", { count: "exact", head: true }),
 
-  applyRequestFilters(
-    supabaseAdmin
-      .from("benefit_requests")
-      .select(`
-        id,
-        request_no,
-        requested_amount,
-        approved_amount,
-        request_date,
-        status,
-        created_at,
-        employees (
-          employee_code,
-          first_name_th,
-          last_name_th
-        ),
-        benefits (
-          benefit_code,
-          benefit_name
-        )
-      `)
-  )
-    .order("created_at", { ascending: false })
-    .limit(10),
+      applyRequestFilters(
+        supabaseAdmin
+          .from("benefit_requests")
+          .select(`
+            id,
+            request_no,
+            requested_amount,
+            approved_amount,
+            request_date,
+            status,
+            created_at,
+            employees (
+              employee_code,
+              first_name_th,
+              last_name_th
+            ),
+            benefits (
+              benefit_code,
+              benefit_name
+            )
+          `)
+      )
+        .order("created_at", { ascending: false })
+        .limit(10),
 
-  applyUsageFilters(
-    supabaseAdmin
-      .from("benefit_usages")
-      .select(`
-        used_amount,
-        usage_date,
-        benefits (
-          benefit_code,
-          benefit_name
-        )
-      `)
-  ),
+      applyUsageFilters(
+        supabaseAdmin
+          .from("benefit_usages")
+          .select(`
+            used_amount,
+            usage_date,
+            benefits (
+              benefit_code,
+              benefit_name
+            )
+          `)
+      ),
 
-  applyUsageFilters(
-    supabaseAdmin
-      .from("benefit_usages")
-      .select(`
-        used_amount,
-        usage_date
-      `)
-  ),
+      applyUsageFilters(
+        supabaseAdmin
+          .from("benefit_usages")
+          .select(`
+            used_amount,
+            usage_date
+          `)
+      ),
 
-  applyUsageFilters(
-    supabaseAdmin
-      .from("benefit_usages")
-      .select(`
-        employee_id,
-        used_amount,
-        employees (
-          employee_code,
-          first_name_th,
-          last_name_th
-        )
-      `)
-  ),
+      applyUsageFilters(
+        supabaseAdmin
+          .from("benefit_usages")
+          .select(`
+            employee_id,
+            used_amount,
+            employees (
+              employee_code,
+              first_name_th,
+              last_name_th
+            )
+          `)
+      ),
 
-  applyUsageFilters(
-    supabaseAdmin
-      .from("benefit_usages")
-      .select(`
-        used_amount,
-        employees (
-          departments (
-            department_name
-          ),
-          branches (
-            branch_name
-          )
-        )
-      `)
-  ),
-]);
+      applyUsageFilters(
+        supabaseAdmin
+          .from("benefit_usages")
+          .select(`
+            used_amount,
+            employees (
+              departments (
+                department_name
+              ),
+              branches (
+                branch_name
+              )
+            )
+          `)
+      ),
+    ]);
 
     const totalUsage = sumAmount(totalUsageResult.data || []);
 

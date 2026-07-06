@@ -176,7 +176,7 @@ export async function POST(req) {
         username: userAccount.username,
         role: primaryRole,
         role_name: primaryRoleName,
-        permissions,
+        // permissions,
         employee_code: employee?.employee_code || null,
         full_name: fullNameTh,
       },

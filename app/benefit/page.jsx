@@ -183,5 +183,8 @@ Audit Log                    ❌
 Attachments Management       🟡 70%
 Notifications System         ❌
 Advanced Quota Rules         ❌
+  2.1 Carry Forward
+  2.2 Monthly Limit
+  2.3 Family Quota
 Production Hardening         ❌
 */

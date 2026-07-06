@@ -10,6 +10,8 @@ import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import { RiLineFill } from "react-icons/ri";
+import Cropper from "react-easy-crop";
+import getCroppedImg from "@/lib/cropImage";
 
 const initialForm = {
   first_name_th: "",
@@ -23,11 +25,13 @@ const initialForm = {
   nationality: "thai",
   hire_date: "",
   employment_type: "",
+  branch_group_id: "",
   branch_id: "",
   department_id: "",
   division_id: "",
   unit_id: "",
   position_id: "",
+  job_id: "",
   employee_status_id: "",
   resignation_date: "",
   employee_photo_url: "",
@@ -41,18 +45,15 @@ const initialForm = {
 export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [employees, setEmployees] = useState([]);
-
   const [branches, setBranches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [divisions, setDivisions] = useState([]);
   const [units, setUnits] = useState([]);
   const [positions, setPositions] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
-
   const [openModal, setOpenModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [form, setForm] = useState(initialForm);
@@ -62,6 +63,8 @@ export default function EmployeesPage() {
   const [citizenIdSuccess, setCitizenIdSuccess] = useState("");
   const [passportError, setPassportError] = useState("");
   const [passportSuccess, setPassportSuccess] = useState("");
+  const [branchGroups, setBranchGroups] = useState([]);
+  const [jobs, setJobs] = useState([]);
 
   // Partition
   const [page, setPage] = useState(1);
@@ -73,6 +76,10 @@ export default function EmployeesPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Crop รูป 
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [photoZoom, setPhotoZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   // Lazy load Position
   const [positionLoading, setPositionLoading] = useState(false);
@@ -102,6 +109,21 @@ export default function EmployeesPage() {
     }
   }, [user, canView, loadingUser, router]);
   // #endregion
+
+
+  const loadBranchGroups = async () => {
+    const res = await fetch("/api/admin/branch-groups", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Load branch groups failed");
+    setBranchGroups(data.data || []);
+  };
+
+  const loadJobs = async () => {
+    const res = await fetch("/api/admin/jobs", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Load jobs failed");
+    setJobs(data.data || []);
+  };
 
   const loadEmploymentTypes = async () => {
     const res = await fetch("/api/admin/employment-types", {
@@ -239,6 +261,20 @@ export default function EmployeesPage() {
     setEmployeeStatuses(data.data || []);
   };
 
+  const selectedPosition = useMemo(() => { return positions.find((item) => item.id === form.position_id);}, [positions, form.position_id]);
+  const selectedJob = useMemo(() => {return jobs.find((item) => item.id === form.job_id);}, [jobs, form.job_id]);
+  const effectiveManagementLevel = selectedJob?.management_level || selectedPosition?.position_level || "";
+  const effectiveScopeType = selectedJob?.scope_type || "";
+  const isAllScope = effectiveScopeType === "all";
+  const isCompanyScope = effectiveScopeType === "company";
+  const isBranchGroupScope = effectiveScopeType === "branch_group";
+  const isBranchScope = effectiveScopeType === "branch";
+  const isDepartmentScope = effectiveScopeType === "department";
+  const isDivisionScope = effectiveScopeType === "division";
+  const isUnitScope = effectiveScopeType === "unit";
+  const isExecutiveLevel = ["P11", "P12"].includes(effectiveManagementLevel);
+  const isOperationLevel = !effectiveScopeType && !["P9", "P10", "P11", "P12"].includes(effectiveManagementLevel);
+
   useEffect(() => {
     Promise.all([
       loadBranches(),
@@ -248,6 +284,8 @@ export default function EmployeesPage() {
       loadPositions(),
       loadEmploymentTypes(),
       loadEmployeeStatuses(),
+      loadBranchGroups(),
+      loadJobs(),
     ]).catch((err) => {
       console.error(err);
       swalError(err.message || "ไม่สามารถโหลดข้อมูล master ได้");
@@ -269,6 +307,9 @@ export default function EmployeesPage() {
     setEditingEmployee(null);
     setPhotoFile(null);
     setPhotoPreview("");
+    setPhotoZoom(1);
+    setCrop({ x: 0, y: 0 });
+    setCroppedAreaPixels(null);
   };
 
   const handleOpenCreate = () => {
@@ -301,6 +342,7 @@ export default function EmployeesPage() {
       hire_date: employee.hire_date || "",
       employment_type: employee.employment_type || "",
       branch_id: employee.branch_id || "",
+      branch_group_id: employee.branch_group_id || "",
       department_id: employee.department_id || "",
       division_id: employee.division_id || "",
       unit_id: employee.unit_id || "",
@@ -313,9 +355,13 @@ export default function EmployeesPage() {
       passport_no: employee.passport_no || "",
       birth_date: employee.birth_date || "",
       line_id: employee.line_id || "",
+      job_id: employee.job_id || "",
     });
     setPhotoFile(null);
     setPhotoPreview(employee.employee_photo_url || "");
+    setCrop({ x: 0, y: 0 });
+    setPhotoZoom(1);
+    setCroppedAreaPixels(null);
     setOpenModal(true);
   };
 
@@ -358,6 +404,19 @@ export default function EmployeesPage() {
 
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+    setCrop({ x: 0, y: 0 });
+    setPhotoZoom(1);
+    setCroppedAreaPixels(null);
+  };
+
+  const createCroppedPhotoFile = async () => {
+    if (!photoFile || !photoPreview) return photoFile;
+
+    if (!croppedAreaPixels) {
+      throw new Error("กรุณาจัดตำแหน่งรูปก่อนบันทึก");
+    }
+
+    return await getCroppedImg(photoPreview, croppedAreaPixels);
   };
 
   const uploadEmployeePhoto = async (file, employeeId = "") => {
@@ -390,6 +449,7 @@ export default function EmployeesPage() {
   const handleSave = async () => {
     const isEdit = !!editingEmployee;
     const selectedStatus = employeeStatuses.find((item) => item.id === form.employee_status_id);
+
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
       return;
@@ -410,22 +470,37 @@ export default function EmployeesPage() {
       return;
     }
 
-    if (!form.branch_id) {
+    if (!form.position_id) {
+      swalError("กรุณาเลือกตำแหน่ง");
+      return;
+    }
+
+    if (isExecutiveLevel && !form.job_id) {
+      swalError("กรุณาเลือก Job สำหรับตำแหน่งผู้บริหาร");
+      return;
+    }
+
+    if (isBranchGroupScope && !form.branch_group_id) {
+      swalError("กรุณาเลือกกรุ๊ปสังกัด");
+      return;
+    }
+
+    if ((isBranchScope || isOperationLevel) && !form.branch_id) {
       swalError("กรุณาเลือกสาขา");
       return;
     }
 
-    if (!form.department_id) {
+    if ((isDepartmentScope || isOperationLevel) && !form.department_id) {
       swalError("กรุณาเลือกแผนก");
       return;
     }
 
-    if (!form.division_id) {
+    if ((isDivisionScope || isOperationLevel) && !form.division_id) {
       swalError("กรุณาเลือกฝ่าย");
       return;
     }
 
-    if (!form.unit_id) {
+    if ((isUnitScope || isOperationLevel) && !form.unit_id) {
       swalError("กรุณาเลือกหน่วยงาน");
       return;
     }
@@ -437,11 +512,6 @@ export default function EmployeesPage() {
 
     if (form.passport_no && !isValidPassportNo(form.passport_no)) {
       swalError("รูปแบบ Passport ไม่ถูกต้อง");
-      return;
-    }
-
-    if (!form.position_id) {
-      swalError("กรุณาเลือกตำแหน่ง");
       return;
     }
 
@@ -467,12 +537,11 @@ export default function EmployeesPage() {
 
     try {
       setSaving(true);
-
       let employeePhotoUrl = form.employee_photo_url || "";
-
       if (photoFile) {
+        const croppedFile = await createCroppedPhotoFile();
         employeePhotoUrl = await uploadEmployeePhoto(
-          photoFile,
+          croppedFile,
           editingEmployee?.id || ""
         );
       }
@@ -480,11 +549,18 @@ export default function EmployeesPage() {
       const payload = {
         ...form,
         employee_photo_url: employeePhotoUrl,
+        branch_group_id: isBranchGroupScope ? form.branch_group_id : null,
+        branch_id: isBranchScope || isOperationLevel ? form.branch_id : null,
+        department_id: isDepartmentScope || isOperationLevel ? form.department_id : null,
+        division_id: isDivisionScope || isOperationLevel ? form.division_id : null,
+        unit_id:isUnitScope || isOperationLevel ? form.unit_id : null,
+        job_id: form.job_id || null,
       };
 
       const url = isEdit
         ? `/api/admin/employees/${editingEmployee.id}`
         : "/api/admin/employees";
+
       const method = isEdit ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -645,164 +721,189 @@ export default function EmployeesPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-6 py-4 text-left">รหัสพนักงาน</th>
-                <th className="px-6 py-4 text-left">ชื่อ</th>
-                <th className="px-6 py-4 text-left">สาขา</th>
-                <th className="px-6 py-4 text-left">ฝ่าย</th>
-                <th className="px-6 py-4 text-left">ตำแหน่ง</th>
-                <th className="px-6 py-4 text-left">สถานะ</th>
-                <th className="px-6 py-4 text-right">จัดการ</th>
-              </tr>
-            </thead>
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(pageSize)].map((_, i) => (
+              <div key={i} className="rounded-3xl border border-slate-200 p-5">
+                <div className="flex gap-4">
+                  <div className="h-20 w-20 animate-pulse rounded-3xl bg-slate-200" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-4 w-28 animate-pulse rounded bg-slate-200" />
+                    <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : employees.length > 0 ? (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {employees.map((employee) => {
+              const isProtectedEmployee =
+                employee.employee_code === "EMP000001" ||
+                employee.full_name_th?.toLowerCase() === "system admin";
 
-            <tbody>
-              {loading ? (
-                [...Array(pageSize)].map((_, i) => (
-                  <tr key={i} className="border-t border-slate-200">
-                    <td className="px-6 py-4"><div className="h-4 w-24 animate-pulse rounded bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-36 animate-pulse rounded bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-28 animate-pulse rounded bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-28 animate-pulse rounded bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-28 animate-pulse rounded bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" /></td>
-                    <td className="px-6 py-4"><div className="ml-auto h-8 w-24 animate-pulse rounded bg-slate-200" /></td>
-                  </tr>
-                ))
-              ) : employees.length > 0 ? (
-                employees.map((employee) => {
-                  const isProtectedEmployee =
-                    employee.employee_code === "EMP000001" ||
-                    employee.full_name_th?.toLowerCase() === "system admin";
+              const initials =
+                employee.full_name_th
+                  ?.split(" ")
+                  ?.map((word) => word?.[0])
+                  ?.join("")
+                  ?.slice(0, 2) || "EMP";
 
-                  return (
-                    <tr key={employee.id} className="border-t border-slate-200 hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-slate-700">
-                        {employee.employee_code}
-                      </td>
+              const statusClass =
+                employee.employee_status_color === "green"
+                  ? "bg-green-100 text-green-700 ring-green-200"
+                  : employee.employee_status_color === "yellow"
+                  ? "bg-yellow-100 text-yellow-700 ring-yellow-200"
+                  : employee.employee_status_color === "red"
+                  ? "bg-red-100 text-red-600 ring-red-200"
+                  : employee.employee_status_color === "orange"
+                  ? "bg-orange-100 text-orange-700 ring-orange-200"
+                  : employee.employee_status_color === "blue"
+                  ? "bg-blue-100 text-blue-700 ring-blue-200"
+                  : "bg-slate-100 text-slate-600 ring-slate-200";
 
-                      <td className="px-6 py-4 text-slate-700">
-                        {employee.full_name_th}
-                      </td>
+              return (
+                <div
+                  key={employee.id}
+                  className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl"
+                >
+                  <div className="h-20 bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500" />
 
-                      <td className="px-6 py-4 text-slate-600">
-                        {employee.branch_name || "-"}
-                      </td>
+                  <div className="-mt-10 px-5 pb-5">
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="h-24 w-24 overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-md">
+                        {employee.employee_photo_url ? (
+                          <img
+                            src={employee.employee_photo_url}
+                            alt={employee.full_name_th || "Employee"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-slate-200 text-lg font-bold text-slate-500">
+                            {initials}
+                          </div>
+                        )}
+                      </div>
 
-                      <td className="px-6 py-4 text-slate-600">
-                        {employee.division_name || "-"}
-                      </td>
+                      <span
+                        className={`mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClass}`}
+                      >
+                        {employee.employee_status_name || "-"}
+                      </span>
+                    </div>
 
-                      <td className="px-6 py-4 text-slate-600">
-                        {employee.position_name || "-"}
-                      </td>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {employee.employee_code || "-"}
+                      </p>
 
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                            employee.employee_status_color === "green"
-                              ? "bg-green-100 text-green-700"
-                              : employee.employee_status_color === "yellow"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : employee.employee_status_color === "red"
-                              ? "bg-red-100 text-red-600"
-                              : employee.employee_status_color === "orange"
-                              ? "bg-orange-100 text-orange-700"
-                              : employee.employee_status_color === "blue"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-100 text-slate-600"
+                      <h3 className="mt-1 text-lg font-bold text-slate-800">
+                        {employee.full_name_th || "-"}
+                      </h3>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        {employee.position_name || "ไม่ระบุตำแหน่ง"}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-3 text-sm">
+                      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-400">สาขา</p>
+                        <p className="mt-1 font-medium text-slate-700">
+                          {employee.branch_name || "-"}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <p className="text-xs text-slate-400">ฝ่าย</p>
+                          <p className="mt-1 truncate font-medium text-slate-700">
+                            {employee.division_name || "-"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <p className="text-xs text-slate-400">แผนก</p>
+                          <p className="mt-1 truncate font-medium text-slate-700">
+                            {employee.department_name || "-"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(employee)}
+                          disabled={isProtectedEmployee}
+                          className={`rounded-xl border px-4 py-2 text-xs font-semibold ${
+                            isProtectedEmployee
+                              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                              : "border-slate-300 text-slate-600 hover:bg-slate-100"
                           }`}
                         >
-                          {employee.employee_status_name || "-"}
-                        </span>
-                      </td>
+                          {isProtectedEmployee ? "Protected" : "Edit"}
+                        </button>
+                      )}
 
-                      <td className="px-6 py-4">
-                        {canEdit || canDelete ? (
-                          <div className="flex justify-end gap-2">
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(employee)}
-                                disabled={isProtectedEmployee}
-                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                  isProtectedEmployee
-                                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                                    : "border-slate-300 text-slate-600 hover:bg-slate-100"
-                                }`}
-                              >
-                                {isProtectedEmployee ? "Protected" : "Edit"}
-                              </button>
-                            )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(employee)}
+                          disabled={deletingId === employee.id || isProtectedEmployee}
+                          className={`rounded-xl border px-4 py-2 text-xs font-semibold ${
+                            deletingId === employee.id || isProtectedEmployee
+                              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                              : "border-red-200 text-red-600 hover:bg-red-50"
+                          }`}
+                        >
+                          {deletingId === employee.id
+                            ? "Deleting..."
+                            : isProtectedEmployee
+                            ? "Protected"
+                            : "Delete"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-slate-300 py-14 text-center text-sm text-slate-400">
+            ไม่พบข้อมูลพนักงาน
+          </div>
+        )}
 
-                            {canDelete && (
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(employee)}
-                                disabled={deletingId === employee.id || isProtectedEmployee}
-                                className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                  deletingId === employee.id || isProtectedEmployee
-                                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                                    : "border-red-200 text-red-600 hover:bg-red-50"
-                                }`}
-                              >
-                                {deletingId === employee.id
-                                  ? "Deleting..."
-                                  : isProtectedEmployee
-                                  ? "Protected"
-                                  : "Delete"}
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-right text-slate-400">-</div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
-                    ไม่พบข้อมูลพนักงาน
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
+          <p className="text-sm text-slate-500">ทั้งหมด {total} รายการ</p>
 
-          <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
-            <p className="text-sm text-slate-500">
-              ทั้งหมด {total} รายการ
-            </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => loadEmployees(search, page - 1)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ก่อนหน้า
+            </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1 || loading}
-                onClick={() => loadEmployees(search, page - 1)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ก่อนหน้า
-              </button>
+            <span className="text-sm text-slate-600">
+              หน้า {page} / {totalPages}
+            </span>
 
-              <span className="text-sm text-slate-600">
-                หน้า {page} / {totalPages}
-              </span>
-
-              <button
-                type="button"
-                disabled={page >= totalPages || loading}
-                onClick={() => loadEmployees(search, page + 1)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ถัดไป
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={page >= totalPages || loading}
+              onClick={() => loadEmployees(search, page + 1)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ถัดไป
+            </button>
           </div>
         </div>
       </div>
@@ -810,73 +911,129 @@ export default function EmployeesPage() {
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="modal-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div className="border-b border-slate-200 px-6 py-4">
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
               <h2 className="text-xl font-bold text-slate-800">
                 {editingEmployee ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงาน"}
               </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                เลือกตำแหน่งและ Job เพื่อให้ระบบแสดงโครงสร้างองค์กรตาม Scope
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+              <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="mb-4 text-base font-bold text-slate-800">
                   รูปพนักงาน
-                </label>
+                </h3>
 
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                    <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative h-64 w-64 overflow-hidden rounded-3xl bg-slate-900">
                       {photoPreview ? (
-                        <img
-                          src={photoPreview}
-                          alt="Employee Preview"
-                          className="h-full w-full object-cover"
+                        <Cropper
+                          image={photoPreview}
+                          crop={crop}
+                          zoom={photoZoom}
+                          aspect={1}
+                          cropShape="rect"
+                          showGrid={true}
+                          onCropChange={setCrop}
+                          onZoomChange={setPhotoZoom}
+                          onCropComplete={(_, croppedPixels) => {
+                            setCroppedAreaPixels(croppedPixels);
+                          }}
                         />
                       ) : (
-                        <span className="text-xs text-slate-400">ไม่มีรูป</span>
+                        <div className="flex h-full w-full items-center justify-center bg-white text-xs text-slate-400">
+                          ไม่มีรูป
+                        </div>
                       )}
                     </div>
 
-                    <div className="flex flex-1 flex-col gap-3">
-                      <div className="flex flex-wrap gap-2">
-                        <label className="cursor-pointer rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100">
-                          Upload รูป
+                    {photoPreview && (
+                      <div className="w-64 space-y-3">
+                        <div>
+                          <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
+                            <span>Zoom</span>
+                            <span>{photoZoom.toFixed(2)}x</span>
+                          </div>
+
                           <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.05"
+                            value={photoZoom}
+                            onChange={(e) => setPhotoZoom(Number(e.target.value))}
+                            className="w-full"
                           />
-                        </label>
+                        </div>
 
-                        {photoPreview && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPhotoFile(null);
-                              setPhotoPreview("");
-                              setForm((prev) => ({ ...prev, employee_photo_url: "" }));
-                            }}
-                            className="rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
-                          >
-                            ลบรูป
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCrop({ x: 0, y: 0 });
+                            setPhotoZoom(1);
+                          }}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                        >
+                          Reset ตำแหน่งรูป
+                        </button>
                       </div>
+                    )}
+                  </div>
 
-                      <p className="text-xs text-slate-500">
-                        รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 50 MB
-                      </p>
+                  <div className="flex flex-1 flex-col gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <label className="cursor-pointer rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                        Upload รูป
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                        />
+                      </label>
 
-                      {uploadingPhoto && (
-                        <p className="text-xs text-slate-500">กำลังอัปโหลดรูป...</p>
+                      {photoPreview && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhotoFile(null);
+                            setPhotoPreview("");
+                            setForm((prev) => ({
+                              ...prev,
+                              employee_photo_url: "",
+                            }));
+                          }}
+                          className="rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
+                        >
+                          ลบรูป
+                        </button>
                       )}
                     </div>
+
+                    <p className="text-xs text-slate-500">
+                      รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 50 MB
+                    </p>
+
+                    {uploadingPhoto && (
+                      <p className="text-xs text-slate-500">กำลังอัปโหลดรูป...</p>
+                    )}
                   </div>
                 </div>
               </div>
 
+              <div className="md:col-span-2">
+                <h3 className="mb-3 text-base font-bold text-slate-800">
+                  ข้อมูลส่วนตัว
+                </h3>
+              </div>
+
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">ชื่อ (TH)</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  ชื่อ (TH)
+                </label>
                 <input
                   type="text"
                   value={form.first_name_th}
@@ -889,7 +1046,9 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">นามสกุล (TH)</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  นามสกุล (TH)
+                </label>
                 <input
                   type="text"
                   value={form.last_name_th}
@@ -902,7 +1061,9 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">ชื่อ (EN)</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  ชื่อ (EN)
+                </label>
                 <input
                   type="text"
                   value={form.first_name_en}
@@ -915,7 +1076,9 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">นามสกุล (EN)</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  นามสกุล (EN)
+                </label>
                 <input
                   type="text"
                   value={form.last_name_en}
@@ -926,22 +1089,29 @@ export default function EmployeesPage() {
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 />
               </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">ชื่อเล่น</label>
+                      <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  ชื่อเล่น
+                </label>
                 <input
                   type="text"
                   value={form.nick_name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nick_name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, nick_name: e.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">เพศ</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  เพศ
+                </label>
                 <select
                   value={form.gender}
-                  onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, gender: e.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="">เลือกเพศ</option>
@@ -951,7 +1121,9 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">โทรศัพท์</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  โทรศัพท์
+                </label>
                 <PhoneInput
                   defaultCountry="th"
                   forceDialCode={true}
@@ -962,21 +1134,25 @@ export default function EmployeesPage() {
                     phone = phone.replace(/^\+660/, "+66");
                     setForm((prev) => ({ ...prev, phone }));
                   }}
-                  inputClassName="!w-full !rounded-r-2xl !border-slate-300 !px-4 !py-3 !text-sm 
-                    focus:!border-slate-500 focus:!ring-4 focus:!ring-slate-100 !h-auto"
+                  inputClassName="!w-full !rounded-r-2xl !border-slate-300 !px-4 !py-3 !text-sm focus:!border-slate-500 focus:!ring-4 focus:!ring-slate-100 !h-auto"
                   countrySelectorStyleProps={{
-                    buttonClassName: "!rounded-l-2xl !border-slate-300 !px-3 !h-auto !py-3",
+                    buttonClassName:
+                      "!rounded-l-2xl !border-slate-300 !px-3 !h-auto !py-3",
                   }}
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={form.email}
                   placeholder="example@email.com"
-                  onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 />
               </div>
@@ -1020,21 +1196,17 @@ export default function EmployeesPage() {
                     setCitizenIdSuccess("✓ เลขบัตรประชาชนถูกต้อง");
                   }}
                   placeholder="1-2345-67890-12-3"
-                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
-                    ${
-                      citizenIdError
-                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                        : citizenIdSuccess
-                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
-                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                    }`
-                  }
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all ${
+                    citizenIdError
+                      ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                      : citizenIdSuccess
+                      ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                      : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  }`}
                 />
 
                 {citizenIdError && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {citizenIdError}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{citizenIdError}</p>
                 )}
 
                 {citizenIdSuccess && (
@@ -1082,20 +1254,17 @@ export default function EmployeesPage() {
                     setPassportSuccess("Passport ถูกต้อง");
                   }}
                   placeholder="Passport Number"
-                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all
-                    ${
-                      passportError
-                        ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                        : passportSuccess
-                        ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
-                        : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                    }`}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all ${
+                    passportError
+                      ? "border border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                      : passportSuccess
+                      ? "border border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+                      : "border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                  }`}
                 />
 
                 {passportError && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {passportError}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{passportError}</p>
                 )}
 
                 {passportSuccess && (
@@ -1129,7 +1298,6 @@ export default function EmployeesPage() {
                 </label>
 
                 <div className="group flex overflow-hidden rounded-2xl border border-slate-300 bg-white transition-all focus-within:border-green-500 focus-within:ring-4 focus-within:ring-green-100">
-                  
                   <div className="flex items-center justify-center border-r border-slate-200 bg-green-500 px-4 text-xl text-white">
                     <RiLineFill />
                   </div>
@@ -1138,14 +1306,8 @@ export default function EmployeesPage() {
                     type="text"
                     value={form.line_id}
                     onChange={(e) => {
-                      const value = e.target.value
-                        .replace(/\s/g, "")
-                        .replace(/^@+/, "");
-
-                      setForm((prev) => ({
-                        ...prev,
-                        line_id: value,
-                      }));
+                      const value = e.target.value.replace(/\s/g, "").replace(/^@+/, "");
+                      setForm((prev) => ({ ...prev, line_id: value }));
                     }}
                     placeholder="line id"
                     className="w-full bg-transparent px-4 py-3 text-sm outline-none"
@@ -1155,7 +1317,6 @@ export default function EmployeesPage() {
                 {form.line_id && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                     <span>LINE:</span>
-
                     <a
                       href={`https://line.me/ti/p/~${form.line_id}`}
                       target="_blank"
@@ -1167,12 +1328,21 @@ export default function EmployeesPage() {
                   </div>
                 )}
               </div>
+                      <div className="md:col-span-2 border-t border-slate-200 pt-5">
+                <h3 className="mb-3 text-base font-bold text-slate-800">
+                  ข้อมูลการจ้างงาน / โครงสร้างองค์กร
+                </h3>
+              </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">สัญชาติ</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  สัญชาติ
+                </label>
                 <select
                   value={form.nationality}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nationality: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, nationality: e.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="thai">ไทย</option>
@@ -1182,11 +1352,15 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">วันที่เริ่มงาน</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  วันที่เริ่มงาน
+                </label>
                 <input
                   type="date"
                   value={form.hire_date}
-                  onChange={(e) => setForm((prev) => ({ ...prev, hire_date: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, hire_date: e.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 />
               </div>
@@ -1218,101 +1392,10 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">สาขา</label>
-                <Select
-                  showSearch
-                  allowClear
-                  placeholder="เลือกสาขา"
-                  value={form.branch_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      branch_id: value ?? "",
-                      department_id: "",
-                      division_id: "",
-                      unit_id: "",
-                    }))
-                  }
-                  options={branches.map((b) => ({
-                    value: b.id,
-                    label: b.branch_name,
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  ตำแหน่ง
+                </label>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">แผนก</label>
-                <Select
-                  showSearch
-                  allowClear
-                  placeholder="เลือกแผนก"
-                  value={form.department_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      department_id: value ?? "",
-                      division_id: "",
-                      unit_id: "",
-                    }))
-                  }
-                  options={filteredDepartments.map((d) => ({
-                    value: d.id,
-                    label: d.department_name,
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">ฝ่าย</label>
-                <Select
-                  showSearch
-                  allowClear
-                  placeholder="เลือกฝ่าย"
-                  value={form.division_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      division_id: value ?? "",
-                      unit_id: "",
-                    }))
-                  }
-                  options={filteredDivisions.map((d) => ({
-                    value: d.id,
-                    label: `${d.division_name}${d.department_name ? ` (${d.department_name})` : ""}`,
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">หน่วยงาน</label>
-                <Select
-                  showSearch
-                  allowClear
-                  placeholder="เลือกหน่วยงาน"
-                  value={form.unit_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      unit_id: value ?? "",
-                    }))
-                  }
-                  options={filteredUnits.map((u) => ({
-                    value: u.id,
-                    label: `${u.unit_name}${u.division_name ? ` (${u.division_name})` : ""}`,
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">ตำแหน่ง</label>
                 <Select
                   showSearch
                   allowClear
@@ -1326,11 +1409,15 @@ export default function EmployeesPage() {
                   }}
                   onPopupScroll={(e) => {
                     const target = e.target;
-
                     const isBottom =
-                      target.scrollTop + target.offsetHeight >= target.scrollHeight - 20;
+                      target.scrollTop + target.offsetHeight >=
+                      target.scrollHeight - 20;
 
-                    if (isBottom && !positionLoading && positionPage < positionTotalPages) {
+                    if (
+                      isBottom &&
+                      !positionLoading &&
+                      positionPage < positionTotalPages
+                    ) {
                       loadPositions(positionKeyword, positionPage + 1, true);
                     }
                   }}
@@ -1345,6 +1432,12 @@ export default function EmployeesPage() {
                     setForm((prev) => ({
                       ...prev,
                       position_id: value ?? "",
+                      job_id: "",
+                      branch_group_id: "",
+                      branch_id: "",
+                      department_id: "",
+                      division_id: "",
+                      unit_id: "",
                     }))
                   }
                   notFoundContent={
@@ -1352,11 +1445,228 @@ export default function EmployeesPage() {
                   }
                   options={positions.map((p) => ({
                     value: p.id,
-                    label: `${p.position_name}${p.position_level ? ` (${p.position_level})` : ""}`,
+                    label: `${p.position_name}${
+                      p.position_level ? ` (${p.position_level})` : ""
+                    }`,
                   }))}
                   className="w-full"
                   size="large"
                 />
+              </div>
+
+              {["P9", "P10", "P11", "P12"].includes(
+                selectedPosition?.position_level || ""
+              ) && (
+                <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Job / Business Role
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือก Job ตามบทบาทงาน"
+                    value={form.job_id || undefined}
+                    onChange={(value) => {
+                      const job = jobs.find((item) => item.id === value);
+
+                      setForm((prev) => ({
+                        ...prev,
+                        job_id: value ?? "",
+                        branch_group_id:
+                          job?.scope_type === "branch_group"
+                            ? prev.branch_group_id
+                            : "",
+                        branch_id:
+                          job?.scope_type === "branch" ? prev.branch_id : "",
+                        department_id:
+                          job?.scope_type === "department"
+                            ? prev.department_id
+                            : "",
+                        division_id:
+                          job?.scope_type === "division" ? prev.division_id : "",
+                        unit_id: job?.scope_type === "unit" ? prev.unit_id : "",
+                      }));
+                    }}
+                    options={jobs.map((job) => ({
+                      value: job.id,
+                      label: `${job.job_icon || ""} ${job.job_code} - ${
+                        job.job_name
+                      }${
+                        job.management_level ? ` (${job.management_level})` : ""
+                      }`,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+
+                  {selectedJob && (
+                    <div
+                      className="mt-4 rounded-2xl px-4 py-3 text-sm"
+                      style={{
+                        backgroundColor: selectedJob.job_color || "#E2E8F0",
+                      }}
+                    >
+                      <p className="font-semibold text-slate-800">
+                        {selectedJob.job_icon || "👤"} {selectedJob.job_name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Level: {selectedJob.management_level || "-"} / Scope:{" "}
+                        {selectedJob.scope_type || "-"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isBranchGroupScope && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    กรุ๊ปสังกัด
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกกรุ๊ปสังกัด"
+                    value={form.branch_group_id || undefined}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        branch_group_id: value ?? "",
+                      }))
+                    }
+                    options={branchGroups.map((group) => ({
+                      value: group.id,
+                      label: group.group_name,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+
+              {(isBranchScope || isOperationLevel) && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    สาขา
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกสาขา"
+                    value={form.branch_id || undefined}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        branch_id: value ?? "",
+                        department_id: "",
+                        division_id: "",
+                        unit_id: "",
+                      }))
+                    }
+                    options={branches.map((b) => ({
+                      value: b.id,
+                      label: b.branch_name,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+
+              {(isDepartmentScope || isOperationLevel) && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    แผนก
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกแผนก"
+                    value={form.department_id || undefined}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        department_id: value ?? "",
+                        division_id: "",
+                        unit_id: "",
+                      }))
+                    }
+                    options={filteredDepartments.map((d) => ({
+                      value: d.id,
+                      label: d.department_name,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+
+              {(isDivisionScope || isOperationLevel) && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    ฝ่าย
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกฝ่าย"
+                    value={form.division_id || undefined}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        division_id: value ?? "",
+                        unit_id: "",
+                      }))
+                    }
+                    options={filteredDivisions.map((d) => ({
+                      value: d.id,
+                      label: `${d.division_name}${
+                        d.department_name ? ` (${d.department_name})` : ""
+                      }`,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+
+              {(isUnitScope || isOperationLevel) && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    หน่วยงาน
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกหน่วยงาน"
+                    value={form.unit_id || undefined}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        unit_id: value ?? "",
+                      }))
+                    }
+                    options={filteredUnits.map((u) => ({
+                      value: u.id,
+                      label: `${u.unit_name}${
+                        u.division_name ? ` (${u.division_name})` : ""
+                      }`,
+                    }))}
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+                      <div className="md:col-span-2 border-t border-slate-200 pt-5">
+                <h3 className="mb-3 text-base font-bold text-slate-800">
+                  สถานะพนักงาน
+                </h3>
               </div>
 
               <div className="md:col-span-2">
@@ -1376,8 +1686,6 @@ export default function EmployeesPage() {
                     setForm((prev) => ({
                       ...prev,
                       employee_status_id: statusId,
-
-                      // ถ้าไม่ใช่ลาออก ให้ล้างวันที่ลาออก
                       resignation_date:
                         selectedStatus?.status_code === "RESIGNED"
                           ? prev.resignation_date
@@ -1421,11 +1729,9 @@ export default function EmployeesPage() {
                   </div>
                 )}
               </div>
-
-
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
               <button
                 type="button"
                 onClick={handleCloseModal}
@@ -1457,6 +1763,7 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+      
     </div>
   );
 }

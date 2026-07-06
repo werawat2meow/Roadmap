@@ -6,11 +6,6 @@ import {SafetyCertificateOutlined,PlusOutlined,EditOutlined,DeleteOutlined,Reloa
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
-const POSITION_LEVELS = [
-  "P1", "P2", "P3", "P4", "P5", "P6",
-  "P7", "P8", "P9", "P10", "P11", "P12",
-];
-
 export default function BenefitRulesPage() {
   const { user } = useAuth();
   const [form] = Form.useForm();
@@ -21,6 +16,7 @@ export default function BenefitRulesPage() {
   const [benefits, setBenefits] = useState([]);
   const [employeeStatuses, setEmployeeStatuses] = useState([]);
   const [employmentTypes, setEmploymentTypes] = useState([]);
+  const [positionLevels, setPositionLevels] = useState([]);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -48,6 +44,7 @@ export default function BenefitRulesPage() {
       setBenefits(json.benefits || []);
       setEmployeeStatuses(json.employeeStatuses || []);
       setEmploymentTypes(json.employmentTypes || []);
+      setPositionLevels(json.positionLevels || []);
     } catch (error) {
       console.error("LOAD_BENEFIT_RULES_ERROR:", error);
       message.error(error.message || "โหลดข้อมูลไม่สำเร็จ");
@@ -69,6 +66,9 @@ export default function BenefitRulesPage() {
       quota_frequency: "yearly",
       is_unlimited: false,
       is_active: true,
+      allow_carry_forward: false,
+      max_carry_forward_amount: null,
+      carry_forward_expire_month: null,
     });
     setOpen(true);
   };
@@ -88,6 +88,9 @@ export default function BenefitRulesPage() {
       quota_frequency: record.quota_frequency,
       discount_percent: record.discount_percent,
       is_unlimited: record.is_unlimited,
+      allow_carry_forward: record.allow_carry_forward,
+      max_carry_forward_amount: record.max_carry_forward_amount,
+      carry_forward_expire_month: record.carry_forward_expire_month,
       rule_note: record.rule_note,
       is_active: record.is_active,
     });
@@ -221,6 +224,18 @@ export default function BenefitRulesPage() {
         },
       },
       {
+        title: "การยกยอด",
+        width: 180,
+        render: (_, record) =>
+          record.allow_carry_forward ? (
+            <Tag color="blue">
+              ยกยอดได้
+            </Tag>
+          ) : (
+            <Tag>ไม่ยกยอด</Tag>
+          ),
+      },
+      {
         title: "รอบ",
         dataIndex: "quota_frequency",
         width: 120,
@@ -347,7 +362,7 @@ export default function BenefitRulesPage() {
               <Select
                 allowClear
                 placeholder="ทุกระดับ"
-                options={POSITION_LEVELS.map((level) => ({
+                options={positionLevels.map((level) => ({
                   label: level,
                   value: level,
                 }))}
@@ -410,6 +425,42 @@ export default function BenefitRulesPage() {
 
             <Form.Item label="ไม่จำกัดสิทธิ์" name="is_unlimited" valuePropName="checked">
               <Switch />
+            </Form.Item>
+
+            <Form.Item
+              label="อนุญาตยกยอดสิทธิ์คงเหลือไปปีถัดไป"
+              name="allow_carry_forward"
+              valuePropName="checked"
+              tooltip="หากเปิดใช้งาน ระบบจะนำสิทธิ์คงเหลือจากปีก่อนมาคำนวณในปีถัดไป"
+            >
+              <Switch
+                checkedChildren="อนุญาต"
+                unCheckedChildren="ไม่อนุญาต"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="จำนวนสูงสุดที่สามารถยกยอดได้ (บาท)"
+              name="max_carry_forward_amount"
+            >
+              <InputNumber
+                className="w-full"
+                min={0}
+                precision={2}
+                placeholder="เช่น 5,000"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="ระยะเวลาหมดอายุของยอดยกมา (เดือน)"
+              name="carry_forward_expire_month"
+            >
+              <InputNumber
+                className="w-full"
+                min={1}
+                max={12}
+                placeholder="เช่น 3"
+              />
             </Form.Item>
           </div>
 

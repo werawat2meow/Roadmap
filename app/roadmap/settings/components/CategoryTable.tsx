@@ -4,7 +4,7 @@ type Item = {
   id: string;
   topic: string;
   weight: number;
-  saved: boolean;
+  saved?: boolean;
 };
 
 type Props = {

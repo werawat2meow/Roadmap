@@ -237,8 +237,16 @@ export default function AdminPage() {
                       <button
                         key={app.code}
                         type="button"
-                        onClick={() => router.push(app.path)}
-                        className="group overflow-hidden rounded-[26px] border border-slate-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl"
+                        onClick={() => {
+                          if (app.path.startsWith("http")) {
+                            window.open(app.path, "_blank");
+                          } else if (app.hardNav) {
+                            window.location.href = app.path;  // full page reload ← แก้ header mismatch
+                          } else {
+                            router.push(app.path);
+                          }
+                        }}
+                        className="group cursor-pointer overflow-hidden rounded-[26px] border border-slate-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-sky-200 hover:shadow-xl"
                       >
                         <div
                           className={`bg-gradient-to-br ${

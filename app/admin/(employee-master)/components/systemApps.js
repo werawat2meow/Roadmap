@@ -99,6 +99,34 @@ export const systemApps = [
     sortOrder: 999,
     gradient: "from-pink-500 to-rose-600",
   },
+  {
+    code: "LEAVE",
+    title: "Leave System",
+    subtitle: "ระบบลางาน",
+    description: "ยื่นคำขอลา ตรวจสอบสิทธิ์ และอนุมัติการลา",
+    path: "/leave",
+    hardNav: true,             
+    permission: "leave.view",
+    icon: <ClockCircleOutlined />,
+    badge: "Leave",
+    category: "HR Core",
+    sortOrder: 4,
+    gradient: "from-teal-500 to-cyan-600",
+  },
+
+  {
+    code: "ROADMAP",
+    title: "Roadmap",
+    subtitle: "ระบบแผนงาน",
+    description: "ติดตามแผนงาน โครงการ และสถานะการดำเนินงาน",
+    path: "/roadmap",
+    permission: "roadmap.view",
+    icon: <FileTextOutlined />,
+    badge: "Project",
+    category: "Operation",
+    sortOrder: 7,
+    gradient: "from-indigo-500 to-sky-600",
+  },
 ];
 
 export const getSystemAppByPermission = (permission = {}) => {

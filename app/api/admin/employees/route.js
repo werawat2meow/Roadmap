@@ -85,6 +85,9 @@ function mapEmployee(item) {
     unit_name: item.units?.unit_name || "-",
     position_name: item.positions?.position_name || "-",
     position_level: item.positions?.position_level || "",
+    branch_group_id: item.branch_group_id || "",
+    job_id: item.job_id || "",
+    management_assignment_id: item.management_assignment_id || "",
     created_at: item.created_at,
   };
 }
@@ -195,11 +198,30 @@ export async function GET(req) {
         division_id,
         unit_id,
         position_id,
-        created_at,
-        citizen_id,
-        passport_no,
-        birth_date,
-        line_id,
+        branch_group_id,
+        job_id,
+        management_assignment_id,
+          created_at,
+          citizen_id,
+          passport_no,
+          birth_date,
+          line_id,
+        branch_groups (
+          group_code,
+          group_name,
+          group_color
+        ),
+        jobs (
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
+          job_color,
+          job_icon,
+          can_manage_employees,
+          can_approve_budget
+        ),
         employee_statuses (
           status_name,
           color
@@ -336,7 +358,7 @@ export async function POST(req) {
     const phone = body?.phone?.trim() || null;
     const email = body?.email?.trim() || null;
 
-    const citizen_id = body?.citizen_id ?.replace(/\D/g, "") ?.trim() || null;
+    const citizen_id = body?.citizen_id?.replace(/\D/g, "")?.trim() || null;
     const passport_no = body?.passport_no?.trim() || null;
     const birth_date = body?.birth_date || null;
     const line_id = body?.line_id?.trim() || null;
@@ -349,13 +371,12 @@ export async function POST(req) {
     const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
 
+    const branch_group_id = body?.branch_group_id || null;
     const branch_id = body?.branch_id || null;
     const department_id = body?.department_id || null;
     const division_id = body?.division_id || null;
     const unit_id = body?.unit_id || null;
     const position_id = body?.position_id || null;
-
-    const branch_group_id = body?.branch_group_id || null;
     const job_id = body?.job_id || null;
     const management_assignment_id = body?.management_assignment_id || null;
 
@@ -373,6 +394,12 @@ export async function POST(req) {
       );
     }
 
+    if (!position_id) {
+      return NextResponse.json(
+        { success: false, error: "กรุณาเลือกตำแหน่ง" },
+        { status: 400 }
+      );
+    }
 
     if (!nationality) {
       return NextResponse.json(
@@ -390,19 +417,17 @@ export async function POST(req) {
 
     if (citizen_id && citizen_id.length !== 13) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "เลขบัตรประชาชนต้องมี 13 หลัก",
-        },
+        { success: false, error: "เลขบัตรประชาชนต้องมี 13 หลัก" },
         { status: 400 }
       );
     }
 
-    const { data: selectedPosition, error: positionError } = await supabaseAdmin
-      .from("positions")
-      .select("id, position_level")
-      .eq("id", position_id)
-      .single();
+    const { data: selectedPosition, error: positionError } =
+      await supabaseAdmin
+        .from("positions")
+        .select("id, position_level")
+        .eq("id", position_id)
+        .single();
 
     if (positionError) throw positionError;
 
@@ -449,13 +474,18 @@ export async function POST(req) {
       hire_date,
       employment_type,
       employee_status_id,
-      resignation_date, 
+      resignation_date,
       status,
+
+      branch_group_id,
       branch_id,
       department_id,
       division_id,
       unit_id,
       position_id,
+      job_id,
+      management_assignment_id,
+
       employee_type_digit,
       employee_year_2d,
       employee_running_no,
@@ -485,36 +515,74 @@ export async function POST(req) {
         employment_type,
         status,
         employee_status_id,
+        resignation_date,
+
+        branch_group_id,
         branch_id,
         department_id,
         division_id,
         unit_id,
         position_id,
+        job_id,
+        management_assignment_id,
+
         created_at,
+        updated_at,
+
         employee_statuses (
           status_name,
           color
         ),
+
+        branch_groups (
+          group_code,
+          group_name,
+          group_color
+        ),
+
         branches (
+          branch_code,
           branch_name
         ),
+
         departments (
+          department_code,
           department_name
         ),
+
         divisions (
+          division_code,
           division_name
         ),
+
         units (
+          unit_code,
           unit_name
         ),
+
         positions (
+          position_code,
           position_name,
           position_level
+        ),
+
+        jobs (
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
+          job_color,
+          job_icon,
+          can_manage_employees,
+          can_approve_budget
         )
       `)
       .single();
 
     if (error) throw error;
+
+    const mappedEmployee = mapEmployee(data);
 
     await writeActivityLog({
       module_name: "employees",
@@ -522,76 +590,13 @@ export async function POST(req) {
       reference_table: "employees",
       reference_id: data.id,
       description: `เพิ่มพนักงาน ${data.first_name_th} ${data.last_name_th} (${data.employee_code})`,
-      new_data: {
-        employee_code: data.employee_code,
-        first_name_th: data.first_name_th,
-        last_name_th: data.last_name_th,
-        first_name_en: data.first_name_en,
-        last_name_en: data.last_name_en,
-        nick_name: data.nick_name,
-        gender: data.gender,
-        phone: data.phone,
-        email: data.email,
-        citizen_id: data.citizen_id,
-        passport_no: data.passport_no,
-        birth_date: data.birth_date,
-        line_id: data.line_id,
-        employee_photo_url: data.employee_photo_url,
-        nationality: data.nationality,
-        hire_date: data.hire_date,
-        employment_type: data.employment_type,
-        status: data.status,
-        employee_status_id: data.employee_status_id,
-        resignation_date: data.resignation_date,
-        branch_id: data.branch_id,
-        department_id: data.department_id,
-        division_id: data.division_id,
-        unit_id: data.unit_id,
-        position_id: data.position_id,
-      },
+      new_data: mappedEmployee,
     });
 
     return NextResponse.json({
       success: true,
       message: "เพิ่มข้อมูลพนักงานสำเร็จ",
-      data: {
-        id: data.id,
-        employee_code: data.employee_code,
-        first_name_th: data.first_name_th,
-        last_name_th: data.last_name_th,
-        first_name_en: data.first_name_en || "",
-        last_name_en: data.last_name_en || "",
-        full_name_th: `${data.first_name_th || ""} ${data.last_name_th || ""}`.trim(),
-        nick_name: data.nick_name || "",
-        gender: data.gender || "",
-        phone: data.phone || "",
-        email: data.email || "",
-        citizen_id: data.citizen_id || "",
-        passport_no: data.passport_no || "",
-        birth_date: data.birth_date || "",
-        line_id: data.line_id || "",
-        employee_photo_url: data.employee_photo_url || "",
-        nationality: data.nationality || "",
-        hire_date: data.hire_date || "",
-        employment_type: data.employment_type || "",
-        status: data.status,
-        employee_status_id: data.employee_status_id || "",
-        resignation_date: data.resignation_date || "",
-        employee_status_name: data.employee_statuses?.status_name || "-",
-        employee_status_color: data.employee_statuses?.color || "slate",
-        branch_id: data.branch_id || "",
-        department_id: data.department_id || "",
-        division_id: data.division_id || "",
-        unit_id: data.unit_id || "",
-        position_id: data.position_id || "",
-        branch_name: data.branches?.branch_name || "-",
-        department_name: data.departments?.department_name || "-",
-        division_name: data.divisions?.division_name || "-",
-        unit_name: data.units?.unit_name || "-",
-        position_name: data.positions?.position_name || "-",
-        position_level: data.positions?.position_level || "",
-        created_at: data.created_at,
-      },
+      data: mappedEmployee,
     });
   } catch (error) {
     console.error("CREATE_EMPLOYEE_ERROR:", error);

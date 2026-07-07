@@ -225,33 +225,45 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">
-            Job Management
-          </h1>
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">
+              Job Management
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              จัดการตำแหน่งผู้บริหาร / Business Job Structure P9 - P12
+            </p>
+            {!canCreate && !canEdit && !canDelete ? (
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบตำแหน่งงาน
+              </div>
+            ) : null}
+          </div>
 
-          <p className="text-slate-500">
-            จัดการตำแหน่งผู้บริหาร / Business Job Structure
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <input
-            className="rounded-xl border border-slate-300 px-4 py-2"
-            placeholder="ค้นหา..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
           {canCreate && (
             <button
               onClick={handleOpenCreate}
-              className="rounded-xl bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700"
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
             >
               + New Job
             </button>
           )}
         </div>
       </div>
+
+       <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+        <input
+          type="text"
+          placeholder="ค้นหา..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+        />
+      </div>    
+
+
+
 
       {error && (
         <div className="rounded-xl bg-red-100 p-4 text-red-700">

@@ -328,7 +328,48 @@ export default function EmployeesPage() {
       return;
     }
 
+    // กัน Select แสดง UUID กรณี position_id ไม่อยู่ใน options ที่ lazy load มา
+    if (employee.position_id) {
+      setPositions((prev) => {
+        const exists = prev.some((item) => item.id === employee.position_id);
+        if (exists) return prev;
+
+        return [
+          {
+            id: employee.position_id,
+            position_name: employee.position_name || "ไม่ระบุตำแหน่ง",
+            position_level: employee.position_level || "",
+            status: "active",
+          },
+          ...prev,
+        ];
+      });
+    }
+
+    // กัน Job Select แสดง UUID กรณี job_id ไม่อยู่ใน options
+    if (employee.job_id) {
+      setJobs((prev) => {
+        const exists = prev.some((item) => item.id === employee.job_id);
+        if (exists) return prev;
+
+        return [
+          {
+            id: employee.job_id,
+            job_code: employee.job_code || "",
+            job_name: employee.job_name || "ไม่ระบุ Job",
+            job_level: employee.job_level || "",
+            management_level: employee.management_level || "",
+            scope_type: employee.scope_type || "",
+            job_color: employee.job_color || "#E2E8F0",
+            job_icon: employee.job_icon || "",
+          },
+          ...prev,
+        ];
+      });
+    }
+
     setEditingEmployee(employee);
+
     setForm({
       first_name_th: employee.first_name_th || "",
       last_name_th: employee.last_name_th || "",
@@ -357,6 +398,7 @@ export default function EmployeesPage() {
       line_id: employee.line_id || "",
       job_id: employee.job_id || "",
     });
+
     setPhotoFile(null);
     setPhotoPreview(employee.employee_photo_url || "");
     setCrop({ x: 0, y: 0 });

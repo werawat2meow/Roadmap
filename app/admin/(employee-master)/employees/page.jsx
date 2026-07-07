@@ -263,6 +263,7 @@ export default function EmployeesPage() {
 
   const selectedPosition = useMemo(() => { return positions.find((item) => item.id === form.position_id);}, [positions, form.position_id]);
   const selectedJob = useMemo(() => {return jobs.find((item) => item.id === form.job_id);}, [jobs, form.job_id]);
+  const selectedEmploymentType = useMemo(() => { return employmentTypes.find( (item) => item.type_code === form.employment_type); }, [employmentTypes, form.employment_type]);
   const effectiveManagementLevel = selectedJob?.management_level || selectedPosition?.position_level || "";
   const effectiveScopeType = selectedJob?.scope_type || "";
   const isAllScope = effectiveScopeType === "all";
@@ -490,7 +491,10 @@ export default function EmployeesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingEmployee;
-    const selectedStatus = employeeStatuses.find((item) => item.id === form.employee_status_id);
+
+    const selectedStatus = employeeStatuses.find(
+      (item) => item.id === form.employee_status_id
+    );
 
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
@@ -509,6 +513,16 @@ export default function EmployeesPage() {
 
     if (!form.hire_date) {
       swalError("กรุณาเลือกวันที่เริ่มงาน");
+      return;
+    }
+
+    if (!form.employment_type) {
+      swalError("กรุณาเลือกประเภทการจ้าง");
+      return;
+    }
+
+    if (!form.employee_status_id) {
+      swalError("ประเภทการจ้างนี้ยังไม่ได้กำหนดสถานะพนักงานเริ่มต้น");
       return;
     }
 
@@ -567,11 +581,6 @@ export default function EmployeesPage() {
       return;
     }
 
-    if (!form.employee_status_id) {
-      swalError("กรุณาเลือกสถานะพนักงาน");
-      return;
-    }
-
     if (selectedStatus?.status_code === "RESIGNED" && !form.resignation_date) {
       swalError("กรุณาระบุวันที่ลาออก");
       return;
@@ -595,7 +604,7 @@ export default function EmployeesPage() {
         branch_id: isBranchScope || isOperationLevel ? form.branch_id : null,
         department_id: isDepartmentScope || isOperationLevel ? form.department_id : null,
         division_id: isDivisionScope || isOperationLevel ? form.division_id : null,
-        unit_id:isUnitScope || isOperationLevel ? form.unit_id : null,
+        unit_id: isUnitScope || isOperationLevel ? form.unit_id : null,
         job_id: form.job_id || null,
       };
 
@@ -1413,12 +1422,20 @@ export default function EmployeesPage() {
                 </label>
                 <select
                   value={form.employment_type}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const typeCode = e.target.value;
+
+                    const selectedType = employmentTypes.find(
+                      (item) => item.type_code === typeCode
+                    );
+
                     setForm((prev) => ({
                       ...prev,
-                      employment_type: e.target.value,
-                    }))
-                  }
+                      employment_type: typeCode,
+                      employee_status_id: selectedType?.default_employee_status_id || "",
+                      resignation_date: "",
+                    }));
+                  }}
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="">เลือกประเภทการจ้าง</option>

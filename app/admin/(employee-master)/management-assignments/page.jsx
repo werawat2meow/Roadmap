@@ -481,6 +481,8 @@ export default function ManagementAssignmentsPage() {
     return null;
   };
   
+
+  console.log("user", assignments);
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;

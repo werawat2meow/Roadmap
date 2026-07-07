@@ -37,6 +37,16 @@ function padRunning(no) {
   return String(no).padStart(5, "0");
 }
 
+
+function calculateProbationEndDate(hireDate, days) {
+  if (!hireDate || !days) return null;
+
+  const date = new Date(hireDate);
+  date.setDate(date.getDate() + Number(days));
+
+  return date.toISOString().slice(0, 10);
+}
+
 /* =========================
    helper: escape ilike keyword
 ========================= */
@@ -89,6 +99,9 @@ function mapEmployee(item) {
     job_id: item.job_id || "",
     management_assignment_id: item.management_assignment_id || "",
     created_at: item.created_at,
+    probation_days: item.probation_days ?? null,
+    probation_end_date: item.probation_end_date || "",
+    probation_status: item.probation_status || "",
   };
 }
 
@@ -190,6 +203,9 @@ export async function GET(req) {
         nationality,
         hire_date,
         employment_type,
+        probation_days,
+        probation_end_date,
+        probation_status,
         status,
         employee_status_id,
         resignation_date,
@@ -380,6 +396,10 @@ export async function POST(req) {
     const job_id = body?.job_id || null;
     const management_assignment_id = body?.management_assignment_id || null;
 
+    let probation_days = null;
+    let probation_end_date = null;
+    let probation_status = null;
+
     if (!first_name_th || !last_name_th) {
       return NextResponse.json(
         { success: false, error: "กรุณากรอกชื่อและนามสกุล" },
@@ -420,6 +440,33 @@ export async function POST(req) {
         { success: false, error: "เลขบัตรประชาชนต้องมี 13 หลัก" },
         { status: 400 }
       );
+    }
+
+
+    if (employment_type) {
+      const { data: employmentTypeData, error: employmentTypeError } =
+        await supabaseAdmin
+          .from("employment_types")
+          .select(`
+            type_code,
+            probation_required,
+            probation_days,
+            auto_confirm_after_probation
+          `)
+          .eq("type_code", employment_type)
+          .maybeSingle();
+
+      if (employmentTypeError) throw employmentTypeError;
+
+      if (employmentTypeData?.probation_required) {
+        probation_days = Number(employmentTypeData.probation_days || 0);
+        probation_end_date = calculateProbationEndDate(hire_date, probation_days);
+        probation_status = "probation";
+      } else {
+        probation_days = null;
+        probation_end_date = null;
+        probation_status = "passed";
+      }
     }
 
     const { data: selectedPosition, error: positionError } =
@@ -489,6 +536,10 @@ export async function POST(req) {
       employee_type_digit,
       employee_year_2d,
       employee_running_no,
+
+      probation_days,
+      probation_end_date,
+      probation_status,
     };
 
     const { data, error } = await supabaseAdmin
@@ -516,7 +567,9 @@ export async function POST(req) {
         status,
         employee_status_id,
         resignation_date,
-
+        probation_days,
+        probation_end_date,
+        probation_status,
         branch_group_id,
         branch_id,
         department_id,

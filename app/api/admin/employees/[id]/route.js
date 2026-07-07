@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 
+function calculateProbationEndDate(hireDate, days) {
+  if (!hireDate || !days) return null;
+
+  const date = new Date(hireDate);
+  date.setDate(date.getDate() + Number(days));
+
+  return date.toISOString().slice(0, 10);
+}
+
 function mapEmployee(data) {
   return {
     id: data.id,
@@ -61,6 +70,10 @@ function mapEmployee(data) {
     can_manage_employees: data.jobs?.can_manage_employees || false,
     can_approve_budget: data.jobs?.can_approve_budget || false,
 
+    probation_days: data.probation_days ?? null,
+    probation_end_date: data.probation_end_date || "",
+    probation_status: data.probation_status || "",
+
     created_at: data.created_at,
     updated_at: data.updated_at,
   };
@@ -104,6 +117,10 @@ export async function PATCH(req, { params }) {
     const job_id = body?.job_id || null;
     const management_assignment_id = body?.management_assignment_id || null;
 
+    let probation_days = null;
+    let probation_end_date = null;
+    let probation_status = null;
+
     if (!first_name_th || !last_name_th) {
       return NextResponse.json(
         { success: false, error: "กรุณากรอกชื่อและนามสกุล" },
@@ -146,6 +163,33 @@ export async function PATCH(req, { params }) {
       );
     }
 
+
+    if (employment_type) {
+      const { data: employmentTypeData, error: employmentTypeError } =
+        await supabaseAdmin
+          .from("employment_types")
+          .select(`
+            type_code,
+            probation_required,
+            probation_days,
+            auto_confirm_after_probation
+          `)
+          .eq("type_code", employment_type)
+          .maybeSingle();
+
+      if (employmentTypeError) throw employmentTypeError;
+
+      if (employmentTypeData?.probation_required) {
+        probation_days = Number(employmentTypeData.probation_days || 0);
+        probation_end_date = calculateProbationEndDate(hire_date, probation_days);
+        probation_status = "probation";
+      } else {
+        probation_days = null;
+        probation_end_date = null;
+        probation_status = "passed";
+      }
+    }
+
     const { data: oldEmployee, error: oldEmployeeError } = await supabaseAdmin
       .from("employees")
       .select("*")
@@ -186,6 +230,9 @@ export async function PATCH(req, { params }) {
         job_id,
         management_assignment_id,
 
+        probation_days,
+        probation_end_date,
+        probation_status,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);
@@ -213,6 +260,9 @@ export async function PATCH(req, { params }) {
         nationality,
         hire_date,
         employment_type,
+        probation_days,
+        probation_end_date,
+        probation_status,
         status,
         employee_status_id,
         resignation_date,

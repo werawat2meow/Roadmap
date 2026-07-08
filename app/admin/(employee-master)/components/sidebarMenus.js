@@ -88,6 +88,12 @@ export const sidebarMenus = [
     icon: <DollarOutlined />,
     items: [
       {
+        label: "Business Unit",
+        href: "/admin/business-units",
+        icon: <BankOutlined />,
+        permission: "ems.business_units.view",
+      },
+      {
         label: "Cost Center",
         href: "/admin/cost-centers",
         icon: <FundProjectionScreenOutlined />,
@@ -98,12 +104,6 @@ export const sidebarMenus = [
         href: "/admin/profit-centers",
         icon: <DollarOutlined />,
         permission: "ems.profit_centers.view",
-      },
-      {
-        label: "Business Unit",
-        href: "/admin/business-units",
-        icon: <BankOutlined />,
-        permission: "ems.business_units.view",
       },
       {
         label: "GL Mapping",
@@ -219,3 +219,15 @@ export const sidebarMenus = [
     ],
   },
 ];
+
+
+
+/*
+Phase 3
+employees/page.jsx
+
+
+Phase 4
+ค่อยกลับมาเชื่อม
+employees/page.jsx
+*/

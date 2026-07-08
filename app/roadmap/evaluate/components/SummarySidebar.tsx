@@ -4,7 +4,6 @@ import ReportPreviewModal from "./ReportPreviewModal";
 
 // 1. เพิ่มการกำหนดประเภทข้อกำหนด (Interface) เพื่อรับข้อมูลฟอร์มจริงจากคอมโพเนนต์แม่
 interface SummarySidebarProps {
-  // รับข้อมูลทุกอย่างที่กรอกจากฟอร์มหลักเข้ามาในนี้
   allFormData: {
     id?: string;
     employeeName?: string;
@@ -19,10 +18,24 @@ interface SummarySidebarProps {
     expectationScore?: number;
     totalScore?: number;
     grade?: string;
+    managerComment?: string;
+    currentSalary?: number;
+    newSalary?: number;
+    examScore?: number;
+    maxScore?: number;
     lateData?: any;
     disciplineData?: any;
   };
   managers?: ManagerUser[];
+  selectedManagerIds?: string[];
+  onManagerToggle?: (managerId: string) => void;
+  onManagerCommentChange?: (value: string) => void;
+  onCurrentSalaryChange?: (value: number) => void;
+  onNewSalaryChange?: (value: number) => void;
+  onExamScoreChange?: (value: number) => void;
+  onMaxScoreChange?: (value: number) => void;
+  onSaveDraft?: () => void;
+  onSubmit?: () => void;
 }
 
 type ManagerUser = {
@@ -72,24 +85,18 @@ const SalaryInput = ({
 export default function SummarySidebar({
   allFormData,
   managers = [],
+  selectedManagerIds = [],
+  onManagerToggle,
+  onManagerCommentChange,
+  onCurrentSalaryChange,
+  onNewSalaryChange,
+  onExamScoreChange,
+  onMaxScoreChange,
+  onSaveDraft,
+  onSubmit,
 }: SummarySidebarProps) {
   // State สำหรับควบคุมการเปิด-ปิดหน้าต่าง Preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
-  const [currentSalary, setCurrentSalary] = useState<number>(0);
-  const [newSalary, setNewSalary] = useState<number>(0);
-
-  const toggleManager = (managerId: string) => {
-    setSelectedManagerIds((prev) => {
-      if (prev.includes(managerId)) {
-        return prev.filter((id) => id !== managerId);
-      }
-      if (prev.length >= 2) {
-        return prev;
-      }
-      return [...prev, managerId];
-    });
-  };
 
   const parseSalaryInput = (value: string) => {
     const digits = value.replace(/[^0-9]/g, "");
@@ -148,15 +155,15 @@ export default function SummarySidebar({
       <div className="space-y-4 my-8 text-gray-700">
         <SalaryInput
           label="Current Salary"
-          value={currentSalary}
-          onRangeChange={setCurrentSalary}
-          onTextChange={(value) => setCurrentSalary(parseSalaryInput(value))}
+          value={allFormData.currentSalary ?? 0}
+          onRangeChange={(value) => onCurrentSalaryChange?.(value)}
+          onTextChange={(value) => onCurrentSalaryChange?.(parseSalaryInput(value))}
         />
         <SalaryInput
           label="New Salary"
-          value={newSalary}
-          onRangeChange={setNewSalary}
-          onTextChange={(value) => setNewSalary(parseSalaryInput(value))}
+          value={allFormData.newSalary ?? 0}
+          onRangeChange={(value) => onNewSalaryChange?.(value)}
+          onTextChange={(value) => onNewSalaryChange?.(parseSalaryInput(value))}
         />
       </div>
 
@@ -172,8 +179,8 @@ export default function SummarySidebar({
             >
               <input
                 type="checkbox"
-                checked={selectedManagerIds.includes(manager.id)}
-                onChange={() => toggleManager(manager.id)}
+                checked={selectedManagerIds.includes(manager.employee_id)}
+                onChange={() => onManagerToggle?.(manager.employee_id)}
               />
               {manager.name}
             </label>
@@ -188,16 +195,50 @@ export default function SummarySidebar({
         <textarea
           rows={3}
           className="w-full border rounded-md p-2 text-sm mt-1"
+          value={allFormData.managerComment ?? ""}
+          onChange={(e) => onManagerCommentChange?.(e.target.value)}
         ></textarea>
       </div>
 
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="text-sm text-gray-600 block mb-2">คะแนนสอบที่ได้</label>
+          <input
+            type="number"
+            min={0}
+            max={allFormData.maxScore ?? 100}
+            value={allFormData.examScore ?? 0}
+            onChange={(e) => onExamScoreChange?.(Number(e.target.value))}
+            className="w-full border rounded-md p-2 text-sm text-black"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-gray-600 block mb-2">คะแนนเต็ม</label>
+          <input
+            type="number"
+            min={0}
+            value={allFormData.maxScore ?? 100}
+            onChange={(e) => onMaxScoreChange?.(Number(e.target.value))}
+            className="w-full border rounded-md p-2 text-sm text-black"
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-3 mt-8">
-        <button className="flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] transition-all duration-200 active:scale-95 text-center leading-tight cursor-pointer select-none">
+        <button
+          type="button"
+          onClick={onSaveDraft}
+          className="flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] transition-all duration-200 active:scale-95 text-center leading-tight cursor-pointer select-none"
+        >
           <span>Save</span>
           <span>Draft</span>
         </button>
 
-        <button className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-all duration-200 active:scale-95 cursor-pointer select-none">
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-all duration-200 active:scale-95 cursor-pointer select-none"
+        >
           Submit
         </button>
 

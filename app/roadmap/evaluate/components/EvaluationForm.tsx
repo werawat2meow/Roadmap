@@ -1,8 +1,16 @@
 import { Building, Users, Target } from "lucide-react";
 import EvaluationSection from "./EvaluationSection";
-import EvaluationSummaryPanel from "./EvaluationSummaryPanel";
-import DisciplineSummaryPanel from "./DisciplineSummaryPanel";
-import { useState } from "react";
+import EvaluationSummaryPanel, {
+  SummaryPanelData,
+  defaultSummaryData,
+} from "./EvaluationSummaryPanel";
+import DisciplineSummaryPanel, {
+  DisciplinePanelData,
+  defaultDisciplineData,
+} from "./DisciplineSummaryPanel";
+
+export type { SummaryPanelData, DisciplinePanelData };
+export { defaultSummaryData, defaultDisciplineData };
 
 type CategoryItem = {
   id: string;
@@ -27,36 +35,61 @@ type ManagerUser = {
   menus: string[];
 };
 
-type EvaluationFormProps = {
-  formType: 'Probation' | 'Performance' | 'Promote' | 'Progression';
-  companyGround?: CategoryData[];
-  departmentGround?: CategoryData[];
-  employeeLevel?: string;
-  managers?: ManagerUser[];
-};
-
-type ScoredItem = {
-  id: number;
-  topic: string;
-  weight: number;
-  score: number;
-  enabled: boolean;
-};
-
-type RowState = {
+export type RowState = {
   rowId: string;
-  itemId: string;
+  itemId: string;   // UUID for Company/Department dropdown
+  topic: string;    // free text for Expectations
   maxScore: number;
   score: number;
   note: string;
 };
+
+export type EvaluationFormData = {
+  companyRows: RowState[];
+  departmentRows: RowState[];
+  expectationRows: RowState[];
+  companyScore: number;
+  departmentScore: number;
+  expectationScore: number;
+  totalScore: number;
+  currentSalary: number;
+  newSalary: number;
+  managerComment: string;
+  examScore: number;
+  maxScore: number;
+  summaryData: SummaryPanelData;
+  disciplineData: DisciplinePanelData;
+};
+
+type EvaluationFormProps = {
+  formType: "Probation" | "Performance" | "Promote" | "Progression";
+  companyGround?: CategoryData[];
+  departmentGround?: CategoryData[];
+  employeeLevel?: string;
+  managers?: ManagerUser[];
+  formData?: EvaluationFormData;
+  onFormChange?: (next: Partial<EvaluationFormData>) => void;
+};
+
+const makeRow = (prefix: string): RowState => ({
+  rowId: `${prefix}-1`,
+  itemId: "",
+  topic: "",
+  maxScore: 0,
+  score: 0,
+  note: "",
+});
+
+const calcScore = (rows: RowState[]) =>
+  rows.reduce((sum, row) => sum + (Number.isFinite(row.score) ? row.score : 0), 0);
 
 export default function EvaluationForm({
   formType,
   companyGround = [],
   departmentGround = [],
   employeeLevel,
-  managers = [],
+  formData,
+  onFormChange,
 }: EvaluationFormProps) {
   const selectedLevel =
     employeeLevel ||
@@ -64,90 +97,92 @@ export default function EvaluationForm({
     departmentGround[0]?.level ||
     "P4";
 
-  const [companyRows, setCompanyRows] = useState<RowState[]>([
-    { rowId: "company-1", itemId: "", maxScore: 0, score: 0, note: "" },
-  ]);
-
-  const [departmentRows, setDepartmentRows] = useState<RowState[]>([
-    { rowId: "department-1", itemId: "", maxScore: 0, score: 0, note: "" },
-  ]);
-  
-
-  const removeCompanyRow = (rowId: string) => {
-    setCompanyRows((prev) => prev.filter((row) => row.rowId !== rowId));
-  };
-
-  const removeDepartmentRow = (rowId: string) => {
-    setDepartmentRows((prev) => prev.filter((row) => row.rowId !== rowId));
-  };
-
   const companyOptions = companyGround[0]?.items ?? [];
   const departmentOptions = departmentGround[0]?.items ?? [];
 
-  const updateCompanyRow = (rowId: string, next: Partial<RowState>) => {
-    setCompanyRows((prev) =>
-      prev.map((row) => (row.rowId === rowId ? { ...row, ...next } : row)),
-    );
+  // Fall back to a single empty row when parent hasn't initialized yet
+  const companyRows =
+    formData?.companyRows?.length > 0
+      ? formData.companyRows
+      : [makeRow("company")];
+  const departmentRows =
+    formData?.departmentRows?.length > 0
+      ? formData.departmentRows
+      : [makeRow("department")];
+  const expectationRows =
+    formData?.expectationRows?.length > 0
+      ? formData.expectationRows
+      : [makeRow("expectation")];
+  const summaryData = formData?.summaryData ?? defaultSummaryData;
+  const disciplineData = formData?.disciplineData ?? defaultDisciplineData;
+
+  // Single notify helper — always recomputes scores from the latest rows
+  const notify = (updates: Partial<EvaluationFormData>) => {
+    const nextCompany = updates.companyRows ?? companyRows;
+    const nextDept = updates.departmentRows ?? departmentRows;
+    const nextExp = updates.expectationRows ?? expectationRows;
+    const cs = calcScore(nextCompany);
+    const ds = calcScore(nextDept);
+    const es = calcScore(nextExp);
+    onFormChange?.({
+      ...updates,
+      companyScore: cs,
+      departmentScore: ds,
+      expectationScore: es,
+      totalScore: cs + ds + es,
+    });
   };
 
-  const addCompanyRow = () => {
-    setCompanyRows((prev) => [
-      ...prev,
-      { rowId: `${Date.now()}`, itemId: "", maxScore: 0, score: 0, note: "" },
-    ]);
-  };
+  // ─── Company row handlers ───────────────────────────────────────────────
+  const updateCompanyRow = (rowId: string, next: Partial<RowState>) =>
+    notify({
+      companyRows: companyRows.map((r) =>
+        r.rowId === rowId ? { ...r, ...next } : r,
+      ),
+    });
+  const addCompanyRow = () =>
+    notify({
+      companyRows: [
+        ...companyRows,
+        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+      ],
+    });
+  const removeCompanyRow = (rowId: string) =>
+    notify({ companyRows: companyRows.filter((r) => r.rowId !== rowId) });
 
-  const [expectationRows, setExpectationRows] = useState<RowState[]>([
-  { rowId: 'expectation-1', itemId: '', maxScore: 0, score: 0, note: '' },
-]);
+  // ─── Department row handlers ────────────────────────────────────────────
+  const updateDepartmentRow = (rowId: string, next: Partial<RowState>) =>
+    notify({
+      departmentRows: departmentRows.map((r) =>
+        r.rowId === rowId ? { ...r, ...next } : r,
+      ),
+    });
+  const addDepartmentRow = () =>
+    notify({
+      departmentRows: [
+        ...departmentRows,
+        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+      ],
+    });
+  const removeDepartmentRow = (rowId: string) =>
+    notify({ departmentRows: departmentRows.filter((r) => r.rowId !== rowId) });
 
-const updateExpectationRow = (rowId: string, next: Partial<RowState>) => {
-  setExpectationRows((prev) =>
-    prev.map((row) => (row.rowId === rowId ? { ...row, ...next } : row))
-  );
-};
-
-const addExpectationRow = () => {
-  setExpectationRows((prev) => [
-    ...prev,
-    { rowId: `${Date.now()}`, itemId: '', maxScore: 0, score: 0, note: '' },
-  ]);
-};
-
-const removeExpectationRow = (rowId: string) => {
-  setExpectationRows((prev) => prev.filter((row) => row.rowId !== rowId));
-};
-
-  const companyItems: ScoredItem[] = companyGround.flatMap(
-    (category, categoryIndex) =>
-      category.items.map((item, itemIndex) => ({
-        id: Number(item.id) || itemIndex + 1 + categoryIndex * 100,
-        topic: item.topic,
-        weight: item.weight,
-        score: 0,
-        enabled: true,
-      })),
-  );
-
-  const departmentItems: ScoredItem[] = departmentGround.flatMap(
-    (category, categoryIndex) =>
-      category.items.map((item, itemIndex) => ({
-        id: Number(item.id) || itemIndex + 1 + categoryIndex * 100,
-        topic: item.topic,
-        weight: item.weight,
-        score: 0,
-        enabled: true,
-      })),
-  );
-
-  const totalScore = (items: ScoredItem[]) =>
-    items.reduce((sum, item) => sum + (item.enabled ? item.score : 0), 0);
-
-
-  const companyScore = totalScore(companyItems);
-  const departmentScore = totalScore(departmentItems);
-  const expectationItems: ScoredItem[] = [];
-  const expectationScore = totalScore(expectationItems);
+  // ─── Expectation row handlers ───────────────────────────────────────────
+  const updateExpectationRow = (rowId: string, next: Partial<RowState>) =>
+    notify({
+      expectationRows: expectationRows.map((r) =>
+        r.rowId === rowId ? { ...r, ...next } : r,
+      ),
+    });
+  const addExpectationRow = () =>
+    notify({
+      expectationRows: [
+        ...expectationRows,
+        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+      ],
+    });
+  const removeExpectationRow = (rowId: string) =>
+    notify({ expectationRows: expectationRows.filter((r) => r.rowId !== rowId) });
 
   return (
     <div className="space-y-6">
@@ -168,25 +203,8 @@ const removeExpectationRow = (rowId: string) => {
         level={selectedLevel}
         rows={departmentRows}
         options={departmentOptions}
-        onChangeRow={(rowId, next) => {
-          setDepartmentRows((prev) =>
-            prev.map((row) =>
-              row.rowId === rowId ? { ...row, ...next } : row,
-            ),
-          );
-        }}
-        onAddRow={() =>
-          setDepartmentRows((prev)  => [
-            ...prev,
-            {
-              rowId: `${Date.now()}`,
-              itemId: "",
-              maxScore: 0,
-              score: 0,
-              note: "",
-            },
-          ])
-        }
+        onChangeRow={updateDepartmentRow}
+        onAddRow={addDepartmentRow}
         onRemoveRow={removeDepartmentRow}
       />
 
@@ -201,8 +219,20 @@ const removeExpectationRow = (rowId: string) => {
         onRemoveRow={removeExpectationRow}
       />
 
-      <EvaluationSummaryPanel />
-      <DisciplineSummaryPanel />
+      <EvaluationSummaryPanel
+        totalScore={formData?.totalScore ?? 0}
+        summaryData={summaryData}
+        onSummaryChange={(updates) =>
+          onFormChange?.({ summaryData: { ...summaryData, ...updates } })
+        }
+      />
+
+      <DisciplineSummaryPanel
+        disciplineData={disciplineData}
+        onDisciplineChange={(updates) =>
+          onFormChange?.({ disciplineData: { ...disciplineData, ...updates } })
+        }
+      />
     </div>
   );
 }

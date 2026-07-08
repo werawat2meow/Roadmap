@@ -1,29 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Users } from "lucide-react";
+import { History, MapPin, Users } from "lucide-react";
 import { Employee } from "../../types";
 
 type EmployeeInfoCardProps = {
   employee: Employee;
   evaluationType?: string;
+  historyCount?: number;
+  onHistoryClick?: () => void;
 };
 
 const labelStyles: Record<string, string> = {
-  Probation: "text-white bg-gradient-to-r from-sky-400 to-blue-700 shadow-sm font-bold",
+  Probation:
+    "text-white bg-gradient-to-r from-sky-400 to-blue-700 shadow-sm font-bold",
   /* 🎨 ขยับให้ซ้ายสว่างเป็นเหลืองมะนาว แล้วขวาไล่ดิ่งลงส้มเข้ม เห็นเฉดส้ม-เหลืองชัดเจน */
-  Performance: "text-amber-950 bg-gradient-to-r from-yellow-300 to-orange-500 shadow-sm font-bold", 
+  Performance:
+    "text-amber-950 bg-gradient-to-r from-yellow-300 to-orange-500 shadow-sm font-bold",
   /* 🎨 ซ้ายใช้เขียวตองอ่อนสว่าง ขวาใช้เขียวป่าลึกเข้ม ๆ ตัดเฉดมิติมรกตจัดเต็ม */
-  Promote: "text-white bg-gradient-to-r from-lime-400 to-emerald-700 shadow-sm font-bold",
+  Promote:
+    "text-white bg-gradient-to-r from-lime-400 to-emerald-700 shadow-sm font-bold",
   /* 🎨 ซ้ายส้มแมนดารินสว่าง ขวาถีบลงสีแดงโรสเข้มสะใจ เห็นความสลัวไล่เฉดคม ๆ */
-  Progression: "text-white bg-gradient-to-r from-orange-400 to-rose-600 shadow-sm font-bold",
+  Progression:
+    "text-white bg-gradient-to-r from-orange-400 to-rose-600 shadow-sm font-bold",
 };
 
 export default function EmployeeInfoCard({
   employee,
   evaluationType = "Probation",
+  historyCount = 0,
+  onHistoryClick,
 }: EmployeeInfoCardProps) {
-  const badgeClass = labelStyles[evaluationType] || "bg-slate-100 text-slate-700";
+  const badgeClass =
+    labelStyles[evaluationType] || "bg-slate-100 text-slate-700";
   const avatarText = employee.avatar
     ? ""
     : employee.name
@@ -129,13 +138,21 @@ export default function EmployeeInfoCard({
 
         <div className="flex flex-col items-center lg:items-end justify-between gap-4 min-w-[170px]">
           <div className="text-right">
-            <div className="flex items-center justify-end gap-2 mb-1">
+            <div className="flex items-center justify-end gap-2 mb-3">
               <span
                 className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeClass}`}
               >
                 {evaluationType}
               </span>
             </div>
+            <button
+              type="button"
+              onClick={onHistoryClick}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-400 px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:from-yellow-400 hover:to-amber-500 hover:border-amber-400 transition cursor-pointer"
+            >
+              <History size={14} />
+              ประวัติ {historyCount > 0 ? `(${historyCount})` : ""}
+            </button>
           </div>
           <Link
             href="/roadmap/employee"

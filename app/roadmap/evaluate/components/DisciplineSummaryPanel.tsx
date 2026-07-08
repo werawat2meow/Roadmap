@@ -1,6 +1,96 @@
 import React from 'react';
 
-export default function DisciplineSummaryPanel() {
+export type LateMonthData = { count: number; minutes: number };
+export type DisciplineItemData = { count: number; penaltyScore: number; detail: string };
+
+export type DisciplinePanelData = {
+  lateNormal: LateMonthData[];    // months 1-3
+  lateExtended: LateMonthData[];  // ต่อโปร months 1-2
+  disciplineItems: DisciplineItemData[];  // 8 items
+  comment: string;
+  evaluatorSignature: string;
+  evaluatorSignDate: string;
+  employeeSignature: string;
+  employeeSignDate: string;
+};
+
+export const defaultDisciplineData: DisciplinePanelData = {
+  lateNormal: [
+    { count: 0, minutes: 0 },
+    { count: 0, minutes: 0 },
+    { count: 0, minutes: 0 },
+  ],
+  lateExtended: [
+    { count: 0, minutes: 0 },
+    { count: 0, minutes: 0 },
+  ],
+  disciplineItems: [
+    { count: 0, penaltyScore: -5,   detail: '' },
+    { count: 0, penaltyScore: -10,  detail: '' },
+    { count: 0, penaltyScore: -15,  detail: '' },
+    { count: 0, penaltyScore: -100, detail: '' },
+    { count: 0, penaltyScore: -25,  detail: '' },
+    { count: 0, penaltyScore: -50,  detail: '' },
+    { count: 0, penaltyScore: -100, detail: '' },
+    { count: 0, penaltyScore: -1,   detail: '' },
+  ],
+  comment: '',
+  evaluatorSignature: '',
+  evaluatorSignDate: '',
+  employeeSignature: '',
+  employeeSignDate: '',
+};
+
+interface DisciplineSummaryPanelProps {
+  disciplineData: DisciplinePanelData;
+  onDisciplineChange: (updates: Partial<DisciplinePanelData>) => void;
+}
+
+const DISCIPLINE_CODES = [
+  { code: 'ว.91',           unit: 'ครั้ง' },
+  { code: 'ว.92',           unit: 'ครั้ง' },
+  { code: 'ว.93',           unit: 'ครั้ง' },
+  { code: 'ว.94',           unit: 'ครั้ง' },
+  { code: 'Warning 1',      unit: 'ฉบับ'  },
+  { code: 'Warning 2',      unit: 'ฉบับ'  },
+  { code: 'Last Warning',   unit: 'ฉบับ'  },
+  { code: 'ลาป่วย / ลากิจ', unit: 'วัน'   },
+];
+
+export default function DisciplineSummaryPanel({
+  disciplineData,
+  onDisciplineChange,
+}: DisciplineSummaryPanelProps) {
+  const updateLateNormal = (index: number, field: keyof LateMonthData, value: number) => {
+    const updated = disciplineData.lateNormal.map((m, i) =>
+      i === index ? { ...m, [field]: value } : m,
+    );
+    onDisciplineChange({ lateNormal: updated });
+  };
+
+  const updateLateExtended = (index: number, field: keyof LateMonthData, value: number) => {
+    const updated = disciplineData.lateExtended.map((m, i) =>
+      i === index ? { ...m, [field]: value } : m,
+    );
+    onDisciplineChange({ lateExtended: updated });
+  };
+
+  const updateDisciplineItem = (
+    index: number,
+    field: keyof DisciplineItemData,
+    value: number | string,
+  ) => {
+    const updated = disciplineData.disciplineItems.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item,
+    );
+    onDisciplineChange({ disciplineItems: updated });
+  };
+
+  const totalDisciplineScore = disciplineData.disciplineItems.reduce(
+    (sum, item) => sum + item.count * item.penaltyScore,
+    0,
+  );
+
   return (
     <div className="space-y-6 font-sans mt-5">
       
@@ -20,16 +110,16 @@ export default function DisciplineSummaryPanel() {
           <div className="space-y-6 text-sm text-slate-600">
             {/* กลุ่มที่ 1: ช่วงโปรโมชันปกติ (3 เดือนแรก) */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((month) => (
-                <div key={month} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col justify-between gap-2">
-                  <span className="font-medium text-slate-700">เดือนที่ {month}</span>
+              {disciplineData.lateNormal.map((m, index) => (
+                <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col justify-between gap-2">
+                  <span className="font-medium text-slate-700">เดือนที่ {index + 1}</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-1.5">
-                      <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
+                      <input type="number" value={m.count} min={0} onChange={(e) => updateLateNormal(index, 'count', Number(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
                       <span className="text-xs text-slate-500 shrink-0">ครั้ง</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
+                      <input type="number" value={m.minutes} min={0} onChange={(e) => updateLateNormal(index, 'minutes', Number(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white" />
                       <span className="text-xs text-slate-500 shrink-0">นาที</span>
                     </div>
                   </div>
@@ -46,16 +136,16 @@ export default function DisciplineSummaryPanel() {
                 กรณีขยายเวลาทดลองงาน (ต่อโปร)
               </span>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {[1, 2].map((month) => (
-                  <div key={month} className="bg-amber-50/30 p-3 rounded-lg border border-amber-100/70 flex flex-col justify-between gap-2">
-                    <span className="font-medium text-slate-700">ช่วงต่อโปร เดือนที่ {month}</span>
+                {disciplineData.lateExtended.map((m, index) => (
+                  <div key={index} className="bg-amber-50/30 p-3 rounded-lg border border-amber-100/70 flex flex-col justify-between gap-2">
+                    <span className="font-medium text-slate-700">ช่วงต่อโปร เดือนที่ {index + 1}</span>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-1.5">
-                        <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
+                        <input type="number" value={m.count} min={0} onChange={(e) => updateLateExtended(index, 'count', Number(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
                         <span className="text-xs text-slate-500 shrink-0">ครั้ง</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <input type="number" placeholder="0" className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
+                        <input type="number" value={m.minutes} min={0} onChange={(e) => updateLateExtended(index, 'minutes', Number(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-amber-500 focus:outline-none bg-white" />
                         <span className="text-xs text-slate-500 shrink-0">นาที</span>
                       </div>
                     </div>
@@ -71,56 +161,48 @@ export default function DisciplineSummaryPanel() {
       <div>
   {/* 1. แสดงผลแบบ CARD LAYOUT (เฉพาะบนจอมือถือขนาดเล็ก sm:hidden) */}
   <div className="block sm:hidden space-y-3">
-    {[
-      { code: 'ว.91', score: '-5', unit: 'ครั้ง' },
-      { code: 'ว.92', score: '-10', unit: 'ครั้ง' },
-      { code: 'ว.93', score: '-15', unit: 'ครั้ง' },
-      { code: 'ว.94', score: '-100', unit: 'ครั้ง' },
-      { code: 'Warning 1', score: '-25', unit: 'ฉบับ' },
-      { code: 'Warning 2', score: '-50', unit: 'ฉบับ' },
-      { code: 'Last Warning', score: '-100', unit: 'ฉบับ' },
-      { code: 'ลาป่วย / ลากิจ', score: '-1', unit: 'วัน' },
-    ].map((item, index) => (
-      <div key={index} className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm space-y-3">
-        {/* หัวข้อและการหักคะแนน */}
-        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-          <span className="font-semibold text-slate-800">{item.code}</span>
-          <span className="text-xs font-medium text-rose-500 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
-            หัก {item.score} คะแนน
-          </span>
-        </div>
-        
-        {/* ช่องกรอกข้อมูล */}
-        <div className="grid grid-cols-1 gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 shrink-0 w-16">จำนวน:</span>
-            <input 
-              type="number" 
-              placeholder="0" 
-              min="0"
-              className="w-20 rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <span className="text-slate-500 text-xs">{item.unit}</span>
+    {DISCIPLINE_CODES.map((def, index) => {
+      const item = disciplineData.disciplineItems[index];
+      if (!item) return null;
+      return (
+        <div key={index} className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+            <span className="font-semibold text-slate-800">{def.code}</span>
+            <span className="text-xs font-medium text-rose-500 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+              หัก {item.penaltyScore} คะแนน
+            </span>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 shrink-0 w-16">หัวข้อ:</span>
-            <input 
-              type="text" 
-              placeholder="ระบุรายละเอียด..." 
-              className="w-full rounded border border-slate-300 px-2 py-1 text-left text-sm focus:border-blue-500 focus:outline-none"
-            />
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 shrink-0 w-16">จำนวน:</span>
+              <input
+                type="number"
+                value={item.count}
+                min={0}
+                onChange={(e) => updateDisciplineItem(index, 'count', Number(e.target.value))}
+                className="w-20 rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none"
+              />
+              <span className="text-slate-500 text-xs">{def.unit}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 shrink-0 w-16">หัวข้อ:</span>
+              <input
+                type="text"
+                value={item.detail}
+                onChange={(e) => updateDisciplineItem(index, 'detail', e.target.value)}
+                placeholder="ระบุรายละเอียด..."
+                className="w-full rounded border border-slate-300 px-2 py-1 text-left text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-    
-    {/* สรุปคะแนนท้ายการ์ดบนมือถือ */}
-      <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 flex justify-between items-center font-semibold text-blue-900">
-        <span>รวมคะแนนระเบียบวินัย</span>
-        <span className="text-lg font-bold text-blue-700">0</span>
-      </div>
+      );
+    })}
+    <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 flex justify-between items-center font-semibold text-blue-900">
+      <span>รวมคะแนนระเบียบวินัย</span>
+      <span className="text-lg font-bold text-rose-600">{totalDisciplineScore}</span>
     </div>
+  </div>
 
   {/* 2. แสดงผลแบบ TABLE LAYOUT เดิม (จะแสดงเมื่อจอใหญ่ขึ้น sm:block) */}
       <div className="hidden sm:block overflow-hidden rounded-[16px] border border-blue-200 bg-white shadow-sm">
@@ -134,66 +216,69 @@ export default function DisciplineSummaryPanel() {
             </tr>
           </thead>
           <tbody className="divide-y divide-blue-50 bg-white text-slate-700 [&>tr:nth-child(even)]:bg-[#eef4ff]">
-            {[
-              { code: 'ว.91', score: '-5', unit: 'ครั้ง' },
-              { code: 'ว.92', score: '-10', unit: 'ครั้ง' },
-              { code: 'ว.93', score: '-15', unit: 'ครั้ง' },
-              { code: 'ว.94', score: '-100', unit: 'ครั้ง' },
-              { code: 'Warning 1', score: '-25', unit: 'ฉบับ' },
-              { code: 'Warning 2', score: '-50', unit: 'ฉบับ' },
-              { code: 'Last Warning', score: '-100', unit: 'ฉบับ' },
-              { code: 'ลาป่วย / ลากิจ', score: '-1', unit: 'วัน' },
-            ].map((item, index) => (
-              <tr key={index} className="transition-colors hover:bg-blue-50/50">
-                <td className="px-5 py-3 text-left font-light text-slate-600">
-                  <div className="grid grid-cols-[110px_85px_25px_1fr] items-center gap-x-2 text-sm w-full">
-                    {/* ส่วนที่ 1: ชื่อรหัส */}
-                    <span className="font-medium text-slate-700 truncate">{item.code} :</span>
-                    
-                    {/* ส่วนที่ 2: ช่องกรอกจำนวน */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <input type="number" placeholder="0" min="0" className="w-12 rounded border border-slate-300 px-1 py-0.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner" />
-                      <span className="text-slate-500 text-xs">{item.unit}</span>
+            {DISCIPLINE_CODES.map((def, index) => {
+              const item = disciplineData.disciplineItems[index];
+              if (!item) return null;
+              const deducted = item.count * item.penaltyScore;
+              return (
+                <tr key={index} className="transition-colors hover:bg-blue-50/50">
+                  <td className="px-5 py-3 text-left font-light text-slate-600">
+                    <div className="grid grid-cols-[110px_85px_25px_1fr] items-center gap-x-2 text-sm w-full">
+                      <span className="font-medium text-slate-700 truncate">{def.code} :</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          type="number"
+                          value={item.count}
+                          min={0}
+                          onChange={(e) => updateDisciplineItem(index, 'count', Number(e.target.value))}
+                          className="w-12 rounded border border-slate-300 px-1 py-0.5 text-center text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner"
+                        />
+                        <span className="text-slate-500 text-xs">{def.unit}</span>
+                      </div>
+                      <span className="text-slate-300 text-center">|</span>
+                      <div className="flex items-center gap-1.5 w-full">
+                        <span className="text-slate-500 shrink-0">หัวข้อ :</span>
+                        <input
+                          type="text"
+                          value={item.detail}
+                          onChange={(e) => updateDisciplineItem(index, 'detail', e.target.value)}
+                          placeholder="ระบุรายละเอียดการลงโทษ..."
+                          className="w-full flex-1 rounded border border-slate-300 px-2 py-0.5 text-left text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner font-light"
+                        />
+                      </div>
                     </div>
-
-                    {/* ส่วนที่ 3: เส้นกั้นกลาง */}
-                    <span className="text-slate-300 text-center">|</span>
-
-                    {/* ส่วนที่ 4: ช่องกรอกหัวข้อขนาดยาว (เพิ่ม w-full คลุมช่อง input ให้ยืดสุดตัว) */}
-                    <div className="flex items-center gap-1.5 w-full">
-                      <span className="text-slate-500 shrink-0">หัวข้อ :</span>
-                      <input 
-                        type="text" 
-                        placeholder="ระบุรายละเอียดการลงโทษ..." 
-                        className="w-full flex-1 rounded border border-slate-300 px-2 py-0.5 text-left text-sm focus:border-blue-500 focus:outline-none bg-white shadow-inner font-light" 
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-center pl-7">
+                      <div className="flex items-center gap-1.5 w-[100px]">
+                        <input
+                          type="number"
+                          value={item.count}
+                          min={0}
+                          onChange={(e) => updateDisciplineItem(index, 'count', Number(e.target.value))}
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none bg-white font-medium transition-all shadow-inner"
+                        />
+                        <span className="text-xs text-slate-400 shrink-0 w-[30px] text-left">{def.unit}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-center gap-1 mx-auto max-w-[85px]">
+                      <input
+                        type="number"
+                        value={item.penaltyScore}
+                        onChange={(e) => updateDisciplineItem(index, 'penaltyScore', Number(e.target.value))}
+                        className="w-full rounded border border-rose-200 px-1.5 py-0.5 text-center text-sm font-medium text-rose-600 focus:border-rose-500 focus:outline-none bg-rose-50/20 shadow-inner transition-all"
                       />
                     </div>
-                  </div>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center justify-center pl-7">
-                    <div className="flex items-center gap-1.5 w-[100px]">
-                      <input type="number" placeholder="0" min="0" className="w-full rounded border border-slate-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none bg-white font-medium transition-all shadow-inner" />
-                      <span className="text-xs text-slate-400 shrink-0 w-[30px] text-left">{item.unit}</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center justify-center gap-1 mx-auto max-w-[85px]">
-                    <input 
-                      type="number" 
-                      defaultValue={item.score} // นำค่าคะแนนติดลบเดิมจาก Array มาตั้งเป็นค่าเริ่มต้น
-                      placeholder="0"
-                      className="w-full rounded border border-rose-200 px-1.5 py-0.5 text-center text-sm font-medium text-rose-600 focus:border-rose-500 focus:outline-none bg-rose-50/20 shadow-inner transition-all"
-                    />
-                  </div>
-                </td>
-                <td className="px-5 py-3 text-right pr-6 font-semibold text-rose-500">0</td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-5 py-3 text-right pr-6 font-semibold text-rose-500">{deducted}</td>
+                </tr>
+              );
+            })}
             <tr className="bg-blue-50/80 font-semibold text-blue-900 border-t border-blue-200">
               <td colSpan={3} className="px-5 py-3.5 text-center font-medium tracking-wide">รวมคะแนนระเบียบวินัย</td>
-              <td className="px-5 py-3.5 text-right pr-6 font-bold text-rose-500 text-base">0</td>
+              <td className="px-5 py-3.5 text-right pr-6 font-bold text-rose-500 text-base">{totalDisciplineScore}</td>
             </tr>
           </tbody>
         </table>
@@ -213,7 +298,7 @@ export default function DisciplineSummaryPanel() {
             </div>
             <div className="grid grid-cols-2 px-5 py-3 text-sm text-slate-600">
               <div>คะแนนคงเหลือ</div>
-              <div className="text-right font-bold text-blue-600">100</div>
+              <div className="text-right font-bold text-blue-600">{100 + totalDisciplineScore}</div>
             </div>
           </div>
         </div>
@@ -247,6 +332,8 @@ export default function DisciplineSummaryPanel() {
         <div className="relative rounded-[12px] border border-slate-100 bg-[#f8f9fa] p-4">
           <textarea
             rows={3}
+            value={disciplineData.comment}
+            onChange={(e) => onDisciplineChange({ comment: e.target.value })}
             placeholder="กรอกข้อคิดเห็นหรือข้อเสนอแนะเกี่ยวกับระเบียบวินัยตรงนี้..."
             className="w-full bg-transparent text-slate-700 placeholder-slate-400 font-light resize-none border-0 p-0 focus:outline-none focus:ring-0 text-sm leading-[32px]"
             style={{
@@ -263,18 +350,40 @@ export default function DisciplineSummaryPanel() {
         <div className="grid gap-8 md:grid-cols-2">
           <div className="space-y-3">
             <div className="font-semibold text-slate-600">ลงชื่อผู้ประเมิน</div>
-            <input type="text" placeholder="( พิมพ์ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น )" className="w-full max-w-[85%] bg-transparent border-b border-slate-300 pb-1 text-slate-700 placeholder-slate-400 font-light focus:outline-none focus:border-blue-500 text-sm" />
+            <input
+              type="text"
+              value={disciplineData.evaluatorSignature}
+              onChange={(e) => onDisciplineChange({ evaluatorSignature: e.target.value })}
+              placeholder="( พิมพ์ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น )"
+              className="w-full max-w-[85%] bg-transparent border-b border-slate-300 pb-1 text-slate-700 placeholder-slate-400 font-light focus:outline-none focus:border-blue-500 text-sm"
+            />
             <div className="space-y-1">
               <label className="block text-xs text-slate-500 font-medium">วันที่</label>
-              <input type="date" className="w-full max-w-[85%] bg-transparent border-b border-slate-300 py-1 text-slate-700 focus:outline-none focus:border-blue-500 text-sm" />
+              <input
+                type="date"
+                value={disciplineData.evaluatorSignDate}
+                onChange={(e) => onDisciplineChange({ evaluatorSignDate: e.target.value })}
+                className="w-full max-w-[85%] bg-transparent border-b border-slate-300 py-1 text-slate-700 focus:outline-none focus:border-blue-500 text-sm"
+              />
             </div>
           </div>
           <div className="space-y-3">
             <div className="font-semibold text-slate-600">พนักงานรับทราบ</div>
-            <input type="text" placeholder="( พิมพ์ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น )" className="w-full max-w-[85%] bg-transparent border-b border-slate-300 pb-1 text-slate-700 placeholder-slate-400 font-light focus:outline-none focus:border-blue-500 text-sm" />
+            <input
+              type="text"
+              value={disciplineData.employeeSignature}
+              onChange={(e) => onDisciplineChange({ employeeSignature: e.target.value })}
+              placeholder="( พิมพ์ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น )"
+              className="w-full max-w-[85%] bg-transparent border-b border-slate-300 pb-1 text-slate-700 placeholder-slate-400 font-light focus:outline-none focus:border-blue-500 text-sm"
+            />
             <div className="space-y-1">
               <label className="block text-xs text-slate-500 font-medium">วันที่</label>
-              <input type="date" className="w-full max-w-[85%] bg-transparent border-b border-slate-300 py-1 text-slate-700 focus:outline-none focus:border-blue-500 text-sm" />
+              <input
+                type="date"
+                value={disciplineData.employeeSignDate}
+                onChange={(e) => onDisciplineChange({ employeeSignDate: e.target.value })}
+                className="w-full max-w-[85%] bg-transparent border-b border-slate-300 py-1 text-slate-700 focus:outline-none focus:border-blue-500 text-sm"
+              />
             </div>
           </div>
         </div>

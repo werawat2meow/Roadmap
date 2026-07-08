@@ -9,7 +9,8 @@ type Item = {
 
 type RowState = {
   rowId: string;
-  itemId: string;
+  itemId: string;  // UUID for Company/Department dropdown
+  topic: string;   // free text for Expectations
   maxScore: number;
   score: number;
   note: string;
@@ -119,9 +120,9 @@ export default function EvaluationSection({
                     ) : (
                       <input
                         type="text"
-                        value={row.itemId}
+                        value={row.topic ?? ""}
                         onChange={(e) =>
-                          onChangeRow(row.rowId, { itemId: e.target.value })
+                          onChangeRow(row.rowId, { topic: e.target.value })
                         }
                         className="w-full border border-gray-300 rounded-md p-2 bg-white text-black"
                         placeholder="กรอกตัวชี้วัด"

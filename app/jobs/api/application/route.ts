@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
       certify: agreement.certify ?? false,
       pdpa: agreement.pdpa ?? false,
       updated_at: new Date().toISOString(),
+      status: 1,
     };
-    
+
     const {
       data: application,
       error: applicationError,
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
           gpa: item.gpa,
           updated_at: new Date().toISOString(),
         }));
-
+        
         const { error } = await supabaseAdmin
           .from("recruit_job_education_history")
           .insert(educationRows);
@@ -151,13 +152,22 @@ export async function POST(request: NextRequest) {
         if (error) throw error;
       }
 
-      if (payload.computerSkills?.length > 0) {
-        const computerRows = payload.computerSkills.map((item: any) => ({
+      const computerSkills =
+        payload.computerSkills?.filter((item: any) => {
+          const isEmptyProgram = !item.system_program?.trim();
+          const isEmptyGood = item.good === "" || item.good == null;
+          const isEmptyFair = item.fair === "" || item.fair == null;
+
+          return !(isEmptyProgram && isEmptyGood && isEmptyFair);
+        }) ?? [];
+
+      if (computerSkills.length > 0) {
+        const computerRows = computerSkills.map((item: any) => ({
           application_id: applicationId,
           skill_type: "system_program",
-          system_program: item.system_program,
-          good: item.good,
-          fair: item.fair,
+          system_program: item.system_program?.trim() || null,
+          good: item.good === "" ? null : Number(item.good),
+          fair: item.fair === "" ? null : Number(item.fair),
           language: null,
           listening: null,
           speaking: null,
@@ -173,15 +183,20 @@ export async function POST(request: NextRequest) {
         if (error) throw error;
       }
 
-      if (payload.languageSkills?.length > 0) {
-        const languageRows = payload.languageSkills.map((item: any) => ({
+      const languageSkills =
+        payload.languageSkills?.filter((item: any) => {
+          return item.language?.trim();
+        }) ?? [];
+
+      if (languageSkills.length > 0) {
+        const languageRows = languageSkills.map((item: any) => ({
           application_id: applicationId,
           skill_type: "language",
-          language: item.language,
-          listening: item.listening,
-          speaking: item.speaking,
-          reading: item.reading,
-          writing: item.writing,
+          language: item.language.trim(),
+          listening: item.listening == null || item.listening === "" ? null : Number(item.listening),
+          speaking: item.speaking == null || item.speaking === "" ? null : Number(item.speaking),
+          reading: item.reading == null || item.reading === "" ? null : Number(item.reading),
+          writing: item.writing == null || item.writing === "" ? null : Number(item.writing),
           system_program: null,
           good: null,
           fair: null,

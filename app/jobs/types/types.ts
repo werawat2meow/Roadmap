@@ -125,8 +125,8 @@ export interface WorkExperience {
 export interface ComputerSkill {
   id: string;
   system_program: string;
-  good: string;
-  fair: string;
+  good: number | null;
+  fair: number | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -136,10 +136,10 @@ export interface ComputerSkill {
 export interface LanguageSkill {
   id: string;
   language: string;
-  listening: string;
-  speaking: string;
-  reading: string;
-  writing: string;
+  listening: number | null;
+  speaking: number | null;
+  reading: number | null;
+  writing: number | null;
 }
 
 /* -------------------------------------------------------------------------- */

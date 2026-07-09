@@ -6,6 +6,7 @@ import {
   Col,
   Form,
   Input,
+  InputNumber,
   Row,
   Typography,
 } from "antd";
@@ -150,7 +151,7 @@ export default function SkillsSection({
             }
           >
             <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
+              <Col xs={24} md={16}>
                 <Form.Item
                   label={getUIText(uiText.computerSkillSystem, locale)}
                 >
@@ -169,7 +170,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.computerSkillGood, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.good}
                     onChange={(e) =>
                       updateComputer(
@@ -184,7 +185,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.computerSkillFair, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.fair}
                     onChange={(e) =>
                       updateComputer(
@@ -255,7 +256,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.languageSkillListening, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.listening}
                     onChange={(e) =>
                       updateLanguage(
@@ -270,7 +271,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.languageSkillSpeaking, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.speaking}
                     onChange={(e) =>
                       updateLanguage(
@@ -285,7 +286,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.languageSkillReading, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.reading}
                     onChange={(e) =>
                       updateLanguage(
@@ -300,7 +301,7 @@ export default function SkillsSection({
 
               <Col xs={24} md={4}>
                 <Form.Item label={getUIText(uiText.languageSkillWriting, locale)}>
-                  <Input
+                  <InputNumber
                     value={item.writing}
                     onChange={(e) =>
                       updateLanguage(

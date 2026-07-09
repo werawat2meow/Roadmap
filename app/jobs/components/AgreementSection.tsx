@@ -68,6 +68,7 @@ export default function AgreementSection({
         }
       >
         <Checkbox
+          name="certify"
           checked={value.certify}
           onChange={(e) =>
             updateField(
@@ -99,6 +100,7 @@ export default function AgreementSection({
         }
       >
         <Checkbox
+          name="pdpa"
           checked={value.pdpa}
           onChange={(e) =>
             updateField(

@@ -640,8 +640,8 @@ export const uiText = {
   },
 
   mustAcceptTerms: {
-    EN: "Please accept both certification items before saving.",
-    TH: "กรุณายอมรับคำรับรองทั้ง 2 ข้อก่อนบันทึกใบสมัคร",
+    EN: "Please accept both the data verification and consent forms before saving the application.",
+    TH: "กรุณายอมรับคำรับรองข้อมูลและการยินยอมทั้ง 2 ข้อก่อนบันทึกใบสมัคร",
   },
 
   invalidThaiId: {

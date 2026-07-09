@@ -131,7 +131,7 @@ export default function PersonalInformation({
   const handleIdentityChange = (
     identity: string
   ) => {
-    updateField("identityNo", identity);
+    updateField("idCardNo", identity);
 
     if (language === "TH") {
       if (
@@ -140,7 +140,7 @@ export default function PersonalInformation({
       ) {
         form.setFields([
           {
-            name: "identityNo",
+            name: "idCardNo",
             errors: [
               "เลขบัตรประชาชนไม่ถูกต้อง",
             ],
@@ -149,7 +149,7 @@ export default function PersonalInformation({
       } else {
         form.setFields([
           {
-            name: "identityNo",
+            name: "idCardNo",
             errors: [],
           },
         ]);
@@ -161,7 +161,7 @@ export default function PersonalInformation({
       ) {
         form.setFields([
           {
-            name: "identityNo",
+            name: "idCardNo",
             errors: [
               "Invalid passport number",
             ],
@@ -170,7 +170,7 @@ export default function PersonalInformation({
       } else {
         form.setFields([
           {
-            name: "identityNo",
+            name: "idCardNo",
             errors: [],
           },
         ]);
@@ -269,6 +269,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.otherPosition, locale)} required >
                         <Input
                             required
+                            name="otherPosition"
                             placeholder={
                                 language === "TH"
                                 ? "กรอกตำแหน่งที่สนใจ"
@@ -287,6 +288,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.expectedSalary, locale)} required >
                         <InputNumber
                             required
+                            name="expectedSalary"
                             style={{ width: "100%" }}
                             min={0}
                             precision={0}
@@ -320,6 +322,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.firstName, locale)} required >
                         <Input
                             required
+                            name="firstName"
                             value={value.firstName}
                             onChange={(e) => updateField("firstName", e.target.value) }
                         />
@@ -332,6 +335,7 @@ export default function PersonalInformation({
                     >
                         <Input
                             required
+                            name="lastName"
                             value={value.lastName}
                             onChange={(e) => updateField("lastName", e.target.value) }
                         />
@@ -363,6 +367,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.dateOfBirth, locale)} required >
                         <DatePicker
                             required
+                            name="dateOfBirth"
                             style={{ width: "100%" }}
                             format="DD/MM/YYYY"
                             value={
@@ -390,6 +395,7 @@ export default function PersonalInformation({
                 <Col xs={24} md={12}>
                     <Form.Item label={getUIText(uiText.gender, locale)} required >
                         <Radio.Group
+                            name="gender"
                             value={value.gender}
                             onChange={(e) => updateField("gender", e.target.value) }
                         >
@@ -492,12 +498,12 @@ export default function PersonalInformation({
                 {/* ID / Passport */}
                 <Col xs={24}>
                     <Form.Item
-                        name="identityNo"
                         label={getUIText(uiText.idCardNo, locale)}
                         required
                     >
                         <Input
-                            value={value.identityNo}
+                            name="idCardNo"
+                            value={value.idCardNo}
                             onChange={(e) => handleIdentityChange( e.target.value ) }
                             maxLength={ language === "TH" ? 13 : 20 }
                         />
@@ -517,8 +523,9 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.addressNo, locale)} required >
                         <Input
                             required
-                            value={value.currentAddressNo}
-                            onChange={(e) => updateField( "currentAddressNo", e.target.value ) }
+                            name="addressNo"
+                            value={value.addressNo}
+                            onChange={(e) => updateField( "addressNo", e.target.value ) }
                         />
                     </Form.Item>
                 </Col>
@@ -548,6 +555,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.subDistrict, locale)} required >
                         <Input
                             required
+                            name="subDistrict"
                             value={value.subDistrict}
                             onChange={(e) => updateField( "subDistrict", e.target.value ) }
                         />
@@ -559,6 +567,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.district, locale)} required >
                         <Input
                             required
+                            name="district"
                             value={value.district}
                             onChange={(e) => updateField( "district", e.target.value ) }
                         />
@@ -570,6 +579,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.province, locale)} required >
                         <Input
                             required
+                            name="province"
                             value={value.province}
                             onChange={(e) => updateField( "province", e.target.value ) }
                         />
@@ -581,6 +591,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.postalCode, locale)} required >
                         <Input
                             required
+                            name="postalCode"
                             value={value.postalCode}
                             maxLength={5}
                             onChange={(e) => updateField( "postalCode", e.target.value.replace(/\D/g, "") ) }
@@ -617,6 +628,7 @@ export default function PersonalInformation({
                         }
                     >
                         <Input
+                            name="phoneNumber"
                             value={value.phoneNumber}
                             placeholder={ language === "TH" ? "08xxxxxxxx" : "Phone Number" }
                             onChange={(e) => updateField( "phoneNumber", e.target.value ) }
@@ -636,12 +648,22 @@ export default function PersonalInformation({
                 {/* Residence Type                                                 */}
                 {/* -------------------------------------------------------------- */}
                 <Col xs={24}>
-                    <Form.Item label={getUIText(uiText.residenceType, locale)} required >
-                        <Radio.Group
+                    <div data-field="residenceType">
+                        <Form.Item
+                            label={getUIText(uiText.residenceType, locale)}
+                            required
+                        >
+                            <Radio.Group
+                            name="residenceType"
                             style={{ width: "100%" }}
                             value={value.residenceType[0] || ""}
-                            onChange={(e) => updateField( "residenceType", [e.target.value] as ResidenceType[] ) }
-                        >
+                            onChange={(e) =>
+                                updateField(
+                                "residenceType",
+                                [e.target.value] as ResidenceType[]
+                                )
+                            }
+                            >
                             <Row gutter={[16, 12]}>
                                 {residenceOptions.map((item) => (
                                 <Col
@@ -650,12 +672,15 @@ export default function PersonalInformation({
                                     md={8}
                                     key={item.value}
                                 >
-                                    <Radio value={item.value}> {item.label} </Radio>
+                                    <Radio value={item.value}>
+                                    {item.label}
+                                    </Radio>
                                 </Col>
                                 ))}
-                        </Row>
-                        </Radio.Group>
-                    </Form.Item>
+                            </Row>
+                            </Radio.Group>
+                        </Form.Item>
+                    </div>
                 </Col>
 
                 {/* Other Residence */}
@@ -679,26 +704,29 @@ export default function PersonalInformation({
                 {/* Marital Status                                                 */}
                 {/* -------------------------------------------------------------- */}
                 <Col xs={24}>
-                    <Form.Item label={getUIText(uiText.maritalStatus, locale)} required >
-                        <Radio.Group
-                            style={{ width: "100%" }}
-                            value={value.maritalStatus[0] || ""}
-                            onChange={(e) => updateField( "maritalStatus", [e.target.value] as MaritalStatus[] ) }
-                        >
-                            <Row gutter={[16, 12]}>
-                                {maritalOptions.map((item) => (
-                                    <Col
-                                        xs={24}
-                                        sm={12}
-                                        md={8}
-                                        key={item.value}
-                                    >
-                                        <Radio value={item.value}> {item.label} </Radio>
-                                    </Col>
-                                ))}
-                            </Row>
-                        </Radio.Group>
-                    </Form.Item>
+                    <div data-field="maritalStatus">
+                        <Form.Item  label={getUIText(uiText.maritalStatus, locale)} required >
+                            <Radio.Group
+                                name="maritalStatus"
+                                style={{ width: "100%" }}
+                                value={value.maritalStatus[0] || ""}
+                                onChange={(e) => updateField( "maritalStatus", [e.target.value] as MaritalStatus[] ) }
+                            >
+                                <Row gutter={[16, 12]}>
+                                    {maritalOptions.map((item) => (
+                                        <Col
+                                            xs={24}
+                                            sm={12}
+                                            md={8}
+                                            key={item.value}
+                                        >
+                                            <Radio value={item.value}> {item.label} </Radio>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </Radio.Group>
+                        </Form.Item>
+                    </div>
                 </Col>
 
                 {/* -------------------------------------------------------------- */}
@@ -727,15 +755,19 @@ export default function PersonalInformation({
         <Card title={getUIText(uiText.driverLicense, locale)} >
             <Row gutter={[16, 16]}>
                 <Col xs={24}>
-                    <Form.Item
-                        label={getUIText(uiText.driverLicense, locale)}
-                        required
-                    >
-                        <Space size="large">
+                    <div data-field="driverLicense">
+                        <Form.Item
+                            name="driverLicense"
+                            label={getUIText(uiText.driverLicense, locale)}
+                            required
+                        >
+                            <Space wrap>
                             {/* Car */}
                             <Checkbox
                                 checked={value.driverLicense.car}
-                                onChange={(e) => updateDriverLicense("car", e.target.checked)}
+                                onChange={(e) =>
+                                updateDriverLicense("car", e.target.checked)
+                                }
                             >
                                 {getUIText(uiText.driverLicenseCar, locale)}
                             </Checkbox>
@@ -743,7 +775,9 @@ export default function PersonalInformation({
                             {/* Motorcycle */}
                             <Checkbox
                                 checked={value.driverLicense.motorcycle}
-                                onChange={(e) => updateDriverLicense("motorcycle", e.target.checked)}
+                                onChange={(e) =>
+                                updateDriverLicense("motorcycle", e.target.checked)
+                                }
                             >
                                 {getUIText(uiText.driverLicenseMotorcycle, locale)}
                             </Checkbox>
@@ -751,12 +785,15 @@ export default function PersonalInformation({
                             {/* Other */}
                             <Checkbox
                                 checked={value.driverLicense.other}
-                                onChange={(e) => updateDriverLicense("other", e.target.checked)}
+                                onChange={(e) =>
+                                updateDriverLicense("other", e.target.checked)
+                                }
                             >
                                 {getUIText(uiText.driverLicenseOther, locale)}
                             </Checkbox>
-                        </Space>
-                    </Form.Item>
+                            </Space>
+                        </Form.Item>
+                    </div>
                 </Col>
 
                 {/* Other Driver License */}
@@ -797,6 +834,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.emergencyContactName, locale)} required >
                         <Input
                             required
+                            name="emergencyContactName"
                             value={value.emergencyContact.name}
                             placeholder={
                                 language === "TH"
@@ -829,6 +867,7 @@ export default function PersonalInformation({
                         }
                     >
                         <Input
+                            name="emergencyPhone"
                             value={value.emergencyContact.phone}
                             placeholder={
                                 language === "TH"
@@ -845,6 +884,7 @@ export default function PersonalInformation({
                     <Form.Item label={getUIText(uiText.emergencyRelationship, locale)} required >
                         <Input
                             required
+                            name="emergencyRelationship"
                             value={value.emergencyContact.relationship}
                             placeholder={
                                 language === "TH"
@@ -894,14 +934,25 @@ export default function PersonalInformation({
                 {/* -------------------------------------------------------------- */}
 
                 <Col xs={24}>
-                    <Form.Item label={getUIText(uiText.criminalRecord, locale)} required >
+                    <Form.Item
+                        label={getUIText(uiText.criminalRecord, locale)}
+                        required
+                    >
                         <Radio.Group
-                            value={value.seriousCrime}
-                            onChange={(e) => updateField( "seriousCrime", e.target.value ) }
+                            name="criminalRecord"
+                            value={value.criminalRecord}
+                            onChange={(e) =>
+                            updateField("criminalRecord", e.target.value)
+                            }
                         >
                             <Space size="large">
-                                <Radio value={true}> {getUIText(uiText.yes, locale)} </Radio>
-                                <Radio value={false}> {getUIText(uiText.no, locale)} </Radio>
+                            <Radio value={true}>
+                                {getUIText(uiText.yes, locale)}
+                            </Radio>
+
+                            <Radio value={false}>
+                                {getUIText(uiText.no, locale)}
+                            </Radio>
                             </Space>
                         </Radio.Group>
                     </Form.Item>
@@ -912,17 +963,29 @@ export default function PersonalInformation({
                 {/* -------------------------------------------------------------- */}
 
                 <Col xs={24}>
-                    <Form.Item label={getUIText(uiText.dishonestyRecord, locale)} required >
+                    <Form.Item
+                        label={getUIText(uiText.dishonestyRecord, locale)}
+                        required
+                    >
                         <Radio.Group
-                            value={value.dishonest}
-                            onChange={(e) => updateField( "dishonest", e.target.value ) }
+                            name="dishonestyRecord"
+                            value={value.dishonestyRecord}
+                            onChange={(e) =>
+                            updateField("dishonestyRecord", e.target.value)
+                            }
                         >
                             <Space size="large">
-                                <Radio value={true}> {getUIText(uiText.yes, locale)} </Radio>
-                                <Radio value={false}> {getUIText(uiText.no, locale)} </Radio>
+                            <Radio value={true}>
+                                {getUIText(uiText.yes, locale)}
+                            </Radio>
+
+                            <Radio value={false}>
+                                {getUIText(uiText.no, locale)}
+                            </Radio>
                             </Space>
                         </Radio.Group>
                     </Form.Item>
+
                 </Col>
             </Row>
         </Card>

@@ -106,11 +106,40 @@ export default function ApplicationForm({
       documents,
       agreement,
     };
-    const errors =
-      validateApplication(payload, locale);
+
+    const errors = validateApplication(payload, locale);
 
     if (errors.length > 0) {
-      message.error(errors[0]);
+      const firstError = errors[0];
+
+      message.error(firstError.message);
+
+      const element =
+        (document.querySelector(
+          `[name="${firstError.field}"]`
+        ) as HTMLElement | null) ??
+        (document.querySelector(
+          `[data-field="${firstError.field}"]`
+        ) as HTMLElement | null);
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        requestAnimationFrame(() => {
+          const focusable =
+            element.matches("input, textarea, select, button")
+              ? element
+              : (element.querySelector(
+                  "input, textarea, select, button"
+                ) as HTMLElement | null);
+
+          focusable?.focus();
+        });
+      }
+
       return;
     }
 

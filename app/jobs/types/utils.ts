@@ -136,8 +136,8 @@ export function createPersonalInformation(): PersonalInformationData {
     weight: "",
     nationality: "",
     religion: "",
-    identityNo: "",
-    currentAddressNo: "",
+    idCardNo: "",
+    addressNo: "",
     villageNo: "",
     street: "",
     subDistrict: "",
@@ -162,8 +162,8 @@ export function createPersonalInformation(): PersonalInformationData {
       relationship: "",
     },
     underlyingDisease: "",
-    seriousCrime: null,
-    dishonest: null,
+    criminalRecord: null,
+    dishonestyRecord: null,
   };
 }
 
@@ -205,8 +205,7 @@ export function createWorkRow(): WorkExperience {
 export function createComputerSkillRow(): ComputerSkill {
   return {
     id: generateId(),
-    system: "",
-    program: "",
+    system_program: "",
     good: "",
     fair: "",
   };
@@ -288,37 +287,186 @@ export function createAgreement(): Agreement {
 /*                         Validate Submit Data                               */
 /* -------------------------------------------------------------------------- */
 
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
 export function validateApplication(
   payload: JobApplicationPayload,
   locale: string = "EN"
-): string[] {
-  const errors: string[] = [];
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (isEmpty(payload.personal.otherPosition)) {
+    errors.push({
+      field: "otherPosition",
+      message: `${getUIText(uiText.otherPosition, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.expectedSalary)) {
+    errors.push({
+      field: "expectedSalary",
+      message: `${getUIText(uiText.expectedSalary, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
 
   if (isEmpty(payload.personal.firstName)) {
-    errors.push(`${getUIText(uiText.firstName, locale)} ${getUIText(uiText.requiredField, locale)}`);
+    errors.push({
+      field: "firstName",
+      message: `${getUIText(uiText.firstName, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
   }
 
   if (isEmpty(payload.personal.lastName)) {
-    errors.push(`${getUIText(uiText.lastName, locale)} ${getUIText(uiText.requiredField, locale)}`);
+    errors.push({
+      field: "lastName",
+      message: `${getUIText(uiText.lastName, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
   }
 
+  if (isEmpty(payload.personal.dateOfBirth)) {
+    errors.push({
+      field: "dateOfBirth",
+      message: `${getUIText(uiText.dateOfBirth, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.idCardNo)) {
+    errors.push({
+      field: "idCardNo",
+      message: `${getUIText(uiText.idCardNo, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.addressNo)) {
+    errors.push({
+      field: "addressNo",
+      message: `${getUIText(uiText.addressNo, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+  
+  if (isEmpty(payload.personal.subDistrict)) {
+    errors.push({
+      field: "subDistrict",
+      message: `${getUIText(uiText.subDistrict, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.district)) {
+    errors.push({
+      field: "district",
+      message: `${getUIText(uiText.district, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+  
+  if (isEmpty(payload.personal.province)) {
+    errors.push({
+      field: "province",
+      message: `${getUIText(uiText.province, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }  
+  
+  if (isEmpty(payload.personal.postalCode)) {
+    errors.push({
+      field: "postalCode",
+      message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+    
+  if (payload.personal.residenceType.length == 0) {
+    errors.push({
+      field: "residenceType",
+      message: `${getUIText(uiText.residenceType, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (payload.personal.maritalStatus.length == 0) {
+    errors.push({
+      field: "maritalStatus",
+      message: `${getUIText(uiText.maritalStatus, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+  
+  const license = payload.personal.driverLicense;
+
+  if (
+    !license.car &&
+    !license.motorcycle &&
+    !license.other
+  ) {
+    errors.push({
+      field: "driverLicense",
+      message: `${getUIText(uiText.driverLicense, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.emergencyContact.name)) {
+    errors.push({
+      field: "emergencyContactName",
+      message: `${getUIText(uiText.emergencyContactName, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.emergencyContact.phone)) {
+    errors.push({
+      field: "emergencyPhone",
+      message: `${getUIText(uiText.emergencyPhone, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.emergencyContact.relationship)) {
+    errors.push({
+      field: "emergencyRelationship",
+      message: `${getUIText(uiText.emergencyRelationship, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (payload.personal.criminalRecord == null) {
+    errors.push({
+      field: "criminalRecord",
+      message: `${getUIText(uiText.criminalRecord, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (payload.personal.dishonestyRecord == null) {
+    errors.push({
+      field: "dishonestyRecord",
+      message: `${getUIText(uiText.dishonestyRecord, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+    
+
   if (isEmpty(payload.personal.phoneNumber)) {
-    errors.push(`${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.requiredField, locale)}`);
+    errors.push({
+      field: "phoneNumber",
+      message: `${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
   }
 
   if (
     payload.personal.phoneNumber &&
     !validatePhone(payload.personal.phoneNumber)
   ) {
-    errors.push(`${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.invalidPhone, locale)}`);
+    errors.push({
+      field: "phoneNumber",
+      message: `${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.invalidPhone, locale)}`,
+    });
   }
 
   if (!payload.agreement.certify) {
-    errors.push(`${getUIText(uiText.mustAcceptTerms, locale)} (${getUIText(uiText.consentTerms, locale)})`);
+    errors.push({
+      field: "certify",
+      message: `${getUIText(uiText.mustAcceptTerms, locale)}`,
+    });
   }
 
   if (!payload.agreement.pdpa) {
-    errors.push(`${getUIText(uiText.mustAcceptTerms, locale)} (${getUIText(uiText.consentPrivacy, locale)})`);
+    errors.push({
+      field: "pdpa",
+      message: `${getUIText(uiText.mustAcceptTerms, locale)}`,
+    });
   }
 
   return errors;

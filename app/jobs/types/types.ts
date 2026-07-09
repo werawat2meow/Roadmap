@@ -70,8 +70,8 @@ export interface PersonalInformationData  {
   weight: string;
   nationality: string;
   religion: string;
-  identityNo: string;
-  currentAddressNo: string;
+  idCardNo: string;
+  addressNo: string;
   villageNo: string;
   street: string;
   subDistrict: string;
@@ -87,8 +87,8 @@ export interface PersonalInformationData  {
   driverLicense: DriverLicense;
   emergencyContact: EmergencyContact;
   underlyingDisease: string;
-  seriousCrime: boolean | null;
-  dishonest: boolean | null;
+  criminalRecord: boolean | null;
+  dishonestyRecord: boolean | null;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -11,6 +11,10 @@ const initialForm = {
   type_code: "",
   type_name: "",
   status: "active",
+  probation_required: false,
+  probation_days: 0,
+  auto_confirm_after_probation: false,
+  default_employee_status_id: "",
 };
 
 export default function EmploymentTypesPage() {
@@ -24,6 +28,7 @@ export default function EmploymentTypesPage() {
   const [form, setForm] = useState(initialForm);
   const [openModal, setOpenModal] = useState(false);
   const [editingEmploymentType, setEditingEmploymentType] = useState(null);
+  const [employeeStatuses, setEmployeeStatuses] = useState([]);
 
   // #region Permission
   const router = useRouter();
@@ -73,6 +78,12 @@ export default function EmploymentTypesPage() {
         type_code: item.type_code,
         type_name: item.type_name,
         status: item.status,
+
+        probation_required: item.probation_required,
+        probation_days: item.probation_days,
+        auto_confirm_after_probation: item.auto_confirm_after_probation,
+        default_employee_status_id: item.default_employee_status_id || "",
+        sort_order: item.sort_order,
       }));
 
       setEmploymentTypes(mapped);
@@ -84,8 +95,26 @@ export default function EmploymentTypesPage() {
     }
   };
 
+  const loadEmployeeStatuses = async () => {
+    const res = await fetch("/api/admin/employee-statuses", {
+      cache: "no-store",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Load employee statuses failed");
+    }
+
+    setEmployeeStatuses(data.data || []);
+  };
+
   useEffect(() => {
     loadEmploymentTypes();
+    loadEmployeeStatuses().catch((err) => {
+      console.error(err);
+      swalError(err.message || "โหลดสถานะพนักงานไม่สำเร็จ");
+    });
   }, []);
 
   useEffect(() => {
@@ -119,6 +148,10 @@ export default function EmploymentTypesPage() {
     setForm({
       type_code: item.type_code || "",
       type_name: item.type_name || "",
+      probation_required:item.probation_required || false,
+      probation_days:item.probation_days || 0,
+      auto_confirm_after_probation: item.auto_confirm_after_probation || false,
+      default_employee_status_id: item.default_employee_status_id || "",
       status: item.status || "active",
     });
     setOpenModal(true);
@@ -164,6 +197,10 @@ export default function EmploymentTypesPage() {
           type_code: form.type_code.trim(),
           type_name: form.type_name.trim(),
           status: form.status,
+          probation_required: form.probation_required,
+          probation_days: form.probation_days,
+          auto_confirm_after_probation: form.auto_confirm_after_probation,
+          default_employee_status_id: form.default_employee_status_id || null,
         }),
       });
 
@@ -178,6 +215,11 @@ export default function EmploymentTypesPage() {
         type_code: data.data.type_code,
         type_name: data.data.type_name,
         status: data.data.status,
+        probation_required: data.data.probation_required,
+        probation_days: data.data.probation_days,
+        auto_confirm_after_probation: data.data.auto_confirm_after_probation,
+        default_employee_status_id: data.data.default_employee_status_id || "",
+        sort_order: data.data.sort_order,
       };
 
       if (isEdit) {
@@ -444,6 +486,98 @@ export default function EmploymentTypesPage() {
                 />
               </div>
 
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  สถานะพนักงานเริ่มต้น
+                </label>
+
+                <select
+                  value={form.default_employee_status_id}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      default_employee_status_id: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">เลือกสถานะเริ่มต้น</option>
+
+                  {employeeStatuses
+                    .filter((item) => item.status === "active")
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.status_name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={form.probation_required}
+                    onChange={(e)=>
+                      setForm(prev=>({
+                        ...prev,
+                        probation_required:e.target.checked,
+                        probation_days:e.target.checked
+                          ? prev.probation_days || 90
+                          : 0,
+                        auto_confirm_after_probation:e.target.checked
+                          ? prev.auto_confirm_after_probation
+                          : false,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium">
+                    ใช้การทดลองงาน
+                  </span>
+                </label>
+              </div>
+
+              {form.probation_required && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                  ระยะเวลาทดลองงาน
+                  </label>
+
+                  <select
+                    value={form.probation_days}
+                    onChange={(e)=>
+                    setForm(prev=>({
+                    ...prev,
+                    probation_days:Number(e.target.value),
+                    }))
+                  }
+                  className="w-full rounded-2xl border px-4 py-3"
+                  >
+                    <option value={30}>30 วัน</option>
+                    <option value={60}>60 วัน</option>
+                    <option value={90}>90 วัน</option>
+                    <option value={120}>120 วัน</option>
+                  </select>
+                </div>
+              )}
+              
+              {form.probation_required && (
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={form.auto_confirm_after_probation}
+                      onChange={(e)=>
+                      setForm(prev=>({
+                      ...prev,
+                      auto_confirm_after_probation:e.target.checked,
+                      }))
+                      }
+                    />
+                  <span>เมื่อครบกำหนดให้ผ่านทดลองงานอัตโนมัติ</span>
+                  </label>
+                </div>
+              )}  
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   สถานะ

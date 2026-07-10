@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { writeActivityLog } from "@/lib/activityLogger";
 
 export async function GET(req) {
   try {
@@ -14,8 +15,29 @@ export async function GET(req) {
         company_name_th,
         company_name_en,
         tax_id,
+        branch_no,
+
+        address,
+
+        country_code,
+        province_code,
+        province,
+
+        district_code,
+        district,
+
+        subdistrict_code,
+        subdistrict,
+
+        postcode,
+
         phone,
         email,
+        website,
+
+        logo_url,
+        logo_path,
+
         status,
         sort_order,
         created_at,
@@ -31,7 +53,10 @@ export async function GET(req) {
           `company_name_th.ilike.%${search}%`,
           `company_name_en.ilike.%${search}%`,
           `tax_id.ilike.%${search}%`,
+          `phone.ilike.%${search}%`,
           `email.ilike.%${search}%`,
+          `website.ilike.%${search}%`,
+          `address.ilike.%${search}%`,
         ].join(",")
       );
     }
@@ -65,6 +90,20 @@ export async function POST(req) {
     const phone = body?.phone?.trim() || null;
     const email = body?.email?.trim() || null;
     const status = body?.status || "active";
+    const branch_no = body?.branch_no?.trim() || null;
+    const address = body?.address?.trim() || null;
+    const country_code = body?.country_code?.trim() || "TH";
+    const province_code = body?.province_code?.trim() || null;
+    const province = body?.province?.trim() || null;
+    const district_code = body?.district_code?.trim() || null;
+    const district = body?.district?.trim() || null;
+    const subdistrict_code = body?.subdistrict_code?.trim() || null;
+    const subdistrict = body?.subdistrict?.trim() || null;
+    const postcode = body?.postcode?.trim() || null;
+    const website = body?.website?.trim() || null;
+    const logo_url = body?.logo_url?.trim() || null;
+    const logo_path = body?.logo_path?.trim() || null;
+    const sort_order = Number(body?.sort_order || 0);
 
     if (!company_code || !company_name_th) {
       return NextResponse.json(
@@ -81,9 +120,23 @@ export async function POST(req) {
           company_name_th,
           company_name_en,
           tax_id,
+          branch_no,
+          address,
+          country_code,
+          province_code,
+          province,
+          district_code,
+          district,
+          subdistrict_code,
+          subdistrict,
+          postcode,
           phone,
           email,
+          website,
+          logo_url,
+          logo_path,
           status,
+          sort_order,
         },
       ])
       .select(`
@@ -92,8 +145,21 @@ export async function POST(req) {
         company_name_th,
         company_name_en,
         tax_id,
+        branch_no,
+        address,
+        country_code,
+        province_code,
+        province,
+        district_code,
+        district,
+        subdistrict_code,
+        subdistrict,
+        postcode,
         phone,
         email,
+        website,
+        logo_url,
+        logo_path,
         status,
         sort_order,
         created_at,
@@ -108,9 +174,18 @@ export async function POST(req) {
           { status: 400 }
         );
       }
-
       throw error;
     }
+
+    
+    await writeActivityLog({
+      module_name: "companies",
+      action_type: "create",
+      reference_table: "",
+      reference_id: data.id,
+      description: `เพิ่ม companies ${data.company_code} - ${data.company_name_th}`,
+      new_data: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -119,7 +194,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error("CREATE_COMPANY_ERROR:", error);
-
     return NextResponse.json(
       { error: "ไม่สามารถบันทึกข้อมูลบริษัทได้" },
       { status: 500 }

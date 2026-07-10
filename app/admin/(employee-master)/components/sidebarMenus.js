@@ -1,6 +1,6 @@
 "use client";
 
-import {PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
+import {FileTextOutlined,FundProjectionScreenOutlined,DollarOutlined,PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -69,7 +69,7 @@ export const sidebarMenus = [
         permission: "ems.positions.view",
       },
       {
-        label: "Job / บทบาทงาน",
+        label: "บทบาทงาน / โครงสร้างธุรกิจ",
         href: "/admin/jobs",
         icon: <ProfileOutlined  />,
         permission: "ems.jobs.view",
@@ -79,6 +79,43 @@ export const sidebarMenus = [
         href: "/admin/unit-positions",
         icon: <PartitionOutlined />,
         permission: "ems.unit_positions.view",
+      },
+    ],
+  },
+
+  {
+    title: "ACCOUNTING STRUCTURE",
+    icon: <DollarOutlined />,
+    items: [
+      {
+        label: "Payroll Company",
+        href: "/admin/payroll-companies",
+        icon: <BankOutlined />,
+        permission: "ems.payroll_companies.view",
+      },
+      {
+        label: "Business Unit",
+        href: "/admin/business-units",
+        icon: <BankOutlined />,
+        permission: "ems.business_units.view",
+      },
+      {
+        label: "Cost Center",
+        href: "/admin/cost-centers",
+        icon: <FundProjectionScreenOutlined />,
+        permission: "ems.cost_centers.view",
+      },
+      {
+        label: "Profit Center",
+        href: "/admin/profit-centers",
+        icon: <DollarOutlined />,
+        permission: "ems.profit_centers.view",
+      },
+      {
+        label: "GL Mapping",
+        href: "/admin/gl-mappings",
+        icon: <FileTextOutlined />,
+        permission: "ems.gl_mappings.view",
       },
     ],
   },

@@ -22,16 +22,17 @@ export const defaultSummaryData: SummaryPanelData = {
 
 interface EvaluationSummaryPanelProps {
   totalScore?: number;
+  maxScore?: number;
   summaryData: SummaryPanelData;
   onSummaryChange: (updates: Partial<SummaryPanelData>) => void;
 }
 
 export default function EvaluationSummaryPanel({
   totalScore = 0,
+  maxScore = 100,
   summaryData,
   onSummaryChange,
 }: EvaluationSummaryPanelProps) {
-  const maxScore = 100;
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
 
   return (
@@ -48,6 +49,10 @@ export default function EvaluationSummaryPanel({
             <div className="grid grid-cols-[1fr_96px] gap-3 px-5 py-3 text-sm text-slate-600">
               <span>คะแนนประเมินผลงาน</span>
               <span className="text-right font-bold text-[#2b76f7]">{totalScore}</span>
+            </div>
+            <div className="grid grid-cols-[1fr_96px] gap-3 px-5 py-3 text-sm text-slate-600">
+              <span>คะแนนเต็ม</span>
+              <span className="text-right font-bold text-[#2b76f7]">{maxScore}</span>
             </div>
             <div className="grid grid-cols-[1fr_96px] gap-3 px-5 py-3 text-sm text-slate-600">
               <span>คิดเป็นเปอร์เซ็นต์</span>

@@ -9,6 +9,8 @@ type EmployeeInfoCardProps = {
   evaluationType?: string;
   historyCount?: number;
   onHistoryClick?: () => void;
+  showChangeEmployee?: boolean;
+  showHistoryButton?: boolean;
 };
 
 const labelStyles: Record<string, string> = {
@@ -30,6 +32,8 @@ export default function EmployeeInfoCard({
   evaluationType = "Probation",
   historyCount = 0,
   onHistoryClick,
+  showChangeEmployee = true,
+  showHistoryButton = true,
 }: EmployeeInfoCardProps) {
   const badgeClass =
     labelStyles[evaluationType] || "bg-slate-100 text-slate-700";
@@ -145,22 +149,26 @@ export default function EmployeeInfoCard({
                 {evaluationType}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={onHistoryClick}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-400 px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:from-yellow-400 hover:to-amber-500 hover:border-amber-400 transition cursor-pointer"
-            >
-              <History size={14} />
-              ประวัติ {historyCount > 0 ? `(${historyCount})` : ""}
-            </button>
+            {showHistoryButton && (
+              <button
+                type="button"
+                onClick={onHistoryClick}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-400 px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:from-yellow-400 hover:to-amber-500 hover:border-amber-400 transition cursor-pointer"
+              >
+                <History size={14} />
+                ประวัติ {historyCount > 0 ? `(${historyCount})` : ""}
+              </button>
+            )}
           </div>
-          <Link
-            href="/roadmap/employee"
-            className="inline-flex items-center justify-center px-4 py-2.5 min-w-[150px] whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/10 transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98]"
-          >
-            <Users size={16} className="mr-2" />
-            Change Employee
-          </Link>
+          {showChangeEmployee && (
+            <Link
+              href="/roadmap/employee"
+              className="inline-flex items-center justify-center px-4 py-2.5 min-w-[150px] whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/10 transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98]"
+            >
+              <Users size={16} className="mr-2" />
+              Change Employee
+            </Link>
+          )}
         </div>
       </div>
     </div>

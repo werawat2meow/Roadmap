@@ -37,8 +37,8 @@ type ManagerUser = {
 
 export type RowState = {
   rowId: string;
-  itemId: string;   // UUID for Company/Department dropdown
-  topic: string;    // free text for Expectations
+  itemId: string; // UUID for Company/Department dropdown
+  topic: string; // free text for Expectations
   maxScore: number;
   score: number;
   note: string;
@@ -81,7 +81,10 @@ const makeRow = (prefix: string): RowState => ({
 });
 
 const calcScore = (rows: RowState[]) =>
-  rows.reduce((sum, row) => sum + (Number.isFinite(row.score) ? row.score : 0), 0);
+  rows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.score) ? row.score : 0),
+    0,
+  );
 
 export default function EvaluationForm({
   formType,
@@ -144,7 +147,14 @@ export default function EvaluationForm({
     notify({
       companyRows: [
         ...companyRows,
-        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+        {
+          rowId: `${Date.now()}`,
+          itemId: "",
+          topic: "",
+          maxScore: 0,
+          score: 0,
+          note: "",
+        },
       ],
     });
   const removeCompanyRow = (rowId: string) =>
@@ -161,7 +171,14 @@ export default function EvaluationForm({
     notify({
       departmentRows: [
         ...departmentRows,
-        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+        {
+          rowId: `${Date.now()}`,
+          itemId: "",
+          topic: "",
+          maxScore: 0,
+          score: 0,
+          note: "",
+        },
       ],
     });
   const removeDepartmentRow = (rowId: string) =>
@@ -178,11 +195,20 @@ export default function EvaluationForm({
     notify({
       expectationRows: [
         ...expectationRows,
-        { rowId: `${Date.now()}`, itemId: "", topic: "", maxScore: 0, score: 0, note: "" },
+        {
+          rowId: `${Date.now()}`,
+          itemId: "",
+          topic: "",
+          maxScore: 0,
+          score: 0,
+          note: "",
+        },
       ],
     });
   const removeExpectationRow = (rowId: string) =>
-    notify({ expectationRows: expectationRows.filter((r) => r.rowId !== rowId) });
+    notify({
+      expectationRows: expectationRows.filter((r) => r.rowId !== rowId),
+    });
 
   return (
     <div className="space-y-6">
@@ -221,6 +247,7 @@ export default function EvaluationForm({
 
       <EvaluationSummaryPanel
         totalScore={formData?.totalScore ?? 0}
+        maxScore={formData?.maxScore ?? 100}
         summaryData={summaryData}
         onSummaryChange={(updates) =>
           onFormChange?.({ summaryData: { ...summaryData, ...updates } })

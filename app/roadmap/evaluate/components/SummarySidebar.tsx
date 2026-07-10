@@ -38,6 +38,7 @@ interface SummarySidebarProps {
   onMaxScoreChange?: (value: number) => void;
   onSaveDraft?: () => void;
   onSubmit?: () => void;
+  showSaveDraft?: boolean;
 }
 
 type ManagerUser = {
@@ -98,6 +99,7 @@ export default function SummarySidebar({
   onSubmit,
   isEditing,
   isSaving = false,
+  showSaveDraft = true,
 }: SummarySidebarProps) {
   // State สำหรับควบคุมการเปิด-ปิดหน้าต่าง Preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -108,6 +110,24 @@ export default function SummarySidebar({
     if (Number.isNaN(numberValue)) return 0;
     return Math.min(200000, Math.max(0, numberValue));
   };
+
+  const totalScore = allFormData.totalScore ?? 0;
+  const maxScore = allFormData.maxScore ?? 100;
+  const percentage =
+    maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+  const disciplinePenalty =
+    allFormData.disciplineData?.disciplineItems?.reduce(
+      (sum, item) => sum + (item?.count ?? 0) * (item?.penaltyScore ?? 0),
+      0,
+    ) ?? 0;
+
+  const disciplineBaseScore = 100;
+  const disciplineRemainingScore = disciplineBaseScore + disciplinePenalty;
+  const disciplineRemainingPercentage =
+    disciplineBaseScore > 0
+      ? Math.round((disciplineRemainingScore / disciplineBaseScore) * 100)
+      : 0;
 
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-full">
@@ -161,7 +181,9 @@ export default function SummarySidebar({
           label="Current Salary"
           value={allFormData.currentSalary ?? 0}
           onRangeChange={(value) => onCurrentSalaryChange?.(value)}
-          onTextChange={(value) => onCurrentSalaryChange?.(parseSalaryInput(value))}
+          onTextChange={(value) =>
+            onCurrentSalaryChange?.(parseSalaryInput(value))
+          }
         />
         <SalaryInput
           label="New Salary"
@@ -206,7 +228,9 @@ export default function SummarySidebar({
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="text-sm text-gray-600 block mb-2">คะแนนสอบที่ได้</label>
+          <label className="text-sm text-gray-600 block mb-2">
+            คะแนนสอบที่ได้
+          </label>
           <input
             type="number"
             min={0}
@@ -229,26 +253,28 @@ export default function SummarySidebar({
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-8">
-        <button
-          type="button"
-          onClick={onSaveDraft}
-          disabled={isSaving}
-          className={`flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 text-center leading-tight select-none ${
-            isSaving
-              ? "cursor-not-allowed opacity-60"
-              : "hover:from-amber-600 hover:to-orange-600 hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)]"
-          }`}
-        >
-          <span>
-            {isSaving
-              ? isEditing
-                ? "Updating..."
-                : "Saving..."
-              : isEditing
-              ? "Update Draft"
-              : "Save Draft"}
-          </span>
-        </button>
+        {showSaveDraft && (
+          <button
+            type="button"
+            onClick={onSaveDraft}
+            disabled={isSaving}
+            className={`flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 text-center leading-tight select-none ${
+              isSaving
+                ? "cursor-not-allowed opacity-60"
+                : "hover:from-amber-600 hover:to-orange-600 hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)]"
+            }`}
+          >
+            <span>
+              {isSaving
+                ? isEditing
+                  ? "Updating..."
+                  : "Saving..."
+                : isEditing
+                  ? "Update Draft"
+                  : "Save Draft"}
+            </span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -269,6 +295,56 @@ export default function SummarySidebar({
         >
           Preview
         </button>
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">
+            คะแนนประเมินผลงาน
+          </div>
+          <div className="p-5 space-y-3 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <span>คะแนนประเมินผลงาน</span>
+              <span className="font-semibold text-slate-900">{totalScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>คะแนนเต็ม</span>
+              <span className="font-semibold text-slate-900">{maxScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>คิดเป็นเปอร์เซ็นต์</span>
+              <span className="font-semibold text-slate-900">
+                {percentage}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">
+            คะแนนระเบียบวินัย
+          </div>
+          <div className="p-5 space-y-3 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <span>คะแนนถูกหัก</span>
+              <span className="font-semibold text-rose-600">
+                {disciplinePenalty}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>คะแนนคงเหลือ</span>
+              <span className="font-semibold text-slate-900">
+                {disciplineRemainingScore}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>คิดเป็นเปอร์เซ็นต์</span>
+              <span className="font-semibold text-slate-900">
+                {disciplineRemainingPercentage}%
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 3. ส่งข้อมูลผูกตรง (allFormData) ที่รับมาจากฟอร์มกรอกจริง ๆ เข้าไปยัง Component ป๊อปอัป Preview */}

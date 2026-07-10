@@ -28,6 +28,8 @@ interface SummarySidebarProps {
   };
   managers?: ManagerUser[];
   selectedManagerIds?: string[];
+  isEditing?: boolean;
+  isSaving?: boolean;
   onManagerToggle?: (managerId: string) => void;
   onManagerCommentChange?: (value: string) => void;
   onCurrentSalaryChange?: (value: number) => void;
@@ -94,6 +96,8 @@ export default function SummarySidebar({
   onMaxScoreChange,
   onSaveDraft,
   onSubmit,
+  isEditing,
+  isSaving = false,
 }: SummarySidebarProps) {
   // State สำหรับควบคุมการเปิด-ปิดหน้าต่าง Preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -228,18 +232,35 @@ export default function SummarySidebar({
         <button
           type="button"
           onClick={onSaveDraft}
-          className="flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)] transition-all duration-200 active:scale-95 text-center leading-tight cursor-pointer select-none"
+          disabled={isSaving}
+          className={`flex flex-col items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 text-center leading-tight select-none ${
+            isSaving
+              ? "cursor-not-allowed opacity-60"
+              : "hover:from-amber-600 hover:to-orange-600 hover:shadow-[0_4px_12px_rgba(245,158,11,0.25)]"
+          }`}
         >
-          <span>Save</span>
-          <span>Draft</span>
+          <span>
+            {isSaving
+              ? isEditing
+                ? "Updating..."
+                : "Saving..."
+              : isEditing
+              ? "Update Draft"
+              : "Save Draft"}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={onSubmit}
-          className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-all duration-200 active:scale-95 cursor-pointer select-none"
+          disabled={isSaving}
+          className={`flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 select-none ${
+            isSaving
+              ? "cursor-not-allowed opacity-60"
+              : "hover:from-blue-700 hover:to-indigo-700 hover:shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+          }`}
         >
-          Submit
+          {isSaving ? "Submitting..." : "Submit"}
         </button>
 
         <button

@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included)`,
+      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
     )
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });
@@ -142,11 +142,11 @@ export async function POST(req: Request) {
     extra_data: body.extra_data ?? null,
   };
 
-  const evaluationId = body.evaluationId;
+  const evaluationId = body.evaluationId?.trim();
   let evalData: any = null;
   let evalError: any = null;
 
-  if (evaluationId && isUuid(evaluationId)) {
+  if (evaluationId) {
     const updateResult = await supabaseAdmin
       .from("rm_evaluations")
       .update(evalPayload)
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
 
   if (Array.isArray(body.managerIds) && body.managerIds.length > 0) {
     // Bug fix: delete existing reviewers before re-inserting to avoid duplicates
-    if (evaluationId && isUuid(evaluationId)) {
+    if (evaluationId) {
       await supabaseAdmin
         .from("rm_evaluation_reviewers")
         .delete()
@@ -219,7 +219,7 @@ export async function POST(req: Request) {
       is_included: score.isIncluded ?? true,
     }));
 
-    if (evaluationId && isUuid(evaluationId)) {
+    if (evaluationId) {
       const { error: deleteError } = await supabaseAdmin
         .from("rm_evaluation_scores")
         .delete()
@@ -253,4 +253,23 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ success: true, data: evalData }, { status: 201 });
+}
+
+export async function DELETE(req: Request) {
+  const url = new URL(req.url);
+  const evaluationId = url.searchParams.get("id");
+
+  if (!evaluationId) {
+    return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 });
+  }
+
+await supabaseAdmin.from("rm_evaluation_reviewers").delete().eq("evaluation_id", evaluationId);
+  await supabaseAdmin.from("rm_evaluation_scores").delete().eq("evaluation_id", evaluationId);
+
+  const { error } = await supabaseAdmin.from("rm_evaluations").delete().eq("id", evaluationId);
+
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ success: true });
 }

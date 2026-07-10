@@ -49,6 +49,7 @@ type HistoryRecord = {
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
+  rm_evaluation_reviewers?: { manager_id: string }[];
 };
 
 export default function EvaluateEmployeePage() {
@@ -67,6 +68,8 @@ export default function EvaluateEmployeePage() {
   >("Probation");
   const [showPopup, setShowPopup] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveNotification, setSaveNotification] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<EvaluationFormData>({
     companyRows: [
@@ -146,6 +149,12 @@ export default function EvaluateEmployeePage() {
     (record: HistoryRecord) => {
       setIsHistoryOpen(false);
       setEditingEvaluationId(record.id);
+
+      const reviewerIds =
+        (record as any).rm_evaluation_reviewers?.map(
+          (rev: any) => rev.manager_id,
+        ) ?? [];
+      setSelectedManagerIds(reviewerIds);
 
       const extraData = record.extra_data ?? {};
       const scores: Array<any> = (record as any).rm_evaluation_scores ?? [];
@@ -334,8 +343,12 @@ export default function EvaluateEmployeePage() {
       return;
     }
 
+    setIsSaving(true);
+    const evaluationId = editingEvaluationId?.trim() || undefined;
+    const isUpdate = Boolean(evaluationId);
+
     const payload = {
-      evaluationId: editingEvaluationId,
+      evaluationId,
       employeeId: id,
       evaluatorId,
       evaluationType: activeTab,
@@ -359,18 +372,27 @@ export default function EvaluateEmployeePage() {
     });
 
     const data = await response.json();
+    setIsSaving(false);
 
     if (!response.ok || !data?.success) {
       console.error("Save evaluation failed", response.status, data);
       window.alert(data?.error || "SaveDraft failed");
-    } else {
-      console.log("Save evaluation succeeded", response.status, data);
-      // Bug fix: persist the evaluation id so subsequent saves UPDATE instead of INSERT
-      if (!editingEvaluationId && data.data?.id) {
-        setEditingEvaluationId(data.data.id);
-      }
-      await fetchEvaluationHistory();
+      return;
     }
+
+    setSaveNotification(
+      status === "Draft"
+        ? isUpdate
+          ? "Update Draft เรียบร้อยแล้ว"
+          : "Save Draft เรียบร้อยแล้ว"
+        : "Submit เรียบร้อยแล้ว",
+    );
+    window.setTimeout(() => setSaveNotification(null), 2500);
+
+    if (!editingEvaluationId && data.data?.id) {
+      setEditingEvaluationId(data.data.id);
+    }
+    await fetchEvaluationHistory();
   };
 
   const handleSaveDraft = async () => {
@@ -397,6 +419,26 @@ export default function EvaluateEmployeePage() {
     setShowPopup(false);
   };
 
+  const handleDeleteHistory = async (record: HistoryRecord) => {
+    const confirmed = window.confirm("ต้องการลบประวัตินี้หรือไม่?");
+    if (!confirmed) return;
+
+    const response = await fetch(`/roadmap/api/evaluations?id=${record.id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data?.success) {
+      window.alert(data?.error || "ลบไม่สำเร็จ");
+      return;
+    }
+
+    if (editingEvaluationId === record.id) {
+      setEditingEvaluationId(null);
+    }
+
+    await fetchEvaluationHistory();
+  };
   useEffect(() => {
     if (!id) return;
 
@@ -500,6 +542,13 @@ export default function EvaluateEmployeePage() {
 
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
+      {saveNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 p-5 text-center text-white shadow-xl">
+            <p className="text-base font-semibold">{saveNotification}</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900">Evaluate HR</h1>
@@ -574,6 +623,8 @@ export default function EvaluateEmployeePage() {
             allFormData={formData}
             managers={managers}
             selectedManagerIds={selectedManagerIds}
+            isEditing={Boolean(editingEvaluationId)}
+            isSaving={isSaving}
             onManagerToggle={(id) => {
               setSelectedManagerIds((prev) =>
                 prev.includes(id)
@@ -604,6 +655,7 @@ export default function EvaluateEmployeePage() {
         onClose={() => setIsHistoryOpen(false)}
         records={evaluationHistory}
         onEdit={handleHistoryEdit}
+        onDelete={handleDeleteHistory}
       />
     </div>
   );

@@ -51,19 +51,18 @@ model RmEvaluationType {
 }
 
 model RmCategory {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title            String
-  evaluationTypeId String   @map("evaluation_type_id") @db.Uuid
+  evaluationTypeId String           @map("evaluation_type_id") @db.Uuid
   level            String
-  departmentId     String?  @map("department_id") @db.Uuid
-  divisionId       String?  @map("division_id") @db.Uuid
-  unitId           String?  @map("unit_id") @db.Uuid
-  sortOrder        Int      @default(0)
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  evaluationType RmEvaluationType @relation(fields: [evaluationTypeId], references: [id])
-  items          RmCategoryItem[]
+  sortOrder        Int              @default(0)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  departmentId     String?          @map("department_id") @db.Uuid
+  divisionId       String?          @map("division_id") @db.Uuid
+  unitId           String?          @map("unit_id") @db.Uuid
+  evaluationType   RmEvaluationType @relation(fields: [evaluationTypeId], references: [id])
+  items            RmCategoryItem[]
 
   @@map("rm_categories")
   @@schema("public")
@@ -78,8 +77,8 @@ model RmCategoryItem {
   isActive       Boolean                     @default(true)
   createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   category       RmCategory                  @relation(fields: [categoryId], references: [id])
-  scores         RmEvaluationScore[]
   reviewerScores RmEvaluationReviewerScore[]
+  scores         RmEvaluationScore[]
 
   @@map("rm_category_items")
   @@schema("public")
@@ -102,12 +101,14 @@ model RmEvaluation {
   newDesignation       String?
   newLevel             String?
   managerComment       String?
+  examScore            Float?
+  maxScore             Float?
   employeeAcknowledged Boolean                @default(false)
   completedAt          DateTime?
   createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  scores               RmEvaluationScore[]
   reviewers            RmEvaluationReviewer[]
+  scores               RmEvaluationScore[]
   evaluationType       RmEvaluationType       @relation(fields: [evaluationTypeId], references: [id])
 
   @@map("rm_evaluations")
@@ -130,18 +131,17 @@ model RmEvaluationScore {
 }
 
 model RmEvaluationReviewer {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  evaluationId String    @map("evaluation_id") @db.Uuid
-  managerId    String    @map("manager_id") @db.Uuid
-  status       String    @default("Pending") // Pending, Reviewed, Approved
+  id           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evaluationId String                      @map("evaluation_id") @db.Uuid
+  managerId    String                      @map("manager_id") @db.Uuid
+  status       String                      @default("Pending")
   comment      String?
   completedAt  DateTime?
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  scores     RmEvaluationReviewerScore[]
-  evaluation RmEvaluation                @relation(fields: [evaluationId], references: [id])
-  manager    employees                   @relation(fields: [managerId], references: [id])
+  createdAt    DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  scores       RmEvaluationReviewerScore[]
+  evaluation   RmEvaluation                @relation(fields: [evaluationId], references: [id])
+  manager      employees                   @relation(fields: [managerId], references: [id])
 
   @@unique([evaluationId, managerId])
   @@map("rm_evaluation_reviewers")
@@ -154,8 +154,8 @@ model RmEvaluationReviewerScore {
   categoryItemId String               @map("category_item_id") @db.Uuid
   score          Int
   remark         String?
-  reviewer       RmEvaluationReviewer @relation(fields: [reviewerId], references: [id])
   categoryItem   RmCategoryItem       @relation(fields: [categoryItemId], references: [id])
+  reviewer       RmEvaluationReviewer @relation(fields: [reviewerId], references: [id])
 
   @@unique([reviewerId, categoryItemId])
   @@map("rm_evaluation_reviewer_scores")
@@ -525,6 +525,7 @@ model sessions {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_domains {
   id              String        @id @db.Uuid
   sso_provider_id String        @db.Uuid
@@ -540,6 +541,7 @@ model sso_domains {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -560,6 +562,7 @@ model sso_providers {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -1288,9 +1291,9 @@ model employees {
   employee_statuses    employee_statuses?     @relation(fields: [employee_status_id], references: [id], onUpdate: NoAction)
   positions            positions?             @relation(fields: [position_id], references: [id], onUpdate: NoAction)
   units                units?                 @relation(fields: [unit_id], references: [id], onUpdate: NoAction)
+  RmEvaluationReviewer RmEvaluationReviewer[]
   rm_user_access       RmUserAccess[]
   user_accounts        user_accounts?
-  RmEvaluationReviewer RmEvaluationReviewer[]
 
   @@index([branch_id], map: "idx_employees_branch_id")
   @@index([citizen_id], map: "idx_employees_citizen_id")
@@ -1541,6 +1544,7 @@ model positions {
   updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
   position_group           String?
   employees                employees[]
+  recruit_job_applications recruit_job_applications[]
   recruit_job_description  recruit_job_description[]
   recruit_job_mix_language recruit_job_mix_language[]
   recruit_job_open         recruit_job_open[]
@@ -1640,31 +1644,32 @@ model recruit_job_mix_language {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model recruit_job_open {
-  id                                                        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_at                                                DateTime       @default(now()) @db.Timestamptz(6)
-  branch_id                                                 String         @db.Uuid
-  department_id                                             String         @db.Uuid
-  division_id                                               String         @db.Uuid
-  unit_id                                                   String         @db.Uuid
-  position_id                                               String         @db.Uuid
-  opening_count                                             Decimal        @db.Decimal
-  start_date                                                DateTime       @db.Date
-  end_date                                                  DateTime?      @db.Date
+  id                                                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at                                                DateTime                   @default(now()) @db.Timestamptz(6)
+  branch_id                                                 String                     @db.Uuid
+  department_id                                             String                     @db.Uuid
+  division_id                                               String                     @db.Uuid
+  unit_id                                                   String                     @db.Uuid
+  position_id                                               String                     @db.Uuid
+  opening_count                                             Decimal                    @db.Decimal
+  start_date                                                DateTime                   @db.Date
+  end_date                                                  DateTime?                  @db.Date
   urgent                                                    Boolean
-  deleted_at                                                DateTime?      @default(now()) @db.Timestamptz(6)
-  updated_at                                                DateTime       @default(now()) @db.Timestamptz(6)
-  user_create                                               String         @db.Uuid
-  user_update                                               String         @db.Uuid
-  user_delete                                               String?        @db.Uuid
+  deleted_at                                                DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at                                                DateTime                   @default(now()) @db.Timestamptz(6)
+  user_create                                               String                     @db.Uuid
+  user_update                                               String                     @db.Uuid
+  user_delete                                               String?                    @db.Uuid
   status                                                    Boolean
-  branches                                                  branches       @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  departments                                               departments    @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  divisions                                                 divisions      @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  positions                                                 positions      @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  units                                                     units          @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_accounts_recruit_job_open_user_createTouser_accounts user_accounts  @relation("recruit_job_open_user_createTouser_accounts", fields: [user_create], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_accounts_recruit_job_open_user_deleteTouser_accounts user_accounts? @relation("recruit_job_open_user_deleteTouser_accounts", fields: [user_delete], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_accounts_recruit_job_open_user_updateTouser_accounts user_accounts  @relation("recruit_job_open_user_updateTouser_accounts", fields: [user_update], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recruit_job_applications                                  recruit_job_applications[]
+  branches                                                  branches                   @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departments                                               departments                @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions                                                 divisions                  @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  positions                                                 positions                  @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  units                                                     units                      @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_recruit_job_open_user_createTouser_accounts user_accounts              @relation("recruit_job_open_user_createTouser_accounts", fields: [user_create], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_recruit_job_open_user_deleteTouser_accounts user_accounts?             @relation("recruit_job_open_user_deleteTouser_accounts", fields: [user_delete], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_recruit_job_open_user_updateTouser_accounts user_accounts              @relation("recruit_job_open_user_updateTouser_accounts", fields: [user_update], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -1824,6 +1829,130 @@ model branch_groups {
   created_at  DateTime   @default(now()) @db.Timestamptz(6)
   updated_at  DateTime   @default(now()) @db.Timestamptz(6)
   branches    branches[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_job_applications {
+  id                            String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id                        String?                         @db.Uuid
+  position_id                   String?                         @db.Uuid
+  other_position                String?
+  expected_salary               Int?
+  first_name                    String?
+  last_name                     String?
+  nickname_th                   String?
+  nickname_en                   String?
+  date_of_birth                 DateTime?                       @db.Date
+  age                           String?
+  gender                        String?
+  military_status               String?
+  pregnancy_age                 String?
+  height                        Int?                            @db.SmallInt
+  weight                        Decimal?                        @db.Decimal
+  nationality                   String?
+  religion                      String?
+  identity_no                   String?
+  current_address_no            String?
+  village_no                    Int?                            @db.SmallInt
+  street                        String?
+  sub_district                  String?
+  district                      String?
+  province                      String?
+  postal_code                   Int?
+  line_id                       String?
+  phone_number                  String?
+  residence_type                String?
+  residence_other               String?
+  marital_status                String?
+  children                      String?
+  driver_license                Json?
+  emergency_name                String?
+  emergency_phone               String?
+  emergency_relationship        String?
+  underlying_disease            String?
+  serious_crime                 Boolean?
+  dishonest                     Boolean?
+  certify                       Boolean?
+  pdpa                          Boolean?
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime?                       @db.Timestamptz(6)
+  recruit_job_open              recruit_job_open?               @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  positions                     positions?                      @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recruit_job_documents         recruit_job_documents[]
+  recruit_job_education_history recruit_job_education_history[]
+  recruit_job_skills            recruit_job_skills[]
+  recruit_job_work_experience   recruit_job_work_experience[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_job_documents {
+  id                       BigInt                    @id @default(autoincrement())
+  application_id           String?                   @db.Uuid
+  document_type            String?
+  title                    String?
+  file_name                String?
+  file_path                String?
+  file_url                 String?
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @db.Timestamptz(6)
+  recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_job_education_history {
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id           String?                   @db.Uuid
+  degree_level             String?
+  institution              String?
+  faculty                  String?
+  major                    String?
+  graduated_year           Int?                      @db.SmallInt
+  gpa                      Decimal?                  @db.Decimal
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @db.Timestamptz(6)
+  recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_job_skills {
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id           String?                   @db.Uuid
+  skill_type               String?
+  system_program           String?
+  good                     Int?                      @db.SmallInt
+  fair                     Int?                      @db.SmallInt
+  language                 String?
+  listening                Int?                      @db.SmallInt
+  speaking                 Int?                      @db.SmallInt
+  reading                  Int?                      @db.SmallInt
+  writing                  Int?                      @db.SmallInt
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @db.Timestamptz(6)
+  recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_job_work_experience {
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id           String?                   @db.Uuid
+  period                   String?
+  company_name             String?
+  position                 String?
+  latest_salary            Decimal?                  @db.Decimal
+  reason_for_leaving       String?
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @db.Timestamptz(6)
+  recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }

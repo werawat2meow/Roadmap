@@ -1,12 +1,19 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { AlertCircle, X } from "lucide-react";
 import EvaluationTabs from "@/app/roadmap/evaluate/components/EvaluationTabs";
 import EmployeeInfoCard from "@/app/roadmap/evaluate/components/EmployeeInfoCard";
 import SummarySidebar from "@/app/roadmap/evaluate/components/SummarySidebar";
-import EvaluationForm from "@/app/roadmap/evaluate/components/EvaluationForm";
+import EvaluationForm, {
+  EvaluationFormData,
+  RowState,
+  defaultSummaryData,
+  defaultDisciplineData,
+} from "@/app/roadmap/evaluate/components/EvaluationForm";
+import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
 import { Employee } from "@/app/roadmap/types";
 
 type SettingsCategory = {
@@ -29,8 +36,26 @@ type ManagerUser = {
   menus: string[];
 };
 
+type HistoryRecord = {
+  id: string;
+  status: string;
+  created_at: string;
+  totalScore: number | null;
+  companyScore: number | null;
+  departmentScore: number | null;
+  expectationScore: number | null;
+  examScore: number | null;
+  maxScore: number | null;
+  managerComment: string | null;
+  evaluationType?: string | null;
+  extra_data?: any;
+  rm_evaluation_reviewers?: { manager_id: string }[];
+};
+
 export default function EvaluateEmployeePage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const evaluatorId = user?.employee_id || user?.id;
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [settingsCategories, setSettingsCategories] = useState<
     SettingsCategory[]
@@ -43,6 +68,340 @@ export default function EvaluateEmployeePage() {
   >("Probation");
   const [showPopup, setShowPopup] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveNotification, setSaveNotification] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<EvaluationFormData>({
+    companyRows: [
+      {
+        rowId: "company-1",
+        itemId: "",
+        topic: "",
+        maxScore: 0,
+        score: 0,
+        note: "",
+      },
+    ],
+    departmentRows: [
+      {
+        rowId: "department-1",
+        itemId: "",
+        topic: "",
+        maxScore: 0,
+        score: 0,
+        note: "",
+      },
+    ],
+    expectationRows: [
+      {
+        rowId: "expectation-1",
+        itemId: "",
+        topic: "",
+        maxScore: 0,
+        score: 0,
+        note: "",
+      },
+    ],
+    companyScore: 0,
+    departmentScore: 0,
+    expectationScore: 0,
+    totalScore: 0,
+    currentSalary: 0,
+    newSalary: 0,
+    managerComment: "",
+    examScore: 0,
+    maxScore: 100,
+    summaryData: defaultSummaryData,
+    disciplineData: defaultDisciplineData,
+  });
+
+  const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
+  const [evaluationHistory, setEvaluationHistory] = useState<HistoryRecord[]>(
+    [],
+  );
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [editingEvaluationId, setEditingEvaluationId] = useState<string | null>(
+    null,
+  );
+
+  const fetchEvaluationHistory = useCallback(async () => {
+    if (!id) return;
+
+    const employeeId =
+      typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+
+    if (!employeeId) return;
+
+    const response = await fetch(
+      `/roadmap/api/evaluations?employeeId=${encodeURIComponent(employeeId)}`,
+    );
+    const data = await response.json();
+
+    if (!response.ok || !data?.success) {
+      console.error("Failed to load evaluation history", data);
+      return;
+    }
+
+    setEvaluationHistory(data.data || []);
+  }, [id]);
+
+  const handleHistoryEdit = useCallback(
+    (record: HistoryRecord) => {
+      setIsHistoryOpen(false);
+      setEditingEvaluationId(record.id);
+
+      const reviewerIds =
+        (record as any).rm_evaluation_reviewers?.map(
+          (rev: any) => rev.manager_id,
+        ) ?? [];
+      setSelectedManagerIds(reviewerIds);
+
+      const extraData = record.extra_data ?? {};
+      const scores: Array<any> = (record as any).rm_evaluation_scores ?? [];
+
+      const scoreMap = new Map<string, any>();
+      scores.forEach((s) => {
+        if (s?.category_item_id) scoreMap.set(s.category_item_id, s);
+      });
+
+      type ItemMeta = { topic: string; maxScore: number };
+
+      const findItemMeta = (itemId: string): ItemMeta | null => {
+        for (const cat of settingsCategories) {
+          for (const it of cat.items || []) {
+            if (it.id === itemId) {
+              return { topic: it.topic ?? "", maxScore: it.weight ?? 0 };
+            }
+          }
+        }
+        return null;
+      };
+
+      setFormData((prev) => {
+        const companySource = extraData.companyRows ?? prev.companyRows;
+        const departmentSource =
+          extraData.departmentRows ?? prev.departmentRows;
+
+        const companyRows = companySource.map((row: any, idx: number) => {
+          // matched by saved itemId
+          if (row.itemId && scoreMap.has(row.itemId)) {
+            const s = scoreMap.get(row.itemId);
+            const meta = findItemMeta(row.itemId) ?? { topic: "", maxScore: 0 };
+            return {
+              ...row,
+              itemId: row.itemId,
+              topic: (row as any).topic ?? meta.topic ?? "",
+              maxScore: (row as any).maxScore ?? meta.maxScore ?? 0,
+              score:
+                typeof s?.score === "number"
+                  ? s.score
+                  : ((row as any).score ?? 0),
+              note: s?.remark ?? (row as any).note ?? "",
+            };
+          }
+
+          // fallback by index if no itemId
+          const fallback = scores[idx];
+          if (!row.itemId && fallback) {
+            const meta = findItemMeta(fallback.category_item_id) ?? {
+              topic: "",
+              maxScore: 0,
+            };
+            return {
+              ...row,
+              itemId: fallback.category_item_id,
+              topic: (row as any).topic ?? meta.topic ?? "",
+              maxScore: (row as any).maxScore ?? meta.maxScore ?? 0,
+              score:
+                typeof fallback?.score === "number"
+                  ? fallback.score
+                  : ((row as any).score ?? 0),
+              note: fallback?.remark ?? (row as any).note ?? "",
+            };
+          }
+
+          return row;
+        });
+
+        const departmentRows = departmentSource.map((row: any, idx: number) => {
+          if (row.itemId && scoreMap.has(row.itemId)) {
+            const s = scoreMap.get(row.itemId);
+            const meta = findItemMeta(row.itemId) ?? { topic: "", maxScore: 0 };
+            return {
+              ...row,
+              itemId: row.itemId,
+              topic: (row as any).topic ?? meta.topic ?? "",
+              maxScore: (row as any).maxScore ?? meta.maxScore ?? 0,
+              score:
+                typeof s?.score === "number"
+                  ? s.score
+                  : ((row as any).score ?? 0),
+              note: s?.remark ?? (row as any).note ?? "",
+            };
+          }
+
+          const fallback = scores[idx + companyRows.length];
+          if (!row.itemId && fallback) {
+            const meta = findItemMeta(fallback.category_item_id) ?? {
+              topic: "",
+              maxScore: 0,
+            };
+            return {
+              ...row,
+              itemId: fallback.category_item_id,
+              topic: (row as any).topic ?? meta.topic ?? "",
+              maxScore: (row as any).maxScore ?? meta.maxScore ?? 0,
+              score:
+                typeof fallback?.score === "number"
+                  ? fallback.score
+                  : ((row as any).score ?? 0),
+              note: fallback?.remark ?? (row as any).note ?? "",
+            };
+          }
+
+          return row;
+        });
+
+        return {
+          ...prev,
+          companyRows,
+          departmentRows,
+          expectationRows: extraData.expectationRows ?? prev.expectationRows,
+          summaryData: extraData.summaryData ?? prev.summaryData,
+          disciplineData: extraData.disciplineData ?? prev.disciplineData,
+          companyScore: record.companyScore ?? prev.companyScore,
+          departmentScore: record.departmentScore ?? prev.departmentScore,
+          expectationScore: record.expectationScore ?? prev.expectationScore,
+          totalScore: record.totalScore ?? prev.totalScore,
+          managerComment: record.managerComment ?? prev.managerComment,
+          examScore: record.examScore ?? prev.examScore,
+          maxScore: record.maxScore ?? prev.maxScore,
+        };
+      });
+
+      if (record.evaluationType) {
+        const validTabs = [
+          "Probation",
+          "Performance",
+          "Promote",
+          "Progression",
+        ];
+        if (validTabs.includes(record.evaluationType)) {
+          setActiveTab(record.evaluationType as typeof activeTab);
+        }
+      }
+    },
+    [settingsCategories],
+  );
+
+  const handleOpenHistory = async () => {
+    await fetchEvaluationHistory();
+    setIsHistoryOpen(true);
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    fetchEvaluationHistory();
+  }, [id, fetchEvaluationHistory]);
+
+  const handleFormChange = useCallback((next: Partial<EvaluationFormData>) => {
+    setFormData((prev) => {
+      const updated = { ...prev, ...next };
+      const same = JSON.stringify(prev) === JSON.stringify(updated);
+
+      return same ? prev : updated;
+    });
+  }, []);
+
+  const isUuid = (value: string) =>
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      value,
+    );
+
+  const buildScoreRows = (rows: RowState[]) =>
+    rows
+      .filter(
+        (row) => row.itemId && isUuid(row.itemId) && Number.isFinite(row.score),
+      )
+      .map((row) => ({
+        categoryItemId: row.itemId,
+        score: row.score,
+        remark: row.note || null,
+        isIncluded: true,
+      }));
+
+  const createScoresPayload = () => [
+    ...buildScoreRows(formData.companyRows),
+    ...buildScoreRows(formData.departmentRows),
+    // Expectations are free-text (no UUID), saved via extra_data instead
+  ];
+
+  const sendEvaluationPayload = async (status: "Draft" | "Submitted") => {
+    if (!evaluatorId) {
+      console.error("Missing evaluatorId for save draft");
+      window.alert("ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่");
+      return;
+    }
+
+    setIsSaving(true);
+    const evaluationId = editingEvaluationId?.trim() || undefined;
+    const isUpdate = Boolean(evaluationId);
+
+    const payload = {
+      evaluationId,
+      employeeId: id,
+      evaluatorId,
+      evaluationType: activeTab,
+      status,
+      ...formData,
+      managerIds: selectedManagerIds,
+      scores: createScoresPayload(),
+      extra_data: {
+        companyRows: formData.companyRows,
+        departmentRows: formData.departmentRows,
+        expectationRows: formData.expectationRows,
+        summaryData: formData.summaryData,
+        disciplineData: formData.disciplineData,
+      },
+    };
+
+    const response = await fetch("/roadmap/api/evaluations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    setIsSaving(false);
+
+    if (!response.ok || !data?.success) {
+      console.error("Save evaluation failed", response.status, data);
+      window.alert(data?.error || "SaveDraft failed");
+      return;
+    }
+
+    setSaveNotification(
+      status === "Draft"
+        ? isUpdate
+          ? "Update Draft เรียบร้อยแล้ว"
+          : "Save Draft เรียบร้อยแล้ว"
+        : "Submit เรียบร้อยแล้ว",
+    );
+    window.setTimeout(() => setSaveNotification(null), 2500);
+
+    if (!editingEvaluationId && data.data?.id) {
+      setEditingEvaluationId(data.data.id);
+    }
+    await fetchEvaluationHistory();
+  };
+
+  const handleSaveDraft = async () => {
+    await sendEvaluationPayload("Draft");
+  };
+
+  const handleSubmit = async () => {
+    await sendEvaluationPayload("Submitted");
+  };
 
   useEffect(() => {
     const expiryTime = localStorage.getItem("hideEvaluationPopupUntil");
@@ -60,6 +419,26 @@ export default function EvaluateEmployeePage() {
     setShowPopup(false);
   };
 
+  const handleDeleteHistory = async (record: HistoryRecord) => {
+    const confirmed = window.confirm("ต้องการลบประวัตินี้หรือไม่?");
+    if (!confirmed) return;
+
+    const response = await fetch(`/roadmap/api/evaluations?id=${record.id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data?.success) {
+      window.alert(data?.error || "ลบไม่สำเร็จ");
+      return;
+    }
+
+    if (editingEvaluationId === record.id) {
+      setEditingEvaluationId(null);
+    }
+
+    await fetchEvaluationHistory();
+  };
   useEffect(() => {
     if (!id) return;
 
@@ -87,17 +466,16 @@ export default function EvaluateEmployeePage() {
         }
 
         if (!userAccessJson.success) {
-          throw new Error(userAccessJson.error || "ไม่พบข้อมูล Manager")
+          throw new Error(userAccessJson.error || "ไม่พบข้อมูล Manager");
         }
 
         setEmployee(employeeJson.data);
         setSettingsCategories(settingsJson.data || []);
         setManagers(
           (userAccessJson.data || []).filter(
-            (user: any) => user.role === "Manager"
-          )
+            (user: any) => user.role === "Manager",
+          ),
         );
-
       } catch (err: any) {
         console.error(err);
         setError(err.message || "เกิดข้อผิดพลาดขณะโหลดข้อมูล");
@@ -145,6 +523,8 @@ export default function EvaluateEmployeePage() {
       companyGround={companyGround}
       departmentGround={departmentGround}
       managers={managers}
+      formData={formData}
+      onFormChange={handleFormChange}
     />
   );
 
@@ -162,6 +542,13 @@ export default function EvaluateEmployeePage() {
 
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
+      {saveNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 p-5 text-center text-white shadow-xl">
+            <p className="text-base font-semibold">{saveNotification}</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900">Evaluate HR</h1>
@@ -222,14 +609,54 @@ export default function EvaluateEmployeePage() {
         <EvaluationTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
-      <EmployeeInfoCard employee={employee} evaluationType={activeTab} />
+      <EmployeeInfoCard
+        employee={employee}
+        evaluationType={activeTab}
+        historyCount={evaluationHistory.length}
+        onHistoryClick={handleOpenHistory}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">{renderFormContent()}</div>
         <div>
-          <SummarySidebar allFormData={{}} managers={managers} />
+          <SummarySidebar
+            allFormData={formData}
+            managers={managers}
+            selectedManagerIds={selectedManagerIds}
+            isEditing={Boolean(editingEvaluationId)}
+            isSaving={isSaving}
+            onManagerToggle={(id) => {
+              setSelectedManagerIds((prev) =>
+                prev.includes(id)
+                  ? prev.filter((item) => item !== id)
+                  : [...prev, id].slice(-2),
+              );
+            }}
+            onManagerCommentChange={(value) =>
+              handleFormChange({ managerComment: value })
+            }
+            onCurrentSalaryChange={(value) =>
+              handleFormChange({ currentSalary: value })
+            }
+            onNewSalaryChange={(value) =>
+              handleFormChange({ newSalary: value })
+            }
+            onExamScoreChange={(value) =>
+              handleFormChange({ examScore: value })
+            }
+            onMaxScoreChange={(value) => handleFormChange({ maxScore: value })}
+            onSaveDraft={handleSaveDraft}
+            onSubmit={handleSubmit}
+          />
         </div>
       </div>
+      <EvaluationHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        records={evaluationHistory}
+        onEdit={handleHistoryEdit}
+        onDelete={handleDeleteHistory}
+      />
     </div>
   );
 }

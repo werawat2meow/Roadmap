@@ -172,11 +172,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.computerSkillGood, locale)}>
                   <InputNumber
                     value={item.good}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateComputer(
                         item.id,
                         "good",
-                        e.target.value
+                        value
                       )
                     }
                   />
@@ -187,11 +188,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.computerSkillFair, locale)}>
                   <InputNumber
                     value={item.fair}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateComputer(
                         item.id,
                         "fair",
-                        e.target.value
+                        value
                       )
                     }
                   />
@@ -258,11 +260,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.languageSkillListening, locale)}>
                   <InputNumber
                     value={item.listening}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateLanguage(
                         item.id,
                         "listening",
-                        e.target.value
+                        value
                       )
                     }
                   />
@@ -273,11 +276,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.languageSkillSpeaking, locale)}>
                   <InputNumber
                     value={item.speaking}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateLanguage(
                         item.id,
                         "speaking",
-                        e.target.value
+                        value
                       )
                     }
                   />
@@ -288,11 +292,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.languageSkillReading, locale)}>
                   <InputNumber
                     value={item.reading}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateLanguage(
                         item.id,
                         "reading",
-                        e.target.value
+                        value
                       )
                     }
                   />
@@ -303,11 +308,12 @@ export default function SkillsSection({
                 <Form.Item label={getUIText(uiText.languageSkillWriting, locale)}>
                   <InputNumber
                     value={item.writing}
-                    onChange={(e) =>
+                    max={10}
+                    onChange={(value) =>
                       updateLanguage(
                         item.id,
                         "writing",
-                        e.target.value
+                        value
                       )
                     }
                   />

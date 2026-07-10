@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       nationality: personal.nationality ?? "",
       religion: personal.religion ?? "",
       identity_no: personal.idCardNo ?? "",
-      current_address_no: Number(personal.addressNo ?? 0),
+      current_address_no: personal.addressNo ?? null,
       village_no: Number(personal.villageNo ?? 0),
       street: personal.street ?? "",
       sub_district: personal.subDistrict ?? "",
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       pdpa: agreement.pdpa ?? false,
       updated_at: new Date().toISOString(),
       status: 1,
-    };
+    };    
 
     const {
       data: application,

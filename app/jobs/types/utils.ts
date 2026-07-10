@@ -83,10 +83,9 @@ export function validatePassport(
 /*                              Phone Validation                              */
 /* -------------------------------------------------------------------------- */
 
-export function validatePhone(
-  phone: string
-): boolean {
-  return /^[0-9+\-\s]{8,20}$/.test(phone.trim());
+export function validatePhone(phone: string): boolean {
+  const value = phone.trim().replace(/[\s-]/g, "");
+  return /^(06|08|09)\d{8}$/.test(value);
 }
 
 /* -------------------------------------------------------------------------- */

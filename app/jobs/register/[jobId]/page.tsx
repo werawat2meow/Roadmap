@@ -193,9 +193,9 @@ export default function RegisterPage() {
           "Application submitted successfully."
       );
 
-      // router.push(
-      //   "/jobs/register/thankyou"
-      // );
+      router.push(
+        "/jobs/register/thankyou"
+      );
     } catch (err: any) {
       console.error(err);
 

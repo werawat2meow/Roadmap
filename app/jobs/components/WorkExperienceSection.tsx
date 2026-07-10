@@ -7,8 +7,10 @@ import {
   Form,
   Input,
   Row,
+  DatePicker,
   Typography,
 } from "antd";
+
 import {
   DeleteOutlined,
   PlusOutlined,
@@ -24,6 +26,14 @@ import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
+dayjs.extend(customParseFormat);
+
+const { Text } = Typography;
+const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
 export default function WorkExperienceSection({
@@ -61,6 +71,30 @@ export default function WorkExperienceSection({
 
     onChange(updated);
   };
+
+  const PERIOD_FORMAT = "MMM YYYY";
+
+  // แปลง string "Jan 2022 - Dec 2023" กลับเป็น [Dayjs, Dayjs]
+  const parsePeriodToRange = (period: string): [Dayjs, Dayjs] | null => {
+    if (!period) return null;
+    const parts = period.split(" - ");
+    if (parts.length !== 2) return null;
+
+    const start = dayjs(parts[0], PERIOD_FORMAT, true);
+    const end = dayjs(parts[1], PERIOD_FORMAT, true);
+
+    if (!start.isValid() || !end.isValid()) return null;
+    return [start, end];
+  };
+
+  // แปลงค่าที่เลือกจาก RangePicker กลับเป็น string เก็บใน work.period
+  const formatRangeToPeriod = (
+    dates: [Dayjs | null, Dayjs | null] | null
+  ): string => {
+    if (!dates || !dates[0] || !dates[1]) return "";
+    return `${dates[0].format(PERIOD_FORMAT)} - ${dates[1].format(PERIOD_FORMAT)}`;
+  };
+
 
   /* -------------------------------------------------------------------------- */
 
@@ -100,7 +134,7 @@ export default function WorkExperienceSection({
           <Row gutter={[16, 16]}>
             {/* Period */}
 
-            <Col xs={24} md={12}>
+            {/* <Col xs={24} md={12}>
               <Form.Item
                 label={getUIText(uiText.workPeriod, locale)}
               >
@@ -119,6 +153,33 @@ export default function WorkExperienceSection({
                     )
                   }
                 />
+              </Form.Item>
+            </Col> */}
+
+            <Col xs={24} md={12}>
+              <Form.Item label={getUIText(uiText.workPeriod, locale)}>
+                <RangePicker
+                  picker="month"
+                  style={{ width: "100%" }}
+                  placeholder={["Jan 2022", "Dec 2023"]}
+                  value={parsePeriodToRange(work.period)}
+                  onChange={(dates) => {
+                    const periodString = formatRangeToPeriod(
+                      dates as [Dayjs | null, Dayjs | null]
+                    );
+                    updateRow(work.id, "period", periodString);
+                  }}
+                />
+
+                {work.period && (
+                  <Text
+                    type="secondary"
+                    style={{ display: "block", marginTop: 4, fontSize: 13 }}
+                  >
+                    {language === "TH" ? "ช่วงที่เลือก: " : "Selected: "}
+                    {work.period}
+                  </Text>
+                )}
               </Form.Item>
             </Col>
 

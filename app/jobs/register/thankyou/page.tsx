@@ -43,7 +43,7 @@ export default function RegisterThankYouPage() {
 
   return (
     <>
-      <LanguageHeader />
+      {/* <LanguageHeader /> */}
 
       <div
         style={{

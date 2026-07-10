@@ -2,25 +2,22 @@
 
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import { isValidPhoneNumber } from "libphonenumber-js";
-import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
+import {CheckCircleFilled,CloseCircleFilled,} from "@ant-design/icons";
+import {isValidThaiPhone,normalizeThaiPhone,} from "@/lib/validators";
 
-export default function PhoneField({
-  label = "เบอร์โทร",
-  value = "",
-  required = false,
-  disabled = false,
-  onChange,
-}) {
-  const normalizedValue = value?.startsWith("+")
-    ? value.replace("+", "")
-    : value || "";
+export default function PhoneField({label = "เบอร์โทร",value = "",required = false,disabled = false,onChange,}) {
+  const normalizedValue = String(value || "").replace(/^\+/, "");
+  const valid = value ? isValidThaiPhone(value) : null;
+  const handleChange = (phone) => {
+    if (!phone) {
+      onChange?.("");
+      return;
+    }
 
-  const phoneForValidate = normalizedValue ? `+${normalizedValue}` : "";
+    const normalized = normalizeThaiPhone(`+${phone}`);
 
-  const valid = phoneForValidate
-    ? isValidPhoneNumber(phoneForValidate)
-    : null;
+    onChange?.(normalized);
+  };
 
   return (
     <div>
@@ -31,13 +28,24 @@ export default function PhoneField({
 
       <PhoneInput
         country="th"
-        enableSearch
-        disabled={disabled}
+        onlyCountries={["th"]}
         countryCodeEditable={false}
+        enableSearch={false}
+        disabled={disabled}
         value={normalizedValue}
-        onChange={(phone) => onChange?.(phone ? `+${phone}` : "")}
+        onChange={handleChange}
+        inputProps={{
+          name: "phone",
+          autoComplete: "tel",
+        }}
         inputClass={`
-          !w-full !rounded-2xl !border !px-4 !py-3 !pl-14 !text-sm !h-auto
+          !h-[46px]
+          !w-full
+          !rounded-2xl
+          !py-3
+          !pl-14
+          !pr-4
+          !text-sm
           ${
             valid === true
               ? "!border-green-500"
@@ -46,7 +54,16 @@ export default function PhoneField({
               : "!border-slate-300"
           }
         `}
-        buttonClass="!rounded-l-2xl !border-slate-300"
+        buttonClass={`
+          !rounded-l-2xl
+          ${
+            valid === true
+              ? "!border-green-500"
+              : valid === false
+              ? "!border-red-500"
+              : "!border-slate-300"
+          }
+        `}
         containerClass="!w-full"
       />
 

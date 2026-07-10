@@ -1,3 +1,4 @@
+//   7/10/2569  12:01
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +8,7 @@ import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {TaxIdField,EmailField,PhoneField,WebsiteField,AddressField,StatusSelect,SortOrderField,} from "@/app/components/forms";
-import {isValidEmail,isValidThaiTaxId,isValidWebsite,} from "@/lib/validators";
+import {isValidEmail,isValidThaiPhone,isValidThaiTaxId,isValidWebsite,normalizeThaiPhone,} from "@/lib/validators";
 
 const initialForm = {
   company_code: "",
@@ -218,6 +219,21 @@ export default function CompaniesPage() {
       return false;
     }
 
+    if (form.phone && !isValidThaiPhone(form.phone)) {
+      swalError("กรุณากรอกเบอร์โทรศัพท์ประเทศไทยให้ถูกต้อง");
+      return false;
+    }
+
+    if (form.email && !isValidEmail(form.email)) {
+      swalError("กรุณากรอก Email ให้ถูกต้อง");
+      return false;
+    }
+
+    if (form.website && !isValidWebsite(form.website)) {
+      swalError("กรุณากรอก Website ให้ถูกต้อง");
+      return false;
+    }
+
     return true;
   };
 
@@ -240,7 +256,7 @@ export default function CompaniesPage() {
       subdistrict: form.subdistrict.trim() || null,
       postcode: form.postcode.trim() || null,
 
-      phone: form.phone.trim() || null,
+      phone: form.phone ? normalizeThaiPhone(form.phone) : null,
       email: form.email.trim() || null,
       website: form.website.trim() || null,
 
@@ -589,7 +605,8 @@ export default function CompaniesPage() {
           </table>
         </div>
       </div>
-            {openModal && (
+
+      {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="modal-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
             <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
@@ -779,7 +796,7 @@ export default function CompaniesPage() {
             </div>
           </div>
         </div>
-            )}
+      )}
     </div>
   )
 }  

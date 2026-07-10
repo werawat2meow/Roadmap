@@ -76,6 +76,18 @@ function mapEmployee(data) {
 
     created_at: data.created_at,
     updated_at: data.updated_at,
+    business_unit_id: data.business_unit_id || "",
+    cost_center_id: data.cost_center_id || "",
+    profit_center_id: data.profit_center_id || "",
+
+    business_unit_code: data.business_units?.business_unit_code || "",
+    business_unit_name: data.business_units?.business_unit_name || "-",
+
+    cost_center_code: data.cost_centers?.cost_center_code || "",
+    cost_center_name: data.cost_centers?.cost_center_name || "-",
+
+    profit_center_code: data.profit_centers?.profit_center_code || "",
+    profit_center_name: data.profit_centers?.profit_center_name || "-",
   };
 }
 
@@ -116,6 +128,9 @@ export async function PATCH(req, { params }) {
     const position_id = body?.position_id || null;
     const job_id = body?.job_id || null;
     const management_assignment_id = body?.management_assignment_id || null;
+    const business_unit_id = body?.business_unit_id || null;
+    const cost_center_id = body?.cost_center_id || null;
+    const profit_center_id = body?.profit_center_id || null;
 
     let probation_days = null;
     let probation_end_date = null;
@@ -190,6 +205,43 @@ export async function PATCH(req, { params }) {
       }
     }
 
+    if (job_id) {
+      const { data: selectedJob, error: jobError } = await supabaseAdmin
+        .from("jobs")
+        .select(`
+          id,
+          business_unit_required,
+          cost_center_required,
+          profit_center_required,
+          gl_mapping_required
+        `)
+        .eq("id", job_id)
+        .maybeSingle();
+
+      if (jobError) throw jobError;
+
+      if (selectedJob?.business_unit_required && !business_unit_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Business Unit" },
+          { status: 400 }
+        );
+      }
+
+      if (selectedJob?.cost_center_required && !cost_center_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Cost Center" },
+          { status: 400 }
+        );
+      }
+
+      if (selectedJob?.profit_center_required && !profit_center_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Profit Center" },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data: oldEmployee, error: oldEmployeeError } = await supabaseAdmin
       .from("employees")
       .select("*")
@@ -229,6 +281,9 @@ export async function PATCH(req, { params }) {
         position_id,
         job_id,
         management_assignment_id,
+        business_unit_id,
+        cost_center_id,
+        profit_center_id,
 
         probation_days,
         probation_end_date,
@@ -275,7 +330,9 @@ export async function PATCH(req, { params }) {
         position_id,
         job_id,
         management_assignment_id,
-
+        business_unit_id,
+        cost_center_id,
+        profit_center_id,
         created_at,
         updated_at,
 
@@ -314,6 +371,18 @@ export async function PATCH(req, { params }) {
           job_icon,
           can_manage_employees,
           can_approve_budget
+        ),
+        business_units (
+          business_unit_code,
+          business_unit_name
+        ),
+        cost_centers (
+          cost_center_code,
+          cost_center_name
+        ),
+        profit_centers (
+          profit_center_code,
+          profit_center_name
         )
       `)
       .eq("id", id)

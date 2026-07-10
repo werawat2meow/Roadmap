@@ -102,6 +102,15 @@ function mapEmployee(item) {
     probation_days: item.probation_days ?? null,
     probation_end_date: item.probation_end_date || "",
     probation_status: item.probation_status || "",
+    business_unit_id: item.business_unit_id || "",
+    cost_center_id: item.cost_center_id || "",
+    profit_center_id: item.profit_center_id || "",
+    business_unit_code: item.business_units?.business_unit_code || "",
+    business_unit_name: item.business_units?.business_unit_name || "-",
+    cost_center_code: item.cost_centers?.cost_center_code || "",
+    cost_center_name: item.cost_centers?.cost_center_name || "-",
+    profit_center_code: item.profit_centers?.profit_center_code || "",
+    profit_center_name: item.profit_centers?.profit_center_name || "-",
   };
 }
 
@@ -217,11 +226,14 @@ export async function GET(req) {
         branch_group_id,
         job_id,
         management_assignment_id,
-          created_at,
-          citizen_id,
-          passport_no,
-          birth_date,
-          line_id,
+        business_unit_id,
+        cost_center_id,
+        profit_center_id,
+        created_at,
+        citizen_id,
+        passport_no,
+        birth_date,
+        line_id,
         branch_groups (
           group_code,
           group_name,
@@ -257,6 +269,18 @@ export async function GET(req) {
         positions (
           position_name,
           position_level
+        ),
+        business_units (
+          business_unit_code,
+          business_unit_name
+        ),
+        cost_centers (
+          cost_center_code,
+          cost_center_name
+        ),
+        profit_centers (
+          profit_center_code,
+          profit_center_name
         )
       `,
         { count: "exact" }
@@ -395,10 +419,15 @@ export async function POST(req) {
     const position_id = body?.position_id || null;
     const job_id = body?.job_id || null;
     const management_assignment_id = body?.management_assignment_id || null;
+    const business_unit_id = body?.business_unit_id || null;
+    const cost_center_id = body?.cost_center_id || null;
+    const profit_center_id = body?.profit_center_id || null;
 
     let probation_days = null;
     let probation_end_date = null;
     let probation_status = null;
+    let selectedJob = null;
+
 
     if (!first_name_th || !last_name_th) {
       return NextResponse.json(
@@ -478,6 +507,45 @@ export async function POST(req) {
 
     if (positionError) throw positionError;
 
+    if (job_id) {
+      const { data: jobData, error: jobError } = await supabaseAdmin
+        .from("jobs")
+        .select(`
+          id,
+          business_unit_required,
+          cost_center_required,
+          profit_center_required,
+          gl_mapping_required
+        `)
+        .eq("id", job_id)
+        .maybeSingle();
+
+      if (jobError) throw jobError;
+
+      selectedJob = jobData;
+
+      if (selectedJob?.business_unit_required && !business_unit_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Business Unit" },
+          { status: 400 }
+        );
+      }
+
+      if (selectedJob?.cost_center_required && !cost_center_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Cost Center" },
+          { status: 400 }
+        );
+      }
+
+      if (selectedJob?.profit_center_required && !profit_center_id) {
+        return NextResponse.json(
+          { success: false, error: "กรุณาเลือก Profit Center" },
+          { status: 400 }
+        );
+      }
+    }
+
     const employee_type_digit = getEmployeeTypeDigit({
       nationality,
       employmentType: employment_type,
@@ -532,11 +600,12 @@ export async function POST(req) {
       position_id,
       job_id,
       management_assignment_id,
-
+      business_unit_id,
+      cost_center_id,
+      profit_center_id,
       employee_type_digit,
       employee_year_2d,
       employee_running_no,
-
       probation_days,
       probation_end_date,
       probation_status,
@@ -578,6 +647,9 @@ export async function POST(req) {
         position_id,
         job_id,
         management_assignment_id,
+        business_unit_id,
+        cost_center_id,
+        profit_center_id,
 
         created_at,
         updated_at,
@@ -617,6 +689,21 @@ export async function POST(req) {
           position_code,
           position_name,
           position_level
+        ),
+
+        business_units (
+          business_unit_code,
+          business_unit_name
+        ),
+
+        cost_centers (
+          cost_center_code,
+          cost_center_name
+        ),
+
+        profit_centers (
+          profit_center_code,
+          profit_center_name
         ),
 
         jobs (

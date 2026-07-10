@@ -88,6 +88,12 @@ export const sidebarMenus = [
     icon: <DollarOutlined />,
     items: [
       {
+        label: "Payroll Company",
+        href: "/admin/payroll-companies",
+        icon: <BankOutlined />,
+        permission: "ems.payroll_companies.view",
+      },
+      {
         label: "Business Unit",
         href: "/admin/business-units",
         icon: <BankOutlined />,
@@ -219,15 +225,3 @@ export const sidebarMenus = [
     ],
   },
 ];
-
-
-
-/*
-Phase 3
-employees/page.jsx
-
-
-Phase 4
-ค่อยกลับมาเชื่อม
-employees/page.jsx
-*/

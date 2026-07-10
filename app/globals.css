@@ -195,3 +195,68 @@ body {
 .modal-scrollbar:hover::-webkit-scrollbar-thumb {
   background-color: #94a3b8;
 }
+
+
+
+/* Phone Input Custom Style */
+.phone-input-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 42px;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.phone-input-custom:hover {
+  border-color: #4096ff;
+}
+
+.phone-input-custom:focus-within {
+  border-color: #4096ff;
+  box-shadow: 0 0 0 3px rgba(64, 150, 255, 0.12);
+}
+
+.phone-input-custom .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+  padding-right: 8px;
+  border-right: 1px solid #e5e5e5;
+}
+
+.phone-input-custom .PhoneInputCountryIcon {
+  width: 24px;
+  height: 18px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.phone-input-custom .PhoneInputCountrySelectArrow {
+  margin-left: 6px;
+  opacity: 0.5;
+}
+
+.phone-input-custom .PhoneInputCountryCallingCode {
+  color: #666;
+  font-size: 14px;
+  margin-left: 4px;
+}
+
+.phone-input-custom input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #262626;
+  background: transparent;
+  letter-spacing: 0.3px;
+}
+
+.phone-input-custom input::placeholder {
+  color: #bfbfbf;
+}

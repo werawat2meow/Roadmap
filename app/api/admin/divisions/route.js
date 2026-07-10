@@ -8,6 +8,7 @@ export async function GET(req) {
 
     const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
+    const departmentId = searchParams.get("department_id")?.trim() || "";
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
     const pageSize = Math.max(Number(searchParams.get("pageSize") || 20), 1);
@@ -36,6 +37,12 @@ export async function GET(req) {
       )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    // กรองตาม department_id — ใช้ตอนเปิด form employee เพื่อดึงเฉพาะ
+    // division ของแผนกที่เลือก แทนที่จะโหลดทั้งหมดมา filter ฝั่ง client
+    if (departmentId) {
+      query = query.eq("department_id", departmentId);
+    }
 
     if (search) {
       const keyword = `%${search}%`;

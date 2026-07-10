@@ -491,10 +491,10 @@ export default function ManagementAssignmentsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">
-              สายบังคับบัญชา
+              สายบังคับบัญชา    
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              กำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12
+              กำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12   [ ดึงพนักงานเฉพาะ P9 - p12  (Management Level ไม่ต้องเลือก)   (ต้องเช็คตำแหน่ง P9-P12  ที่จะทำการกำหนดสายบังคับบัญชาได้ )  ]
             </p>
           </div>
 

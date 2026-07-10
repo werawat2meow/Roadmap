@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Select } from "antd";
 import { swalConfirm, swalError, swalSuccess } from "../../../components/Swal";
 import { PhoneInput } from "react-international-phone";
@@ -32,6 +32,9 @@ const initialForm = {
   unit_id: "",
   position_id: "",
   job_id: "",
+  business_unit_id: "",
+  cost_center_id: "",
+  profit_center_id: "",
   employee_status_id: "",
   resignation_date: "",
   employee_photo_url: "",
@@ -65,6 +68,26 @@ export default function EmployeesPage() {
   const [passportSuccess, setPassportSuccess] = useState("");
   const [branchGroups, setBranchGroups] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [businessUnits, setBusinessUnits] = useState([]);
+  const [costCenters, setCostCenters] = useState([]);
+  const [profitCenters, setProfitCenters] = useState([]);
+
+  // เปิด modal ครั้งแรก ต้องรอโหลด master data ก่อน
+  const [openingModal, setOpeningModal] = useState(false);
+
+  // กัน master data ถูกโหลดซ้ำทุกครั้งที่เปิด modal
+  const masterDataLoadedRef = useRef(false);
+  const masterDataLoadingPromiseRef = useRef(null);
+
+  // กันโหลด employees ซ้ำตอน mount (mount effect + debounce effect ชนกัน)
+  const isFirstSearchRunRef = useRef(true);
+
+  // Cascading fetch: กันข้อมูล division/unit เก่าค้างมาปนตอน department/division เปลี่ยน
+  // (ใช้ token กันกรณีเปลี่ยน department เร็ว ๆ แล้ว response เก่ามาทับ response ใหม่)
+  const divisionsRequestTokenRef = useRef(0);
+  const unitsRequestTokenRef = useRef(0);
+  const [divisionsLoading, setDivisionsLoading] = useState(false);
+  const [unitsLoading, setUnitsLoading] = useState(false);
 
   // Partition
   const [page, setPage] = useState(1);
@@ -76,7 +99,7 @@ export default function EmployeesPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  // Crop รูป 
+  // Crop รูป
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [photoZoom, setPhotoZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -86,7 +109,6 @@ export default function EmployeesPage() {
   const [positionPage, setPositionPage] = useState(1);
   const [positionTotalPages, setPositionTotalPages] = useState(1);
   const [positionKeyword, setPositionKeyword] = useState("");
-
 
   // #region Permission
   const router = useRouter();
@@ -110,6 +132,26 @@ export default function EmployeesPage() {
   }, [user, canView, loadingUser, router]);
   // #endregion
 
+  const loadBusinessUnits = async () => {
+    const res = await fetch("/api/admin/business-units", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Load business units failed");
+    setBusinessUnits(data.data || []);
+  };
+
+  const loadCostCenters = async () => {
+    const res = await fetch("/api/admin/cost-centers", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Load cost centers failed");
+    setCostCenters(data.data || []);
+  };
+
+  const loadProfitCenters = async () => {
+    const res = await fetch("/api/admin/profit-centers", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Load profit centers failed");
+    setProfitCenters(data.data || []);
+  };
 
   const loadBranchGroups = async () => {
     const res = await fetch("/api/admin/branch-groups", { cache: "no-store" });
@@ -152,36 +194,159 @@ export default function EmployeesPage() {
     setDepartments(data.data || []);
   };
 
-  const loadDivisions = async () => {
-    const res = await fetch("/api/admin/divisions?all=true", { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Load divisions failed");
-    setDivisions(
-      (data.data || []).map((item) => ({
-        id: item.id,
-        division_name: item.division_name,
-        department_id: item.department_id,
-        department_name: item.department_name || "",
-        status: item.status,
-      }))
-    );
+  /**
+   * Cascading fetch — โหลดเฉพาะ division ของ department ที่เลือก
+   * แทนการโหลดทั้งหมดด้วย all=true แล้ว filter ฝั่ง client
+   */
+  const loadDivisionsByDepartment = async (departmentId) => {
+    if (!departmentId) {
+      setDivisions([]);
+      return;
+    }
+
+    const token = ++divisionsRequestTokenRef.current;
+
+    try {
+      setDivisionsLoading(true);
+
+      const params = new URLSearchParams({
+        department_id: departmentId,
+        all: "true",
+      });
+
+      const res = await fetch(`/api/admin/divisions?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Load divisions failed");
+
+      // ถ้าระหว่างนี้ department ถูกเปลี่ยนไปแล้ว ไม่ต้องเอา response เก่ามา set ทับ
+      if (token !== divisionsRequestTokenRef.current) return;
+
+      setDivisions(
+        (data.data || []).map((item) => ({
+          id: item.id,
+          division_name: item.division_name,
+          department_id: item.department_id,
+          department_name: item.department_name || "",
+          status: item.status,
+        }))
+      );
+    } catch (err) {
+      if (token !== divisionsRequestTokenRef.current) return;
+      console.error(err);
+      swalError(err.message || "ไม่สามารถโหลดข้อมูลฝ่ายได้");
+    } finally {
+      if (token === divisionsRequestTokenRef.current) {
+        setDivisionsLoading(false);
+      }
+    }
   };
 
-  const loadUnits = async () => {
-    const res = await fetch("/api/admin/units?all=true", { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Load units failed");
-    setUnits(
-      (data.data || []).map((item) => ({
-        id: item.id,
-        unit_name: item.unit_name,
-        division_id: item.division_id,
-        division_name: item.division_name || "",
-        department_name: item.department_name || "",
-        status: item.status,
-      }))
-    );
+  /**
+   * Cascading fetch — โหลดเฉพาะ unit ของ division ที่เลือก
+   * แทนการโหลดทั้งหมดด้วย all=true แล้ว filter ฝั่ง client
+   */
+  const loadUnitsByDivision = async (divisionId) => {
+    if (!divisionId) {
+      setUnits([]);
+      return;
+    }
+
+    const token = ++unitsRequestTokenRef.current;
+
+    try {
+      setUnitsLoading(true);
+
+      const params = new URLSearchParams({
+        division_id: divisionId,
+        all: "true",
+      });
+
+      const res = await fetch(`/api/admin/units?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Load units failed");
+
+      if (token !== unitsRequestTokenRef.current) return;
+
+      setUnits(
+        (data.data || []).map((item) => ({
+          id: item.id,
+          unit_name: item.unit_name,
+          division_id: item.division_id,
+          division_name: item.division_name || "",
+          department_name: item.department_name || "",
+          status: item.status,
+        }))
+      );
+    } catch (err) {
+      if (token !== unitsRequestTokenRef.current) return;
+      console.error(err);
+      swalError(err.message || "ไม่สามารถโหลดข้อมูลหน่วยงานได้");
+    } finally {
+      if (token === unitsRequestTokenRef.current) {
+        setUnitsLoading(false);
+      }
+    }
   };
+
+  const loadEmployeeStatuses = async () => {
+    const res = await fetch("/api/admin/employee-statuses", {
+      cache: "no-store",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Load employee statuses failed");
+    }
+
+    setEmployeeStatuses(data.data || []);
+  };
+
+  /**
+   * Master data (branches / departments / employment types / employee statuses /
+   * branch groups / jobs / business units / cost centers / profit centers)
+   * ใช้แค่ตอนเปิด modal เพิ่ม/แก้ไขพนักงานเท่านั้น ไม่จำเป็นต้องโหลดตั้งแต่เปิดหน้า list
+   *
+   * หมายเหตุ: divisions/units ไม่รวมอยู่ในนี้แล้ว เพราะเปลี่ยนไปใช้ cascading fetch
+   * ตาม department_id/division_id ที่เลือก (ดู loadDivisionsByDepartment / loadUnitsByDivision)
+   *
+   * โหลดครั้งแรกที่ user กด "เพิ่มพนักงาน" หรือ "Edit" เท่านั้น แล้ว cache ไว้
+   * ไม่ยิงซ้ำทุกครั้งที่เปิด modal
+   */
+  const loadMasterData = useCallback(() => {
+    if (masterDataLoadedRef.current) return Promise.resolve();
+
+    // กันกดเปิด modal รัว ๆ แล้วยิงซ้ำซ้อนหลาย request
+    if (masterDataLoadingPromiseRef.current) {
+      return masterDataLoadingPromiseRef.current;
+    }
+
+    const promise = Promise.all([
+      loadBranches(),
+      loadDepartments(),
+      loadEmploymentTypes(),
+      loadEmployeeStatuses(),
+      loadBranchGroups(),
+      loadJobs(),
+      loadBusinessUnits(),
+      loadCostCenters(),
+      loadProfitCenters(),
+    ])
+      .then(() => {
+        masterDataLoadedRef.current = true;
+      })
+      .finally(() => {
+        masterDataLoadingPromiseRef.current = null;
+      });
+
+    masterDataLoadingPromiseRef.current = promise;
+    return promise;
+  }, []);
 
   const loadPositions = async (keyword = "", nextPage = 1, append = false) => {
     try {
@@ -248,21 +413,9 @@ export default function EmployeesPage() {
     }
   };
 
-  const loadEmployeeStatuses = async () => {
-    const res = await fetch("/api/admin/employee-statuses", {
-      cache: "no-store",
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || "Load employee statuses failed");
-    }
-
-    setEmployeeStatuses(data.data || []);
-  };
-
   const selectedPosition = useMemo(() => { return positions.find((item) => item.id === form.position_id);}, [positions, form.position_id]);
   const selectedJob = useMemo(() => {return jobs.find((item) => item.id === form.job_id);}, [jobs, form.job_id]);
+  const selectedEmploymentType = useMemo(() => { return employmentTypes.find( (item) => item.type_code === form.employment_type); }, [employmentTypes, form.employment_type]);
   const effectiveManagementLevel = selectedJob?.management_level || selectedPosition?.position_level || "";
   const effectiveScopeType = selectedJob?.scope_type || "";
   const isAllScope = effectiveScopeType === "all";
@@ -275,32 +428,39 @@ export default function EmployeesPage() {
   const isExecutiveLevel = ["P11", "P12"].includes(effectiveManagementLevel);
   const isOperationLevel = !effectiveScopeType && !["P9", "P10", "P11", "P12"].includes(effectiveManagementLevel);
 
+  // โหลดแค่ employees ตอนเปิดหน้า — master data ทั้งหมดย้ายไปโหลดแบบ lazy
+  // ตอนกดเปิด modal แทน (ดู loadMasterData)
   useEffect(() => {
-    Promise.all([
-      loadBranches(),
-      loadDepartments(),
-      loadDivisions(),
-      loadUnits(),
-      loadPositions(),
-      loadEmploymentTypes(),
-      loadEmployeeStatuses(),
-      loadBranchGroups(),
-      loadJobs(),
-    ]).catch((err) => {
-      console.error(err);
-      swalError(err.message || "ไม่สามารถโหลดข้อมูล master ได้");
-    });
-
     loadEmployees();
   }, []);
 
+  // Debounce search — ข้ามการรันครั้งแรกตอน mount เพราะ mount effect
+  // ด้านบนโหลด employees ไปแล้ว ป้องกันการยิง API ซ้ำ 2 รอบตอนเปิดหน้า
   useEffect(() => {
+    if (isFirstSearchRunRef.current) {
+      isFirstSearchRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       loadEmployees(search, 1);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Cascading fetch: department_id เปลี่ยนเมื่อไหร่ (ไม่ว่าจะจากการเลือกเอง,
+  // เปลี่ยนสาขาแล้วถูก reset, หรือ setForm ตอนเปิด modal edit) ให้โหลด
+  // division ของ department นั้นอัตโนมัติ — department_id ว่างจะ clear list ให้เอง
+  useEffect(() => {
+    loadDivisionsByDepartment(form.department_id);
+  }, [form.department_id]);
+
+  // Cascading fetch: division_id เปลี่ยนเมื่อไหร่ ให้โหลด unit ของ division
+  // นั้นอัตโนมัติเช่นกัน
+  useEffect(() => {
+    loadUnitsByDivision(form.division_id);
+  }, [form.division_id]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -312,23 +472,88 @@ export default function EmployeesPage() {
     setCroppedAreaPixels(null);
   };
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = async () => {
     if (!canCreate) {
       swalError("คุณไม่มีสิทธิ์เพิ่มข้อมูลพนักงาน");
       return;
     }
 
     resetForm();
-    setOpenModal(true);
+
+    try {
+      setOpeningModal(true);
+      await loadMasterData();
+      setOpenModal(true);
+    } catch (err) {
+      console.error(err);
+      swalError(err.message || "ไม่สามารถโหลดข้อมูล master ได้");
+    } finally {
+      setOpeningModal(false);
+    }
   };
 
-  const handleOpenEdit = (employee) => {
+  const handleOpenEdit = async (employee) => {
     if (!canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
       return;
     }
 
+    try {
+      setOpeningModal(true);
+      await loadMasterData();
+    } catch (err) {
+      console.error(err);
+      swalError(err.message || "ไม่สามารถโหลดข้อมูล master ได้");
+      setOpeningModal(false);
+      return;
+    }
+
+    // กัน Select แสดง UUID กรณี position_id ไม่อยู่ใน options ที่ lazy load มา
+    if (employee.position_id) {
+      setPositions((prev) => {
+        const exists = prev.some((item) => item.id === employee.position_id);
+        if (exists) return prev;
+
+        return [
+          {
+            id: employee.position_id,
+            position_name: employee.position_name || "ไม่ระบุตำแหน่ง",
+            position_level: employee.position_level || "",
+            status: "active",
+          },
+          ...prev,
+        ];
+      });
+    }
+
+    // กัน Job Select แสดง UUID กรณี job_id ไม่อยู่ใน options
+    if (employee.job_id) {
+      setJobs((prev) => {
+        const exists = prev.some((item) => item.id === employee.job_id);
+        if (exists) return prev;
+
+        return [
+          {
+            id: employee.job_id,
+            job_code: employee.job_code || "",
+            job_name: employee.job_name || "ไม่ระบุ Job",
+            job_level: employee.job_level || "",
+            management_level: employee.management_level || "",
+            scope_type: employee.scope_type || "",
+            job_color: employee.job_color || "#E2E8F0",
+            job_icon: employee.job_icon || "",
+          },
+          ...prev,
+        ];
+      });
+    }
+
     setEditingEmployee(employee);
+
+    // ตั้ง form ครั้งเดียว — department_id/division_id ที่ set ตรงนี้จะไป trigger
+    // useEffect cascading fetch ให้เองอัตโนมัติ (โหลด division ของ department นี้
+    // และ unit ของ division นี้) ไม่ต้องเรียก loadDivisionsByDepartment/
+    // loadUnitsByDivision ซ้ำตรงนี้
     setForm({
       first_name_th: employee.first_name_th || "",
       last_name_th: employee.last_name_th || "",
@@ -356,12 +581,17 @@ export default function EmployeesPage() {
       birth_date: employee.birth_date || "",
       line_id: employee.line_id || "",
       job_id: employee.job_id || "",
+      business_unit_id: employee.business_unit_id || "",
+      cost_center_id: employee.cost_center_id || "",
+      profit_center_id: employee.profit_center_id || "",
     });
+
     setPhotoFile(null);
     setPhotoPreview(employee.employee_photo_url || "");
     setCrop({ x: 0, y: 0 });
     setPhotoZoom(1);
     setCroppedAreaPixels(null);
+    setOpeningModal(false);
     setOpenModal(true);
   };
 
@@ -377,15 +607,19 @@ export default function EmployeesPage() {
     );
   }, [departments, form.branch_id]);
 
-  const filteredDivisions = useMemo(() => {
-    if (!form.department_id) return [];
-    return divisions.filter((div) => div.department_id === form.department_id);
-  }, [divisions, form.department_id]);
+  const filteredCostCenters = useMemo(() => {
+    if (!form.business_unit_id) return costCenters;
+    return costCenters.filter(
+      (item) => item.business_unit_id === form.business_unit_id
+    );
+  }, [costCenters, form.business_unit_id]);
 
-  const filteredUnits = useMemo(() => {
-    if (!form.division_id) return [];
-    return units.filter((unit) => unit.division_id === form.division_id);
-  }, [units, form.division_id]);
+  const filteredProfitCenters = useMemo(() => {
+    if (!form.business_unit_id) return profitCenters;
+    return profitCenters.filter(
+      (item) => item.business_unit_id === form.business_unit_id
+    );
+  }, [profitCenters, form.business_unit_id]);
 
   const handlePhotoChange = (file) => {
     if (!file) return;
@@ -448,7 +682,10 @@ export default function EmployeesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingEmployee;
-    const selectedStatus = employeeStatuses.find((item) => item.id === form.employee_status_id);
+
+    const selectedStatus = employeeStatuses.find(
+      (item) => item.id === form.employee_status_id
+    );
 
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน");
@@ -467,6 +704,16 @@ export default function EmployeesPage() {
 
     if (!form.hire_date) {
       swalError("กรุณาเลือกวันที่เริ่มงาน");
+      return;
+    }
+
+    if (!form.employment_type) {
+      swalError("กรุณาเลือกประเภทการจ้าง");
+      return;
+    }
+
+    if (!form.employee_status_id) {
+      swalError("ประเภทการจ้างนี้ยังไม่ได้กำหนดสถานะพนักงานเริ่มต้น");
       return;
     }
 
@@ -525,13 +772,23 @@ export default function EmployeesPage() {
       return;
     }
 
-    if (!form.employee_status_id) {
-      swalError("กรุณาเลือกสถานะพนักงาน");
+    if (selectedStatus?.status_code === "RESIGNED" && !form.resignation_date) {
+      swalError("กรุณาระบุวันที่ลาออก");
       return;
     }
 
-    if (selectedStatus?.status_code === "RESIGNED" && !form.resignation_date) {
-      swalError("กรุณาระบุวันที่ลาออก");
+    if (selectedJob?.business_unit_required && !form.business_unit_id) {
+      swalError("กรุณาเลือก Business Unit");
+      return;
+    }
+
+    if (selectedJob?.cost_center_required && !form.cost_center_id) {
+      swalError("กรุณาเลือก Cost Center");
+      return;
+    }
+
+    if (selectedJob?.profit_center_required && !form.profit_center_id) {
+      swalError("กรุณาเลือก Profit Center");
       return;
     }
 
@@ -553,8 +810,11 @@ export default function EmployeesPage() {
         branch_id: isBranchScope || isOperationLevel ? form.branch_id : null,
         department_id: isDepartmentScope || isOperationLevel ? form.department_id : null,
         division_id: isDivisionScope || isOperationLevel ? form.division_id : null,
-        unit_id:isUnitScope || isOperationLevel ? form.unit_id : null,
+        unit_id: isUnitScope || isOperationLevel ? form.unit_id : null,
         job_id: form.job_id || null,
+        business_unit_id: form.business_unit_id || null,
+        cost_center_id: form.cost_center_id || null,
+        profit_center_id: form.profit_center_id || null,
       };
 
       const url = isEdit
@@ -684,6 +944,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
+
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -697,9 +958,10 @@ export default function EmployeesPage() {
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+              disabled={openingModal}
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              + เพิ่มพนักงาน
+              {openingModal ? "กำลังโหลด..." : "+ เพิ่มพนักงาน"}
             </button>
           )}
         </div>
@@ -778,6 +1040,7 @@ export default function EmployeesPage() {
                           <img
                             src={employee.employee_photo_url}
                             alt={employee.full_name_th || "Employee"}
+                            loading="lazy"
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -838,9 +1101,9 @@ export default function EmployeesPage() {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(employee)}
-                          disabled={isProtectedEmployee}
+                          disabled={isProtectedEmployee || openingModal}
                           className={`rounded-xl border px-4 py-2 text-xs font-semibold ${
-                            isProtectedEmployee
+                            isProtectedEmployee || openingModal
                               ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                               : "border-slate-300 text-slate-600 hover:bg-slate-100"
                           }`}
@@ -1089,7 +1352,8 @@ export default function EmployeesPage() {
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 />
               </div>
-                      <div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   ชื่อเล่น
                 </label>
@@ -1328,7 +1592,8 @@ export default function EmployeesPage() {
                   </div>
                 )}
               </div>
-                      <div className="md:col-span-2 border-t border-slate-200 pt-5">
+
+              <div className="md:col-span-2 border-t border-slate-200 pt-5">
                 <h3 className="mb-3 text-base font-bold text-slate-800">
                   ข้อมูลการจ้างงาน / โครงสร้างองค์กร
                 </h3>
@@ -1371,12 +1636,20 @@ export default function EmployeesPage() {
                 </label>
                 <select
                   value={form.employment_type}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const typeCode = e.target.value;
+
+                    const selectedType = employmentTypes.find(
+                      (item) => item.type_code === typeCode
+                    );
+
                     setForm((prev) => ({
                       ...prev,
-                      employment_type: e.target.value,
-                    }))
-                  }
+                      employment_type: typeCode,
+                      employee_status_id: selectedType?.default_employee_status_id || "",
+                      resignation_date: "",
+                    }));
+                  }}
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
                 >
                   <option value="">เลือกประเภทการจ้าง</option>
@@ -1614,7 +1887,10 @@ export default function EmployeesPage() {
                   <Select
                     showSearch
                     allowClear
-                    placeholder="เลือกฝ่าย"
+                    disabled={!form.department_id}
+                    placeholder={
+                      form.department_id ? "เลือกฝ่าย" : "กรุณาเลือกแผนกก่อน"
+                    }
                     value={form.division_id || undefined}
                     onChange={(value) =>
                       setForm((prev) => ({
@@ -1623,7 +1899,10 @@ export default function EmployeesPage() {
                         unit_id: "",
                       }))
                     }
-                    options={filteredDivisions.map((d) => ({
+                    notFoundContent={
+                      divisionsLoading ? "กำลังโหลดฝ่าย..." : "ไม่พบข้อมูล"
+                    }
+                    options={divisions.map((d) => ({
                       value: d.id,
                       label: `${d.division_name}${
                         d.department_name ? ` (${d.department_name})` : ""
@@ -1644,7 +1923,10 @@ export default function EmployeesPage() {
                   <Select
                     showSearch
                     allowClear
-                    placeholder="เลือกหน่วยงาน"
+                    disabled={!form.division_id}
+                    placeholder={
+                      form.division_id ? "เลือกหน่วยงาน" : "กรุณาเลือกฝ่ายก่อน"
+                    }
                     value={form.unit_id || undefined}
                     onChange={(value) =>
                       setForm((prev) => ({
@@ -1652,7 +1934,10 @@ export default function EmployeesPage() {
                         unit_id: value ?? "",
                       }))
                     }
-                    options={filteredUnits.map((u) => ({
+                    notFoundContent={
+                      unitsLoading ? "กำลังโหลดหน่วยงาน..." : "ไม่พบข้อมูล"
+                    }
+                    options={units.map((u) => ({
                       value: u.id,
                       label: `${u.unit_name}${
                         u.division_name ? ` (${u.division_name})` : ""
@@ -1663,7 +1948,151 @@ export default function EmployeesPage() {
                   />
                 </div>
               )}
-                      <div className="md:col-span-2 border-t border-slate-200 pt-5">
+
+              <div className="md:col-span-2 border-t border-slate-200 pt-5">
+                <h3 className="mb-3 text-base font-bold text-slate-800">
+                  ข้อมูลบัญชี / ต้นทุนเงินเดือน
+                </h3>
+
+                <p className="mb-4 text-xs text-slate-500">
+                  ใช้กำหนดว่าพนักงานคนนี้กินเงินเดือน และค่าใช้จ่ายอยู่ใน Business Unit / Cost Center / Profit Center ใด
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Business Unit
+                  {selectedJob?.business_unit_required && (
+                    <span className="text-red-500"> *</span>
+                  )}
+                </label>
+
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="เลือก Business Unit"
+                  value={form.business_unit_id || undefined}
+                  optionFilterProp="label"
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      business_unit_id: value ?? "",
+                      cost_center_id: "",
+                      profit_center_id: "",
+                    }))
+                  }
+                  options={businessUnits
+                    .filter((item) => item.status === "active")
+                    .map((item) => ({
+                      value: item.id,
+                      label: `${item.business_unit_code} - ${item.business_unit_name}`,
+                    }))}
+                  className="w-full"
+                  size="large"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Cost Center
+                  {selectedJob?.cost_center_required && (
+                    <span className="text-red-500"> *</span>
+                  )}
+                </label>
+
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="เลือก Cost Center"
+                  value={form.cost_center_id || undefined}
+                  optionFilterProp="label"
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      cost_center_id: value ?? "",
+                    }))
+                  }
+                  options={filteredCostCenters
+                    .filter((item) => item.status === "active")
+                    .map((item) => ({
+                      value: item.id,
+                      label: `${item.cost_center_code} - ${item.cost_center_name}`,
+                    }))}
+                  className="w-full"
+                  size="large"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Profit Center
+                  {selectedJob?.profit_center_required && (
+                    <span className="text-red-500"> *</span>
+                  )}
+                </label>
+
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="เลือก Profit Center"
+                  value={form.profit_center_id || undefined}
+                  optionFilterProp="label"
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      profit_center_id: value ?? "",
+                    }))
+                  }
+                  options={filteredProfitCenters
+                    .filter((item) => item.status === "active")
+                    .map((item) => ({
+                      value: item.id,
+                      label: `${item.profit_center_code} - ${item.profit_center_name}`,
+                    }))}
+                  className="w-full"
+                  size="large"
+                />
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-700">
+                  เงื่อนไขจาก Job
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      selectedJob?.business_unit_required
+                        ? "bg-red-100 text-red-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    Business Unit {selectedJob?.business_unit_required ? "Required" : "Optional"}
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      selectedJob?.cost_center_required
+                        ? "bg-red-100 text-red-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    Cost Center {selectedJob?.cost_center_required ? "Required" : "Optional"}
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      selectedJob?.profit_center_required
+                        ? "bg-red-100 text-red-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    Profit Center {selectedJob?.profit_center_required ? "Required" : "Optional"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 border-t border-slate-200 pt-5">
                 <h3 className="mb-3 text-base font-bold text-slate-800">
                   สถานะพนักงาน
                 </h3>
@@ -1760,6 +2189,7 @@ export default function EmployeesPage() {
                 </button>
               )}
             </div>
+            
           </div>
         </div>
       )}

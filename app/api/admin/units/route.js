@@ -11,6 +11,7 @@ export async function GET(req) {
 
     const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
+    const divisionId = searchParams.get("division_id")?.trim() || "";
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
     const pageSize = Math.max(Number(searchParams.get("pageSize") || 20), 1);
@@ -40,6 +41,12 @@ export async function GET(req) {
       )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    // กรองตาม division_id — ใช้ตอนเปิด form employee เพื่อดึงเฉพาะ
+    // unit ของฝ่ายที่เลือก แทนที่จะโหลดทั้งหมดมา filter ฝั่ง client
+    if (divisionId) {
+      query = query.eq("division_id", divisionId);
+    }
 
     if (search) {
       const keyword = `%${search}%`;

@@ -30,7 +30,8 @@ export async function GET() {
       salary_max,
       type_of_work,
       updated_at,
-      positions ( position_name )
+      positions ( position_name , position_level ),
+      description
     `)
     .order("updated_at", { ascending: false });
 
@@ -42,10 +43,12 @@ export async function GET() {
     id: row.id,
     positions_id: row.positions_id,
     positions_name: row.positions?.position_name || "-",
+    position_level: row.positions?.position_level || "-",
     salary_min: row.salary_min,
     salary_max: row.salary_max,
     type_of_work: row.type_of_work,
     updated_at: row.updated_at,
+    description: row.description,
   }));
 
   return NextResponse.json(rows);
@@ -68,6 +71,7 @@ export async function POST(request) {
       workLocation: body.workLocation,
       status: true,
       updated_at:new Date().toISOString(),
+      description: body.descriptionซ ?? null,
     };
 
     const { data: inserted, error: insertError } = await supabaseAdmin

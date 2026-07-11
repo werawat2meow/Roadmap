@@ -12,7 +12,7 @@ export default function JobsLayout({
   return (
     <LanguageProvider>
       <LanguageHeader />
-
+      
       <main>
         {children}
       </main>

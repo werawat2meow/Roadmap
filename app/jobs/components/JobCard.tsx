@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { Job } from "@/app/jobs/types/job";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useRouter } from "next/navigation";
 
 interface Props {
   job: Job;
 }
 
 export default function JobCard({ job }: Props) {
-  const { locale } = useLanguage();
+  
+  const router = useRouter();
 
   const salary = job.salary_note
     ? job.salary_note
@@ -25,10 +26,10 @@ export default function JobCard({ job }: Props) {
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-bold leading-snug text-slate-900">
-            {job.position_name}
+            {job.position_name?.trim() || job.job_name }
           </h2>
           {job.urgent && (
-            <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200">
+            <span className="blink rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
               🔥 ด่วน
             </span>
           )}
@@ -45,7 +46,7 @@ export default function JobCard({ job }: Props) {
         <div className="flex items-center gap-2 text-slate-600">
           <span className="text-base">🏢</span>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">สถานที่</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">สถานที่ทำงาน</p>
             <p className="font-medium text-slate-700">{job.workLocation}</p>
           </div>
         </div>
@@ -69,9 +70,9 @@ export default function JobCard({ job }: Props) {
 
       {/* CTA */}
       <div className="mt-auto px-5 pb-5">
-        <Link
+        {/* <Link
           href={`/jobs/${job.id}`}
-          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+          className="flex items-center justify-end gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold  transition-colors"
         >
           ดูรายละเอียด
           <svg
@@ -82,7 +83,25 @@ export default function JobCard({ job }: Props) {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-        </Link>
+        </Link> */}
+
+        <div className="flex justify-end p-5">
+          <button
+            type="button"
+            onClick={() => router.push(`/jobs/${job.id}`)}
+            className="job-detail-link group relative flex items-center justify-end gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-blue-600 transition-colors hover:text-blue-700 cursor-pointer"
+          >
+            ดูรายละเอียด
+            <svg
+              className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

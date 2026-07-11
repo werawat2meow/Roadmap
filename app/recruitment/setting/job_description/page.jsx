@@ -118,7 +118,7 @@ export default function JobDescriptionPage({ initialData }) {
                       <td className="px-4 py-4 text-sm text-gray-700">
                       {index + 1}
                     </td>
-                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"}</td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"} {"( "+row.position_level+" )"} </td>
 
                       <td className="px-4 py-4 text-sm text-gray-700">
                         {row.updated_at

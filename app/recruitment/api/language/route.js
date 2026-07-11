@@ -19,7 +19,7 @@ export async function POST(request) {
     const body = await request.json();
 
     const language_name = String(body.language_name ?? "").trim();
-    const language_slug = String(body.language_slug ?? "").trim();
+    const language_slug = String(body.language_slug ?? "").trim().toUpperCase();
     const language_img = String(body.language_img ?? "").trim();
     const status = true;
     const updated_at = new Date().toISOString();

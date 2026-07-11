@@ -1,54 +1,53 @@
 "use client";
-// ยังไม่เสร็จ ที Select ชื่อบริษัท แล้วให้แก้ได้เฉพาะ Address , Phone , Email   ทำเสร็จ refacter แล้วไปเชื่อม กับ Employee    เสร็จจาก Employee ไปที่ management-assignments
-// ต้องกำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12 [ ดึงพนักงานเฉพาะ P9 - p12 (Management Level ไม่ต้องเลือก) (ต้องเช็คตำแหน่ง P9-P12 ที่จะทำการกำหนดสายบังคับบัญชาได้ ) ]
+
 import { useEffect, useMemo, useState } from "react";
 import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,} from "antd";
-
-import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,ReloadOutlined,BankOutlined,} from "@ant-design/icons";
+import {BankOutlined,DeleteOutlined,EditOutlined,PlusOutlined,ReloadOutlined,SearchOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import { CompanySelect, PayrollTypeSelect, } from "@/app/components/selectors";
+import { SortOrderField,StatusSelect,} from "@/app/components/forms";
 import LoadingOrb from "../../../components/LoadingOrb";
-import { swalError, swalSuccess } from "../../../components/Swal";
-import PhoneInput from "react-phone-number-input";
-import 'react-phone-number-input/style.css'
-import { isValidPhoneNumber } from 'react-phone-number-input'
+import {swalError,swalSuccess,} from "../../../components/Swal";
+import { formatThaiTaxId } from "@/lib/validators";
 
 const initialForm = {
   payroll_company_code: "",
   payroll_company_name: "",
   company_id: "",
-  tax_id: "",
   social_security_no: "",
-  address: "",
-  phone: "",
-  email: "",
   status: "active",
   sort_order: 0,
+  payroll_type_id: "",
+  payment_day: null,
 };
 
-export default function PayrollCompaniesPage() {
+async function safeJson(res) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
 
+export default function PayrollCompaniesPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuth();
-  // #region Permission
+
   const canView = hasPermission(user, "ems.payroll_companies.view");
   const canCreate = hasPermission(user, "ems.payroll_companies.create");
   const canEdit = hasPermission(user, "ems.payroll_companies.edit");
   const canDelete = hasPermission(user, "ems.payroll_companies.delete");
-  // #endregion 
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [payrollCompanies, setPayrollCompanies] = useState([]);
-  const [companies, setCompanies] = useState([]);
-
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [editingPayrollCompany, setEditingPayrollCompany] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState(null);
   const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
@@ -64,19 +63,6 @@ export default function PayrollCompaniesPage() {
     }
   }, [loadingUser, user, canView, router]);
 
-  const loadCompanies = async () => {
-    const res = await fetch("/api/admin/companies", {
-      cache: "no-store",
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result?.error || "โหลดบริษัทไม่สำเร็จ");
-    }
-    setCompanies(result.data || []);
-  };
-
   const loadPayrollCompanies = async (keyword = "") => {
     try {
       setLoading(true);
@@ -87,20 +73,25 @@ export default function PayrollCompaniesPage() {
         params.set("search", keyword.trim());
       }
 
+      const query = params.toString();
+
       const res = await fetch(
-        `/api/admin/payroll-companies?${params.toString()}`,
+        query
+          ? `/api/admin/payroll-companies?${query}`
+          : "/api/admin/payroll-companies",
         { cache: "no-store" }
       );
 
-      const result = await res.json();
+      const result = await safeJson(res);
 
       if (!res.ok) {
         throw new Error(result?.error || "โหลด Payroll Company ไม่สำเร็จ");
       }
 
-      setPayrollCompanies(result.data || []);
+      setPayrollCompanies(Array.isArray(result.data) ? result.data : []);
     } catch (err) {
-      console.error(err);
+      console.error("LOAD_PAYROLL_COMPANIES_ERROR:", err);
+      setPayrollCompanies([]);
       swalError(err.message || "โหลด Payroll Company ไม่สำเร็จ");
     } finally {
       setLoading(false);
@@ -108,21 +99,10 @@ export default function PayrollCompaniesPage() {
   };
 
   useEffect(() => {
-    if (!loadingUser && user && canView) {
-      loadCompanies().catch((err) => {
-        console.error(err);
-        swalError(err.message || "โหลดบริษัทไม่สำเร็จ");
-      });
+    if (loadingUser || !user || !canView) return;
 
-      loadPayrollCompanies();
-    }
-  }, [loadingUser, user, canView]);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
-      if (!loadingUser && user && canView) {
-        loadPayrollCompanies(search);
-      }
+      loadPayrollCompanies(search);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -130,6 +110,7 @@ export default function PayrollCompaniesPage() {
 
   const resetForm = () => {
     setEditingPayrollCompany(null);
+    setSelectedCompany(null);
     setForm(initialForm);
   };
 
@@ -155,19 +136,37 @@ export default function PayrollCompaniesPage() {
       payroll_company_code: item.payroll_company_code || "",
       payroll_company_name: item.payroll_company_name || "",
       company_id: item.company_id || "",
-      tax_id: item.tax_id || "",
       social_security_no: item.social_security_no || "",
-      address: item.address || "",
-      phone: item.phone || "",
-      email: item.email || "",
+      payroll_type_id: item.payroll_type_id || "",
+      payment_frequency: item.payment_frequency || "",
+      payment_day: item.payment_day === null || item.payment_day === undefined ? null : Number(item.payment_day),
       status: item.status || "active",
-      sort_order: item.sort_order || 0,
+      sort_order: Number(item.sort_order || 0),
+    });
+
+    setSelectedCompany({
+      id: item.company_id || "",
+      company_code: item.company_code || "",
+      company_name_th: item.company_name_th || item.company_name || "",
+      company_name_en: item.company_name_en || "",
+      tax_id: item.company_tax_id || "",
+      branch_no: item.company_branch_no || "",
+      address: item.company_address || "",
+      province: item.company_province || "",
+      district: item.company_district || "",
+      subdistrict: item.company_subdistrict || "",
+      postcode: item.company_postcode || "",
+      phone: item.company_phone || "",
+      email: item.company_email || "",
+      website: item.company_website || "",
     });
 
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
+    if (saving) return;
+
     resetForm();
     setOpenModal(false);
   };
@@ -175,99 +174,13 @@ export default function PayrollCompaniesPage() {
   const summary = useMemo(() => {
     return {
       total: payrollCompanies.length,
-      active: payrollCompanies.filter((x) => x.status === "active").length,
-      inactive: payrollCompanies.filter((x) => x.status === "inactive").length,
+      active: payrollCompanies.filter((item) => item.status === "active").length,
+      inactive: payrollCompanies.filter((item) => item.status === "inactive").length,
     };
   }, [payrollCompanies]);
 
-    const columns = [
-    {
-      title: "รหัส",
-      dataIndex: "payroll_company_code",
-      width: 170,
-    },
-    {
-      title: "Payroll Company",
-      dataIndex: "payroll_company_name",
-    },
-    {
-      title: "Company Master",
-      dataIndex: "company_name",
-      render: (value, record) => (
-        <div>
-          <div className="font-medium text-slate-700">{value || "-"}</div>
-          <div className="text-xs text-slate-400">
-            {record.company_code || ""}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Tax ID",
-      dataIndex: "tax_id",
-      width: 160,
-      render: (value) => value || "-",
-    },
-    {
-      title: "ประกันสังคม",
-      dataIndex: "social_security_no",
-      width: 160,
-      render: (value) => value || "-",
-    },
-    {
-      title: "สถานะ",
-      dataIndex: "status",
-      width: 120,
-      render: (value) => (
-        <Tag color={value === "active" ? "green" : "red"}>
-          {value === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
-        </Tag>
-      ),
-    },
-    {
-      title: "ลำดับ",
-      dataIndex: "sort_order",
-      width: 90,
-      align: "center",
-    },
-    {
-      title: "จัดการ",
-      width: 150,
-      align: "center",
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="แก้ไข">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenEdit(record)}
-              disabled={!canEdit}
-            />
-          </Tooltip>
-
-          <Tooltip title="ลบ">
-            <Popconfirm
-              title="ลบ Payroll Company"
-              description={`ต้องการลบ ${record.payroll_company_name} ?`}
-              okText="ลบ"
-              cancelText="ยกเลิก"
-              onConfirm={() => handleDelete(record)}
-            >
-              <Button
-                danger
-                type="text"
-                icon={<DeleteOutlined />}
-                disabled={!canDelete}
-              />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
-
   const handleSave = async () => {
-    const isEdit = !!editingPayrollCompany;
+    const isEdit = Boolean(editingPayrollCompany);
 
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไข Payroll Company");
@@ -279,24 +192,32 @@ export default function PayrollCompaniesPage() {
       return;
     }
 
-    if (!form.payroll_company_code.trim()) {
+    const payrollCompanyCode = form.payroll_company_code.trim().toUpperCase();
+    const payrollCompanyName = form.payroll_company_name.trim();
+
+    if (!payrollCompanyCode) {
       swalError("กรุณากรอกรหัส Payroll Company");
       return;
     }
 
-    if (!form.payroll_company_name.trim()) {
+    if (!payrollCompanyName) {
       swalError("กรุณากรอกชื่อ Payroll Company");
       return;
     }
 
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      swalError("กรุณากรอก Email ให้ถูกต้อง");
+    if (!form.company_id) {
+      swalError("กรุณาเลือก Company Master");
       return;
     }
 
-    if (form.phone && !isValidPhoneNumber(form.phone)) {
-      swalError("เบอร์โทรศัพท์ไม่ถูกต้อง");
-      return
+    if (!form.payroll_type_id) {
+      swalError("กรุณาเลือกประเภท Payroll");
+      return;
+    }
+
+    if ( form.payment_day !== null && ( !Number.isInteger(Number(form.payment_day)) || Number(form.payment_day) < 1 || Number(form.payment_day) > 31 )) {
+      swalError("วันที่จ่ายเงินเดือนต้องอยู่ระหว่าง 1 ถึง 31");
+      return;
     }
 
     try {
@@ -310,39 +231,33 @@ export default function PayrollCompaniesPage() {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payroll_company_code: form.payroll_company_code,
-          payroll_company_name: form.payroll_company_name,
-          company_id: form.company_id || null,
-          tax_id: form.tax_id || null,
-          social_security_no: form.social_security_no || null,
-          address: form.address || null,
-          phone: form.phone || null,
-          email: form.email || null,
-          status: form.status,
+          payroll_company_code: payrollCompanyCode,
+          payroll_company_name: payrollCompanyName,
+          company_id: form.company_id,
+          social_security_no: form.social_security_no.trim() || null,
+          payroll_type_id: form.payroll_type_id,
+          payment_day: form.payment_day === "" || form.payment_day === null ? null : Number(form.payment_day),
+          status: form.status || "active",
           sort_order: Number(form.sort_order || 0),
         }),
       });
 
-      const result = await res.json();
+      const result = await safeJson(res);
 
       if (!res.ok) {
-        throw new Error(result?.error || "Save Failed");
+        throw new Error(result?.error || "บันทึก Payroll Company ไม่สำเร็จ");
       }
 
       swalSuccess(
-        isEdit
-          ? "แก้ไข Payroll Company สำเร็จ"
-          : "เพิ่ม Payroll Company สำเร็จ"
+        isEdit ? "แก้ไข Payroll Company สำเร็จ" : "เพิ่ม Payroll Company สำเร็จ"
       );
 
       handleCloseModal();
       await loadPayrollCompanies(search);
     } catch (err) {
-      console.error(err);
+      console.error("SAVE_PAYROLL_COMPANY_ERROR:", err);
       swalError(err.message || "เกิดข้อผิดพลาดในการบันทึก");
     } finally {
       setSaving(false);
@@ -362,16 +277,16 @@ export default function PayrollCompaniesPage() {
         method: "DELETE",
       });
 
-      const result = await res.json();
+      const result = await safeJson(res);
 
       if (!res.ok) {
-        throw new Error(result?.error || "Delete Failed");
+        throw new Error(result?.error || "ลบ Payroll Company ไม่สำเร็จ");
       }
 
       swalSuccess("ลบ Payroll Company สำเร็จ");
       await loadPayrollCompanies(search);
     } catch (err) {
-      console.error(err);
+      console.error("DELETE_PAYROLL_COMPANY_ERROR:", err);
       swalError(err.message || "เกิดข้อผิดพลาดในการลบ");
     } finally {
       setLoading(false);
@@ -379,17 +294,131 @@ export default function PayrollCompaniesPage() {
   };
 
   const handleRefresh = () => {
-    loadCompanies().catch((err) => {
-      console.error(err);
-      swalError(err.message || "โหลดบริษัทไม่สำเร็จ");
-    });
-
     loadPayrollCompanies(search);
   };
-  
+
+  const columns = [
+    {
+      title: "รหัส",
+      dataIndex: "payroll_company_code",
+      width: 160,
+      render: (value) => (
+        <span className="font-semibold text-slate-700">{value || "-"}</span>
+      ),
+    },
+    {
+      title: "Payroll Company",
+      dataIndex: "payroll_company_name",
+      width: 230,
+      render: (value, record) => (
+        <div>
+          <div className="font-medium text-slate-700">
+            {value || "-"}
+          </div>
+
+          <div className="mt-1 text-xs text-slate-400">
+            {record.payroll_type_code
+              ? `${record.payroll_type_code} - ${
+                  record.payroll_type_name || ""
+                }`
+              : "-"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Company Master",
+      dataIndex: "company_name",
+      width: 260,
+      render: (value, record) => (
+        <div>
+          <div className="font-medium text-slate-700">{value || "-"}</div>
+          <div className="mt-1 text-xs text-slate-400">
+            {record.company_code || "-"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Tax ID",
+      dataIndex: "company_tax_id",
+      width: 180,
+       render: (value) => value ? formatThaiTaxId(value) : "-",
+    },
+    {
+      title: "ประกันสังคม",
+      dataIndex: "social_security_no",
+      width: 170,
+      render: (value) => value || "-",
+    },
+    {
+      title: "วันที่จ่าย",
+      dataIndex: "payment_day",
+      width: 110,
+      align: "center",
+      render: (value, record) => {
+        if (record.payment_frequency !== "monthly") {
+          return "-";
+        }
+
+        return value ? `วันที่ ${value}` : "-";
+      },
+    },
+    {
+      title: "สถานะ",
+      dataIndex: "status",
+      width: 110,
+      align: "center",
+      render: (value) => (
+        <Tag color={value === "active" ? "green" : "red"}>
+          {value === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
+        </Tag>
+      ),
+    },
+    {
+      title: "ลำดับ",
+      dataIndex: "sort_order",
+      width: 90,
+      align: "center",
+    },
+    {
+      title: "จัดการ",
+      width: 130,
+      align: "center",
+      fixed: "right",
+      render: (_, record) => (
+        <Space>
+          {canEdit && (
+            <Tooltip title="แก้ไข">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => handleOpenEdit(record)}
+              />
+            </Tooltip>
+          )}
+
+          {canDelete && (
+            <Tooltip title="ลบ">
+              <Popconfirm
+                title="ลบ Payroll Company"
+                description={`ต้องการลบ ${record.payroll_company_name} ใช่หรือไม่?`}
+                okText="ลบ"
+                cancelText="ยกเลิก"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDelete(record)}
+              >
+                <Button danger type="text" icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </Tooltip>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
   if (loadingUser) return <LoadingOrb />;
-  if (!user) return null;
-  if (!canView) return null;
+  if (!user || !canView) return null;
 
   return (
     <div className="space-y-6">
@@ -406,12 +435,16 @@ export default function PayrollCompaniesPage() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              จัดการบริษัทผู้จ่ายเงินเดือน สำหรับภาษี ภ.ง.ด.1 ประกันสังคม และ 50 ทวิ
+              จัดการบริษัทผู้จ่ายเงินเดือน และเชื่อมข้อมูลนิติบุคคลจาก Company Master
             </p>
           </div>
 
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
+          <Space wrap>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={loading}
+              onClick={handleRefresh}
+            >
               Refresh
             </Button>
 
@@ -428,7 +461,7 @@ export default function PayrollCompaniesPage() {
         </div>
       </motion.div>
 
-      <Row gutter={16}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card>
             <div className="text-sm text-slate-500">ทั้งหมด</div>
@@ -460,7 +493,7 @@ export default function PayrollCompaniesPage() {
           allowClear
           size="large"
           prefix={<SearchOutlined />}
-          placeholder="ค้นหา Payroll Company / Tax ID / Company Master"
+          placeholder="ค้นหา Payroll Company / Company Master / Tax ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -475,8 +508,9 @@ export default function PayrollCompaniesPage() {
           pagination={{
             pageSize: 20,
             showSizeChanger: false,
+            showTotal: (total) => `ทั้งหมด ${total} รายการ`,
           }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1450 }}
         />
       </Card>
 
@@ -487,23 +521,26 @@ export default function PayrollCompaniesPage() {
             ? "แก้ไข Payroll Company"
             : "เพิ่ม Payroll Company"
         }
-        width={820}
+        width={900}
         destroyOnHidden
+        mask={!saving}
+        keyboard={!saving}
         onCancel={handleCloseModal}
         onOk={handleSave}
-        okText={editingPayrollCompany ? "อัพเดท" : "บันทึก"}
+        okText={editingPayrollCompany ? "อัปเดต" : "บันทึก"}
         cancelText="ยกเลิก"
         confirmLoading={saving}
       >
         <div className="grid grid-cols-1 gap-5 pt-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               รหัส Payroll Company
+              <span className="ml-1 text-red-500">*</span>
             </label>
 
             <Input
               value={form.payroll_company_code}
-              placeholder="เช่น PAY-HOLDING"
+              placeholder="เช่น PAY001"
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
@@ -514,13 +551,14 @@ export default function PayrollCompaniesPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               ชื่อ Payroll Company
+              <span className="ml-1 text-red-500">*</span>
             </label>
 
             <Input
               value={form.payroll_company_name}
-              placeholder="เช่น Banana Holding Co.,Ltd."
+              placeholder="เช่น Payroll Holding"
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
@@ -531,163 +569,170 @@ export default function PayrollCompaniesPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Company Master
+              <span className="ml-1 text-red-500">*</span>
             </label>
 
-            <Select
-              allowClear
-              showSearch
-              style={{ width: "100%" }}
-              placeholder="เลือกบริษัทจาก Company Master"
-              value={form.company_id || undefined}
-              optionFilterProp="label"
-              options={companies.map((item) => ({
-                value: item.id,
-                label: `${item.company_code || ""} - ${item.company_name_th}`,
-              }))}
-              onChange={(value) => {
-                const company = companies.find((c)=>c.id===value);
-                setForm(prev=>({
-                    ...prev,
-                    company_id:value,
-                    tax_id:company?.tax_id || "",
-                    phone:company?.phone || "",
-                    email:company?.email || "",
-                    address:company?.address || ""
+            <CompanySelect
+              value={form.company_id}
+              placeholder="เลือกบริษัท"
+              onChange={(companyId, company) => {
+                setForm((prev) => ({
+                  ...prev,
+                  company_id: companyId || "",
+                }));
+
+                setSelectedCompany(company || null);
+              }}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            {selectedCompany ? (
+              <Card
+                size="small"
+                className="rounded-2xl border-slate-200 bg-slate-50"
+              >
+                <div className="mb-4">
+                  <div className="font-semibold text-slate-800">
+                    ข้อมูลนิติบุคคลจาก Company Master
+                  </div>
+
+                  <div className="mt-1 text-xs text-slate-500">
+                    ข้อมูลนี้แสดงอย่างเดียว และแก้ไขได้จากหน้า Company Master
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="text-xs text-slate-400">Company</div>
+                    <div className="mt-1 font-semibold text-slate-700">
+                      {selectedCompany.company_code || "-"} -{" "}
+                      {selectedCompany.company_name_th || "-"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400">Tax ID</div>
+                    <div className="mt-1 text-slate-700">
+                      {selectedCompany.tax_id ? formatThaiTaxId(selectedCompany.tax_id) : "-"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400">Branch No.</div>
+                    <div className="mt-1 text-slate-700">
+                      {selectedCompany.branch_no || "-"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400">Phone</div>
+                    <div className="mt-1 text-slate-700">
+                      {selectedCompany.phone || "-"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400">Email</div>
+                    <div className="mt-1 break-all text-slate-700">
+                      {selectedCompany.email || "-"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400">Website</div>
+                    <div className="mt-1 break-all text-slate-700">
+                      {selectedCompany.website || "-"}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-slate-400">Address</div>
+                    <div className="mt-1 leading-6 text-slate-700">
+                      {[
+                        selectedCompany.address,
+                        selectedCompany.subdistrict,
+                        selectedCompany.district,
+                        selectedCompany.province,
+                        selectedCompany.postcode,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "-"}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-400">
+                เลือก Company Master เพื่อแสดงข้อมูลนิติบุคคล
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              เลขทะเบียนประกันสังคม
+            </label>
+
+            <Input
+              value={form.social_security_no}
+              maxLength={20}
+              placeholder="เลขทะเบียนประกันสังคม"
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  social_security_no: e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 20),
+                }))
+              }
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              ประเภท Payroll
+            </label>
+
+            <PayrollTypeSelect
+              value={form.payroll_type_id}
+              onChange={(payrollTypeId, payrollType) => {
+                setForm((prev) => ({
+                  ...prev,
+                  payroll_type_id: payrollTypeId || "",
+                  payment_frequency: payrollType?.payment_frequency || "",
+                  payment_day: payrollType?.default_payment_day ?? null,
                 }));
               }}
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Tax ID
-            </label>
+          <StatusSelect
+            value={form.status}
+            onChange={(value) =>
+              setForm((prev) => ({
+                ...prev,
+                status: value,
+              }))
+            }
+          />
 
-            <Input
-              value={form.tax_id}
-              placeholder="เลขประจำตัวผู้เสียภาษี"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tax_id: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Social Security No.
-            </label>
-
-            <Input
-              value={form.social_security_no}
-              placeholder="เลขทะเบียนประกันสังคม"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  social_security_no: e.target.value.replace(/\D/g, "").slice(0, 20),
-                }))
-              }
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium">
-              Address
-            </label>
-
-            <Input.TextArea
-              rows={3}
-              value={form.address}
-              placeholder="ที่อยู่บริษัทสำหรับเอกสารภาษี / Payroll"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  address: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Phone
-            </label>
-
-            <PhoneInput
-              international
-              defaultCountry="TH"
-              countryCallingCodeEditable={false}
-              value={form.phone}
-              onChange={(value) => {
-                // ตัดเลข 0 นำหน้าออกเสมอ (เผื่อกรณี edge case)
-                const cleaned = value ? value.replace(/^(\+66)0/, '$1') : ''
-                setForm(prev => ({ ...prev, phone: cleaned }))
-              }}
-              placeholder="08X-XXX-XXXX"
-              className="phone-input-custom"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Email
-            </label>
-
-            <Input
-              value={form.email}
-              placeholder="payroll@example.com"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              สถานะ
-            </label>
-
-            <Select
-              style={{ width: "100%" }}
-              value={form.status}
-              options={[
-                { value: "active", label: "ใช้งาน" },
-                { value: "inactive", label: "ไม่ใช้งาน" },
-              ]}
-              onChange={(value) =>
-                setForm((prev) => ({
-                  ...prev,
-                  status: value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              ลำดับ
-            </label>
-
-            <Input
-              type="number"
-              value={form.sort_order}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  sort_order: Number(e.target.value || 0),
-                }))
-              }
-            />
-          </div>
+          <SortOrderField
+            value={form.sort_order}
+            onChange={(value) =>
+              setForm((prev) => ({
+                ...prev,
+                sort_order: Number(value || 0),
+              }))
+            }
+          />
         </div>
       </Modal>
     </div>
   );
 }
+
+// ยังไม่เสร็จ ที Select ชื่อบริษัท แล้วให้แก้ได้เฉพาะ Address , Phone , Email   ทำเสร็จ refacter แล้วไปเชื่อม กับ Employee    เสร็จจาก Employee ไปที่ management-assignments
+// ต้องกำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12 [ ดึงพนักงานเฉพาะ P9 - p12 (Management Level ไม่ต้องเลือก) (ต้องเช็คตำแหน่ง P9-P12 ที่จะทำการกำหนดสายบังคับบัญชาได้ ) ]

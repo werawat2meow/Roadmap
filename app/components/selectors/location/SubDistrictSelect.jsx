@@ -17,9 +17,7 @@ export default function SubDistrictSelect({districtCode = "",disabled = false,..
       }}
       valueField="code"
       labelField={(item) =>
-        `${item.name_th}${
-          item.postcode ? ` - ${item.postcode}` : ""
-        }`
+        `${item.name_th}`
       }
       placeholder="เลือกตำบล / แขวง"
     />

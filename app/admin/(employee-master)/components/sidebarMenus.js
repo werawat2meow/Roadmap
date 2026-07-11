@@ -1,6 +1,6 @@
 "use client";
 
-import {FileTextOutlined,FundProjectionScreenOutlined,DollarOutlined,PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
+import {TagsOutlined,FileTextOutlined,FundProjectionScreenOutlined,DollarOutlined,PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
 
 export const sidebarMenus = [
   {
@@ -87,6 +87,12 @@ export const sidebarMenus = [
     title: "ACCOUNTING STRUCTURE",
     icon: <DollarOutlined />,
     items: [
+      {
+        label: "Payroll Types",
+        href: "/admin/payroll-types",
+        icon: <TagsOutlined />,
+        permission: "ems.payroll_types.view",
+      },
       {
         label: "Payroll Company",
         href: "/admin/payroll-companies",

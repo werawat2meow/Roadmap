@@ -171,16 +171,17 @@ export default function PersonalInformation({
             .select("subdistrict_id,name_th,name_en,zipcode")
             .eq("district_id",districtId)
             .order(locale==="TH"?"name_th":"name_en");
-        
+
         setSubDistrictOptions(data ?? []);
 
         return data ?? [];
     }
 
+
     const handleSubDistrictChange = (id:number)=>{
-        
+
         const sub = subDistrictOptions.find(x=>x.subdistrict_id===id);
-        
+
         if (!sub) { return; }
 
         // NOTE: batched into a single onChange call for the same reason as
@@ -194,71 +195,72 @@ export default function PersonalInformation({
                     : sub.name_en,
             postalCode: sub.zipcode,
         });
+
     }
 
-    const handleZipcode = async(zip:string)=>{
+    // const handleZipcode = async(zip:string)=>{
 
-        console.log(zip);
-        
-        updateField("postalCode",zip);
+    //     updateField("postalCode",zip);
 
-        if(zip.length!==5){ return; }
+    //     if(zip.length!==5){ return; }
 
-        const { data } = await supabase
-            .from("subdistricts")
-            .select(`
-                id,
-                name_th,
-                name_en,
-                zipcode,
-                districts(
-                    id,
-                    name_th,
-                    name_en,
-                    province_id,
-                    provinces(
-                        id,
-                        name_th,
-                        name_en
-                    )
-                )
-            `)
-            .eq("zipcode",zip);
+    //     const { data } = await supabase
+    //         .from("subdistricts")
+    //         .select(`
+    //             id,
+    //             name_th,
+    //             name_en,
+    //             zipcode,
+    //             districts(
+    //                 id,
+    //                 name_th,
+    //                 name_en,
+    //                 province_id,
+    //                 provinces(
+    //                     id,
+    //                     name_th,
+    //                     name_en
+    //                 )
+    //             )
+    //         `)
+    //         .eq("zipcode",zip);
 
-        if(!data?.length){ return; }
+    //     if(!data?.length){ return; }
 
-        const province=data[0].districts.provinces;
+    //     const province=data[0].districts.provinces;
 
-        const districts=[...new Map(
-            data.map(x=>[
-                x.districts.id,
-                x.districts
-            ])
-        ).values()];
+    //     const districts=[...new Map(
+    //         data.map(x=>[
+    //             x.districts.id,
+    //             x.districts
+    //         ])
+    //     ).values()];
 
-        setDistrictOptions(districts);
+    //     setDistrictOptions(districts);
 
-        // NOTE: batched into a single onChange call for the same reason as
-        // handleProvinceChange above. `postalCode` is included explicitly
-        // since the `value` in this closure predates the earlier
-        // updateField("postalCode", zip) call.
-        onChange({
-            ...value,
-            postalCode: zip,
-            provinceId: province.id,
-            province:
-                locale === "TH"
-                    ? province.name_th
-                    : province.name_en,
-            districtId: districts[0].id,
-            district:
-                locale === "TH"
-                    ? districts[0].name_th
-                    : districts[0].name_en,
-        });
+    //     // NOTE: batched into a single onChange call for the same reason as
+    //     // handleProvinceChange above. `postalCode` is included explicitly
+    //     // since the `value` in this closure predates the earlier
+    //     // updateField("postalCode", zip) call.
+    //     onChange({
+    //         ...value,
+    //         postalCode: zip,
+    //         provinceId: province.id,
+    //         province:
+    //             locale === "TH"
+    //                 ? province.name_th
+    //                 : province.name_en,
+    //         districtId: districts[0].id,
+    //         district:
+    //             locale === "TH"
+    //                 ? districts[0].name_th
+    //                 : districts[0].name_en,
+    //     });
 
-        setSubDistrictOptions(data);
-    }
+    //     setSubDistrictOptions(data);
+    // }
+
+
 
   /* ---------------------------------------------------------------------- */
   /*                            Update Form Data                            */
@@ -272,6 +274,9 @@ export default function PersonalInformation({
       ...value,
       [field]: fieldValue,
     };
+
+    console.log(newValue);   
+
     onChange(newValue);
   };
 
@@ -314,6 +319,7 @@ export default function PersonalInformation({
         dateOfBirth: "",
         age: null,
       });
+
       return;
     }
 
@@ -650,30 +656,30 @@ export default function PersonalInformation({
                         validateTrigger="onChange"
                         rules={[
                             {
-                                validator(_, value) {
-                                    if (!value) {
-                                        return Promise.resolve();
+                            validator(_, value) {
+                                if (!value) {
+                                    return Promise.resolve();
+                                }
+                                if (language === "TH") {
+                                    if (!/^\d{13}$/.test(value)) {
+                                        return Promise.reject(
+                                        new Error("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
+                                        );
                                     }
-                                    if (language === "TH") {
-                                        if (!/^\d{13}$/.test(value)) {
-                                            return Promise.reject(
-                                            new Error("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
-                                            );
-                                        }
-                                        if (!validateThaiCitizenId(value)) {
-                                            return Promise.reject(
-                                            new Error(getUIText(uiText.invalidThaiId, locale))
-                                            );
-                                        }
-                                        return Promise.resolve();
-                                    }
-
-                                    // Passport
-                                    if (!validatePassport(value)) {
-                                        return Promise.reject(  new Error("Invalid passport number") );
+                                    if (!validateThaiCitizenId(value)) {
+                                        return Promise.reject(
+                                        new Error(getUIText(uiText.invalidThaiId, locale))
+                                        );
                                     }
                                     return Promise.resolve();
-                                },
+                                }
+
+                                // Passport
+                                if (!validatePassport(value)) {
+                                    return Promise.reject(  new Error("Invalid passport number") );
+                                }
+                                return Promise.resolve();
+                            },
                             },
                         ]}
                         >
@@ -731,6 +737,7 @@ export default function PersonalInformation({
                 {/* Province */}
                 <Col xs={24} md={6}>
                     <Form.Item label={getUIText(uiText.province, locale)} required >
+
                         <Select
                             value={value.provinceId}
                             showSearch
@@ -793,10 +800,11 @@ export default function PersonalInformation({
                         <Input
                             value={value.postalCode}
                             maxLength={5}
-                            onChange={(e)=>
-                                handleZipcode(
-                                    e.target.value.replace(/\D/g,"")
-                                )
+                            readOnly
+                            placeholder={
+                                language === "TH"
+                                ? "กรอกอัตโนมัติจากตำบล"
+                                : "Auto-filled from Sub District"
                             }
                         />
                     </Form.Item>

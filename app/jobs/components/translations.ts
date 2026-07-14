@@ -240,6 +240,11 @@ export const uiText = {
     TH: "รหัสไปรษณีย์",
   },
 
+  email:{
+    EN: "E-mail",
+    TH: "อีเมล์",
+  },
+
   lineId: {
     EN: "Line ID",
     TH: "Line ID",
@@ -647,6 +652,11 @@ export const uiText = {
   invalidThaiId: {
     EN: "Invalid Thai ID card number.",
     TH: "เลขประจำตัวประชาชนไม่ถูกต้อง",
+  },
+
+  invalidEmail:{
+    EN: "Please enter your email",
+    TH: "รูปแบบอีเมลไม่ถูกต้อง",
   },
 
   invalidPhone: {

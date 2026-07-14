@@ -77,12 +77,16 @@ export interface PersonalInformationData  {
   subDistrict: string;
   district: string;
   province: string;
+  provinceId: number | null;
+  districtId: number | null;
+  subDistrictId: number | null;
   postalCode: string;
   lineId: string;
+  email: string;
   phoneNumber: string;
-  residenceType: ResidenceType[];
+  residenceType: ResidenceType| "";
   residenceOther: string;
-  maritalStatus: MaritalStatus[];
+  maritalStatus: MaritalStatus| "";
   children: string;
   driverLicense: DriverLicense;
   emergencyContact: EmergencyContact;
@@ -101,8 +105,8 @@ export interface EducationHistory {
   institution: string;
   faculty: string;
   major: string;
-  graduatedYear: string;
-  gpa: string;
+  graduatedYear: number;
+  gpa: number;
 }
 
 /* -------------------------------------------------------------------------- */

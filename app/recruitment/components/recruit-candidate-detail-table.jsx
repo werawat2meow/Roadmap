@@ -197,12 +197,12 @@ export default function CandidateDetailTable() {
         width: 190,
         render: (_, row) => (
           <Space size="small">
-            <Link href={`/recruitment/candidate/${row.id}/edit`}>
+            <Link href={`/recruitment/setting/candidate_detail/${row.id}/edit`}>
               <Button type="primary" size="small">
                 อัปเดต
               </Button>
             </Link>
-            <Link href={`/recruitment/candidate/${row.id}`}>
+            <Link href={`/recruitment/setting/candidate_detail/${row.id}`}>
               <Button size="small">ดูรายละเอียด</Button>
             </Link>
           </Space>

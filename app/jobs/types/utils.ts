@@ -143,11 +143,12 @@ export function createPersonalInformation(): PersonalInformationData {
     district: "",
     province: "",
     postalCode: "",
+    email:"",
     lineId: "",
     phoneNumber: "",
-    residenceType: [],
+    residenceType: "",
     residenceOther: "",
-    maritalStatus: [],
+    maritalStatus: "",
     children: "",
     driverLicense: {
       car: false,
@@ -177,8 +178,8 @@ export function createEducationRow(): EducationHistory {
     institution: "",
     faculty: "",
     major: "",
-    graduatedYear: "",
-    gpa: "",
+    graduatedYear: 0,
+    gpa: 0,
   };
 }
 
@@ -218,10 +219,10 @@ export function createLanguageSkillRow(): LanguageSkill {
   return {
     id: generateId(),
     language: "",
-    listening: "",
-    speaking: "",
-    reading: "",
-    writing: "",
+    listening: 0,
+    speaking: 0,
+    reading: 0,
+    writing: 0,
   };
 }
 
@@ -373,6 +374,22 @@ export function validateApplication(
       message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
     });
   }
+
+  if (isEmpty(payload.personal.email)) {
+    errors.push({
+      field: "email",
+      message: `${getUIText(uiText.email, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.phoneNumber)) {
+    errors.push({
+      field: "phoneNumber",
+      message: `${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  console.log(payload.personal.residenceType , payload.personal.residenceType.length);
     
   if (payload.personal.residenceType.length == 0) {
     errors.push({
@@ -381,6 +398,7 @@ export function validateApplication(
     });
   }
 
+  console.log(payload.personal.maritalStatus ,payload.personal.maritalStatus.length);
   if (payload.personal.maritalStatus.length == 0) {
     errors.push({
       field: "maritalStatus",

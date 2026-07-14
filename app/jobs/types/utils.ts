@@ -139,9 +139,12 @@ export function createPersonalInformation(): PersonalInformationData {
     addressNo: "",
     villageNo: "",
     street: "",
-    subDistrict: "",
-    district: "",
+    provinceId: "",
+    districtId: "",
+    subDistrictId: "",
     province: "",
+    district: "",
+    subDistrict: "",
     postalCode: "",
     email:"",
     lineId: "",
@@ -347,33 +350,33 @@ export function validateApplication(
     });
   }
   
-  if (isEmpty(payload.personal.subDistrict)) {
-    errors.push({
-      field: "subDistrict",
-      message: `${getUIText(uiText.subDistrict, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }
+  // if (isEmpty(payload.personal.subDistrict)) {
+  //   errors.push({
+  //     field: "subDistrict",
+  //     message: `${getUIText(uiText.subDistrict, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
 
-  if (isEmpty(payload.personal.district)) {
-    errors.push({
-      field: "district",
-      message: `${getUIText(uiText.district, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }
+  // if (isEmpty(payload.personal.district)) {
+  //   errors.push({
+  //     field: "district",
+  //     message: `${getUIText(uiText.district, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
   
-  if (isEmpty(payload.personal.province)) {
-    errors.push({
-      field: "province",
-      message: `${getUIText(uiText.province, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }  
+  // if (isEmpty(payload.personal.province)) {
+  //   errors.push({
+  //     field: "province",
+  //     message: `${getUIText(uiText.province, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }  
   
-  if (isEmpty(payload.personal.postalCode)) {
-    errors.push({
-      field: "postalCode",
-      message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }
+  // if (isEmpty(payload.personal.postalCode)) {
+  //   errors.push({
+  //     field: "postalCode",
+  //     message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
 
   if (isEmpty(payload.personal.email)) {
     errors.push({
@@ -389,7 +392,6 @@ export function validateApplication(
     });
   }
 
-  console.log(payload.personal.residenceType , payload.personal.residenceType.length);
     
   if (payload.personal.residenceType.length == 0) {
     errors.push({
@@ -398,7 +400,6 @@ export function validateApplication(
     });
   }
 
-  console.log(payload.personal.maritalStatus ,payload.personal.maritalStatus.length);
   if (payload.personal.maritalStatus.length == 0) {
     errors.push({
       field: "maritalStatus",

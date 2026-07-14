@@ -55,7 +55,6 @@ export default function RegisterPage() {
     [locale]
   );
 
-  // console.log("RegisterPage", { jobId, locale, t });
   const [loading, setLoading] = useState(true);
 
   const [saving, setSaving] = useState(false);

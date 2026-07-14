@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect , useState } from "react";
+import { useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import {
   Card,
@@ -20,6 +20,7 @@ import {
 import { uiText } from "@/app/jobs/components/translations";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import { getUIText } from "@/app/jobs/lib/ui";
+import { AddressSelector } from "@/app/jobs/components/address";
 
 import {
   MaritalStatus,
@@ -36,8 +37,6 @@ import {
   validateEmail,
 } from "@/app/jobs/types/utils";
 
-import { supabase } from "@/lib/supabaseClient";
-
 const { Title } = Typography;
 
 const { Option } = Select;
@@ -52,10 +51,6 @@ export default function PersonalInformation({
     
     const { locale } = useLanguage();
 
-    const [provinceOptions, setProvinceOptions] = useState<any[]>([]);
-    const [districtOptions, setDistrictOptions] = useState<any[]>([]);
-    const [subDistrictOptions, setSubDistrictOptions] = useState<any[]>([]);
-
   /* ---------------------------------------------------------------------- */
   /*                          Sync External Value                           */
   /* ---------------------------------------------------------------------- */
@@ -69,199 +64,6 @@ export default function PersonalInformation({
     });
   }, [form, value]);
 
-    useEffect(() => {
-        // NOTE: loadProvince/handleProvinceChange/handleDistrictChange are async and
-        // depend on data being fetched before being read back out of state, so we
-        // wait for them (and pass the freshly-fetched data through directly) instead
-        // of relying on provinceOptions/districtOptions state, which would still be
-        // stale ([]) on this same tick (this was previously causing an unhandled
-        // "Cannot read properties of undefined" crash that blanked out all 3 selects).
-        (async () => {
-            const provinces = await loadProvince();
-
-            let districts: any[] = [];
-
-            if (value.provinceId) {
-                districts = await handleProvinceChange(value.provinceId, provinces);
-            }
-
-            if (value.districtId) {
-                await handleDistrictChange(value.districtId, districts);
-            }
-        })();
-    }, [locale]);
-
-    const loadProvince = async () => {
-        const nameField = locale === "TH" ? "name_th" : "name_en";
-
-        const { data } = await supabase
-            .from("province")
-            .select(`province_id, ${nameField}`)
-            .order(nameField);
-
-        setProvinceOptions(data ?? []);
-
-        return data ?? [];
-    };
-
-    const handleProvinceChange = async (
-        provinceId: number,
-        provinceList: any[] = provinceOptions
-    ) => {
-
-        const province = provinceList.find(x => x.province_id === provinceId);
-
-        if (!province) { return []; }
-
-        // NOTE: batched into a single onChange call. Calling updateField()
-        // repeatedly here would have each call spread from the same stale
-        // `value` closure, so later calls (e.g. postalCode) would silently
-        // overwrite earlier ones (e.g. provinceId) instead of accumulating.
-        onChange({
-            ...value,
-            provinceId,
-            province:
-                locale === "TH"
-                    ? province.name_th
-                    : province.name_en,
-            districtId: null,
-            district: "",
-            subDistrictId: null,
-            subDistrict: "",
-            postalCode: "",
-        });
-
-        const { data } = await supabase
-            .from("districts")
-            .select("district_id,name_th,name_en")
-            .eq("province_id", provinceId)
-            .order(locale === "TH" ? "name_th" : "name_en");
-        
-        setDistrictOptions(data ?? []);
-        setSubDistrictOptions([]);
-
-        return data ?? [];
-    };
-
-    const handleDistrictChange = async (
-        districtId:number,
-        districtList: any[] = districtOptions
-    )=>{
-
-        const district = districtList.find(x=>x.district_id===districtId);
-
-        if (!district) { return []; }
-
-        // NOTE: batched into a single onChange call for the same reason as
-        // handleProvinceChange above.
-        onChange({
-            ...value,
-            districtId,
-            district:
-                locale === "TH"
-                    ? district.name_th
-                    : district.name_en,
-            subDistrictId: null,
-            subDistrict: "",
-            postalCode: "",
-        });
-
-        const { data } = await supabase
-            .from("subdistrict")
-            .select("subdistrict_id,name_th,name_en,zipcode")
-            .eq("district_id",districtId)
-            .order(locale==="TH"?"name_th":"name_en");
-
-        setSubDistrictOptions(data ?? []);
-
-        return data ?? [];
-    }
-
-
-    const handleSubDistrictChange = (id:number)=>{
-
-        const sub = subDistrictOptions.find(x=>x.subdistrict_id===id);
-
-        if (!sub) { return; }
-
-        // NOTE: batched into a single onChange call for the same reason as
-        // handleProvinceChange above.
-        onChange({
-            ...value,
-            subDistrictId: id,
-            subDistrict:
-                locale === "TH"
-                    ? sub.name_th
-                    : sub.name_en,
-            postalCode: sub.zipcode,
-        });
-
-    }
-
-    // const handleZipcode = async(zip:string)=>{
-
-    //     updateField("postalCode",zip);
-
-    //     if(zip.length!==5){ return; }
-
-    //     const { data } = await supabase
-    //         .from("subdistricts")
-    //         .select(`
-    //             id,
-    //             name_th,
-    //             name_en,
-    //             zipcode,
-    //             districts(
-    //                 id,
-    //                 name_th,
-    //                 name_en,
-    //                 province_id,
-    //                 provinces(
-    //                     id,
-    //                     name_th,
-    //                     name_en
-    //                 )
-    //             )
-    //         `)
-    //         .eq("zipcode",zip);
-
-    //     if(!data?.length){ return; }
-
-    //     const province=data[0].districts.provinces;
-
-    //     const districts=[...new Map(
-    //         data.map(x=>[
-    //             x.districts.id,
-    //             x.districts
-    //         ])
-    //     ).values()];
-
-    //     setDistrictOptions(districts);
-
-    //     // NOTE: batched into a single onChange call for the same reason as
-    //     // handleProvinceChange above. `postalCode` is included explicitly
-    //     // since the `value` in this closure predates the earlier
-    //     // updateField("postalCode", zip) call.
-    //     onChange({
-    //         ...value,
-    //         postalCode: zip,
-    //         provinceId: province.id,
-    //         province:
-    //             locale === "TH"
-    //                 ? province.name_th
-    //                 : province.name_en,
-    //         districtId: districts[0].id,
-    //         district:
-    //             locale === "TH"
-    //                 ? districts[0].name_th
-    //                 : districts[0].name_en,
-    //     });
-
-    //     setSubDistrictOptions(data);
-    // }
-
-
-
   /* ---------------------------------------------------------------------- */
   /*                            Update Form Data                            */
   /* ---------------------------------------------------------------------- */
@@ -274,9 +76,6 @@ export default function PersonalInformation({
       ...value,
       [field]: fieldValue,
     };
-
-    console.log(newValue);   
-
     onChange(newValue);
   };
 
@@ -733,82 +532,26 @@ export default function PersonalInformation({
                         />
                     </Form.Item>
                 </Col>
-
-                {/* Province */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.province, locale)} required >
-
-                        <Select
-                            value={value.provinceId}
-                            showSearch
-                            optionFilterProp="label"
-                            onChange={(provinceId) => handleProvinceChange(provinceId)}
-                            options={provinceOptions.map(item=>({
-                                value:item.province_id,
-                                label:
-                                    locale==="TH"
-                                        ? item.name_th
-                                        : item.name_en
-                            }))}
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* District */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.district, locale)} required >
-                        <Select
-                            value={value.districtId}
-                            showSearch
-                            optionFilterProp="label"
-                            onChange={(districtId) => handleDistrictChange(districtId)}
-                            disabled={!value.provinceId}
-                            options={districtOptions.map(item=>({
-                                value:item.district_id,
-                                label:
-                                    locale==="TH"
-                                        ? item.name_th
-                                        : item.name_en
-                            }))}
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* Sub District */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.subDistrict, locale)} required >
-                        <Select
-                            value={value.subDistrictId}
-                            showSearch
-                            optionFilterProp="label"
-                            onChange={handleSubDistrictChange}
-                            disabled={!value.districtId}
-                            options={subDistrictOptions.map(item=>({
-                                value:item.subdistrict_id,
-                                label:
-                                    locale==="TH"
-                                        ? item.name_th
-                                        : item.name_en
-                            }))}
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* Postal Code */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.postalCode, locale)} required >
-                        <Input
-                            value={value.postalCode}
-                            maxLength={5}
-                            readOnly
-                            placeholder={
-                                language === "TH"
-                                ? "กรอกอัตโนมัติจากตำบล"
-                                : "Auto-filled from Sub District"
-                            }
-                        />
-                    </Form.Item>
-                </Col>
+                
+                 <Col xs={24} md={24}>
+                    <AddressSelector
+                        value={{
+                            provinceId: value.provinceId,
+                            districtId: value.districtId,
+                            subDistrictId: value.subDistrictId,
+                            postalCode: value.postalCode,
+                        }}
+                        onChange={(address) =>
+                            onChange({
+                                ...value,
+                                provinceId: address.provinceId,
+                                districtId: address.districtId,
+                                subDistrictId: address.subDistrictId,
+                                postalCode: address.postalCode,
+                            })
+                        }
+                    />
+                    </Col>
 
                 <Col xs={24} md={12}>
                     <Form.Item

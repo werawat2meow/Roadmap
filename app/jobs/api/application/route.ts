@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
+    
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
     const positionId = payload.positionId ?? payload.position_id ?? null;
@@ -73,6 +73,9 @@ export async function POST(request: NextRequest) {
       sub_district: personal.subDistrict ?? "",
       district: personal.district ?? "",
       province: personal.province ?? "",
+      province_id : personal.provinceId ?? "",
+      district_id : personal.districtId ?? "",
+      subdistrict_id : personal.subDistrictId ?? "",
       postal_code: personal.postalCode ?? null,
       line_id: personal.lineId ?? "",
       email: personal.email ?? "",
@@ -92,8 +95,8 @@ export async function POST(request: NextRequest) {
       pdpa: agreement.pdpa ?? false,
       updated_at: new Date().toISOString(),
       status: 1,
-    };  
-
+    }; 
+    
     const {
       data: application,
       error: applicationError,
@@ -112,14 +115,15 @@ export async function POST(request: NextRequest) {
     /* ------------------------------------------------------------ */
 
     try {
-      /* -------------------------------------------------------- */
-      /*                2) Insert Child Tables ต่อ                   */
-      /* -------------------------------------------------------- */
+    //   /* -------------------------------------------------------- */
+    //   /*                2) Insert Child Tables ต่อ                   */
+    //   /* -------------------------------------------------------- */
       
       const education =
         payload.education?.filter((item: any) => {
-          return item.language?.trim();
+          return item.degreeLevel?.trim();
         }) ?? [];
+
       
       if (education.length > 0) {
         const educationRows = payload.education.map((item: any) => ({
@@ -141,7 +145,7 @@ export async function POST(request: NextRequest) {
 
       const workExperience =
         payload.workExperience?.filter((item: any) => {
-          return item.language?.trim();
+          return item.period?.trim();
         }) ?? [];
 
       if (workExperience.length > 0) {

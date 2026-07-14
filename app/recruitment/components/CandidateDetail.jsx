@@ -494,7 +494,7 @@ export default function CandidateDetail({
               key: "good",
               width: 90,
               align: "center",
-              render: (v) => (v ? "✓" : ""),
+              render: (v) => (v == 1 ? "✓" : ""),
             },
             {
               title: "Fair",
@@ -502,7 +502,7 @@ export default function CandidateDetail({
               key: "fair",
               width: 90,
               align: "center",
-              render: (v) => (v ? "✓" : ""),
+              render: (v) => (v == 1 ? "✓" : ""),
             },
             {
               title: "Language",

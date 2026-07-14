@@ -54,6 +54,13 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export interface AddressValue {
+    provinceId?: number;
+    districtId?: number;
+    subDistrictId?: number;
+    postalCode?: string;
+}
+
 export interface PersonalInformationData  {
   otherPosition: string;
   expectedSalary: number;

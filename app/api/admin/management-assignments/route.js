@@ -7,60 +7,115 @@ const SELECT_FIELDS = `
   employee_id,
   management_level,
   scope_type,
+
   company_id,
   branch_group_id,
   branch_id,
   department_id,
   division_id,
   unit_id,
+
   supervisor_employee_id,
+
   is_primary,
   status,
   sort_order,
+
   created_at,
   updated_at,
+
   employees!management_assignments_employee_id_fkey (
+    id,
+    employee_code,
+
+    first_name_th,
+    last_name_th,
+    first_name_en,
+    last_name_en,
+
+    employee_photo_url,
+
+    branch_group_id,
+    branch_id,
+    department_id,
+    division_id,
+    unit_id,
+
+    position_id,
+    job_id,
+
+    positions (
+      id,
+      position_code,
+      position_name,
+      position_level
+    ),
+
+    jobs (
+      id,
+      job_code,
+      job_name,
+      job_level,
+      management_level,
+      scope_type,
+      can_manage_employees,
+      can_approve_budget
+    )
+  ),
+
+  supervisor:employees!management_assignments_supervisor_employee_id_fkey (
     id,
     employee_code,
     first_name_th,
     last_name_th,
     first_name_en,
-    last_name_en
+    last_name_en,
+    employee_photo_url,
+
+    positions (
+      position_name,
+      position_level
+    ),
+
+    jobs (
+      job_name,
+      management_level
+    )
   ),
-  supervisor:employees!management_assignments_supervisor_employee_id_fkey (
-    id,
-    employee_code,
-    first_name_th,
-    last_name_th
-  ),
+
   companies (
     id,
     company_code,
     company_name_th,
     company_name_en
   ),
+
   branch_groups (
     id,
     group_code,
     group_name,
     group_color
   ),
+
   branches (
     id,
     branch_code,
     branch_name
   ),
+
   departments (
     id,
     department_code,
     department_name,
     department_color
   ),
+
   divisions (
     id,
     division_code,
     division_name
   ),
+
   units (
     id,
     unit_code,
@@ -68,50 +123,187 @@ const SELECT_FIELDS = `
   )
 `;
 
-const mapAssignment = (item) => ({
-  id: item.id,
-  employee_id: item.employee_id,
-  employee_code: item.employees?.employee_code || "",
-  employee_name:
-    `${item.employees?.first_name_th || ""} ${item.employees?.last_name_th || ""}`.trim() ||
-    `${item.employees?.first_name_en || ""} ${item.employees?.last_name_en || ""}`.trim() ||
-    "-",
+const mapAssignment = (item) => {
+  const employee = item.employees || {};
+  const position = employee.positions || {};
+  const job = employee.jobs || {};
 
-  management_level: item.management_level,
-  scope_type: item.scope_type,
+  const supervisor = item.supervisor || {};
+  const supervisorPosition =
+    supervisor.positions || {};
+  const supervisorJob =
+    supervisor.jobs || {};
 
-  company_id: item.company_id || "",
-  company_name:
-    item.companies?.company_name_th || item.companies?.company_name_en || "",
+  const resolvedManagementLevel =
+    job.management_level ||
+    position.position_level ||
+    item.management_level ||
+    "";
 
-  branch_group_id: item.branch_group_id || "",
-  branch_group_name: item.branch_groups?.group_name || "",
-  branch_group_color: item.branch_groups?.group_color || "#E2E8F0",
+  const resolvedScopeType =
+    item.scope_type ||
+    job.scope_type ||
+    "";
 
-  branch_id: item.branch_id || "",
-  branch_name: item.branches?.branch_name || "",
+  return {
+    id: item.id,
 
-  department_id: item.department_id || "",
-  department_name: item.departments?.department_name || "",
-  department_color: item.departments?.department_color || "#E2E8F0",
+    employee_id: item.employee_id || "",
+    employee_code:
+      employee.employee_code || "",
 
-  division_id: item.division_id || "",
-  division_name: item.divisions?.division_name || "",
+    employee_name:
+      `${employee.first_name_th || ""} ${
+        employee.last_name_th || ""
+      }`.trim() ||
+      `${employee.first_name_en || ""} ${
+        employee.last_name_en || ""
+      }`.trim() ||
+      "-",
 
-  unit_id: item.unit_id || "",
-  unit_name: item.units?.unit_name || "",
+    employee_photo_url:
+      employee.employee_photo_url || "",
 
-  supervisor_employee_id: item.supervisor_employee_id || "",
-  supervisor_name:
-    `${item.supervisor?.first_name_th || ""} ${item.supervisor?.last_name_th || ""}`.trim() ||
-    "",
+    position_id:
+      employee.position_id || "",
 
-  is_primary: item.is_primary,
-  status: item.status,
-  sort_order: item.sort_order,
-  created_at: item.created_at,
-  updated_at: item.updated_at,
-});
+    position_code:
+      position.position_code || "",
+
+    position_name:
+      position.position_name || "-",
+
+    position_level:
+      position.position_level || "",
+
+    job_id:
+      employee.job_id || "",
+
+    job_code:
+      job.job_code || "",
+
+    job_name:
+      job.job_name || "-",
+
+    job_level:
+      job.job_level || "",
+
+    job_management_level:
+      job.management_level || "",
+
+    job_scope_type:
+      job.scope_type || "",
+
+    can_manage_employees:
+      job.can_manage_employees ?? false,
+
+    can_approve_budget:
+      job.can_approve_budget ?? false,
+
+    management_level:
+      resolvedManagementLevel,
+
+    scope_type:
+      resolvedScopeType,
+
+    company_id:
+      item.company_id || "",
+
+    company_name:
+      item.companies?.company_name_th ||
+      item.companies?.company_name_en ||
+      "",
+
+    branch_group_id:
+      item.branch_group_id ||
+      employee.branch_group_id ||
+      "",
+
+    branch_group_name:
+      item.branch_groups?.group_name || "",
+
+    branch_group_color:
+      item.branch_groups?.group_color ||
+      "#E2E8F0",
+
+    branch_id:
+      item.branch_id ||
+      employee.branch_id ||
+      "",
+
+    branch_name:
+      item.branches?.branch_name || "",
+
+    department_id:
+      item.department_id ||
+      employee.department_id ||
+      "",
+
+    department_name:
+      item.departments?.department_name || "",
+
+    department_color:
+      item.departments?.department_color ||
+      "#E2E8F0",
+
+    division_id:
+      item.division_id ||
+      employee.division_id ||
+      "",
+
+    division_name:
+      item.divisions?.division_name || "",
+
+    unit_id:
+      item.unit_id ||
+      employee.unit_id ||
+      "",
+
+    unit_name:
+      item.units?.unit_name || "",
+
+    supervisor_employee_id:
+      item.supervisor_employee_id || "",
+
+    supervisor_code:
+      supervisor.employee_code || "",
+
+    supervisor_name:
+      `${supervisor.first_name_th || ""} ${
+        supervisor.last_name_th || ""
+      }`.trim() ||
+      `${supervisor.first_name_en || ""} ${
+        supervisor.last_name_en || ""
+      }`.trim() ||
+      "",
+
+    supervisor_photo_url:
+      supervisor.employee_photo_url || "",
+
+    supervisor_position_name:
+      supervisorPosition.position_name || "",
+
+    supervisor_management_level:
+      supervisorJob.management_level ||
+      supervisorPosition.position_level ||
+      "",
+
+    is_primary:
+      item.is_primary ?? true,
+
+    status:
+      item.status || "active",
+
+    sort_order:
+      Number(item.sort_order || 0),
+
+    created_at:
+      item.created_at,
+
+    updated_at:
+      item.updated_at,
+  };
+};
 
 export async function GET(req) {
   try {
@@ -138,39 +330,128 @@ export async function GET(req) {
     if (error) throw error;
 
     let mappedData = (data || []).map(mapAssignment);
+    mappedData = mappedData.filter(
+      (item) =>
+        ["P9", "P10", "P11", "P12"].includes(
+          item.management_level
+        )
+    );
 
     if (search) {
       mappedData = mappedData.filter((item) =>
         [
           item.employee_code,
           item.employee_name,
+
+          item.position_name,
+
+          item.job_code,
+          item.job_name,
+
           item.management_level,
           item.scope_type,
+
           item.company_name,
           item.branch_group_name,
           item.branch_name,
           item.department_name,
           item.division_name,
           item.unit_name,
+
           item.supervisor_name,
         ]
           .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(search))
+          .some((value) =>
+            String(value)
+              .toLowerCase()
+              .includes(search)
+          )
       );
     }
 
     if (tree) {
-      const treeData = {
-        p12: mappedData.filter((item) => item.management_level === "P12"),
-        p11: mappedData.filter((item) => item.management_level === "P11"),
-        p10: mappedData.filter((item) => item.management_level === "P10"),
-        p9: mappedData.filter((item) => item.management_level === "P9"),
-      };
+      const orgChartData = mappedData.map(
+        (item) => ({
+          id: item.employee_id,
+
+          parentId:
+            item.supervisor_employee_id || null,
+
+          assignment_id:
+            item.id,
+
+          employee_id:
+            item.employee_id,
+
+          employee_code:
+            item.employee_code,
+
+          name:
+            item.employee_name,
+
+          employee_photo_url:
+            item.employee_photo_url,
+
+          position_name:
+            item.position_name,
+
+          job_name:
+            item.job_name,
+
+          management_level:
+            item.management_level,
+
+          scope_type:
+            item.scope_type,
+
+          company_id:
+            item.company_id,
+
+          company_name:
+            item.company_name,
+
+          branch_group_id:
+            item.branch_group_id,
+
+          branch_group_name:
+            item.branch_group_name,
+
+          branch_group_color:
+            item.branch_group_color,
+
+          branch_id:
+            item.branch_id,
+
+          branch_name:
+            item.branch_name,
+
+          department_id:
+            item.department_id,
+
+          department_name:
+            item.department_name,
+
+          department_color:
+            item.department_color,
+
+          supervisor_employee_id:
+            item.supervisor_employee_id,
+
+          supervisor_name:
+            item.supervisor_name,
+
+          status:
+            item.status,
+
+          sort_order:
+            item.sort_order,
+        })
+      );
 
       return NextResponse.json({
         success: true,
         data: mappedData,
-        tree: treeData,
+        tree: orgChartData,
       });
     }
 

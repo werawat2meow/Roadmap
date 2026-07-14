@@ -733,6 +733,3 @@ export default function PayrollCompaniesPage() {
     </div>
   );
 }
-
-// ยังไม่เสร็จ ที Select ชื่อบริษัท แล้วให้แก้ได้เฉพาะ Address , Phone , Email   ทำเสร็จ refacter แล้วไปเชื่อม กับ Employee    เสร็จจาก Employee ไปที่ management-assignments
-// ต้องกำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12 [ ดึงพนักงานเฉพาะ P9 - p12 (Management Level ไม่ต้องเลือก) (ต้องเช็คตำแหน่ง P9-P12 ที่จะทำการกำหนดสายบังคับบัญชาได้ ) ]

@@ -95,7 +95,6 @@ export default function ManagementAssignmentsPage() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data?.error || "Load management assignments failed");
       }
@@ -587,18 +586,32 @@ export default function ManagementAssignmentsPage() {
                           }}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
-                                {item.management_level}
-                              </span>
+                            <div className="flex items-start gap-3">
+                              {item.employee_photo_url ? (
+                                <img
+                                  src={item.employee_photo_url}
+                                  alt={item.employee_name}
+                                  className="h-12 w-12 flex-shrink-0 rounded-full border border-slate-200 object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-bold text-slate-500">
+                                  {item.employee_name?.charAt(0) || "?"}
+                                </div>
+                              )}
 
-                              <h3 className="mt-3 text-base font-bold text-slate-800">
-                                {item.employee_name}
-                              </h3>
+                              <div>
+                                <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
+                                  {item.management_level}
+                                </span>
 
-                              <p className="mt-1 text-xs text-slate-400">
-                                {item.employee_code || "-"}
-                              </p>
+                                <h3 className="mt-3 text-base font-bold text-slate-800">
+                                  {item.employee_name}
+                                </h3>
+
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {item.employee_code || "-"}
+                                </p>
+                              </div>
                             </div>
 
                             <button

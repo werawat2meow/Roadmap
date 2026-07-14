@@ -248,7 +248,7 @@ export default function JobsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">
-              บทบาทงาน / โครงสร้างธุรกิจ     ยังต้องทำเพิ่มม เพื่อเชื่อมกับ Employee มันเกี่ยวกับบทบาทงาน 
+              บทบาทงาน / โครงสร้างธุรกิจ
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">

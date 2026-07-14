@@ -79,15 +79,25 @@ function mapEmployee(data) {
     business_unit_id: data.business_unit_id || "",
     cost_center_id: data.cost_center_id || "",
     profit_center_id: data.profit_center_id || "",
-
     business_unit_code: data.business_units?.business_unit_code || "",
     business_unit_name: data.business_units?.business_unit_name || "-",
-
     cost_center_code: data.cost_centers?.cost_center_code || "",
     cost_center_name: data.cost_centers?.cost_center_name || "-",
-
     profit_center_code: data.profit_centers?.profit_center_code || "",
     profit_center_name: data.profit_centers?.profit_center_name || "-",
+    payroll_company_id: data.payroll_company_id || "",
+    payroll_type_id: data.payroll_type_id || "",
+    payroll_company_code: data.payroll_companies?.payroll_company_code || "",
+    payroll_company_name: data.payroll_companies?.payroll_company_name || "-",
+    payroll_payment_day:data.payroll_companies?.payment_day === null || data.payroll_companies?.payment_day === undefined ? null : Number(data.payroll_companies.payment_day),
+    payroll_company_master_id: data.payroll_companies?.companies?.id || "",
+    payroll_company_master_code: data.payroll_companies?.companies?.company_code || "",
+    payroll_company_master_name: data.payroll_companies?.companies?.company_name_th || data.payroll_companies?.companies?.company_name_en || "-",
+    payroll_company_tax_id: data.payroll_companies?.companies?.tax_id || "",
+    payroll_type_code: data.payroll_types?.payroll_type_code || "",
+    payroll_type_name: data.payroll_types?.payroll_type_name || "-",
+    payment_frequency: data.payroll_types?.payment_frequency || "",
+    default_payment_day: data.payroll_types?.default_payment_day === null || data.payroll_types?.default_payment_day === undefined ? null : Number(data.payroll_types.default_payment_day),
   };
 }
 
@@ -131,6 +141,8 @@ export async function PATCH(req, { params }) {
     const business_unit_id = body?.business_unit_id || null;
     const cost_center_id = body?.cost_center_id || null;
     const profit_center_id = body?.profit_center_id || null;
+    const payroll_company_id = body?.payroll_company_id || null;
+    const payroll_type_id = body?.payroll_type_id || null;
 
     let probation_days = null;
     let probation_end_date = null;
@@ -175,6 +187,31 @@ export async function PATCH(req, { params }) {
       return NextResponse.json(
         { success: false, error: "กรุณาเลือกสถานะพนักงาน" },
         { status: 400 }
+      );
+    }
+
+
+    if (!payroll_company_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Payroll Company",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (!payroll_type_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Payroll Type",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
@@ -242,6 +279,62 @@ export async function PATCH(req, { params }) {
       }
     }
 
+    const { data: payrollCompany, error: payrollCompanyError,} =
+      await supabaseAdmin
+        .from("payroll_companies")
+        .select(`
+          id,
+          payroll_type_id,
+          payment_day,
+          status
+        `)
+        .eq("id", payroll_company_id)
+        .maybeSingle();
+
+    if (payrollCompanyError)
+      throw payrollCompanyError;
+
+    if (!payrollCompany) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ไม่พบ Payroll Company",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+
+    const {data: payrollType,error: payrollTypeError,} = await supabaseAdmin
+      .from("payroll_types")
+      .select(`
+        id,
+        payment_frequency,
+        default_payment_day,
+        status
+      `)
+      .eq("id", payroll_type_id)
+      .maybeSingle();
+
+    if (payrollTypeError)
+      throw payrollTypeError;
+
+    if (!payrollType) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ไม่พบ Payroll Type",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     const { data: oldEmployee, error: oldEmployeeError } = await supabaseAdmin
       .from("employees")
       .select("*")
@@ -284,6 +377,8 @@ export async function PATCH(req, { params }) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
+        payroll_company_id,
+        payroll_type_id,
 
         probation_days,
         probation_end_date,
@@ -333,6 +428,8 @@ export async function PATCH(req, { params }) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
+        payroll_company_id,
+        payroll_type_id,
         created_at,
         updated_at,
 
@@ -383,6 +480,29 @@ export async function PATCH(req, { params }) {
         profit_centers (
           profit_center_code,
           profit_center_name
+        ),
+        payroll_companies (
+          id,
+          payroll_company_code,
+          payroll_company_name,
+          payroll_type_id,
+          payment_day,
+
+          companies (
+            id,
+            company_code,
+            company_name_th,
+            company_name_en,
+            tax_id
+          )
+        ),
+        payroll_types (
+          id,
+          payroll_type_code,
+          payroll_type_name,
+          payment_frequency,
+          default_payment_day,
+          status
         )
       `)
       .eq("id", id)

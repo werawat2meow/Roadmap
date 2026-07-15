@@ -126,19 +126,22 @@ export async function GET(
     const requirements = (reqRes.data ?? []).map((row) => parseJsonField(row.requirement_text, slugs));
     const responsibilities = (respRes.data ?? []).map((row) => parseJsonField(row.responsibility_text, slugs));
     const benefits = (benRes.data ?? []).map((row) => parseJsonField(row.benefit_text, slugs));
+
+    const branchInfo = ((jobOpen as { branches?: Array<{ branch_name?: string | null }> }).branches ?? [])[0] ?? null;
+    const positionInfo = ((jobOpen as { positions?: Array<{ position_name?: string | null }> }).positions ?? [])[0] ?? null;
     
     // ── 5. Compose response ───────────────────────────────────────────────────
     return NextResponse.json({
         id: jobOpen.id,
         opening_count: jobOpen.opening_count,
         urgent: jobOpen.urgent,
-        salary_min: jobDesc.salary_min,
-        salary_max: jobDesc.salary_max,
-        type_of_work: jobDesc.type_of_work,
-        workLocation: jobDesc.workLocation,
-        companyName: jobOpen?.branches.branch_name,
-        positionTitle: (jobOpen as any).positions?.position_name,
-        description: (jobDesc as any).description,
+        salary_min: jobDesc?.salary_min ?? null,
+        salary_max: jobDesc?.salary_max ?? null,
+        type_of_work: jobDesc?.type_of_work ?? null,
+        workLocation: jobDesc?.workLocation ?? null,
+        companyName: branchInfo?.branch_name ?? null,
+        positionTitle: positionInfo?.position_name ?? null,
+        description: (jobDesc as any)?.description ?? null,
         requirements,
         responsibilities,
         benefits,

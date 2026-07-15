@@ -4,10 +4,10 @@ import { supabase } from "@/lib/supabaseClient";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
     const { jobId } = await params;
-        
+    
     if (!jobId) {
         return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }

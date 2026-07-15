@@ -18,8 +18,8 @@ interface JobDetail {
   employmentType: string | null;
   experienceLevel: string | null;
   companyLogo: string | null;
-  companyName: MultiLang;
-  positionTitle: MultiLang;
+  companyName: string | null;
+  positionTitle: string | null;
   description: MultiLang;
   requirements: MultiLang[];
   responsibilities: MultiLang[];

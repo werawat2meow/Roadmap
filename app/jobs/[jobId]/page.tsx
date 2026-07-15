@@ -15,15 +15,20 @@ type MultiLang = Record<string, string>; // e.g. { th: "...", en: "..." }
 
 interface JobDetail {
   id: string;
-  employmentType: string | null;
-  experienceLevel: string | null;
-  companyLogo: string | null;
-  companyName: string | null;
-  positionTitle: string | null;
+  employmentType?: string | null;
+  experienceLevel?: string | null;
+  companyLogo?: string | null;
+  companyName?: string | null;
+  positionTitle?: string | null;
   description: MultiLang;
   requirements: MultiLang[];
   responsibilities: MultiLang[];
   benefits: MultiLang[];
+  type_of_work?: string | null;
+  workLocation?: string | null;
+  salary_min?: number | string | null;
+  salary_max?: number | string | null;
+  opening_count?: number | string | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Layout, Menu, Drawer, Grid, Button, ConfigProvider } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined, CloseOutlined } from "@ant-design/icons";
-import { LayoutDashboard, Users } from "lucide-react";
+import { LayoutDashboard, Users , Summary , Settings , LayoutList } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 const { Sider } = Layout;
@@ -44,8 +44,23 @@ export default function SidebarContent({
         icon: LayoutDashboard,
       },
       {
+        label: "Check Candidate Detail",
+        href: "/recruitment/candidate_detail",
+        icon: LayoutList,
+      },
+      {
+        label: "Schedule interviews",
+        href: "/recruitment/schedule_interviews",
+        icon: LayoutList,
+      },
+      {
+        label: "Update interview appointment",
+        href: "/recruitment/update_interview_appointment",
+        icon: LayoutList,
+      },
+      {
         label: "Report",
-        icon: Users,
+        icon: Summary,
         defaultOpen: false,
         children: [
           {
@@ -56,17 +71,14 @@ export default function SidebarContent({
       },
       {
         label: "Settings",
-        icon: Users,
+        icon: Settings,
         defaultOpen: false,
         children: [
           { label: "Language",                     href: "/recruitment/setting/language" },
           { label: "Job Language",                 href: "/recruitment/setting/job_language" },
           { label: "Job Description",              href: "/recruitment/setting/job_description" },
           { label: "Job Openings",                 href: "/recruitment/setting/job_openings" },
-          { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
-          { label: "Check Candidate Detail",       href: "/recruitment/setting/candidate_detail" },
-          { label: "Update interview appointment", href: "/recruitment/setting/update_interview_appointment" },
-          { label: "Schedule interviews",          href: "/recruitment/setting/schedule_interviews" },
+          // { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
         ],
       },
     ],

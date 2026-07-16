@@ -240,6 +240,11 @@ export const uiText = {
     TH: "รหัสไปรษณีย์",
   },
 
+  email:{
+    EN: "E-mail",
+    TH: "อีเมล์",
+  },
+
   lineId: {
     EN: "Line ID",
     TH: "Line ID",
@@ -624,6 +629,11 @@ export const uiText = {
     TH: "กำลังบันทึก...",
   },
 
+  error: {
+    TH: "เกิดข้อผิดพลาด",
+    EN: "Error",
+  },
+
   saveSuccess: {
     EN: "Application saved successfully.",
     TH: "บันทึกใบสมัครงานเรียบร้อยแล้ว",
@@ -649,6 +659,11 @@ export const uiText = {
     TH: "เลขประจำตัวประชาชนไม่ถูกต้อง",
   },
 
+  invalidEmail:{
+    EN: "Please enter your email",
+    TH: "รูปแบบอีเมลไม่ถูกต้อง",
+  },
+
   invalidPhone: {
     EN: "Invalid phone number.",
     TH: "หมายเลขโทรศัพท์ไม่ถูกต้อง",
@@ -662,13 +677,28 @@ export const uiText = {
   invalidDocument:{
     EN:"Only PNG, JPG, JPEG, PDF, and MP4 files are allowed.",
     TH:"อนุญาตเฉพาะไฟล์ PNG, JPG, JPEG, PDF และ MP4",
+  },
+
+  jobNotFound:{
+    EN:"Position not found.",
+    TH:"ไม่พบตำแหน่งงาน",
+  },
+
+  applicationSubmitted:{
+    EN:"Thank you for applying for the job.",
+    TH:"ขอบคุณสำหรับการสมัครงาน",
+  },
+
+  backToJobs:{
+    EN:"Back to Job Listings",
+    TH:"กลับไปที่รายการประกาศรับสมัครงาน",
   }
 
 } as const;
 
 export const getTranslation = (
   key: keyof typeof uiText,
-  locale: "EN" | "TH"
+  locale: "TH" | "EN" | string
 ) => {
   const item = uiText[key];
 

@@ -2,7 +2,7 @@
 
 import type { FormInstance } from "antd";
 
-export type LanguageCode = "TH" | "EN";
+export type LanguageCode = string;
 
 /* -------------------------------------------------------------------------- */
 /*                                 Position                                   */
@@ -54,6 +54,13 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export interface AddressValue {
+    provinceId?: number;
+    districtId?: number;
+    subDistrictId?: number;
+    postalCode?: string;
+}
+
 export interface PersonalInformationData  {
   otherPosition: string;
   expectedSalary: number;
@@ -77,12 +84,16 @@ export interface PersonalInformationData  {
   subDistrict: string;
   district: string;
   province: string;
+  provinceId: number | null;
+  districtId: number | null;
+  subDistrictId: number | null;
   postalCode: string;
   lineId: string;
+  email: string;
   phoneNumber: string;
-  residenceType: ResidenceType[];
+  residenceType: ResidenceType| "";
   residenceOther: string;
-  maritalStatus: MaritalStatus[];
+  maritalStatus: MaritalStatus| "";
   children: string;
   driverLicense: DriverLicense;
   emergencyContact: EmergencyContact;
@@ -101,8 +112,8 @@ export interface EducationHistory {
   institution: string;
   faculty: string;
   major: string;
-  graduatedYear: string;
-  gpa: string;
+  graduatedYear: number;
+  gpa: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -192,6 +203,7 @@ export interface JobApplicationPayload {
 /* -------------------------------------------------------------------------- */
 
 export interface ApplicationFormProps {
+  jobId: string;
   language: LanguageCode;
   saving: boolean;
   position: PositionInfo;

@@ -51,11 +51,12 @@ export default function RegisterPage() {
   const { locale } = useLanguage();
 
   const t = useMemo(
-    () => (key: keyof typeof uiText) => getTranslation(key, locale),
+    () =>
+      (key: keyof typeof uiText) =>
+        getTranslation(key, locale as "TH" | "EN"),
     [locale]
   );
 
-  // console.log("RegisterPage", { jobId, locale, t });
   const [loading, setLoading] = useState(true);
 
   const [saving, setSaving] = useState(false);
@@ -108,22 +109,16 @@ export default function RegisterPage() {
       if (error) throw error;
 
       if (!data) {
-        setError(
-          t.jobNotFound ??
-            "Position not found."
-        );
+        setError( getUIText(uiText.jobNotFound, locale) );
         return;
       }
       
       setPosition({
         jobId: data.id,
         positionId: data.position_id,
-        positionName:
-          data.positions?.position_name ?? "",
-        department:
-          data.departments?.department_name ?? "",
-        companyName:
-          data.branches?.companies?.company_name_en ?? "",
+        positionName: (data as any)?.positions?.position_name ?? null ,
+        department: (data as any)?.departments?.department_name ?? "",
+        companyName: (data as any)?.branches?.companies?.company_name_en ?? "",
       });
     } catch (err: any) {
       console.error(err);
@@ -188,14 +183,11 @@ export default function RegisterPage() {
         );
       }
 
-      message.success(
-        t.saveSuccess ??
-          "Application submitted successfully."
-      );
+      message.success( getUIText(uiText.saveSuccess, locale) );
 
-      router.push(
-        "/jobs/register/thankyou"
-      );
+      // router.push(
+      //   "/jobs/register/thankyou"
+      // );
     } catch (err: any) {
       console.error(err);
 
@@ -250,10 +242,7 @@ export default function RegisterPage() {
           <Alert
             type="error"
             showIcon
-            message={
-              t.error ??
-              "Error"
-            }
+            message={t("error")}
             description={error}
           />
         </div>

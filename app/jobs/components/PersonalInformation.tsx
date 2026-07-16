@@ -20,6 +20,7 @@ import {
 import { uiText } from "@/app/jobs/components/translations";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import { getUIText } from "@/app/jobs/lib/ui";
+import { AddressSelector } from "@/app/jobs/components/address";
 
 import {
   MaritalStatus,
@@ -33,6 +34,7 @@ import {
   validatePassport,
   validatePhone,
   validateThaiCitizenId,
+  validateEmail,
 } from "@/app/jobs/types/utils";
 
 const { Title } = Typography;
@@ -74,7 +76,6 @@ export default function PersonalInformation({
       ...value,
       [field]: fieldValue,
     };
-
     onChange(newValue);
   };
 
@@ -126,56 +127,6 @@ export default function PersonalInformation({
       dateOfBirth: date.format("YYYY-MM-DD"),
       age: calculateAge(date),
     });
-  };
-
-  const handleIdentityChange = (
-    identity: string
-  ) => {
-    updateField("idCardNo", identity);
-
-    if (language === "TH") {
-      if (
-        identity.length === 13 &&
-        !validateThaiCitizenId(identity)
-      ) {
-        form.setFields([
-          {
-            name: "idCardNo",
-            errors: [
-              "เลขบัตรประชาชนไม่ถูกต้อง",
-            ],
-          },
-        ]);
-      } else {
-        form.setFields([
-          {
-            name: "idCardNo",
-            errors: [],
-          },
-        ]);
-      }
-    } else {
-      if (
-        identity &&
-        !validatePassport(identity)
-      ) {
-        form.setFields([
-          {
-            name: "idCardNo",
-            errors: [
-              "Invalid passport number",
-            ],
-          },
-        ]);
-      } else {
-        form.setFields([
-          {
-            name: "idCardNo",
-            errors: [],
-          },
-        ]);
-      }
-    }
   };
 
   /* ---------------------------------------------------------------------- */
@@ -498,14 +449,46 @@ export default function PersonalInformation({
                 {/* ID / Passport */}
                 <Col xs={24}>
                     <Form.Item
+                        name="idCardNo"
                         label={getUIText(uiText.idCardNo, locale)}
                         required
-                    >
+                        validateTrigger="onChange"
+                        rules={[
+                            {
+                            validator(_, value) {
+                                if (!value) {
+                                    return Promise.resolve();
+                                }
+                                if (language === "TH") {
+                                    if (!/^\d{13}$/.test(value)) {
+                                        return Promise.reject(
+                                        new Error("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
+                                        );
+                                    }
+                                    if (!validateThaiCitizenId(value)) {
+                                        return Promise.reject(
+                                        new Error(getUIText(uiText.invalidThaiId, locale))
+                                        );
+                                    }
+                                    return Promise.resolve();
+                                }
+
+                                // Passport
+                                if (!validatePassport(value)) {
+                                    return Promise.reject(  new Error("Invalid passport number") );
+                                }
+                                return Promise.resolve();
+                            },
+                            },
+                        ]}
+                        >
                         <Input
-                            name="idCardNo"
                             value={value.idCardNo}
-                            onChange={(e) => handleIdentityChange( e.target.value ) }
-                            maxLength={ language === "TH" ? 13 : 20 }
+                            onChange={(e) => {
+                            updateField("idCardNo", e.target.value);
+                            form.setFieldValue("idCardNo", e.target.value);
+                            }}
+                            maxLength={language === "TH" ? 13 : 20}
                         />
                     </Form.Item>
                 </Col>
@@ -549,52 +532,50 @@ export default function PersonalInformation({
                         />
                     </Form.Item>
                 </Col>
+                
+                 <Col xs={24} md={24}>
+                    <AddressSelector
+                        value={{
+                            provinceId: value.provinceId,
+                            districtId: value.districtId,
+                            subDistrictId: value.subDistrictId,
+                            postalCode: value.postalCode,
+                        }}
+                        onChange={(address) =>
+                            onChange({
+                                ...value,
+                                provinceId: address.provinceId,
+                                districtId: address.districtId,
+                                subDistrictId: address.subDistrictId,
+                                postalCode: address.postalCode,
+                            })
+                        }
+                    />
+                    </Col>
 
-                {/* Sub District */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.subDistrict, locale)} required >
+                <Col xs={24} md={12}>
+                    <Form.Item
+                        label={getUIText(uiText.email, locale)}
+                        required
+                        validateStatus={
+                        value.email &&
+                        !validateEmail(value.email)
+                            ? "error"
+                            : ""
+                        }
+                        help={
+                        value.email &&
+                        !validateEmail(value.email)
+                            ? getUIText(uiText.invalidEmail, locale)
+                            : ""
+                        }
+                    >
                         <Input
+                            name="email"
                             required
-                            name="subDistrict"
-                            value={value.subDistrict}
-                            onChange={(e) => updateField( "subDistrict", e.target.value ) }
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* District */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.district, locale)} required >
-                        <Input
-                            required
-                            name="district"
-                            value={value.district}
-                            onChange={(e) => updateField( "district", e.target.value ) }
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* Province */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.province, locale)} required >
-                        <Input
-                            required
-                            name="province"
-                            value={value.province}
-                            onChange={(e) => updateField( "province", e.target.value ) }
-                        />
-                    </Form.Item>
-                </Col>
-
-                {/* Postal Code */}
-                <Col xs={24} md={6}>
-                    <Form.Item label={getUIText(uiText.postalCode, locale)} required >
-                        <Input
-                            required
-                            name="postalCode"
-                            value={value.postalCode}
-                            maxLength={5}
-                            onChange={(e) => updateField( "postalCode", e.target.value.replace(/\D/g, "") ) }
+                            value={value.email}
+                            placeholder="example@email.com"
+                            onChange={(e) => updateField( "email", e.target.value ) }
                         />
                     </Form.Item>
                 </Col>
@@ -656,12 +637,9 @@ export default function PersonalInformation({
                             <Radio.Group
                             name="residenceType"
                             style={{ width: "100%" }}
-                            value={value.residenceType[0] || ""}
+                            value={value.residenceType}
                             onChange={(e) =>
-                                updateField(
-                                "residenceType",
-                                [e.target.value] as ResidenceType[]
-                                )
+                                updateField( "residenceType", e.target.value )
                             }
                             >
                             <Row gutter={[16, 12]}>
@@ -709,8 +687,8 @@ export default function PersonalInformation({
                             <Radio.Group
                                 name="maritalStatus"
                                 style={{ width: "100%" }}
-                                value={value.maritalStatus[0] || ""}
-                                onChange={(e) => updateField( "maritalStatus", [e.target.value] as MaritalStatus[] ) }
+                                value={value.maritalStatus}
+                                onChange={(e) => updateField( "maritalStatus", e.target.value) }
                             >
                                 <Row gutter={[16, 12]}>
                                     {maritalOptions.map((item) => (

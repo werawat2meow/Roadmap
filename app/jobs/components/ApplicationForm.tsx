@@ -36,6 +36,7 @@ import {
   validateApplication,
 } from "@/app/jobs/types/utils";
 
+
 export default function ApplicationForm({
   language,
   saving,

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
+    
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
     const positionId = payload.positionId ?? payload.position_id ?? null;
@@ -73,12 +73,16 @@ export async function POST(request: NextRequest) {
       sub_district: personal.subDistrict ?? "",
       district: personal.district ?? "",
       province: personal.province ?? "",
-      postal_code: Number(personal.postalCode ?? 0),
+      province_id : personal.provinceId ?? "",
+      district_id : personal.districtId ?? "",
+      subdistrict_id : personal.subDistrictId ?? "",
+      postal_code: personal.postalCode ?? null,
       line_id: personal.lineId ?? "",
+      email: personal.email ?? "",
       phone_number: personal.phoneNumber ?? "",
-      residence_type: personal.residenceType ?? [],
+      residence_type: personal.residenceType ?? "",
       residence_other: personal.residenceOther ?? "",
-      marital_status: personal.maritalStatus ?? [],
+      marital_status: personal.maritalStatus ?? "",
       children: personal.children ?? null,
       driver_license: personal.driverLicense ?? null,
       emergency_name: personal.emergencyContact?.name ?? "",
@@ -91,8 +95,8 @@ export async function POST(request: NextRequest) {
       pdpa: agreement.pdpa ?? false,
       updated_at: new Date().toISOString(),
       status: 1,
-    };    
-
+    }; 
+    
     const {
       data: application,
       error: applicationError,
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
       .insert(applicationData)
       .select("id")
       .single();
-
+    
     if (applicationError) throw applicationError;
 
     applicationId = application.id;
@@ -111,36 +115,46 @@ export async function POST(request: NextRequest) {
     /* ------------------------------------------------------------ */
 
     try {
-      /* -------------------------------------------------------- */
-      /*                2) Insert Child Tables ต่อ                   */
-      /* -------------------------------------------------------- */
+    //   /* -------------------------------------------------------- */
+    //   /*                2) Insert Child Tables ต่อ                   */
+    //   /* -------------------------------------------------------- */
       
-      if (payload.education?.length > 0) {
+      const education =
+        payload.education?.filter((item: any) => {
+          return item.degreeLevel?.trim();
+        }) ?? [];
+
+      
+      if (education.length > 0) {
         const educationRows = payload.education.map((item: any) => ({
           application_id: applicationId,
           degree_level: item.degreeLevel,
           institution: item.institution,
           faculty: item.faculty,
           major: item.major,
-          graduated_year: item.graduatedYear,
-          gpa: item.gpa,
+          graduated_year: Number(item.graduatedYear ?? 0),
+          gpa: Number(item.gpa ?? 0),
           updated_at: new Date().toISOString(),
         }));
         
         const { error } = await supabaseAdmin
           .from("recruit_job_education_history")
           .insert(educationRows);
-
         if (error) throw error;
       }
 
-      if (payload.workExperience?.length > 0) {
+      const workExperience =
+        payload.workExperience?.filter((item: any) => {
+          return item.period?.trim();
+        }) ?? [];
+
+      if (workExperience.length > 0) {
         const workRows = payload.workExperience.map((item: any) => ({
           application_id: applicationId,
           period: item.period,
           company_name: item.companyName,
           position: item.position,
-          latest_salary: item.latestSalary,
+          latest_salary: Number(item.latestSalary ?? 0),
           reason_for_leaving: item.reasonForLeaving,
           updated_at: new Date().toISOString(),
         }));
@@ -148,7 +162,6 @@ export async function POST(request: NextRequest) {
         const { error } = await supabaseAdmin
           .from("recruit_job_work_experience")
           .insert(workRows);
-
         if (error) throw error;
       }
 
@@ -179,7 +192,6 @@ export async function POST(request: NextRequest) {
         const { error } = await supabaseAdmin
           .from("recruit_job_skills")
           .insert(computerRows);
-
         if (error) throw error;
       }
 
@@ -223,7 +235,7 @@ export async function POST(request: NextRequest) {
 
         const uploaded = await uploadFileToSpaces(
           file,
-          `job-applications/${applicationId}`
+          `job-recruitment/${applicationId}`
         );
 
         uploadedKeys.push(uploaded.key);   // เก็บไว้เผื่อต้อง rollback
@@ -251,7 +263,6 @@ export async function POST(request: NextRequest) {
           const { error } = await supabaseAdmin
             .from("recruit_job_documents")
             .insert(documentRows);
-
           if (error) throw error;
         }
       }

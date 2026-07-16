@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { Job } from "@/app/jobs/types/job";
 import { useRouter } from "next/navigation";
+import { getText } from "@/app/jobs/lib/i18n";
+import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
 
 interface Props {
   job: Job;
@@ -11,6 +15,7 @@ interface Props {
 export default function JobCard({ job }: Props) {
   
   const router = useRouter();
+  const { locale } = useLanguage();
 
   const salary = job.salary_note
     ? job.salary_note
@@ -26,7 +31,7 @@ export default function JobCard({ job }: Props) {
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-bold leading-snug text-slate-900">
-            {job.position_name?.trim() || job.job_name }
+            {String(job.position_name?.trim() || job.job_name)}
           </h2>
           {job.urgent && (
             <span className="blink rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
@@ -46,7 +51,7 @@ export default function JobCard({ job }: Props) {
         <div className="flex items-center gap-2 text-slate-600">
           <span className="text-base">🏢</span>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">สถานที่ทำงาน</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{getUIText(uiText.workLocation, locale)}</p>
             <p className="font-medium text-slate-700">{job.workLocation}</p>
           </div>
         </div>
@@ -54,7 +59,7 @@ export default function JobCard({ job }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-base">💰</span>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">เงินเดือน</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{getUIText(uiText.salary, locale)}</p>
             <p className="font-semibold text-emerald-600">{salary}</p>
           </div>
         </div>
@@ -62,29 +67,14 @@ export default function JobCard({ job }: Props) {
         <div className="flex items-center gap-2 text-slate-600 sm:col-span-2">
           <span className="text-base">👥</span>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">จำนวนที่รับ</p>
-            <p className="font-medium text-slate-700">{job.opening_count} ตำแหน่ง</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{getUIText(uiText.openings, locale)}</p>
+            <p className="font-medium text-slate-700">{job.opening_count}</p>
           </div>
         </div>
       </div>
 
       {/* CTA */}
       <div className="mt-auto px-5 pb-5">
-        {/* <Link
-          href={`/jobs/${job.id}`}
-          className="flex items-center justify-end gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold  transition-colors"
-        >
-          ดูรายละเอียด
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link> */}
-
         <div className="flex justify-end p-5">
           <button
             type="button"

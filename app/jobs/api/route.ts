@@ -121,9 +121,9 @@ export async function GET(request: Request) {
         return {
           id: job.id,
           branch_id: desc.branch_id,
-          job_name:job?.positions?.position_name ?? "",
+          job_name:(job as any).positions?.position_name ?? "",
           job_to_language:lang?.job_to_language ?? {},
-          branch_name:job?.branches?.branch_name ?? "",
+          branch_name:(job as any).branches?.branch_name ?? "",
           workLocation:desc.workLocation ?? "",
           salary_min:desc.salary_min,
           salary_max:desc.salary_max,

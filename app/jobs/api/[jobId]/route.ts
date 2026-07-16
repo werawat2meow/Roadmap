@@ -127,9 +127,6 @@ export async function GET(
     const responsibilities = (respRes.data ?? []).map((row) => parseJsonField(row.responsibility_text, slugs));
     const benefits = (benRes.data ?? []).map((row) => parseJsonField(row.benefit_text, slugs));
 
-    const branchInfo = ((jobOpen as { branches?: Array<{ branch_name?: string | null }> }).branches ?? [])[0] ?? null;
-    const positionInfo = ((jobOpen as { positions?: Array<{ position_name?: string | null }> }).positions ?? [])[0] ?? null;
-    
     // ── 5. Compose response ───────────────────────────────────────────────────
     return NextResponse.json({
         id: jobOpen.id,
@@ -139,8 +136,8 @@ export async function GET(
         salary_max: jobDesc?.salary_max ?? null,
         type_of_work: jobDesc?.type_of_work ?? null,
         workLocation: jobDesc?.workLocation ?? null,
-        companyName: branchInfo?.branch_name ?? null,
-        positionTitle: positionInfo?.position_name ?? null,
+        companyName: (jobOpen as any)?.branches?.branch_name ?? null,
+        positionTitle: (jobOpen as any).positions?.position_name,
         description: (jobDesc as any)?.description ?? null,
         requirements,
         responsibilities,

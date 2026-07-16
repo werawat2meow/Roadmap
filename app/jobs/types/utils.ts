@@ -139,15 +139,19 @@ export function createPersonalInformation(): PersonalInformationData {
     addressNo: "",
     villageNo: "",
     street: "",
-    subDistrict: "",
-    district: "",
+    provinceId: null,
+    districtId: null,
+    subDistrictId: null,
     province: "",
+    district: "",
+    subDistrict: "",
     postalCode: "",
+    email:"",
     lineId: "",
     phoneNumber: "",
-    residenceType: [],
+    residenceType: "",
     residenceOther: "",
-    maritalStatus: [],
+    maritalStatus: "",
     children: "",
     driverLicense: {
       car: false,
@@ -177,8 +181,8 @@ export function createEducationRow(): EducationHistory {
     institution: "",
     faculty: "",
     major: "",
-    graduatedYear: "",
-    gpa: "",
+    graduatedYear: 0,
+    gpa: 0,
   };
 }
 
@@ -205,8 +209,8 @@ export function createComputerSkillRow(): ComputerSkill {
   return {
     id: generateId(),
     system_program: "",
-    good: "",
-    fair: "",
+    good: null,
+    fair: null,
   };
 }
 
@@ -218,10 +222,10 @@ export function createLanguageSkillRow(): LanguageSkill {
   return {
     id: generateId(),
     language: "",
-    listening: "",
-    speaking: "",
-    reading: "",
-    writing: "",
+    listening: 0,
+    speaking: 0,
+    reading: 0,
+    writing: 0,
   };
 }
 
@@ -304,7 +308,7 @@ export function validateApplication(
     });
   }
 
-  if (isEmpty(payload.personal.expectedSalary)) {
+  if (payload.personal.expectedSalary == 0) {
     errors.push({
       field: "expectedSalary",
       message: `${getUIText(uiText.expectedSalary, locale)} ${getUIText(uiText.requiredField, locale)}`,
@@ -346,33 +350,48 @@ export function validateApplication(
     });
   }
   
-  if (isEmpty(payload.personal.subDistrict)) {
+  // if (isEmpty(payload.personal.subDistrict)) {
+  //   errors.push({
+  //     field: "subDistrict",
+  //     message: `${getUIText(uiText.subDistrict, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
+
+  // if (isEmpty(payload.personal.district)) {
+  //   errors.push({
+  //     field: "district",
+  //     message: `${getUIText(uiText.district, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
+  
+  // if (isEmpty(payload.personal.province)) {
+  //   errors.push({
+  //     field: "province",
+  //     message: `${getUIText(uiText.province, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }  
+  
+  // if (isEmpty(payload.personal.postalCode)) {
+  //   errors.push({
+  //     field: "postalCode",
+  //     message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
+  //   });
+  // }
+
+  if (isEmpty(payload.personal.email)) {
     errors.push({
-      field: "subDistrict",
-      message: `${getUIText(uiText.subDistrict, locale)} ${getUIText(uiText.requiredField, locale)}`,
+      field: "email",
+      message: `${getUIText(uiText.email, locale)} ${getUIText(uiText.requiredField, locale)}`,
     });
   }
 
-  if (isEmpty(payload.personal.district)) {
+  if (isEmpty(payload.personal.phoneNumber)) {
     errors.push({
-      field: "district",
-      message: `${getUIText(uiText.district, locale)} ${getUIText(uiText.requiredField, locale)}`,
+      field: "phoneNumber",
+      message: `${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.requiredField, locale)}`,
     });
   }
-  
-  if (isEmpty(payload.personal.province)) {
-    errors.push({
-      field: "province",
-      message: `${getUIText(uiText.province, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }  
-  
-  if (isEmpty(payload.personal.postalCode)) {
-    errors.push({
-      field: "postalCode",
-      message: `${getUIText(uiText.postalCode, locale)} ${getUIText(uiText.requiredField, locale)}`,
-    });
-  }
+
     
   if (payload.personal.residenceType.length == 0) {
     errors.push({

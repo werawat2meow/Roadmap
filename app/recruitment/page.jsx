@@ -2,7 +2,6 @@
 
 export default function RecruitmentPage() {
     return (
-    
       <div className="flex h-full">
         <div className="overflow-y-auto p-6 w-full">
           <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
@@ -17,7 +16,6 @@ export default function RecruitmentPage() {
             </div>
           </div>
         </div>
-
       </div>
   );
 }

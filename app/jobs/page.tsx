@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -325,10 +325,7 @@ export default function JobsPage() {
               {filteredJobs.map((job) => (
                 <JobCard
                   key={job.id}
-                  job={{
-                    ...job,
-                    position_name: getText(job.job_to_language, locale),
-                  }}
+                  job={job as any}
                 />
               ))}
             </div>

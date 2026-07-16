@@ -286,7 +286,7 @@ export default function JobDescriptionForm({
       <div className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-900">
-            {mode === "edit" ? "แก้ไขข้อมูลการเปิดรับสมัครพนักงาน" : "บันทึกข้อมูลการเปิดรับสมัครพนักงาน"}
+            {mode === "edit" ? "แก้ไขข้อมูลรายละเอียดงาน" : "บันทึกข้อมูลรายละเอียดงาน"}
           </h1>
         </div>
 

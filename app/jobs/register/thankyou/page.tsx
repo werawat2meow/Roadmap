@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Flex, Progress, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 
-import LanguageHeader from "@/app/jobs/components/LanguageHeader";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import { getTranslation, uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -43,8 +43,6 @@ export default function RegisterThankYouPage() {
 
   return (
     <>
-      {/* <LanguageHeader /> */}
-
       <div
         style={{
           minHeight: "calc(100vh - 80px)",
@@ -71,23 +69,12 @@ export default function RegisterThankYouPage() {
               style={{
                 fontSize: 72,
                 color: "#52c41a",
+                fontWeight: 400,
               }}
             />
 
             <Title level={2} style={{ marginBottom: 0 }}>
-              {t.applicationSubmitted ??
-                "ขอบคุณสำหรับการสมัครงาน"}
-            </Title>
-
-            <Title
-              level={4}
-              style={{
-                marginTop: 0,
-                fontWeight: 400,
-              }}
-            >
-              {t.applicationSubmittedEn ??
-                "Thank you for your application"}
+              { getUIText(uiText.applicationSubmitted, locale) }
             </Title>
 
             <Paragraph
@@ -96,8 +83,7 @@ export default function RegisterThankYouPage() {
                 marginBottom: 0,
               }}
             >
-              {t.applicationSubmittedDescription ??
-                "Your application has been successfully submitted. Our recruitment team will review your information and contact you if your qualifications match the position."}
+              {"Your application has been successfully submitted. Our recruitment team will review your information and contact you if your qualifications match the position."}
             </Paragraph>
 
             <Progress
@@ -107,10 +93,9 @@ export default function RegisterThankYouPage() {
             />
 
             <Text type="secondary">
-              {t.redirectIn ??
-                "Redirecting to job list in"}{" "}
+              {"Redirecting to job list in"}{" "}
               <strong>{seconds}</strong>{" "}
-              {t.seconds ?? "seconds"}...
+              {"seconds"}...
             </Text>
 
             <Button
@@ -118,8 +103,7 @@ export default function RegisterThankYouPage() {
               size="large"
               onClick={() => router.push("/jobs")}
             >
-              {t.backToJobs ??
-                "Back to Job Listings"}
+              { getUIText(uiText.backToJobs, locale) }
             </Button>
           </Flex>
         </Card>

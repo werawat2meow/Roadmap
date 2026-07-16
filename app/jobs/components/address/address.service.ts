@@ -64,7 +64,7 @@ export async function getProvince(
  * อำเภอตามจังหวัด
  */
 export async function getDistricts(
-    provinceCode: string
+    provinceCode: number
 ): Promise<District[]> {
     return request<District[]>(
         `${API}?type=district&provinceId=${provinceCode}`
@@ -86,7 +86,7 @@ export async function getDistrict(
  * ตำบลตามอำเภอ
  */
 export async function getSubDistricts(
-    districtCode: string
+    districtCode: number
 ): Promise<SubDistrict[]> {
     return request<SubDistrict[]>(
         `${API}?type=subdistrict&districtId=${districtCode}`

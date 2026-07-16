@@ -2,7 +2,7 @@
 
 import type { FormInstance } from "antd";
 
-export type LanguageCode = "TH" | "EN";
+export type LanguageCode = string;
 
 /* -------------------------------------------------------------------------- */
 /*                                 Position                                   */
@@ -203,6 +203,7 @@ export interface JobApplicationPayload {
 /* -------------------------------------------------------------------------- */
 
 export interface ApplicationFormProps {
+  jobId: string;
   language: LanguageCode;
   saving: boolean;
   position: PositionInfo;

@@ -123,7 +123,7 @@ export default function SkillsSection({
   const updateLanguage = (
     id: string,
     field: keyof LanguageSkill,
-    value: string
+    value: string | number
   ) => {
     onLanguageChange(
       languageSkills.map((item) =>

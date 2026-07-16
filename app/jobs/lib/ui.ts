@@ -1,4 +1,4 @@
-import { uiText } from "./translations";
+import { uiText } from "@/app/jobs/components/translations";
 
 export function getUIText(
   text: Record<string, string>,

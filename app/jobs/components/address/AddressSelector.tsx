@@ -70,7 +70,7 @@ export default function AddressSelector({
         }
     }
 
-    async function loadDistricts(provinceCode: string) {
+    async function loadDistricts(provinceCode: number) {
         try {
             setLoadingDistrict(true);
             const data = await getDistricts(provinceCode);
@@ -82,7 +82,7 @@ export default function AddressSelector({
         }
     }
 
-    async function loadSubDistricts(districtCode: string) {
+    async function loadSubDistricts(districtCode: number) {
         try {
             setLoadingSubDistrict(true);
             const data = await getSubDistricts(districtCode);
@@ -94,7 +94,7 @@ export default function AddressSelector({
         }
     }
 
-    async function handleProvinceChange(provinceCode?: string) {
+    async function handleProvinceChange(provinceCode?: number) {
         if (!provinceCode) {
             setDistrictOptions([]);
             setSubDistrictOptions([]);
@@ -117,7 +117,7 @@ export default function AddressSelector({
         });
     }
 
-    async function handleDistrictChange(districtCode?: string) {
+    async function handleDistrictChange(districtCode?: number) {
         if (!districtCode) {
             setSubDistrictOptions([]);
             onChange({
@@ -166,7 +166,6 @@ export default function AddressSelector({
                     required
                 >
                     <Select
-                        required
                         value={value.provinceId}
                         loading={loadingProvince}
                         allowClear
@@ -196,7 +195,6 @@ export default function AddressSelector({
                     required
                 >
                     <Select
-                        required
                         value={value.districtId}
                         loading={loadingDistrict}
                         allowClear
@@ -227,7 +225,7 @@ export default function AddressSelector({
                     required
                 >
                     <Select
-                        required
+                        
                         value={value.subDistrictId}
                         loading={loadingSubDistrict}
                         allowClear

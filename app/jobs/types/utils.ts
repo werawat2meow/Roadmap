@@ -209,8 +209,8 @@ export function createComputerSkillRow(): ComputerSkill {
   return {
     id: generateId(),
     system_program: "",
-    good: "",
-    fair: "",
+    good: null,
+    fair: null,
   };
 }
 
@@ -308,7 +308,7 @@ export function validateApplication(
     });
   }
 
-  if (isEmpty(payload.personal.expectedSalary)) {
+  if (payload.personal.expectedSalary == 0) {
     errors.push({
       field: "expectedSalary",
       message: `${getUIText(uiText.expectedSalary, locale)} ${getUIText(uiText.requiredField, locale)}`,

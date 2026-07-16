@@ -31,7 +31,8 @@ function readSavedUrgent() {
   return localStorage.getItem(URGENT_STORAGE_KEY) === "true";
 }
 
-export default function LanguageHeader() {
+export default function LanguageHeader( ) {
+
   const [languages, setLanguages] = useState<Language[]>([]);
   const [branches, setBranches] = useState<BranchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,12 +130,6 @@ export default function LanguageHeader() {
     setLocale(value);
     localStorage.setItem("language_slug", value);
   };
-
-  // const selectBranch = (branchId: string) => {
-  //   localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
-  //   window.dispatchEvent(new Event("branch-change"));
-  //   setMenuOpen(false);
-  // };
 
   const selectBranch = (branchId: string) => {
     localStorage.setItem(BRANCH_STORAGE_KEY, branchId);

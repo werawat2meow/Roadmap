@@ -8,6 +8,9 @@ import {
     getDistrictByCode,
     getSubdistrictsByCriterion,
     getSubdistrictByCode,
+    type ProvinceIndex,
+    type DistrictIndex,
+    type SubdistrictIndex,
 } from "geothai";
 
 export async function GET(request: NextRequest) {
@@ -28,7 +31,8 @@ export async function GET(request: NextRequest) {
              */
             case "province": {
                 if (id) {
-                    const province = getProvinceByCode(id);
+
+                    const province = getProvinceByCode(id as ProvinceIndex);
 
                     if (!province) {
                         return NextResponse.json(
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest) {
              */
             case "district": {
                 if (id) {
-                    const district = getDistrictByCode(id);
+                    const district = getDistrictByCode(id as DistrictIndex);
 
                     if (!district) {
                         return NextResponse.json(
@@ -106,7 +110,7 @@ export async function GET(request: NextRequest) {
              */
             case "subdistrict": {
                 if (id) {
-                    const subdistrict = getSubdistrictByCode(id);
+                    const subdistrict = getSubdistrictByCode(id as SubdistrictIndex);
 
                     if (!subdistrict) {
                         return NextResponse.json(

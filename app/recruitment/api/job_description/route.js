@@ -7,17 +7,12 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function cleanRows(items) {
-  return (items || [])
-    .map((item, index) => ({
-      text: item,
-      sort_order: index + 1,
-    }))
-    .filter((item) =>
-      Object.values(item.text || {}).some(
-        (v) => String(v || "").trim().length > 0
-      )
-    );
+function cleanRows(rows = []) {
+  return rows.filter((row) => {
+    const texts = Object.values(row?.text || {});
+    // เก็บไว้เฉพาะแถวที่มีอย่างน้อย 1 ภาษาไม่ว่าง
+    return texts.some((t) => typeof t === "string" && t.trim() !== "");
+  });
 }
 
 export async function GET() {
@@ -30,15 +25,27 @@ export async function GET() {
       salary_max,
       type_of_work,
       updated_at,
-      positions ( position_name , position_level ),
-      description
+      description,
+      positions (
+        position_name,
+        position_level
+      ),
+      recruit_job_description_branches (
+        branch_id,
+        branches (
+          branch_name
+        )
+      )
     `)
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json(
+      { message: error.message },
+      { status: 500 }
+    );
   }
-  
+
   const rows = (data || []).map((row) => ({
     id: row.id,
     positions_id: row.positions_id,
@@ -49,6 +56,18 @@ export async function GET() {
     type_of_work: row.type_of_work,
     updated_at: row.updated_at,
     description: row.description,
+
+    branches:
+      row.recruit_job_description_branches?.map((item) => ({
+        branch_id: item.branch_id,
+        branch_name: item.branches?.branch_name || "-",
+      })) || [],
+
+    branch_names:
+      row.recruit_job_description_branches
+        ?.map((item) => item.branches?.branch_name)
+        .filter(Boolean)
+        .join(", ") || "-",
   }));
 
   return NextResponse.json(rows);
@@ -57,10 +76,9 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-
+    
     const descriptionPayload = {
       positions_id: body.positions_id,
-      branch_id: body.branch_id,
       department_id: body.department_id,
       division_id: body.division_id,
       unit_id: body.unit_id,
@@ -71,7 +89,10 @@ export async function POST(request) {
       workLocation: body.workLocation,
       status: true,
       updated_at:new Date().toISOString(),
-      description: body.descriptionซ ?? null,
+      description: body.description ?? null,
+      workDay: body.workDay ?? null,
+      workOff: body.workOff ?? null,
+      remark: body.remark ?? null,
     };
 
     const { data: inserted, error: insertError } = await supabaseAdmin
@@ -86,25 +107,41 @@ export async function POST(request) {
 
     const descriptionId = inserted.id;
 
+    const branchRows = (body.branch_id || []).map((branchId) => ({      
+      job_description_id: descriptionId,
+      branch_id: branchId,
+    }));
+
+    if (branchRows.length) {
+      const { error } = await supabaseAdmin
+        .from("recruit_job_description_branches")
+        .insert(branchRows);
+
+      if (error) {
+        return NextResponse.json(
+          { message: error.message },
+          { status: 500 }
+        );
+      }
+    }
+
     const requirements = cleanRows(body.requirements).map((item) => ({
       job_description_id: descriptionId,
       requirement_text: item.text,
-      sort_order: item.sort_order,
-      updated_at:new Date().toISOString(),
+      sort_order: item.sort_order ?? 1,
+      showpage: item.showpage ?? false,
     }));
 
     const responsibilities = cleanRows(body.responsibilities).map((item) => ({
       job_description_id: descriptionId,
       responsibility_text: item.text,
       sort_order: item.sort_order,
-      updated_at:new Date().toISOString(),
     }));
 
     const benefits = cleanRows(body.benefits).map((item) => ({
       job_description_id: descriptionId,
       benefit_text: item.text,
       sort_order: item.sort_order,
-      updated_at:new Date().toISOString(),
     }));
 
     if (requirements.length) {

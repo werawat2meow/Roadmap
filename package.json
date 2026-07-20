@@ -17,6 +17,7 @@
     "antd": "^6.3.5",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
+    "geothai": "^3.0.1",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "libphonenumber-js": "^1.12.41",

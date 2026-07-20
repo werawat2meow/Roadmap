@@ -26,6 +26,8 @@ const initialForm = {
   nationality: "thai",
   hire_date: "",
   employment_type: "",
+
+  company_id: "",
   branch_group_id: "",
   branch_id: "",
   department_id: "",
@@ -52,6 +54,7 @@ const initialForm = {
 export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [employees, setEmployees] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [branches, setBranches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [divisions, setDivisions] = useState([]);
@@ -145,6 +148,18 @@ export default function EmployeesPage() {
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Load business units failed");
     setBusinessUnits(data.data || []);
+  };
+
+  const loadCompanies = async () => {
+    const res = await fetch("/api/admin/companies", {cache: "no-store",});
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(
+        data?.error ||
+          "Load companies failed"
+      );
+    }
+    setCompanies(data.data || []);
   };
 
   const loadCostCenters = async () => {
@@ -344,6 +359,7 @@ export default function EmployeesPage() {
       loadBusinessUnits(),
       loadCostCenters(),
       loadProfitCenters(),
+      loadCompanies(),
     ])
       .then(() => {
         masterDataLoadedRef.current = true;
@@ -567,6 +583,7 @@ export default function EmployeesPage() {
       last_name_th: employee.last_name_th || "",
       first_name_en: employee.first_name_en || "",
       last_name_en: employee.last_name_en || "",
+      company_id:employee.company_id || "",
       nick_name: employee.nick_name || "",
       gender: employee.gender || "",
       phone: employee.phone || "",
@@ -764,6 +781,11 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (isCompanyScope && !form.company_id) {
+      swalError("กรุณาเลือกบริษัท");
+      return;
+    }
+
     if (isBranchGroupScope && !form.branch_group_id) {
       swalError("กรุณาเลือกกรุ๊ปสังกัด");
       return;
@@ -853,6 +875,7 @@ export default function EmployeesPage() {
       const payload = {
         ...form,
         employee_photo_url: employeePhotoUrl,
+        company_id: isCompanyScope ? form.company_id : null,
         branch_group_id: isBranchGroupScope ? form.branch_group_id : null,
         branch_id: isBranchScope || isOperationLevel ? form.branch_id : null,
         department_id: isDepartmentScope || isOperationLevel ? form.department_id : null,
@@ -1761,6 +1784,7 @@ export default function EmployeesPage() {
                       ...prev,
                       position_id: value ?? "",
                       job_id: "",
+                      company_id: "",
                       branch_group_id: "",
                       branch_id: "",
                       department_id: "",
@@ -1802,6 +1826,10 @@ export default function EmployeesPage() {
                       setForm((prev) => ({
                         ...prev,
                         job_id: value ?? "",
+                        company_id:
+                          job?.scope_type === "company"
+                            ? prev.company_id
+                            : "",
                         branch_group_id:
                           job?.scope_type === "branch_group"
                             ? prev.branch_group_id
@@ -1845,6 +1873,54 @@ export default function EmployeesPage() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {isCompanyScope && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    บริษัทหลัก
+                    <span className="ml-1 text-red-500">
+                      *
+                    </span>
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกบริษัท"
+                    value={
+                      form.company_id ||
+                      undefined
+                    }
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+
+                        company_id:
+                          value ?? "",
+                      }))
+                    }
+                    options={companies
+                      .filter(
+                        (company) =>
+                          !company.status ||
+                          company.status ===
+                            "active"
+                      )
+                      .map((company) => ({
+                        value: company.id,
+
+                        label:
+                          company.company_name_th ||
+                          company.company_name_en ||
+                          company.company_code ||
+                          "-",
+                      }))}
+                    optionFilterProp="label"
+                    className="w-full"
+                    size="large"
+                  />
                 </div>
               )}
 
@@ -2074,7 +2150,9 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Business Unit
-                  <span className="ml-1 text-red-500">*</span>
+                  {selectedJob?.business_unit_required && (
+                    <span className="ml-1 text-red-500">*</span>
+                  )}
                 </label>
 
                 <Select
@@ -2105,7 +2183,9 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Cost Center
-                  <span className="ml-1 text-red-500">*</span>
+                  {selectedJob?.cost_center_required && (
+                    <span className="ml-1 text-red-500">*</span>
+                  )}
                 </label>
 
                 <Select
@@ -2134,7 +2214,9 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Profit Center
-                  <span className="ml-1 text-red-500">*</span>
+                  {selectedJob?.profit_center_required && (
+                    <span className="ml-1 text-red-500">*</span>
+                  )}
                 </label>
 
                 <Select

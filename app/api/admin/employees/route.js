@@ -84,11 +84,14 @@ function mapEmployee(item) {
     resignation_date: item.resignation_date || "",
     employee_status_name: item.employee_statuses?.status_name || "-",
     employee_status_color: item.employee_statuses?.color || "slate",
+    company_id: item.company_id || "",
     branch_id: item.branch_id || "",
     department_id: item.department_id || "",
     division_id: item.division_id || "",
     unit_id: item.unit_id || "",
     position_id: item.position_id || "",
+    company_code: item.companies?.company_code || "",
+    company_name: item.companies?.company_name_th || item.companies?.company_name_en || "-",
     branch_name: item.branches?.branch_name || "-",
     department_name: item.departments?.department_name || "-",
     division_name: item.divisions?.division_name || "-",
@@ -96,7 +99,72 @@ function mapEmployee(item) {
     position_name: item.positions?.position_name || "-",
     position_level: item.positions?.position_level || "",
     branch_group_id: item.branch_group_id || "",
-    job_id: item.job_id || "",
+    branch_group_code: item.branch_groups?.group_code || "",
+    branch_group_name:item.branch_groups?.group_name || "-",
+    branch_group_color:item.branch_groups?.group_color || "",
+    job_id:item.job_id || "",
+    job_code:item.jobs?.job_code || "",
+    job_name:item.jobs?.job_name || "-",
+    job_level:item.jobs?.job_level || "",
+    management_level:item.jobs?.management_level ||item.positions?.position_level ||"",
+    scope_type:item.jobs?.scope_type || "",
+    job_color:item.jobs?.job_color || "",
+    job_icon:item.jobs?.job_icon || "",
+    can_manage_employees:Boolean(item.jobs?.can_manage_employees),
+    can_approve_budget: Boolean(item.jobs?.can_approve_budget),
+
+    /*
+    * ส่ง Object เดิมไปด้วย
+    * เพื่อรองรับหน้าที่อ่าน employee.jobs.management_level
+    */
+    jobs: item.jobs
+      ? {
+          job_code:
+            item.jobs.job_code || "",
+
+          job_name:
+            item.jobs.job_name || "-",
+
+          job_level:
+            item.jobs.job_level || "",
+
+          management_level:
+            item.jobs.management_level ||
+            "",
+
+          scope_type:
+            item.jobs.scope_type || "",
+
+          job_color:
+            item.jobs.job_color || "",
+
+          job_icon:
+            item.jobs.job_icon || "",
+
+          can_manage_employees:
+            Boolean(
+              item.jobs.can_manage_employees
+            ),
+
+          can_approve_budget:
+            Boolean(
+              item.jobs.can_approve_budget
+            ),
+        }
+      : null,
+
+    positions: item.positions
+      ? {
+          position_name:
+            item.positions.position_name ||
+            "-",
+
+          position_level:
+            item.positions.position_level ||
+            "",
+        }
+      : null,
+
     management_assignment_id: item.management_assignment_id || "",
     created_at: item.created_at,
     probation_days: item.probation_days ?? null,
@@ -232,6 +300,7 @@ export async function GET(req) {
         status,
         employee_status_id,
         resignation_date,
+        company_id,
         branch_id,
         department_id,
         division_id,
@@ -250,6 +319,13 @@ export async function GET(req) {
         passport_no,
         birth_date,
         line_id,
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
+        ),
         branch_groups (
           group_code,
           group_name,
@@ -450,6 +526,7 @@ export async function POST(req) {
     const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
 
+    const company_id = body?.company_id || null;
     const branch_group_id = body?.branch_group_id || null;
     const branch_id = body?.branch_id || null;
     const department_id = body?.department_id || null;
@@ -650,6 +727,11 @@ export async function POST(req) {
         .from("jobs")
         .select(`
           id,
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
           business_unit_required,
           cost_center_required,
           profit_center_required,
@@ -661,6 +743,74 @@ export async function POST(req) {
       if (jobError) throw jobError;
 
       selectedJob = jobData;
+
+      const jobScopeType = selectedJob?.scope_type || "";
+
+      if (jobScopeType === "company" && !company_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกบริษัทสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch_group" && !branch_group_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกกรุ๊ปสังกัดสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch" && !branch_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกสาขาสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "department" && !department_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกแผนกสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "division" && !division_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกฝ่ายสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if ( jobScopeType === "unit" && !unit_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกหน่วยงานสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
 
       if (selectedJob?.business_unit_required && !business_unit_id) {
         return NextResponse.json(
@@ -729,7 +879,7 @@ export async function POST(req) {
       employee_status_id,
       resignation_date,
       status,
-
+      company_id,
       branch_group_id,
       branch_id,
       department_id,
@@ -779,6 +929,7 @@ export async function POST(req) {
         probation_days,
         probation_end_date,
         probation_status,
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -798,6 +949,14 @@ export async function POST(req) {
         employee_statuses (
           status_name,
           color
+        ),
+
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
         ),
 
         branch_groups (
@@ -869,7 +1028,7 @@ export async function POST(req) {
           payment_frequency,
           default_payment_day,
           status
-        )
+        ),
         jobs (
           job_code,
           job_name,

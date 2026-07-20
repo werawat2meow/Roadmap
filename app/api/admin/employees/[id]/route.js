@@ -39,6 +39,7 @@ function mapEmployee(data) {
     employee_status_name: data.employee_statuses?.status_name || "-",
     employee_status_color: data.employee_statuses?.color || "slate",
 
+    company_id: data.company_id || "",
     branch_group_id: data.branch_group_id || "",
     branch_id: data.branch_id || "",
     department_id: data.department_id || "",
@@ -47,6 +48,8 @@ function mapEmployee(data) {
     position_id: data.position_id || "",
     job_id: data.job_id || "",
     management_assignment_id: data.management_assignment_id || "",
+    company_code: data.companies?.company_code || "",
+    company_name: data.companies?.company_name_th || data.companies?.company_name_en || "-",
 
     branch_group_code: data.branch_groups?.group_code || "",
     branch_group_name: data.branch_groups?.group_name || "-",
@@ -63,12 +66,12 @@ function mapEmployee(data) {
     job_code: data.jobs?.job_code || "",
     job_name: data.jobs?.job_name || "-",
     job_level: data.jobs?.job_level || "",
-    management_level: data.jobs?.management_level || "",
+    management_level: data.jobs?.management_level || data.positions?.position_level || "",
     scope_type: data.jobs?.scope_type || "",
     job_color: data.jobs?.job_color || "#E2E8F0",
     job_icon: data.jobs?.job_icon || "",
-    can_manage_employees: data.jobs?.can_manage_employees || false,
-    can_approve_budget: data.jobs?.can_approve_budget || false,
+    can_manage_employees: Boolean(data.jobs?.can_manage_employees),
+    can_approve_budget: Boolean(data.jobs?.can_approve_budget),
 
     probation_days: data.probation_days ?? null,
     probation_end_date: data.probation_end_date || "",
@@ -129,7 +132,7 @@ export async function PATCH(req, { params }) {
     const employee_status_id = body?.employee_status_id || null;
     const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
-
+    const company_id = body?.company_id || null;
     const branch_group_id = body?.branch_group_id || null;
     const branch_id = body?.branch_id || null;
     const department_id = body?.department_id || null;
@@ -247,6 +250,11 @@ export async function PATCH(req, { params }) {
         .from("jobs")
         .select(`
           id,
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
           business_unit_required,
           cost_center_required,
           profit_center_required,
@@ -256,6 +264,78 @@ export async function PATCH(req, { params }) {
         .maybeSingle();
 
       if (jobError) throw jobError;
+
+      if (!selectedJob) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "ไม่พบ Job ที่เลือก",
+          },
+          { status: 400 }
+        );
+      }
+
+      const jobScopeType = selectedJob.scope_type || "";
+
+      if (jobScopeType === "company" && !company_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "กรุณาเลือกบริษัทสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if ( jobScopeType === "branch_group" && !branch_group_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกกรุ๊ปสังกัดสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch" && !branch_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "กรุณาเลือกสาขาสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "department" && !department_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกแผนกสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "division" && !division_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกฝ่ายสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "unit" && !unit_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกหน่วยงานสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
 
       if (selectedJob?.business_unit_required && !business_unit_id) {
         return NextResponse.json(
@@ -365,7 +445,7 @@ export async function PATCH(req, { params }) {
         employee_status_id,
         resignation_date,
         status,
-
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -416,7 +496,7 @@ export async function PATCH(req, { params }) {
         status,
         employee_status_id,
         resignation_date,
-
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -436,6 +516,13 @@ export async function PATCH(req, { params }) {
         employee_statuses (
           status_name,
           color
+        ),
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
         ),
         branch_groups (
           group_code,

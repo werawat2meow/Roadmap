@@ -30,7 +30,11 @@ export function AuthProvider({ children }) {
       const data = await res.json();
 
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Refresh user failed");
+        // throw new Error(data?.error || "Refresh user failed");
+        localStorage.removeItem("employee_user");
+        localStorage.removeItem("employee_token");
+        setUser(null);
+        return;
       }
 
       localStorage.setItem("employee_user", JSON.stringify(data.user));

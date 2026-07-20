@@ -58,6 +58,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "workflow",
+      action_type: actionType,
+      ref_table: "benefit_approval_workflows",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_WORKFLOW_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 export async function PUT(req, { params }) {
   try {
     const user = await getCurrentUser();
@@ -111,6 +142,12 @@ export async function PUT(req, { params }) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_approval_workflows")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { data, error } = await supabaseAdmin
       .from("benefit_approval_workflows")
       .update({
@@ -157,6 +194,16 @@ export async function PUT(req, { params }) {
       );
     }
 
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไข Workflow: ${data.workflow_name} Step ${data.step_no}`,
+      oldData,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -193,6 +240,12 @@ export async function DELETE(req, { params }) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_approval_workflows")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_approval_workflows")
       .delete()
@@ -204,6 +257,16 @@ export async function DELETE(req, { params }) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบ Workflow: ${oldData?.workflow_name || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

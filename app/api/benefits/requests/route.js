@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { createNotification } from "@/lib/benefitNotification";
 
 const ATTACHMENT_BUCKET = process.env.BENEFIT_ATTACHMENTS_BUCKET || "benefit-attachments";
 const MAX_FILE_SIZE_MB = Number(process.env.BENEFIT_ATTACHMENT_MAX_SIZE_MB || 10);
@@ -470,6 +471,16 @@ export async function POST(req) {
       files: attachments,
       requestId: requestData.id,
       userId: user.id,
+    });
+
+    await createNotification({
+      employeeId: user.employee_id,
+      userAccountId: user.id,
+      title: "ส่งคำขอสวัสดิการสำเร็จ",
+      message: `คำขอ ${requestData.request_no} ถูกส่งเรียบร้อยแล้ว`,
+      type: "request_created",
+      refTable: "benefit_requests",
+      refId: requestData.id,
     });
 
     return NextResponse.json({

@@ -14,15 +14,24 @@ export async function GET(req) {
         branch_code,
         branch_name,
         company_id,
+        group_id,
         phone,
         status,
         sort_order,
+        branch_image_url,
+        branch_image_path,
         created_at,
         companies (
           id,
           company_code,
           company_name_th,
           company_name_en
+        ),
+        branch_groups (
+          id,
+          group_code,
+          group_name,
+          group_color
         )
       `)
       .order("sort_order", { ascending: true })
@@ -43,7 +52,13 @@ export async function GET(req) {
       phone: branch.phone,
       status: branch.status,
       sort_order: branch.sort_order,
+      branch_image_url: branch.branch_image_url || "",
+      branch_image_path: branch.branch_image_path || "",
       created_at: branch.created_at,
+      group_id: branch.group_id || "",
+      group_code: branch.branch_groups?.group_code || "",
+      group_name: branch.branch_groups?.group_name || "",
+      group_color: branch.branch_groups?.group_color || "#E2E8F0",
     }));
 
     const filteredData = search ? mappedData.filter((item) => {
@@ -52,7 +67,9 @@ export async function GET(req) {
             item.branch_code?.toLowerCase().includes(keyword) ||
             item.branch_name?.toLowerCase().includes(keyword) ||
             item.company_name?.toLowerCase().includes(keyword) ||
-            item.company_code?.toLowerCase().includes(keyword)
+            item.company_code?.toLowerCase().includes(keyword) ||
+            item.group_name?.toLowerCase().includes(keyword) ||
+            item.group_code?.toLowerCase().includes(keyword) 
           );
         })
       : mappedData;
@@ -80,6 +97,9 @@ export async function POST(req) {
     const company_id = body?.company_id || null;
     const phone = body?.phone?.trim() || null;
     const status = body?.status || "active";
+    const group_id = body?.group_id || null;
+    const branch_image_url = body?.branch_image_url || null;
+    const branch_image_path = body?.branch_image_path || null;
 
     if (!branch_code || !branch_name) {
       return NextResponse.json(
@@ -104,6 +124,9 @@ export async function POST(req) {
           company_id,
           phone,
           status,
+          branch_image_url,
+          branch_image_path,
+          group_id,
         },
       ])
       .select(`
@@ -114,7 +137,16 @@ export async function POST(req) {
         phone,
         status,
         sort_order,
+        branch_image_url,
+        branch_image_path,
         created_at,
+        group_id,
+        branch_groups (
+          id,
+          group_code,
+          group_name,
+          group_color
+        ),
         companies (
           id,
           company_code,
@@ -152,6 +184,12 @@ export async function POST(req) {
           "",
         phone: data.phone,
         status: data.status,
+        branch_image_url: data.branch_image_url,
+        branch_image_path: data.branch_image_path,
+        group_id: data.group_id,
+        group_code: data.branch_groups?.group_code || "",
+        group_name: data.branch_groups?.group_name || "",
+        group_color: data.branch_groups?.group_color || "",
       },
     });
 
@@ -171,7 +209,13 @@ export async function POST(req) {
         phone: data.phone,
         status: data.status,
         sort_order: data.sort_order,
+        branch_image_url: data.branch_image_url || "",
+        branch_image_path: data.branch_image_path || "",
         created_at: data.created_at,
+        group_id: data.group_id || "",
+        group_code: data.branch_groups?.group_code || "",
+        group_name: data.branch_groups?.group_name || "",
+        group_color: data.branch_groups?.group_color || "#E2E8F0",
       },
     });
   } catch (error) {

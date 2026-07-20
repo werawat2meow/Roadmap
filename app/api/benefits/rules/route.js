@@ -72,6 +72,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "rule",
+      action_type: actionType,
+      ref_table: "benefit_rules",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_RULE_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 function toNumberOrNull(value) {
   if (value === "" || value === undefined || value === null) return null;
   return Number(value);
@@ -95,6 +126,9 @@ function buildPayload(body) {
 
     discount_percent: toNumberOrNull(body.discount_percent),
     is_unlimited: body.is_unlimited ?? false,
+    allow_carry_forward: body.allow_carry_forward ?? false,
+    max_carry_forward_amount: toNumberOrNull(body.max_carry_forward_amount),
+    carry_forward_expire_month: toNumberOrNull(body.carry_forward_expire_month),
 
     rule_note: body.rule_note || null,
     is_active: body.is_active ?? true,
@@ -142,6 +176,9 @@ export async function GET() {
         quota_frequency,
         discount_percent,
         is_unlimited,
+        allow_carry_forward,
+        max_carry_forward_amount,
+        carry_forward_expire_month,
         rule_note,
         is_active,
         created_at,
@@ -190,12 +227,31 @@ export async function GET() {
       .select("id, type_code, type_name")
       .order("type_name", { ascending: true });
 
+    const { data: positionRows } = await supabaseAdmin
+      .from("positions")
+      .select("position_level")
+      .eq("status", "active")
+      .not("position_level", "is", null);
+
+    const positionLevels = [
+      ...new Set(
+        (positionRows || [])
+          .map((item) => item.position_level)
+          .filter(Boolean)
+      ),
+    ].sort(
+      (a, b) =>
+        Number(b.replace("P", "")) -
+        Number(a.replace("P", ""))
+    );
+    
     return NextResponse.json({
       success: true,
       data: data || [],
       benefits: benefits || [],
       employeeStatuses: employeeStatuses || [],
       employmentTypes: employmentTypes || [],
+      positionLevels,
     });
   } catch (error) {
     console.error("BENEFIT_RULES_GET_FATAL:", error);
@@ -253,6 +309,16 @@ export async function POST(req) {
       );
     }
 
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่ม Benefit Rule: ${data.id}`,
+      oldData: null,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -297,6 +363,13 @@ export async function PUT(req) {
       );
     }
 
+
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_rules")
+      .select("*")
+      .eq("id", body.id)
+      .maybeSingle();
+
     const payload = buildPayload(body);
 
     const { data, error } = await supabaseAdmin
@@ -314,6 +387,16 @@ export async function PUT(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไข Benefit Rule: ${data.id}`,
+      oldData,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -360,6 +443,12 @@ export async function DELETE(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_rules")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_rules")
       .delete()
@@ -373,6 +462,16 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบ Benefit Rule: ${oldData?.id || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

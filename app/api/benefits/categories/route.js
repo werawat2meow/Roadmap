@@ -72,6 +72,37 @@ function hasPermission(user, permission) {
   return user?.permissions?.includes(permission) || false;
 }
 
+async function createAuditLog({
+  req,
+  user,
+  actionType,
+  refId = null,
+  description,
+  oldData = null,
+  newData = null,
+}) {
+  try {
+    await supabaseAdmin.from("benefit_audit_logs").insert({
+      module_name: "category",
+      action_type: actionType,
+      ref_table: "benefit_categories",
+      ref_id: refId,
+      description,
+      old_data: oldData,
+      new_data: newData,
+      created_by: user?.id || null,
+      created_by_name: user?.username || null,
+      ip_address:
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        null,
+      user_agent: req.headers.get("user-agent") || null,
+    });
+  } catch (error) {
+    console.error("CREATE_CATEGORY_AUDIT_LOG_ERROR:", error);
+  }
+}
+
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -185,6 +216,16 @@ export async function POST(req) {
       );
     }
 
+    await createAuditLog({
+      req,
+      user,
+      actionType: "create",
+      refId: data.id,
+      description: `เพิ่มหมวดหมู่สวัสดิการ: ${data.category_code}`,
+      oldData: null,
+      newData: data,
+    });
+
     return NextResponse.json({
       success: true,
       data,
@@ -229,6 +270,12 @@ export async function PUT(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_categories")
+      .select("*")
+      .eq("id", body.id)
+      .maybeSingle();
+
     const payload = {
       category_code: body.category_code,
       category_name: body.category_name,
@@ -253,6 +300,16 @@ export async function PUT(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "update",
+      refId: data.id,
+      description: `แก้ไขหมวดหมู่สวัสดิการ: ${data.category_code}`,
+      oldData,
+      newData: data,
+    });
 
     return NextResponse.json({
       success: true,
@@ -299,6 +356,12 @@ export async function DELETE(req) {
       );
     }
 
+    const { data: oldData } = await supabaseAdmin
+      .from("benefit_categories")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("benefit_categories")
       .delete()
@@ -312,6 +375,16 @@ export async function DELETE(req) {
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      req,
+      user,
+      actionType: "delete",
+      refId: id,
+      description: `ลบหมวดหมู่สวัสดิการ: ${oldData?.category_code || id}`,
+      oldData,
+      newData: null,
+    });
 
     return NextResponse.json({
       success: true,

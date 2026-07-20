@@ -7,8 +7,8 @@
   
   Header: 
     x-api-key: Value
-    URL Params: http://localhost:3000/api/employees?page=1&pageSize=20
-    URL Params: http://localhost:3000/api/employees?search=เทส
+    URL Params GET : http://localhost:3000/api/employees?page=1&pageSize=20
+    URL Params GET : http://localhost:3000/api/employees?search=เทส
 
 */
 import { NextResponse } from "next/server";

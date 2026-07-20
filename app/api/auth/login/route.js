@@ -181,7 +181,7 @@ export async function POST(req) {
         full_name: fullNameTh,
       },
       process.env.JWT_SECRET || "dev-secret-key",
-      { expiresIn: "1d" }
+      { expiresIn: "10h" }
     );
 
     // =========================
@@ -208,7 +208,7 @@ export async function POST(req) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60 * 10, // 10 hours
     });
 
     return response;

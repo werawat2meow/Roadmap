@@ -6,9 +6,13 @@ export interface Job {
   companyName: Translation;
   positionTitle: Translation;
   position_name:string;
+  department_id:string;
+  department_name:string;
   job_name:Translation;
   branch_name:string;
   description: Translation;
+  remark: Translation;
+  requirements: Translation[];
   responsibilities: Translation[];
   qualifications: Translation[];
   benefits: Translation[];

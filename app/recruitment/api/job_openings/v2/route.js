@@ -32,13 +32,10 @@ async function getUserIdFromRequest() {
 }
 
 export async function POST(request) {
-  // try {
+  try {
     const payload = await request.json();
 
     const userId = await getUserIdFromRequest();
-
-    console.log(payload);
-    
 
     if (!userId) {
       return NextResponse.json(
@@ -65,12 +62,38 @@ export async function POST(request) {
       !payload.end_date
     ) {
       return NextResponse.json(
-        { success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" },
+        {
+          success: false,
+          message: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        },
         { status: 400 }
       );
     }
 
-    const insertData = {
+    // ============================
+    // เช็คข้อมูลเดิม
+    // ============================
+    const { data: existing, error: checkError } = await supabaseAdmin
+      .from("recruit_job_open")
+      .select("id")
+      .eq("branch_id", branchId)
+      .eq("department_id", departmentId)
+      .eq("division_id", divisionId)
+      .eq("unit_id", unitId)
+      .eq("position_id", positionId)
+      .maybeSingle();
+
+    if (checkError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: checkError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    const saveData = {
       branch_id: branchId,
       department_id: departmentId,
       division_id: divisionId,
@@ -80,38 +103,66 @@ export async function POST(request) {
       start_date: payload.start_date,
       end_date: payload.end_date,
       urgent: Boolean(payload.urgent),
-      user_create: userId,
       user_update: userId,
       status: true,
     };
 
-    console.log(insertData);
-    
-    // const { data, error } = await supabaseAdmin
-    //   .from("recruit_job_open")
-    //   .insert([insertData])
-    //   .select()
-    //   .single();
+    let result;
+    let error;
+    let message;
 
-    // if (error) {
-    //   return NextResponse.json(
-    //     { success: false, message: error.message },
-    //     { status: 500 }
-    //   );
-    // }
+    if (existing) {
+      // ============================
+      // UPDATE
+      // ============================
+      ({ data: result, error } = await supabaseAdmin
+        .from("recruit_job_open")
+        .update(saveData)
+        .eq("id", existing.id)
+        .select()
+        .single());
+
+      message = "อัปเดตข้อมูลเรียบร้อย";
+    } else {
+      // ============================
+      // INSERT
+      // ============================
+      ({ data: result, error } = await supabaseAdmin
+        .from("recruit_job_open")
+        .insert([
+          {
+            ...saveData,
+            user_create: userId,
+          },
+        ])
+        .select()
+        .single());
+
+      message = "บันทึกข้อมูลเรียบร้อย";
+    }
+
+    if (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      message: "บันทึกข้อมูลเรียบร้อย",
-      //   data,
+      message,
+      data: result,
     });
-  // } catch (error) {
-  //   return NextResponse.json(
-  //     {
-  //       success: false,
-  //       message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
-  //     },
-  //     { status: 500 }
-  //   );
-  // }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+      },
+      { status: 500 }
+    );
+  }
 }

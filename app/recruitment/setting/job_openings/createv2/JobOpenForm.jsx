@@ -47,7 +47,8 @@ export default function JobOpenForm({ editId }) {
   // ---------- form state ----------
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [urgent, setUrgent] = useState(false);
+  // const [urgent, setUrgent] = useState(false);
+  const [urgentMap, setUrgentMap] = useState({});
   const [status, setStatus] = useState(true); // ใช้เฉพาะโหมดแก้ไข
 
   // ---------- edit mode: record ที่กำลังแก้ ----------
@@ -77,7 +78,9 @@ export default function JobOpenForm({ editId }) {
         setEditRecord(record);
         setStartDate(record.start_date?.slice(0, 10) ?? "");
         setEndDate(record.end_date?.slice(0, 10) ?? "");
-        setUrgent(Boolean(record.urgent));
+        setUrgentMap({
+            [rowKey(record.unit_id, record.branch_id)]: Boolean(record.urgent),
+        });
         setStatus(Boolean(record.status));
 
         const [positionRes, companiesRes] = await Promise.all([
@@ -245,7 +248,7 @@ export default function JobOpenForm({ editId }) {
             opening_count: quantities[key] || 0,
             start_date: startDate,
             end_date: endDate,
-            urgent,
+            urgent: urgentMap[key] ?? false,
             status,
           }),
         });
@@ -263,25 +266,28 @@ export default function JobOpenForm({ editId }) {
             count: quantities[rowKey(row.unit_id, row.branch_id)] || 0,
           }))
           .filter((i) => i.count > 0);
-
+        
         const results = await Promise.all(
-          itemsToSave.map(({ row, count }) =>
-            fetch("/recruitment/api/job_openings/v2", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                branch_id: row.branch_id,
-                department_id: row.department_id,
-                division_id: row.division_id,
-                unit_id: row.unit_id,
-                position_id: selectedPosition.id,
-                opening_count: count,
-                start_date: startDate,
-                end_date: endDate,
-                urgent,
-              }),
-            }).then((r) => r.json())
-          )
+          itemsToSave.map(({ row, count }) => {
+            const key = rowKey(row.unit_id, row.branch_id);
+            return fetch("/recruitment/api/job_openings/v2", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    branch_id: row.branch_id,
+                    department_id: row.department_id,
+                    division_id: row.division_id,
+                    unit_id: row.unit_id,
+                    position_id: selectedPosition.id,
+                    opening_count: count,
+                    start_date: startDate,
+                    end_date: endDate,
+                    urgent: urgentMap[key] ?? false,
+                }),
+            }).then((r) => r.json());
+          })
         );
 
         const failed = results.filter((r) => !r.success);
@@ -290,10 +296,9 @@ export default function JobOpenForm({ editId }) {
           clearPosition();
           setStartDate("");
           setEndDate("");
-          setUrgent(false);
+          setUrgentMap({});
 
           // router.push("/recruitment/setting/job_openings");
-          
         } else {
           setMessage({
             type: "error",
@@ -428,11 +433,12 @@ export default function JobOpenForm({ editId }) {
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
+                  <tr className="text-center">
                     <th className="px-3 py-2">บริษัท</th>
                     <th className="px-3 py-2">ฝ่าย/แผนก</th>
                     <th className="px-3 py-2 w-28 text-center">มีอยู่แล้ว</th>
                     <th className="px-3 py-2 w-32">จำนวนที่เปิดรับ</th>
+                    <th className="px-3 py-2">การเปิดรับสมัครแบบด่วน</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -461,6 +467,31 @@ export default function JobOpenForm({ editId }) {
                             placeholder="0"
                             className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                           />
+                        </td>
+                        <td className="px-3 py-2 justify-items-center">
+                          <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                checked={urgentMap[key] ?? false}
+                                onChange={(e) =>
+                                    setUrgentMap((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.checked,
+                                    }))
+                                }
+                            />
+                          </label>
+                          {isEditMode && (
+                            <label className="flex items-center gap-2 text-sm text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={status}
+                                onChange={(e) => setStatus(e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                              เปิดใช้งานรายการนี้
+                            </label>
+                          )}
                         </td>
                       </tr>
                     );
@@ -497,31 +528,6 @@ export default function JobOpenForm({ editId }) {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           />
         </div>
-      </div>
-
-      {/* ---------- ด่วน + สถานะ (สถานะแสดงเฉพาะโหมดแก้ไข) ---------- */}
-      <div className="flex flex-wrap items-center gap-6">
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={urgent}
-            onChange={(e) => setUrgent(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          เปิดรับสมัครแบบด่วน
-        </label>
-
-        {isEditMode && (
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={status}
-              onChange={(e) => setStatus(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            เปิดใช้งานรายการนี้
-          </label>
-        )}
       </div>
 
       {/* ---------- ข้อความแจ้งเตือน ---------- */}

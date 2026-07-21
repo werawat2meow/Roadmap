@@ -9,8 +9,8 @@ export default async function JobOpenPage({ searchParams }) {
   const { id } = await searchParams;
 
   return (
-    <main className="min-h-screen bg-slate-50 py-8">
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-slate-900">
             {id ? "แก้ไขการเปิดรับสมัครงาน" : "บันทึกการเปิดรับสมัครงาน"}

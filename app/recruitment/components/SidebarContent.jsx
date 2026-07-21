@@ -10,7 +10,7 @@ const { Sider } = Layout;
 const { useBreakpoint } = Grid;
 
 // สีหลักของ Sidebar
-const SIDEBAR_BG = "#0d47a1";
+const SIDEBAR_BG = "#123a63";
 const SIDEBAR_BG_HOVER = "rgba(255, 255, 255, 0.08)";
 const SIDEBAR_BG_SELECTED = "rgba(255, 255, 255, 0.16)";
 const SIDEBAR_BORDER = "rgba(255, 255, 255, 0.15)";

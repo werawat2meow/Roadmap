@@ -1,13 +1,21 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Layout, Menu, Drawer, Grid, Button } from "antd";
+import { Layout, Menu, Drawer, Grid, Button, ConfigProvider } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined, CloseOutlined } from "@ant-design/icons";
-import { LayoutDashboard, Users } from "lucide-react";
+import { LayoutDashboard, Users , Summary , Settings , LayoutList } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 const { Sider } = Layout;
 const { useBreakpoint } = Grid;
+
+// สีหลักของ Sidebar
+const SIDEBAR_BG = "#123a63";
+const SIDEBAR_BG_HOVER = "rgba(255, 255, 255, 0.08)";
+const SIDEBAR_BG_SELECTED = "rgba(255, 255, 255, 0.16)";
+const SIDEBAR_BORDER = "rgba(255, 255, 255, 0.15)";
+const SIDEBAR_TEXT = "#ffffff";
+const SIDEBAR_TEXT_MUTED = "rgba(255, 255, 255, 0.65)";
 
 export default function SidebarContent({
   collapsed,
@@ -36,8 +44,23 @@ export default function SidebarContent({
         icon: LayoutDashboard,
       },
       {
+        label: "Check Candidate Detail",
+        href: "/recruitment/candidate_detail",
+        icon: LayoutList,
+      },
+      {
+        label: "Schedule interviews",
+        href: "/recruitment/schedule_interviews",
+        icon: LayoutList,
+      },
+      {
+        label: "Update interview appointment",
+        href: "/recruitment/update_interview_appointment",
+        icon: LayoutList,
+      },
+      {
         label: "Report",
-        icon: Users,
+        icon: Summary,
         defaultOpen: false,
         children: [
           {
@@ -48,17 +71,14 @@ export default function SidebarContent({
       },
       {
         label: "Settings",
-        icon: Users,
+        icon: Settings,
         defaultOpen: false,
         children: [
           { label: "Language",                     href: "/recruitment/setting/language" },
           { label: "Job Language",                 href: "/recruitment/setting/job_language" },
           { label: "Job Description",              href: "/recruitment/setting/job_description" },
           { label: "Job Openings",                 href: "/recruitment/setting/job_openings" },
-          { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
-          { label: "Check Candidate Detail",       href: "/recruitment/setting/candidate_detail" },
-          { label: "Update interview appointment", href: "/recruitment/setting/update_interview_appointment" },
-          { label: "Schedule interviews",          href: "/recruitment/setting/schedule_interviews" },
+          // { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
         ],
       },
     ],
@@ -140,22 +160,43 @@ export default function SidebarContent({
   };
 
   const sidebarBody = (
-    <div className="flex h-full flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+    <div
+      className="flex h-full flex-col"
+      style={{ backgroundColor: SIDEBAR_BG }}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-4"
+        style={{ borderBottom: `1px solid ${SIDEBAR_BORDER}` }}
+      >
         {!collapsed ? (
           <div>
-            <div className="text-lg font-bold text-slate-800">Recruit Management</div>
-            <div className="text-xs text-slate-500">Recruitment System</div>
+            <div className="text-lg font-bold" style={{ color: SIDEBAR_TEXT }}>
+              Recruit Management
+            </div>
+            <div className="text-xs" style={{ color: SIDEBAR_TEXT_MUTED }}>
+              Recruitment System
+            </div>
           </div>
         ) : (
-          <div className="text-lg font-bold text-slate-800">RM</div>
+          <div className="text-lg font-bold" style={{ color: SIDEBAR_TEXT }}>
+            RM
+          </div>
         )}
 
         {!isMobile && (
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition"
+            style={{ color: SIDEBAR_TEXT_MUTED }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = SIDEBAR_BG_HOVER;
+              e.currentTarget.style.color = SIDEBAR_TEXT;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = SIDEBAR_TEXT_MUTED;
+            }}
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </button>
@@ -164,23 +205,41 @@ export default function SidebarContent({
         {isMobile && (
           <Button
             type="text"
-            icon={<CloseOutlined />}
+            icon={<CloseOutlined style={{ color: SIDEBAR_TEXT }} />}
             onClick={() => setMobileOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition"
           />
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <Menu
-          mode="inline"
-          selectedKeys={[activeKey]}
-          openKeys={openKeys}
-          onOpenChange={setOpenKeys}
-          items={buildMenuItems(menuItems)}
-          onClick={onMenuClick}
-          className="border-r-0"
-        />
+        <ConfigProvider
+          theme={{
+            components: {
+              Menu: {
+                darkItemBg: "transparent",
+                darkItemColor: SIDEBAR_TEXT_MUTED,
+                darkItemSelectedBg: SIDEBAR_BG_SELECTED,
+                darkItemSelectedColor: SIDEBAR_TEXT,
+                darkItemHoverBg: SIDEBAR_BG_HOVER,
+                darkItemHoverColor: SIDEBAR_TEXT,
+                darkSubMenuItemBg: "transparent",
+                darkPopupBg: SIDEBAR_BG,
+              },
+            },
+          }}
+        >
+          <Menu
+            mode="inline"
+            theme="dark"
+            selectedKeys={[activeKey]}
+            openKeys={openKeys}
+            onOpenChange={setOpenKeys}
+            items={buildMenuItems(menuItems)}
+            onClick={onMenuClick}
+            style={{ backgroundColor: "transparent", borderRight: 0 }}
+          />
+        </ConfigProvider>
       </div>
     </div>
   );
@@ -192,7 +251,7 @@ export default function SidebarContent({
         onClose={() => setMobileOpen(false)}
         placement="left"
         size="default"
-        styles={{ body: { padding: 0 } }}
+        styles={{ body: { padding: 0, backgroundColor: SIDEBAR_BG } }}
         closable={false}
       >
         {sidebarBody}
@@ -207,7 +266,7 @@ export default function SidebarContent({
       collapsed={collapsed}
       collapsedWidth={80}
       width={260}
-      className="!bg-white border-r border-slate-200"
+      style={{ backgroundColor: SIDEBAR_BG, borderRight: `1px solid ${SIDEBAR_BORDER}` }}
     >
       {sidebarBody}
     </Sider>

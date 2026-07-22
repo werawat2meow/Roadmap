@@ -192,7 +192,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
           mobileOpen={mobileOpen}
           setMobileOpen={setMobileOpen}
         />
-        <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
+        <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200  px-4 lg:hidden">
           <div>
             <div className="font-bold text-slate-800">Recruit Management</div>
             <div className="text-xs text-slate-400">Recruitment System</div>

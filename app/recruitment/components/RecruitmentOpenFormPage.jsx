@@ -105,6 +105,145 @@ function SearchableSelect({
   );
 }
 
+/**
+ * Multi-select variant of SearchableSelect, used for Branch only.
+ * `values` is an array of selected ids. `onChange` receives the full
+ * updated array (add/remove semantics handled internally).
+ */
+function MultiSearchableSelect({
+  label,
+  placeholder = "พิมพ์เพื่อค้นหา...",
+  values,
+  options,
+  loading,
+  disabled,
+  onChange,
+  onSearch,
+  hint,
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const selectedItems = useMemo(
+    () => options.filter((item) => values.includes(item.id)),
+    [options, values]
+  );
+
+  useEffect(() => {
+    onSearch(query);
+  }, [query, onSearch]);
+
+  function toggleItem(id) {
+    if (values.includes(id)) {
+      onChange(values.filter((v) => v !== id));
+    } else {
+      onChange([...values, id]);
+    }
+  }
+
+  function removeItem(id) {
+    onChange(values.filter((v) => v !== id));
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+
+      <div className="relative">
+        <div
+          className={`flex min-h-[42px] w-full flex-wrap items-center gap-1.5 rounded-xl border px-2 py-1.5 text-sm transition ${
+            disabled
+              ? "cursor-not-allowed border-gray-300 bg-gray-100"
+              : "border-gray-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+          }`}
+        >
+          {selectedItems.map((item) => (
+            <span
+              key={item.id}
+              className="flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
+            >
+              {item.label}
+              {!disabled ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => removeItem(item.id)}
+                  className="text-blue-400 hover:text-blue-700"
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          ))}
+
+          <input
+            type="text"
+            value={query}
+            placeholder={selectedItems.length ? "" : placeholder}
+            disabled={disabled}
+            onFocus={() => setOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => setOpen(false), 150);
+            }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (!open) setOpen(true);
+            }}
+            className="min-w-[80px] flex-1 border-none bg-transparent px-1 py-1 text-sm outline-none disabled:cursor-not-allowed"
+          />
+        </div>
+
+        {open ? (
+          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+            <div className="max-h-64 overflow-auto">
+              {loading ? (
+                <div className="px-4 py-3 text-sm text-gray-500">
+                  กำลังโหลดข้อมูล...
+                </div>
+              ) : options.length ? (
+                options.map((item) => {
+                  const isSelected = values.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => toggleItem(item.id)}
+                      className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-gray-100 ${
+                        isSelected
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      <span>
+                        <div className="font-medium">{item.label}</div>
+                        {item.meta?.subtitle ? (
+                          <div className="text-xs text-gray-500">
+                            {String(item.meta.subtitle)}
+                          </div>
+                        ) : null}
+                      </span>
+                      {isSelected ? (
+                        <span className="text-blue-600">✓</span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="px-4 py-3 text-sm text-gray-500">
+                  ไม่พบข้อมูล
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
+    </div>
+  );
+}
+
 async function fetchJSON(url) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
@@ -122,7 +261,13 @@ export default function RecruitmentOpenFormPage({
   useEffect(() => {
     if (!initialData) return;
 
-    setBranchId(initialData.branch_id);
+    setBranchIds(
+      Array.isArray(initialData.branch_ids)
+        ? initialData.branch_ids
+        : initialData.branch_id
+        ? [initialData.branch_id]
+        : []
+    );
     setDepartmentId(initialData.department_id);
     setDivisionId(initialData.division_id);
     setUnitId(initialData.unit_id);
@@ -149,7 +294,7 @@ export default function RecruitmentOpenFormPage({
 
 
   const router = useRouter();
-  const [branchId, setBranchId] = useState(null);
+  const [branchIds, setBranchIds] = useState([]);
   const [departmentId, setDepartmentId] = useState(null);
   const [divisionId, setDivisionId] = useState(null);
   const [unitId, setUnitId] = useState(null);
@@ -197,7 +342,7 @@ export default function RecruitmentOpenFormPage({
   }, [branchTerm]);
 
   useEffect(() => {
-    if (!branchId) {
+    if (!branchIds.length) {
       setDepartments([]);
       setDepartmentId(null);
       setDivisionId(null);
@@ -208,14 +353,14 @@ export default function RecruitmentOpenFormPage({
 
     setLoading((s) => ({ ...s, departments: true }));
     fetchJSON(
-      `/recruitment/api/job_openings/departments?branch_id=${branchId}&status=active&q=${encodeURIComponent(
-        departmentTerm
-      )}`
+      `/recruitment/api/job_openings/departments?branch_id=${branchIds.join(
+        ","
+      )}&status=active&q=${encodeURIComponent(departmentTerm)}`
     )
       .then(setDepartments)
       .catch(() => setDepartments([]))
       .finally(() => setLoading((s) => ({ ...s, departments: false })));
-  }, [branchId, departmentTerm]);
+  }, [branchIds, departmentTerm]);
 
   useEffect(() => {
     if (!departmentId) {
@@ -293,7 +438,7 @@ export default function RecruitmentOpenFormPage({
   }, [positionId]);
 
   const canSubmit = Boolean(
-    branchId &&
+    branchIds.length > 0 &&
       departmentId &&
       divisionId &&
       unitId &&
@@ -322,7 +467,7 @@ export default function RecruitmentOpenFormPage({
 
     try {
       const payload = {
-        branch_id: branchId,
+        branch_ids: branchIds,
         department_id: departmentId,
         division_id: divisionId,
         unit_id: unitId,
@@ -394,15 +539,15 @@ export default function RecruitmentOpenFormPage({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-5 md:grid-cols-2">
-            <SearchableSelect
-              label="1) Branch"
-              value={branchId}
+            <MultiSearchableSelect
+              label="1) Company"
+              values={branchIds}
               options={branches.map((item) => ({
                 ...item,
               }))}
               loading={loading.branches}
-              onChange={(id) => {
-                setBranchId(id);
+              onChange={(ids) => {
+                setBranchIds(ids);
                 setDepartmentId(null);
                 setDivisionId(null);
                 setUnitId(null);
@@ -422,7 +567,7 @@ export default function RecruitmentOpenFormPage({
                 ...item,
               }))}
               loading={loading.departments}
-              disabled={!branchId}
+              disabled={!branchIds.length}
               onChange={(id) => {
                 setDepartmentId(id);
                 setDivisionId(null);
@@ -580,7 +725,7 @@ export default function RecruitmentOpenFormPage({
               <button
                 type="reset"
                 onClick={() => {
-                  setBranchId(null);
+                  setBranchIds([]);
                   setDepartmentId(null);
                   setDivisionId(null);
                   setUnitId(null);

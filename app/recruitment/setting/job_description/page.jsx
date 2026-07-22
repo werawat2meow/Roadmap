@@ -24,13 +24,15 @@ export default function JobDescriptionPage({ initialData }) {
           method: "GET",
           cache: "no-store",
         });
-
         const result = await res.json();
-
         if (!res.ok) {
           throw new Error(result?.message || "Fetch failed");
         }
 
+        // console.log(result);
+
+        
+        
         setData(result || []);
 
       } catch (err) {
@@ -106,6 +108,7 @@ export default function JobDescriptionPage({ initialData }) {
               <thead className="bg-gray-50">
                 <tr className="text-center text-slate-600">
                   <th className="px-4 py-3 font-medium">No.</th>
+                  <th className="px-4 py-3 font-medium">Company</th>
                   <th className="px-4 py-3 font-medium">Position</th>
                   <th className="px-4 py-3 font-medium">Updated at</th>
                   <th className="px-4 py-3 font-medium">Action</th>
@@ -116,9 +119,25 @@ export default function JobDescriptionPage({ initialData }) {
                   data.map((row , index) => (
                     <tr key={row.id}>
                       <td className="px-4 py-4 text-sm text-gray-700">
-                      {index + 1}
-                    </td>
-                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"}</td>
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700">
+                        {row.branches?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {row.branches.map((branch) => (
+                              <span
+                                key={branch.branch_id}
+                                className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                              >
+                                {branch.branch_name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"} {"( "+row.position_level+" )"} </td>
 
                       <td className="px-4 py-4 text-sm text-gray-700">
                         {row.updated_at

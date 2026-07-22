@@ -20,7 +20,7 @@ export function LanguageProvider({
 }: {
   children: ReactNode;
 }) {
-  const [locale, setLocale] = useState("TH");
+  const [locale, setLocale] = useState<string>("EN");
 
   return (
     <LanguageContext.Provider

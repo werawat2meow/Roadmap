@@ -1,135 +1,117 @@
 // app/api/jobs/route.ts
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    const keyword = searchParams.get("keyword")?.trim() ?? "";
+    const branchId = searchParams.get("branch_id") ?? "";
+    const urgent = searchParams.get("urgent");
+    const departmentId = searchParams.get("department_id");
+
     const today = new Date().toISOString().split("T")[0];
 
-    const { data: openJobs, error: openError } = await supabase
-      .from("recruit_job_open")
-      .select(`
-        id,
-        position_id,
-        opening_count,
-        urgent
-      `)
+    let query = supabase
+      .from("v_recruit_job_open_detail")
+      .select("*")
       .eq("status", true)
       .lte("start_date", today)
       .gte("end_date", today);
 
-    if (openError) throw openError;
-
-    if (!openJobs?.length) {
-      return NextResponse.json([]);
+    if (branchId) {
+      query = query.eq("branch_id", branchId);
     }
 
-    const positionIds = openJobs.map((j) => j.position_id);
-
-    // job description
-    const { data: descriptions, error: descError } = await supabase
-      .from("recruit_job_description")
-      .select(`
-        positions_id,
-        branch_id,
-        salary_min,
-        salary_max,
-        workLocation
-      `)
-      .in("positions_id", positionIds);
-
-    if (descError) throw descError;
-
-    if (!descriptions?.length) {
-      return NextResponse.json([]);
+    if (urgent === "true") {
+      query = query.eq("urgent", true);
     }
 
-    const validPositionIds = descriptions.map(
-      (d) => d.positions_id
-    );
+    if (keyword) {
+      const isNumber = !isNaN(Number(keyword));
 
-    // ชื่อหลายภาษา
-    const { data: languages, error: langError } = await supabase
-      .from("recruit_job_mix_language")
-      .select(`
-        position_id,
-        job_to_language
-      `)
-      .in("position_id", validPositionIds);
-    
-    if (langError) throw langError;
+      const filters = [
+        `branch_name.ilike.%${keyword}%`,
+        `position_name.ilike.%${keyword}%`,
+        `position_level.ilike.%${keyword}%`,
+        `salary_note.ilike.%${keyword}%`,
+      ];
 
-    const branchIds = [
+      if (isNumber) {
+        filters.push(`salary_min.eq.${Number(keyword)}`);
+        filters.push(`salary_max.eq.${Number(keyword)}`);
+      }
+
+      query = query.or(filters.join(","));
+    }
+
+    if (departmentId) {
+      query = query.eq("department_id", departmentId);
+    }
+
+    query = query
+      .order("urgent", { ascending: false })
+      .order("updated_at", { ascending: false });
+
+    const { data: jobs, error } = await query;
+
+    if (error) throw error;
+
+    // -------------------------------
+    // ดึง Requirement
+    // -------------------------------
+
+    const jobDescriptionIds = [
       ...new Set(
-        descriptions
-          .map((d) => d.branch_id)
+        jobs
+          .map((j) => j.job_description_id)
           .filter(Boolean)
       ),
     ];
 
-    const { data: branches, error: branchError } = await supabase
-      .from("branches")
-      .select(`
-        id,
-        branch_name
-      `)
-      .in("id", branchIds);
+    let requirementMap: Record<number, any[]> = {};
 
-    if (branchError) throw branchError;
+    if (jobDescriptionIds.length) {
+      const { data: requirements, error: requirementError } = await supabase
+        .from("recruit_job_description_requirements")
+        .select(`
+          job_description_id,
+          requirement_text
+        `)
+        .eq("showpage", true)
+        .in("job_description_id", jobDescriptionIds)
+        .order("sort_order", { ascending: true });
 
-    const jobs = openJobs
-      .map((job) => {
-        
-        const desc = descriptions.find(
-          (d) => d.positions_id === job.position_id
-        );
+      if (requirementError) throw requirementError;
 
-        // ไม่มี description ไม่แสดง
-        if (!desc) return null;
+      requirementMap = (requirements ?? []).reduce((acc, item) => {
+        if (!acc[item.job_description_id]) {
+          acc[item.job_description_id] = [];
+        }
 
-        const lang = languages?.find(
-          (l) => l.position_id === job.position_id
-        );
+        acc[item.job_description_id].push(item.requirement_text);
 
-        const branch = branches?.find(
-          (b) => b.id === desc.branch_id
-        );
+        return acc;
+      }, {} as Record<number, any[]>);
+    }
 
-        return {
-          id: job.id,
+    const result = jobs.map((job) => ({
+      ...job,
+      requirements: requirementMap[job.job_description_id] ?? [],
+    }));
 
-          job_to_language:
-            lang?.job_to_language ?? {},
+    return NextResponse.json(result);
 
-          branch_name:
-            branch?.branch_name ?? "",
-
-          workLocation:
-            desc.workLocation ?? "",
-
-          salary_min:
-            desc.salary_min,
-
-          salary_max:
-            desc.salary_max,
-
-          opening_count:
-            job.opening_count,
-
-          urgent:
-            job.urgent,
-        };
-      })
-      .filter(Boolean);
-      
-    return NextResponse.json(jobs);
-  } catch (error) {
-    console.error(error);
-
+  } catch (err: any) {
     return NextResponse.json(
-      { error: "Failed to load jobs" },
-      { status: 500 }
+      {
+        message: err.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

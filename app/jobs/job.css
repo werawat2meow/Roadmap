@@ -1,0 +1,227 @@
+/* From Uiverse.io by mi-series */ 
+.btn {
+  outline: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #40B3A2;
+  min-width: 200px;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+  box-sizing: border-box;
+  padding: 16px 20px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.btn:hover {
+  opacity: .95;
+}
+
+.btn .animation {
+  border-radius: 100%;
+  animation: ripple 0.6s linear infinite;
+}
+
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1), 0 0 0 20px rgba(255, 255, 255, 0.1), 0 0 0 40px rgba(255, 255, 255, 0.1), 0 0 0 60px rgba(255, 255, 255, 0.1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 20px rgba(255, 255, 255, 0.1), 0 0 0 40px rgba(255, 255, 255, 0.1), 0 0 0 60px rgba(255, 255, 255, 0.1), 0 0 0 80px rgba(255, 255, 255, 0);
+  }
+}
+
+
+/* From Uiverse.io by Yashasewi */ 
+.button_click_me {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #C2BAA5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+  box-sizing: border-box;
+  border-radius: 50px;
+  padding: 0.8rem 2rem;
+  font: 18px "Margarine", sans-serif;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: 0.2s ease-in-out;
+  letter-spacing: 2px;
+  background: #40B3A2;
+}
+
+.name {
+  width: 100%;
+  text-align: center;
+  padding: 0 0 3rem;
+  padding-top: 4rem;
+  font: 500 14px "Rubik", sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.button-parrot .parrot {
+  position: absolute;
+  width: 60px;
+  text-align: center;
+  animation: blink 0.8s infinite;
+  color: transparent;
+}
+
+.button-parrot .parrot:before {
+  content: "Click Me!";
+}
+
+.button-parrot .parrot:nth-child(1) {
+  top: -30px;
+  left: -40px;
+  font: 12px/1 "Margarine", sans-serif;
+  transform: rotate(-20deg);
+  animation-duration: 0.5s;
+}
+
+.button-parrot .parrot:nth-child(2) {
+  font: 12px/1 "Margarine", sans-serif;
+  right: -40px;
+  top: -20px;
+  transform: rotate(15deg);
+  animation-duration: 0.3s;
+}
+
+.button-parrot .parrot:nth-child(3) {
+  font: 16px/1 "Margarine", sans-serif;
+  top: -60px;
+  left: 15px;
+  transform: rotate(10deg);
+  animation-duration: 1s;
+}
+
+.button-parrot .parrot:nth-child(4) {
+  font: 18px/1 "Margarine", sans-serif;
+  top: -70px;
+  left: 95px;
+  transform: rotate(2deg);
+  animation-duration: 0.7s;
+}
+
+.button-parrot .parrot:nth-child(5) {
+  font: 14px/1 "Margarine", sans-serif;
+  top: 80px;
+  left: 105px;
+  transform: rotate(-20deg);
+  animation-duration: 0.8s;
+}
+
+.button-parrot .parrot:nth-child(6) {
+  font: 12px/1 "Margarine", sans-serif;
+  top: 80px;
+  left: 5px;
+  transform: rotate(10deg);
+  animation-duration: 1.2s;
+}
+
+.button-parrot button:hover .parrot:before {
+  content: "Do it!";
+  width: 70px;
+}
+
+@keyframes blink {
+  25%, 75% {
+    color: transparent;
+  }
+
+  40%, 60% {
+    color: #000;
+  }
+}
+
+
+
+.urgent-badge {
+    animation: urgentPulse 2.2s ease-in-out infinite, urgentBlink 1.1s ease-in-out infinite;
+}
+.urgent-badge::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+    115deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+    );
+    animation: urgentSweep 2.4s ease-in-out infinite;
+}
+@keyframes urgentPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(122, 27, 31, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(122, 27, 31, 0);
+    }
+}
+@keyframes urgentSweep {
+    0% {
+        left: -60%;
+    }
+    65%,
+    100% {
+        left: 130%;
+    }
+}
+@keyframes urgentBlink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+.urgent-card {
+    animation: urgentCardGlow 2.6s ease-in-out infinite;
+}
+@keyframes urgentCardGlow {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(122, 27, 31, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 22px 2px rgba(122, 27, 31, 0.22);
+    }
+}
+.shine-text {
+    background: linear-gradient(to right, #9f9f9f 0, #fff 10%, #868686 20%);
+    background-size: 200px 100%;
+    background-position: 0;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: shine 3s infinite linear;
+}
+@keyframes shine {
+    0% {
+    background-position: 0;
+    }
+    60% {
+    background-position: 180px;
+    }
+    100% {
+    background-position: 180px;
+    }
+}

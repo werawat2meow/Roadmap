@@ -84,6 +84,14 @@ const SalaryInput = ({
   </div>
 );
 
+const getGrade = (percent: number) => {
+  if (percent >= 85) return "A";
+  if (percent >= 75) return "B";
+  if (percent >= 65) return "C";
+  if (percent >= 50) return "D";
+  return "F";
+};
+
 // 2. ปรับตัวฟังก์ชัน SummarySidebar ให้รับ props: allFormData เข้ามาใช้งาน
 export default function SummarySidebar({
   allFormData,
@@ -115,6 +123,8 @@ export default function SummarySidebar({
   const maxScore = allFormData.maxScore ?? 100;
   const percentage =
     maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+  const computedGrade = getGrade(percentage);
 
   const disciplinePenalty =
     allFormData.disciplineData?.disciplineItems?.reduce(
@@ -162,16 +172,10 @@ export default function SummarySidebar({
 
         <div className="flex flex-col items-center">
           {/* ดึงค่าคะแนนจริง ถ้าไม่มีให้ดึงค่า 85 กลับมาแสดงผลเพื่อให้กราฟโดนัททำงานได้ถูกต้อง */}
-          <ScoreChart
-            score={
-              allFormData?.companyScore !== undefined
-                ? allFormData.companyScore
-                : 85
-            }
-          />
+          <ScoreChart score={percentage} grade={computedGrade} />
 
           <p className="text-3xl font-bold text-gray-800 mt-5">
-            <span className="text-green-500">{allFormData?.grade ?? "A"}</span>
+            <span className="text-green-500">{computedGrade}</span>
           </p>
         </div>
       </div>

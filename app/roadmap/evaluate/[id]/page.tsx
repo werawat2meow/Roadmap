@@ -301,8 +301,35 @@ export default function EvaluateEmployeePage() {
 
   useEffect(() => {
     if (!id) return;
-    fetchEvaluationHistory();
-  }, [id, fetchEvaluationHistory]);
+
+    let canceled = false;
+
+    async function loadHistory() {
+      const employeeId =
+        typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+      if (!employeeId) return;
+
+      const response = await fetch(
+        `/roadmap/api/evaluations?employeeId=${encodeURIComponent(employeeId)}`,
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        console.error("Failed to load evaluation history", data);
+        return;
+      }
+
+      if (!canceled) {
+        setEvaluationHistory(data.data || []);
+      }
+    }
+
+    loadHistory();
+
+    return () => {
+      canceled = true;
+    };
+  }, [id]);
 
   const handleFormChange = useCallback((next: Partial<EvaluationFormData>) => {
     setFormData((prev) => {

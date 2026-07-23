@@ -86,6 +86,7 @@ export async function GET(req: Request) {
       : "0%";
 
     return {
+      id: item.id,
       employeeId: item.employee_id,
       name: `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(),
       email: employee.email || "",

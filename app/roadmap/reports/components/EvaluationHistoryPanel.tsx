@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SearchBar from "@/app/roadmap/components/SearchBar";
 import ReportTable from "./ReportTable";
-import EvaluationDetailsModal from "./EvaluationDetailsModal";
+import EvaluationPreviewModal from "./EvaluationPreviewModal";
 
 type FilterState = {
   department: string;
@@ -13,6 +13,7 @@ type FilterState = {
 };
 
 type EvaluationRecord = {
+  id: string;
   employeeId: string;
   name: string;
   email: string;
@@ -25,6 +26,7 @@ type EvaluationRecord = {
   score: number | null;
   status: string;
   evaluationCount: number;
+  scorePercent: string;
 };
 
 const departments = [
@@ -49,10 +51,9 @@ export default function EvaluationHistoryPanel({
     level: "",
   });
   const [rows, setRows] = useState<EvaluationRecord[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<EvaluationRecord | null>(
-    null,
-  );
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -64,6 +65,21 @@ export default function EvaluationHistoryPanel({
     }
     load();
   }, [evaluationType]);
+
+  const handlePreview = async (record: EvaluationRecord) => {
+    setIsLoadingPreview(true);
+    const res = await fetch(
+      `/roadmap/api/reports/evaluation-preview?id=${record.id}`,
+    );
+    const json = await res.json();
+    if (json.success) {
+      setPreviewData(json.data);
+      setIsPreviewOpen(true);
+    } else {
+      console.error("Preview load failed", json.error);
+    }
+    setIsLoadingPreview(false);
+  };
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -125,21 +141,19 @@ export default function EvaluationHistoryPanel({
           actions: (
             <button
               className="rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 active:from-amber-600 active:to-yellow-600 text-amber-950 text-xs font-semibold px-4 py-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
-              onClick={() => {
-                setSelectedRecord(row);
-                setIsDetailOpen(true);
-              }}
+              onClick={() => handlePreview(row)}
+              disabled={isLoadingPreview}
             >
-              Details
+              Preview
             </button>
           ),
         }))}
       />
 
-      <EvaluationDetailsModal
-        open={isDetailOpen}
-        record={selectedRecord}
-        onClose={() => setIsDetailOpen(false)}
+      <EvaluationPreviewModal
+        open={isPreviewOpen}
+        data={previewData}
+        onClose={() => setIsPreviewOpen(false)}
       />
     </div>
   );

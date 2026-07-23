@@ -104,7 +104,7 @@ export const systemApps = [
     title: "Leave System",
     subtitle: "ระบบลางาน",
     description: "ยื่นคำขอลา ตรวจสอบสิทธิ์ และอนุมัติการลา",
-    path: "/leave",
+    path: "https://leaveday.vercel.app",
     hardNav: true,             
     permission: "leave.view",
     matchPrefixes: ["leave."],

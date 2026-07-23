@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/leave/:path*",
+      "destination": "https://leaveday.vercel.app/leave/:path*"
+    }
+  ]
+}

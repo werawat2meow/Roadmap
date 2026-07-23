@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-// URL ของหน้า Portal หลัก เอาไว้เด้งไปหน้า Login เท่านั้น
-const PORTAL_LOGIN_URL = (process.env.NEXT_PUBLIC_MAIN_APP_URL ?? "http://localhost:3000") + "/login";
+const PORTAL_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? "https://roadmap-sigma-two.vercel.app";
 
-// แก้ไขตรงนี้: ไม่ต้องใส่ ${BASE} ข้างหน้า เพราะ Next.js จะเติม /leave ให้เองจาก basePath
 const ROLE_HOME: Record<string, string> = {
   SUPER_ADMIN: "/dashboard",
   HR_ADMIN:    "/dashboard",
@@ -16,40 +14,50 @@ const ROLE_HOME: Record<string, string> = {
 };
 
 export async function middleware(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
   const token = req.cookies.get("employee_token")?.value;
-  let role: string | undefined;
 
-  if (token) {
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      role = ((payload as any).role ?? (payload as any).role_code) as string;
-    } catch (e) {
-      console.error("JWT Verify Error", e);
+  // 1. ปล่อยผ่านไฟล์ระบบและ API
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api/") || pathname.includes(".")) {
+    return NextResponse.next();
+  }
+
+  // 2. ถ้าไม่มี Token -> ดีดไป Login ที่ Portal
+  if (!token) {
+    return NextResponse.redirect(`${PORTAL_URL}/login`);
+  }
+
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    const role = ((payload as any).role ?? (payload as any).role_code) as string;
+
+    const targetPath = ROLE_HOME[role] ?? "/dashboard";
+
+    // --- จุดแก้ Loop สำคัญตรงนี้ครับ ---
+    
+    // ถ้าอยู่ที่หน้าแรกของระบบลา (ซึ่งคือ "/" เมื่อใช้ basePath)
+    if (pathname === "/") {
+      // ให้เด้งไปหน้าตามสิทธิ์ แต่ต้องเช็คว่าหน้าที่จะไป ไม่ใช่หน้าปัจจุบัน (ป้องกัน Loop)
+      return NextResponse.redirect(new URL(targetPath, req.url));
     }
-  }
 
-  // 1. ถ้าพยายามเข้าหน้าแรกของระบบลา (/leave) หรือหน้าล็อกอินของระบบลา
-  // หมายเหตุ: Next.js จะมองเห็น /leave เป็น "/" เมื่อใช้ basePath
-  if (pathname === "/" || pathname === "/login") {
-    if (role) {
-      // ถ้าล็อกอินแล้ว ให้ไปหน้า Dashboard ของตัวเอง (ใช้ relative path เพื่อป้องกัน Loop)
-      return NextResponse.redirect(new URL(ROLE_HOME[role] ?? "/dashboard", req.url));
+    // ตรวจสอบสิทธิ์รายหน้า (Permission)
+    // ตัวอย่าง: ถ้าเป็น User แต่จะแอบเข้า /approvals ให้ดีดกลับไปหน้าตัวเอง
+    if (role === "USER" && pathname.startsWith("/approvals")) {
+        return NextResponse.redirect(new URL(targetPath, req.url));
     }
-    // ถ้ายังไม่ล็อกอิน ให้ดีดไปหน้า Login ของ Portal หลัก
-    return NextResponse.redirect(PORTAL_LOGIN_URL);
-  }
 
-  // 2. ตรวจสอบสิทธิ์ (ถ้าไม่มี Role ให้ดีดกลับ Portal)
-  if (!role && !pathname.startsWith("/api/")) {
-     return NextResponse.redirect(PORTAL_LOGIN_URL);
-  }
+    // ถ้าทุกอย่างถูกต้อง ให้ปล่อยผ่านไปทำงานตามปกติ
+    return NextResponse.next();
 
-  return NextResponse.next();
+  } catch (error) {
+    console.error("Middleware Auth Error:", error);
+    // ถ้า Token มีปัญหา (Secret ไม่ตรง) ต้องดีดออกไป Login ใหม่
+    return NextResponse.redirect(`${PORTAL_URL}/login`);
+  }
 }
 
 export const config = {
-  // ให้ทำงานทุกหน้าภายใต้ /leave
-  matcher: ["/", "/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

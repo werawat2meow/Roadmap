@@ -13,8 +13,14 @@ export async function GET(request: Request) {
     if (!openBranchJobs?.length) {
       return NextResponse.json([]);
     }
-
-    return NextResponse.json(openBranchJobs);
+    
+    return NextResponse.json(
+      {
+        success: true,
+        openBranchJobs,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error(error);
 

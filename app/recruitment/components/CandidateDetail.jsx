@@ -1,5 +1,10 @@
 "use client";
 
+import { uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 import {
   Button,
   Card,
@@ -10,9 +15,12 @@ import {
   Table,
   Tag,
   Typography,
+  Select,
+  message,
 } from "antd";
 
 const { Title } = Typography;
+const { Option } = Select;
 
 const statusColor = {
   0: "default",
@@ -27,6 +35,19 @@ const statusText = {
   2: "ผ่าน",
   3: "ไม่ผ่าน",
 };
+
+const APPLICATION_STATUS = [
+  { value: 1, label: "รอพิจารณา" },
+  { value: 2, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
+  { value: 3, label: "นัดสัมภาษณ์" },
+  { value: 4, label: "ยืนยันการสัมภาษณ์" },
+  { value: 5, label: "เลื่อนการสัมภาษณ์" },
+  { value: 6, label: "ขาดการสัมภาษณ์" },
+  { value: 7, label: "ส่งต่อการสัมภาษณ์" },
+  { value: 8, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
+  { value: 99, label: "backlist" },
+  { value: 0, label: "ยกเลิก" },
+];
 
 const yesNo = (value) => {
   if (value === true) return "ใช่";
@@ -49,13 +70,159 @@ const formatDate = (date) => {
   });
 };
 
+const renderDriverLicense = (driverLicense) => {
+  if (!driverLicense) return "-";
+  let data = driverLicense;
+  // กรณีเก็บเป็น JSON string
+  if (typeof driverLicense === "string") {
+    try {
+      data = JSON.parse(driverLicense);
+    } catch {
+      return value(driverLicense);
+    }
+  }
+
+  const items = [];
+  if (data.car) { items.push("รถยนต์"); }
+
+  if (data.motorcycle) { items.push("รถจักรยานยนต์"); }
+
+  if (data.other) {
+    items.push(
+      data.otherText
+        ? `อื่น ๆ (${data.otherText})`
+        : "อื่น ๆ"
+    );
+  }
+
+  return items.length ? items.join(", ") : "-";
+};
+
+const getResidenceTypeText = (type) => {
+  switch (type) {
+    case "own_house":
+      return getUIText(uiText.residenceOwnHouse, "TH");
+
+    case "rented_house":
+      return getUIText(uiText.residenceRentedHouse, "TH");
+
+    case "condominium":
+      return getUIText(uiText.residenceCondo, "TH");
+
+    case "dormitory":
+      return getUIText(uiText.residenceDormitory, "TH");
+
+    case "relative_house":
+      return getUIText(uiText.residenceRelative, "TH");
+
+    case "other":
+      return getUIText(uiText.residenceOther, "TH");
+
+    default:
+      return value(type);
+  }
+};
+
+const getMaritalStatusText = (type) => {
+  switch (type) {
+    case "single":
+      return getUIText(uiText.maritalSingle, "TH");
+
+    case "married":
+      return getUIText(uiText.maritalMarried, "TH");
+
+    case "divorced":
+      return getUIText(uiText.maritalDivorced, "TH");
+
+    case "widowed":
+      return getUIText(uiText.maritalWidowed, "TH");
+
+    default:
+      return value(type);
+  }
+};
+
+const getMilitaryStatusText = (type) => {
+  switch (type) {
+    case "not_served":
+      return getUIText(uiText.militaryNotYet, "TH");
+
+    case "completed":
+      return getUIText(uiText.militaryDone, "TH");
+
+    case "exempted":
+      return getUIText(uiText.militaryExempt, "TH");
+
+    default:
+      return value(type);
+  }
+};
+
+const getGenderText = (type) => {
+  switch (type) {
+    case "male":
+      return getUIText(uiText.genderMale, "TH");
+
+    case "female":
+      return getUIText(uiText.genderFemale, "TH");
+
+    case "other":
+      return getUIText(uiText.genderOther, "TH");
+
+    default:
+      return value(type);
+  }
+};
+
+
 export default function CandidateDetail({
   application,
   education,
   workExperience,
-  skills,
+  languageSkills,
+  systemProgramSkills,
   documents,
 }) {
+
+  const router = useRouter();
+
+  const [status, setStatus] = useState(application.status);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [message, setMessage] = useState(null);
+
+  const handleSaveStatus = async () => {
+  try {
+    setLoading(true);
+    console.log("test" , application.id);
+    
+    const res = await fetch("/recruitment/api/candidate_detail/UpdateStatus", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: application.id,
+        status,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.message);
+    }
+
+    // router.push("/recruitment/candidate_detail");
+
+    setMessage("บันทึกข้อมูลเรียบร้อย");
+  } catch (err) {
+    setErrorMessage(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <div style={{ padding: 24 }}>
 
@@ -135,26 +302,12 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="เพศ">
-            {value(application.gender)}
+            {getGenderText(application.gender)}
           </Descriptions.Item>
 
           {application.gender !== "female" && (
             <Descriptions.Item label="สถานะทางทหาร">
-                {(() => {
-                switch (application.military_status) {
-                    case "not_served":
-                    return "ยังไม่ได้เกณฑ์ทหาร";
-
-                    case "completed":
-                    return "ผ่านการเกณฑ์ทหารแล้ว";
-
-                    case "exempted":
-                    return "ได้รับการยกเว้น";
-
-                    default:
-                    return value(application.military_status);
-                }
-                })()}
+              { getMilitaryStatusText(application.military_status)}
             </Descriptions.Item>
           )}
 
@@ -213,15 +366,15 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="ตำบล">
-            {value(application.sub_district)}
+            {value(application.subdistrict_name)}
           </Descriptions.Item>
 
           <Descriptions.Item label="อำเภอ">
-            {value(application.district)}
+            {value(application.district_name)}
           </Descriptions.Item>
 
           <Descriptions.Item label="จังหวัด">
-            {value(application.province)}
+            {value(application.province_name)}
           </Descriptions.Item>
 
           <Descriptions.Item label="รหัสไปรษณีย์">
@@ -237,7 +390,7 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="ลักษณะที่อยู่อาศัย">
-            {value(application.residence_type)}
+            {getResidenceTypeText(application.residence_type)}
           </Descriptions.Item>
 
           <Descriptions.Item label="อื่น ๆ">
@@ -261,7 +414,7 @@ export default function CandidateDetail({
           size="middle"
         >
           <Descriptions.Item label="สถานภาพสมรส">
-            {value(application.marital_status)}
+            {getMaritalStatusText(application.marital_status)}
           </Descriptions.Item>
 
           <Descriptions.Item label="จำนวนบุตร">
@@ -269,9 +422,7 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="ใบขับขี่">
-            {typeof application.driver_license === "object"
-              ? JSON.stringify(application.driver_license)
-              : value(application.driver_license)}
+            {renderDriverLicense(application.driver_license)}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -464,25 +615,16 @@ export default function CandidateDetail({
       {/* ทักษะ */}
       {/* ====================================================== */}
 
-      <Card
-        title="ทักษะ"
-        style={{ marginBottom: 24 }}
-      >
+      <Card title="ทักษะด้านโปรแกรม" style={{ marginBottom: 24 }}>
         <Table
           rowKey="id"
           bordered
           pagination={false}
-          dataSource={skills}
+          dataSource={systemProgramSkills}
           locale={{
             emptyText: "ไม่มีข้อมูล",
           }}
           columns={[
-            {
-              title: "ประเภท",
-              dataIndex: "skill_type",
-              key: "skill_type",
-              width: 140,
-            },
             {
               title: "System",
               dataIndex: "system_program",
@@ -504,6 +646,20 @@ export default function CandidateDetail({
               align: "center",
               render: (v) => (v == 1 ? "✓" : ""),
             },
+          ]}
+        />
+      </Card>
+
+      <Card title="ทักษะด้านภาษา" style={{ marginBottom: 24 }}>
+        <Table
+          rowKey="id"
+          bordered
+          pagination={false}
+          dataSource={languageSkills}
+          locale={{
+            emptyText: "ไม่มีข้อมูล",
+          }}
+          columns={[
             {
               title: "Language",
               dataIndex: "language",
@@ -592,6 +748,66 @@ export default function CandidateDetail({
           ]}
         />
       </Card>
+
+      <Card
+        title="สถานะการสมัคร"
+        style={{ marginBottom: 24 }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            alignItems: "center",
+          }}
+        >
+          <Select
+            value={status}
+            onChange={setStatus}
+            style={{ width: 250 }}
+            options={APPLICATION_STATUS}
+          />
+
+          
+        </div>
+      </Card>
+
+      <div className="pb-5">
+        {errorMessage && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        {message ? (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {message}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <button
+            type="button"
+            onClick={() => router.push("/recruitment/candidate_detail")}
+            className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
+            style={{ backgroundColor: "orange" , color:"black" }}
+          >
+            ย้อนกลับ
+          </button>
+        </div>
+        <div>
+          <Button
+              type="primary"
+              loading={loading}
+              onClick={handleSaveStatus}
+            >
+              บันทึก
+            </Button>
+
+          
+        </div>
+      </div>
     </div>
   );
 }

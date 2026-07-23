@@ -31,7 +31,7 @@ export default function JobList({
         ตำแหน่งงานที่คล้ายกัน
       </h1>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1">
         {jobs.map((job: any) => (
           <JobCard
             key={job.id}

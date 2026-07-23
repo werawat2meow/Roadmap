@@ -1,74 +1,133 @@
-.loading-orb-wrapper {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.onloadding{
+  background-color: #00000036;
 }
 
-.svg-frame {
+/* From Uiverse.io by ilkhoeri */ 
+.progress {
+  --progress-color: rgb(184, 20, 255);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  width: 300px;
-  height: 300px;
-  transform-style: preserve-3d;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  z-index: 9999;
+  height: 1.25rem;
+  width: 60%;
+  border-radius: 6px;
+  outline: 1.5px solid #6a6a6b;
+  border: 2px solid transparent;
+  overflow: hidden;
+  transition: all 125ms ease;
+  animation: outline 4s ease infinite;
+  background-color: white;
+  box-shadow:
+    inset 0.2rem 0.2rem 0.5rem #b8b8b9,
+    inset -0.2rem -0.2rem 0.5rem #7c7c7c7c;
 }
-
-.svg-frame svg {
+.progress::before {
+  content: "0%";
   position: absolute;
-  transition: 0.5s;
-  z-index: calc(1 - (0.2 * var(--j)));
-  transform-origin: center;
-  width: 344px;
-  height: 344px;
-  fill: none;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 255, 0.25));
+  font-weight: 600;
+  font-size: 14px;
+  z-index: 9;
+  /* animation: colors 4s ease infinite; */
+  animation: 
+    colors 4s ease infinite,
+    percentage_302 4s ease infinite;
 }
 
-.svg-frame:hover svg {
-  transform: rotate(-80deg) skew(30deg) translateX(calc(45px * var(--i))) translateY(calc(-35px * var(--i)));
+.bar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  animation: progress 4s linear infinite; /* เปลี่ยนจาก ease เป็น linear */
 }
 
-.svg-frame svg #center {
-  transition: 0.5s;
-  transform-origin: center;
+.bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  border-radius: 6px;
+  transform-origin: left center;
+  transition: all 125ms ease;
+  background-size: 1.25rem 1.25rem;
+  box-shadow:
+    inset 0.3rem 0.3rem 0.6rem #ffffff8f,
+    inset -0.2rem -0.2rem 0.5rem #77777777;
+  background-image: linear-gradient(
+    45deg,
+    #cccccc33 25%,
+    transparent 0,
+    transparent 50%,
+    #cccccc33 0,
+    #cccccc33 75%,
+    transparent 0,
+    transparent
+  );
+  animation: bar 1s linear infinite;
+}
+.bar::after {
+  content: "";
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background-color: var(--progress-color);
+  background: linear-gradient(90deg, #3f5efb 0%, #fc466b 100%);
 }
 
-.svg-frame:hover svg #center {
-  transform: rotate(-30deg) translateX(45px) translateY(-3px);
-}
-
-#out2 {
-  animation: rotate16 7s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-#out3 {
-  animation: rotate16 3s ease-in-out infinite alternate;
-  transform-origin: center;
-  stroke: #fffb00;
-}
-
-#inner3,
-#inner1 {
-  animation: rotate16 4s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-#center1 {
-  fill: #fffb00;
-  animation: rotate16 2s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-@keyframes rotate16 {
-  to {
-    transform: rotate(360deg);
+@keyframes outline {
+  from {
+    outline-color: #6a6a6b;
   }
+  50% {
+    outline-color: #fac826;
+  }
+  to {
+    outline-color: #fc466b;
+  }
+}
+@keyframes colors {
+  from {
+    color: #000;
+  }
+  to {
+    color: #fff;
+  }
+}
+@keyframes progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+@keyframes bar {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 2.5rem 0;
+  }
+}
+
+@keyframes percentage_302 {
+  0% { content: "0%" }
+  10% { content: "10%" }
+  20% { content: "20%" }
+  30% { content: "30%" }
+  40% { content: "40%" }
+  50% { content: "50%" }
+  60% { content: "60%" }
+  70% { content: "70%" }
+  80% { content: "80%" }
+  90% { content: "90%" }
+  100% { content: "100%" }
 }

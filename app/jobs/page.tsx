@@ -1,10 +1,8 @@
-  "use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import JobCard from "@/app/jobs/components/JobCard";
-import { getText } from "@/app/jobs/lib/i18n";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import JobSidebar from "@/app/jobs/components/JobSidebar";
 
 interface Job {
   id: string;
@@ -27,55 +25,48 @@ interface Job {
   status: boolean;
 }
 
-interface BranchItem {
-  branch_id: string;
-  branch_name: string;
-  job_count: number;
-  urgent_count: number;
-}
-
 const BRANCH_STORAGE_KEY = "selected_branch_id";
+const URGENT_STORAGE_KEY = "urgent_filter";
 
 function readSavedBranch() {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(BRANCH_STORAGE_KEY) ?? "";
 }
 
+function readFilters() {
+  if (typeof window === "undefined") {
+    return {
+      branchId: "",
+      urgent: false,
+    };
+  }
+
+  return {
+    branchId: localStorage.getItem(BRANCH_STORAGE_KEY) ?? "",
+    urgent: localStorage.getItem(URGENT_STORAGE_KEY) === "true",
+  };
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [branches, setBranches] = useState<BranchItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [selectedBranchId, setSelectedBranchId] = useState("");
-  const [loadingJobs, setLoadingJobs] = useState(true);
-  const [loadingBranches, setLoadingBranches] = useState(true);
-
   const [urgentFilter, setUrgentFilter] = useState(false);
-  
-  const totalJobCount = useMemo(
-    () =>
-      branches.reduce(
-        (sum, branch) => sum + (branch.job_count ?? 0),
-        0
-      ),
-    [branches]
-  );
+  const [loadingJobs, setLoadingJobs] = useState(true);
 
-  const totalUrgentCount = useMemo(
-    () =>
-      branches.reduce(
-        (sum, branch) => sum + (branch.urgent_count ?? 0),
-        0
-      ),
-    [branches]
-  );
-
-  const { locale } = useLanguage();
 
   useEffect(() => {
-    setSelectedBranchId(readSavedBranch());
+    // setSelectedBranchId(readSavedBranch());
+    const filters = readFilters();
+
+    setSelectedBranchId(filters.branchId);
+    setUrgentFilter(filters.urgent);
 
     const syncBranch = () => {
-      setSelectedBranchId(readSavedBranch());
+      const filters = readFilters();
+
+      setSelectedBranchId(filters.branchId);
+      setUrgentFilter(filters.urgent);
     };
 
     window.addEventListener("branch-change", syncBranch);
@@ -88,58 +79,30 @@ export default function JobsPage() {
   }, []);
 
   useEffect(() => {
-    fetchJobs(selectedBranchId);
-    fetchBranches();
-  }, [selectedBranchId]);
+    fetchJobs(selectedBranchId, urgentFilter);
+  }, [selectedBranchId, urgentFilter]);
   
 
-  async function fetchJobs(branchId?: string) {
+  async function fetchJobs(branchId?: string, urgent?: boolean) {
     try {
       setLoadingJobs(true);
-      let url = "/jobs/api";
+      const params = new URLSearchParams();
       if (branchId) {
-        url += `?branch_id=${branchId}`;
+        params.set("branch_id", branchId);
       }
+      if (urgent) {
+        params.set("urgent", "true");
+      }
+      const url = `/jobs/api${params.toString() ? `?${params}` : ""}`;
+
       const res = await fetch(url);
       const data = await res.json();
-      console.log(data);
-      
+
       setJobs(data);
-    } catch (err) {
-      console.error(err);
     } finally {
       setLoadingJobs(false);
     }
   }
-
-  async function fetchBranches() {
-  try {
-    setLoadingBranches(true);
-
-    const res = await fetch("/jobs/api/branches");
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch branches");
-    }
-
-    const data = await res.json();
-
-    setBranches(data);
-  } catch (err) {
-    console.error("Fetch branches error:", err);
-  } finally {
-    setLoadingBranches(false);
-  }
-}
-
-  const setBranchFilter = (branchId: string) => {
-    setSelectedBranchId(branchId);
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
-      window.dispatchEvent(new Event("branch-change"));
-    }
-  };
 
   const filteredJobs = useMemo(() => {
     const search = keyword.trim().toLowerCase();
@@ -154,12 +117,9 @@ export default function JobsPage() {
         String(job.salary_min ?? "").includes(search) ||
         String(job.salary_max ?? "").includes(search);
 
-      const matchesBranch =
-        !selectedBranchId ||
-        job.branch_id === selectedBranchId;
+      const matchesBranch = !selectedBranchId || job.branch_id === selectedBranchId;
 
-      const matchesUrgent =
-        !urgentFilter || job.urgent;
+      const matchesUrgent = !urgentFilter || job.urgent;
 
       return (
         matchesKeyword &&
@@ -171,10 +131,9 @@ export default function JobsPage() {
     jobs,
     keyword,
     selectedBranchId,
-    urgentFilter,
   ]);
 
-  if (loadingJobs || loadingBranches) {
+  if (loadingJobs) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="rounded-2xl bg-white px-6 py-4 text-sm text-gray-600 shadow-sm">
@@ -187,72 +146,8 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto flex w-full gap-6 px-4 py-6 lg:px-6">
-        <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-[#123a63] p-4 shadow-sm md:block">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-white">สาขางาน</h3>
-            <p className="text-sm text-gray-50">เลือกสาขาเพื่อกรองตำแหน่งงาน</p>
-          </div>
 
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                setUrgentFilter(false);
-                setBranchFilter("");
-              }}
-              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                selectedBranchId === "" && !urgentFilter
-                  ? "bg-blue-50 text-blue-700"
-                  : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <span>ทั้งหมด</span>
-              <span className="text-xs text-gray-500">{totalJobCount}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUrgentFilter(prev => !prev)}
-              disabled={totalUrgentCount  === 0}
-              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition 
-                ${totalUrgentCount  === 0 
-                  ? "cursor-not-allowed bg-gray-100 text-gray-400" 
-                  : urgentFilter 
-                    ? "bg-blue-50 text-blue-700" 
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                }`}
-            >
-              <span>🔥 งานด่วน</span>
-              <span className="ml-3 shrink-0 text-xs">({totalUrgentCount })</span>
-            </button>
-
-            {branches.map((branch) => {
-              const isActive = selectedBranchId === branch.branch_id;
-              const isDisabled = branch.job_count === 0;
-
-              return (
-                <button
-                  key={branch.branch_id}
-                  type="button"
-                  disabled={isDisabled}
-                  onClick={() => setBranchFilter(branch.branch_id)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                    isDisabled
-                      ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                      : isActive
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <span className="truncate">{branch.branch_name}</span>
-                  <span className="ml-3 shrink-0 text-xs">
-                    ({branch.job_count})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
+        <JobSidebar />
 
         <main className="min-w-0 flex-1">
           <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm">

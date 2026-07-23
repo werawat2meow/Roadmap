@@ -33,9 +33,7 @@ function RecruitmentAuthGuard({ children }) {
 
   if (loadingUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
         <LoadingOrb />
-      </div>
     );
   }
 

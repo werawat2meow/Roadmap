@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         { success: false, message: "Missing application payload." },
         { status: 400 }
       );
-    }
+    } 
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       pdpa: agreement.pdpa ?? false,
       updated_at: new Date().toISOString(),
       status: 1,
-    }; 
+    };   
     
     const {
       data: application,

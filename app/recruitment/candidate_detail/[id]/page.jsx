@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import CandidateDetail from "@/app/recruitment/components/CandidateDetail";
+import {
+    getProvinceByCode,
+    getDistrictByCode,
+    getSubdistrictByCode,
+} from "geothai";
 
 export default async function Page({ params }) {
   const { id } = await params;
@@ -61,6 +66,13 @@ export default async function Page({ params }) {
     .eq("application_id", id)
     .order("id");
 
+  application.province_name = getProvinceByCode(application.province_id)?.name_th;  
+  application.district_name = getDistrictByCode(application.district_id)?.name_th;
+  application.subdistrict_name = getSubdistrictByCode(application.subdistrict_id)?.name_th;
+
+  const languageSkills = skills.filter( (item) => item.skill_type === "language");
+  const systemProgramSkills = skills.filter( (item) => item.skill_type === "system_program");
+
   // ============================
   // Layout
   // ============================
@@ -69,7 +81,8 @@ export default async function Page({ params }) {
       application={application}
       education={education}
       workExperience={workExperience}
-      skills={skills}
+      languageSkills={languageSkills}
+      systemProgramSkills={systemProgramSkills}
       documents={documents}
     />
   );

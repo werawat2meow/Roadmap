@@ -2,8 +2,8 @@
 const isVercel = process.env.VERCEL === "1" || process.env.VERCEL === "true";
 
 module.exports = {
-  basePath: '/leave',
-  assetPrefix: '/leave',
+  // basePath: '/leave',
+  // assetPrefix: '/leave',
   outputFileTracing: isVercel,
   experimental: {
     optimizeCss: false,

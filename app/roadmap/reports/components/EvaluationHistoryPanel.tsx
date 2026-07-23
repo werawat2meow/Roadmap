@@ -116,7 +116,7 @@ export default function EvaluationHistoryPanel({
           { header: "แผนก", key: "division", align: "center" },
           { header: "หน่วย", key: "unit", align: "center" },
           { header: "Level", key: "level", align: "center" },
-          { header: "คะแนน", key: "score", align: "center" },
+          { header: "คะแนน", key: "scorePercent", align: "center" },
           { header: "สถานะ", key: "status", align: "center" },
           { header: "Actions", key: "actions", align: "center" },
         ]}

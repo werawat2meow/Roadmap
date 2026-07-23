@@ -36,17 +36,23 @@ export async function GET(req: Request) {
 
   if (evalError) {
     console.error("Failed to load evaluations", evalError);
-    return NextResponse.json({ success: false, error: evalError.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: evalError.message },
+      { status: 500 },
+    );
   }
 
-  const employeeIds = [...new Set((evalRows || []).map((r: any) => r.employee_id))];
+  const employeeIds = [
+    ...new Set((evalRows || []).map((r: any) => r.employee_id)),
+  ];
   if (employeeIds.length === 0) {
     return NextResponse.json({ success: true, data: [] });
   }
 
   const { data: employeeRows, error: employeeError } = await supabaseAdmin
     .from("employees")
-    .select(`
+    .select(
+      `
       id,
       first_name_th,
       last_name_th,
@@ -55,12 +61,16 @@ export async function GET(req: Request) {
       divisions(division_name),
       units(unit_name),
       positions(position_level)
-    `)
+    `,
+    )
     .in("id", employeeIds);
 
   if (employeeError) {
     console.error("Failed to load employee info", employeeError);
-    return NextResponse.json({ success: false, error: employeeError.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: employeeError.message },
+      { status: 500 },
+    );
   }
 
   const employeeMap = new Map(
@@ -69,6 +79,12 @@ export async function GET(req: Request) {
 
   const mapped = (evalRows || []).map((item: any) => {
     const employee = employeeMap.get(item.employee_id) || {};
+    const totalScore = item.totalScore ?? 0;
+    const maxScore = item.maxScore ?? 100;
+    const scorePercent = maxScore > 0 
+    ? `${Math.round((totalScore / maxScore) * 100)}%`
+      : "0%";
+
     return {
       employeeId: item.employee_id,
       name: `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(),
@@ -79,7 +95,9 @@ export async function GET(req: Request) {
       level: employee.positions?.position_level || "",
       evaluationType,
       latestDate: item.created_at,
-      score: item.totalScore,
+      score: totalScore,
+      maxScore,
+      scorePercent,
       status: item.status,
     };
   });

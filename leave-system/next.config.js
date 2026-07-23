@@ -8,6 +8,7 @@ module.exports = {
   experimental: {
     optimizeCss: false,
     disableOptimizedLoading: true,
+    runtime: 'nodejs'
   },
   eslint: {
     ignoreDuringBuilds: true,

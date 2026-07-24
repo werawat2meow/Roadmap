@@ -152,7 +152,7 @@ export default function LanguageHeader( ) {
       className="
       border-b 
       border-gray-200 
-      bg-[#0d47a1]
+      bg-[#123a63]
       sticky top-0 z-50
       backdrop-blur-md
       shadow-sm

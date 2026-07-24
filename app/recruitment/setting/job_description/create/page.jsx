@@ -11,6 +11,7 @@ export default async function NewJobDescriptionPage() {
     { data: positions, error: positionsError },
     { data: unitPositions, error: unitPositionsError },
     { data: languages, error: languagesError },
+    { data: emptype, error: emptypeError },
   ] = await Promise.all([
     supabaseAdmin.from("branches").select("id, branch_name").order("branch_name", { ascending: true }),
     supabaseAdmin.from("departments").select("id, department_name").order("department_name", { ascending: true }),
@@ -31,6 +32,10 @@ export default async function NewJobDescriptionPage() {
       .from("recruit_language")
       .select("id, language_slug, language_name")
       .order("id", { ascending: true }),
+    supabaseAdmin
+      .from("employment_types")
+      .select("id, type_name, type_code")
+      .order("id", { ascending: true }),
   ]);
 
   if (branchesError) return <div>{branchesError.message}</div>;
@@ -41,6 +46,7 @@ export default async function NewJobDescriptionPage() {
   if (positionsError) return <div>{positionsError.message}</div>;
   if (unitPositionsError) return <div>{unitPositionsError.message}</div>;
   if (languagesError) return <div>{languagesError.message}</div>;
+  if (emptypeError) return <div>{emptypeError.message}</div>;
 
   return (
     <JobDescriptionForm
@@ -53,6 +59,7 @@ export default async function NewJobDescriptionPage() {
       positions={positions || []}
       unitPositions={unitPositions || []}
       languages={languages || []}
+      emptype={emptype || []}
     />
   );
 }

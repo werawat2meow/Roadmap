@@ -8,22 +8,30 @@ import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 
 interface Job {
   id: string;
+  position_id: string;
   branch_id: string;
-  job_to_language: {
-    [key: string]: string;
-  };
   branch_name: string;
-  workLocation: string;
+  department_id: string;
+  department_name: string;
+  position_name: string;
+  position_level: string;
+  position_group: string;
+  job_description_id: string;
+  opening_count: number;
   salary_min: number | null;
   salary_max: number | null;
-  opening_count: number;
+  salary_note: string | null;
+  start_date: string;
+  end_date: string;
   urgent: boolean;
+  status: boolean;
 }
 
 interface BranchItem {
-  id: string;
+  branch_id: string;
   branch_name: string;
   job_count: number;
+  urgent_count: number;
 }
 
 const BRANCH_STORAGE_KEY = "selected_branch_id";
@@ -42,7 +50,24 @@ export default function JobsPage() {
   const [loadingBranches, setLoadingBranches] = useState(true);
 
   const [urgentFilter, setUrgentFilter] = useState(false);
-  const urgentCount = jobs.filter(job => job.urgent === true).length;
+  
+  const totalJobCount = useMemo(
+    () =>
+      branches.reduce(
+        (sum, branch) => sum + (branch.job_count ?? 0),
+        0
+      ),
+    [branches]
+  );
+
+  const totalUrgentCount = useMemo(
+    () =>
+      branches.reduce(
+        (sum, branch) => sum + (branch.urgent_count ?? 0),
+        0
+      ),
+    [branches]
+  );
 
   const { locale } = useLanguage();
 
@@ -76,7 +101,9 @@ export default function JobsPage() {
         url += `?branch_id=${branchId}`;
       }
       const res = await fetch(url);
-      const data = await res.json();  
+      const data = await res.json();
+      console.log(data);
+      
       setJobs(data);
     } catch (err) {
       console.error(err);
@@ -86,91 +113,24 @@ export default function JobsPage() {
   }
 
   async function fetchBranches() {
-    try {
-      const [
-        { data: branchData, error: branchError },
-        { data: jobRows, error: jobError },
-        { data: descriptions, error: descError },
-      ] = await Promise.all([
-        supabase
-          .from("branches")
-          .select("id, branch_name")
-          .order("branch_name"),
+  try {
+    setLoadingBranches(true);
 
-        supabase
-          .from("recruit_job_open")
-          .select(`
-            branch_id,
-            position_id
-          `),
+    const res = await fetch("/jobs/api/branches");
 
-        supabase
-          .from("recruit_job_description")
-          .select(`
-            branch_id,
-            positions_id
-          `),
-      ]);
-
-      if (branchError) throw branchError;
-      if (jobError) throw jobError;
-      if (descError) throw descError;
-
-      /**
-       * สร้าง key จาก
-       * branch_id + position_id
-       *
-       * เพื่อเช็คว่ามี description จริง
-       */
-      const validDescriptions = new Set(
-        (descriptions ?? []).map((d) =>
-          `${d.branch_id}_${d.positions_id}`
-        )
-      );
-
-      const counts = (jobRows ?? []).reduce<
-        Record<string, number>
-      >((acc, job) => {
-
-        const key =
-          `${job.branch_id}_${job.position_id}`;
-
-        /**
-         * นับเฉพาะ job_open
-         * ที่มี description คู่กัน
-         */
-        if (
-          job.branch_id &&
-          validDescriptions.has(key)
-        ) {
-          acc[job.branch_id] =
-            (acc[job.branch_id] ?? 0) + 1;
-        }
-
-        return acc;
-
-      }, {});
-
-      const branchList: BranchItem[] =
-        (branchData ?? []).map((branch) => ({
-          id: branch.id,
-          branch_name: branch.branch_name,
-          job_count: counts[branch.id] ?? 0,
-        }));
-
-      setBranches(branchList);
-
-    } catch (err) {
-
-      console.error(
-        "Fetch branches error:",
-        err
-      );
-
-    } finally {
-      setLoadingBranches(false);
+    if (!res.ok) {
+      throw new Error("Failed to fetch branches");
     }
+
+    const data = await res.json();
+
+    setBranches(data);
+  } catch (err) {
+    console.error("Fetch branches error:", err);
+  } finally {
+    setLoadingBranches(false);
   }
+}
 
   const setBranchFilter = (branchId: string) => {
     setSelectedBranchId(branchId);
@@ -182,23 +142,20 @@ export default function JobsPage() {
   };
 
   const filteredJobs = useMemo(() => {
-    const search = keyword.trim();
-    
-    return jobs.filter((job) => {
-      const positionName = getText(
-        job.job_to_language,
-        locale
-      ).toLowerCase();
-      
-      const branchName = job.branch_name.toLowerCase();
+    const search = keyword.trim().toLowerCase();
 
+    return jobs.filter((job) => {
       const matchesKeyword =
         !search ||
-        positionName.includes(search) ||
-        branchName.includes(search);
+        job.branch_name?.toLowerCase().includes(search) ||
+        job.position_name?.toLowerCase().includes(search) ||
+        job.position_level?.toLowerCase().includes(search) ||
+        job.salary_note?.toLowerCase().includes(search) ||
+        String(job.salary_min ?? "").includes(search) ||
+        String(job.salary_max ?? "").includes(search);
 
       const matchesBranch =
-        selectedBranchId === "" ||
+        !selectedBranchId ||
         job.branch_id === selectedBranchId;
 
       const matchesUrgent =
@@ -213,7 +170,6 @@ export default function JobsPage() {
   }, [
     jobs,
     keyword,
-    locale,
     selectedBranchId,
     urgentFilter,
   ]);
@@ -231,7 +187,7 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto flex w-full gap-6 px-4 py-6 lg:px-6">
-        <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-[#0d47a1] p-4 shadow-sm md:block">
+        <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-[#123a63] p-4 shadow-sm md:block">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-white">สาขางาน</h3>
             <p className="text-sm text-gray-50">เลือกสาขาเพื่อกรองตำแหน่งงาน</p>
@@ -251,16 +207,15 @@ export default function JobsPage() {
               }`}
             >
               <span>ทั้งหมด</span>
-              <span className="text-xs text-gray-500">{jobs.length}</span>
+              <span className="text-xs text-gray-500">{totalJobCount}</span>
             </button>
-
 
             <button
               type="button"
               onClick={() => setUrgentFilter(prev => !prev)}
-              disabled={urgentCount === 0}
+              disabled={totalUrgentCount  === 0}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition 
-                ${urgentCount === 0 
+                ${totalUrgentCount  === 0 
                   ? "cursor-not-allowed bg-gray-100 text-gray-400" 
                   : urgentFilter 
                     ? "bg-blue-50 text-blue-700" 
@@ -268,19 +223,19 @@ export default function JobsPage() {
                 }`}
             >
               <span>🔥 งานด่วน</span>
-              <span className="ml-3 shrink-0 text-xs">({urgentCount})</span>
+              <span className="ml-3 shrink-0 text-xs">({totalUrgentCount })</span>
             </button>
 
             {branches.map((branch) => {
-              const isActive = selectedBranchId === branch.id;
+              const isActive = selectedBranchId === branch.branch_id;
               const isDisabled = branch.job_count === 0;
 
               return (
                 <button
-                  key={branch.id}
+                  key={branch.branch_id}
                   type="button"
                   disabled={isDisabled}
-                  onClick={() => setBranchFilter(branch.id)}
+                  onClick={() => setBranchFilter(branch.branch_id)}
                   className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
                     isDisabled
                       ? "cursor-not-allowed bg-gray-100 text-gray-400"

@@ -2,19 +2,37 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from 'antd';
 
-const buildLocalizedRow = (languages = []) =>
-  Object.fromEntries(languages.map((lang) => [lang.language_slug, ""]));
+const buildLocalizedRow = (languages = []) => ({
+  ...Object.fromEntries(
+    languages.map((lang) => [lang.language_slug, ""])
+  ),
+});
+
+const buildSectionRow = (languages = []) => ({
+  text: buildLocalizedRow(languages),
+  sort_order: 1,
+  showpage: false,
+});
 
 const normalizeLocalizedRows = (rows, languages = [], textField = "") => {
-  const base = buildLocalizedRow(languages);
+  const baseText = buildLocalizedRow(languages);
   if (Array.isArray(rows) && rows.length > 0) {
     return rows.map((row) => {
-      const textData = (textField && row?.[textField]) || row || {};
-      return { ...base, ...(typeof textData === "object" ? textData : {}) };
+      const source =
+        (row?.text && typeof row.text === "object" && row.text) ||
+        (typeof row?.[textField] === "object" ? row[textField] : {});
+
+      return {
+        id: row?.id,
+        text: { ...baseText, ...source },
+        sort_order: row?.sort_order ?? 1,
+        showpage: row?.showpage ?? false,
+      };
     });
   }
-  return [base];
+  return [{ text: baseText, sort_order: 1, showpage: false }];
 };
 
 // Same idea as normalizeLocalizedRows but for a single localized object
@@ -26,30 +44,48 @@ const normalizeLocalizedObject = (data, languages = [], textField = "") => {
 };
 
 const createEmptyForm = (languages = []) => ({
-  branch_id: "",
+  branch_id: [],
   department_id: "",
   division_id: "",
   unit_id: "",
   positions_id: "",
+  salary_mode: "range",
   salary_min: "",
   salary_max: "",
-  type_of_work: "monthly",
+  type_of_work: "",
   salary_note: "",
   workLocation: "",
   description: buildLocalizedRow(languages),
-  requirements: [buildLocalizedRow(languages)],
-  responsibilities: [buildLocalizedRow(languages)],
-  benefits: [buildLocalizedRow(languages)],
+  requirements: [buildSectionRow(languages)],
+  responsibilities: [buildSectionRow(languages)],
+  benefits: [buildSectionRow(languages)],
+  workDay: "",
+  workOff: "",
+  remark:"",
 });
 
-const buildFormData = (initialData, languages) => ({
-  branch_id: initialData?.branch_id?.toString() || "",
+const buildFormData = (initialData, languages) => ({  
+  branch_id:
+    initialData.jobDescriptionBranches.length > 0
+      ? initialData.jobDescriptionBranches.map((item) => item.branch_id.toString())
+      : Array.isArray(initialData?.branch_id)
+        ? initialData.branch_id.map(String)
+        : initialData?.branch_id
+          ? [initialData.branch_id.toString()]
+          : [],
   department_id: initialData?.department_id?.toString() || "",
   division_id: initialData?.division_id?.toString() || "",
   unit_id: initialData?.unit_id?.toString() || "",
   positions_id: initialData?.positions_id?.toString() || "",
+  
+  salary_mode:
+    initialData?.salary_note === "เงินเดือนตามตกลง"
+      ? "negotiable"
+      : "range",
   salary_min: initialData?.salary_min?.toString() || "",
   salary_max: initialData?.salary_max?.toString() || "",
+  salary_note: initialData?.salary_note || "",
+
   type_of_work: initialData?.type_of_work || "monthly",
   salary_note: initialData?.salary_note || "",
   workLocation: initialData?.workLocation || "",
@@ -57,6 +93,9 @@ const buildFormData = (initialData, languages) => ({
   requirements: normalizeLocalizedRows(initialData?.requirements, languages, "requirement_text"),
   responsibilities: normalizeLocalizedRows(initialData?.responsibilities, languages, "responsibility_text"),
   benefits: normalizeLocalizedRows(initialData?.benefits, languages, "benefit_text"),
+  workDay:initialData?.workDay || "",
+  workOff:initialData?.workOff || "",
+  remark: initialData?.remark || "",
 });
 
 // Helper: ensure ของที่ถูก select อยู่ใน list เสมอ
@@ -78,14 +117,16 @@ export default function JobDescriptionForm({
   positions = [],
   unitPositions = [],
   languages = [],
+  emptype = [],
   initialData = null,
 }) {  
+  
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const emptyForm = useMemo(() => createEmptyForm(languages), [languages]);
-  const [form, setForm] = useState(() => emptyForm);
+  const [form, setForm] = useState(() => emptyForm); 
 
   const languageKey = useMemo(
     () => languages.map((lang) => lang.language_slug).join("|"),
@@ -117,15 +158,23 @@ export default function JobDescriptionForm({
     }));
   }
 
-  function handleBranchChange(value) {
-    setForm((prev) => ({
-      ...prev,
-      branch_id: value,
-      department_id: "",
-      division_id: "",
-      unit_id: "",
-      positions_id: "",
-    }));
+  function handleBranchChange(values) {
+    setForm((prev) => {
+      if (mode === "edit" && values.length > 1) {
+        return {
+          ...prev,
+          branch_id: values,
+        };
+      }
+      return {
+        ...prev,
+        branch_id: values,
+        department_id: "",
+        division_id: "",
+        unit_id: "",
+        positions_id: "",
+      };
+    });
   }
 
   function handleDepartmentChange(value) {
@@ -155,18 +204,57 @@ export default function JobDescriptionForm({
     }));
   }
 
-  function updateSection(section, index, langSlug, value) {
+  function handleSalaryModeChange(mode) {
     setForm((prev) => {
-      const next = [...prev[section]];
-      next[index] = { ...next[index], [langSlug]: value };
-      return { ...prev, [section]: next };
+      if (mode === "negotiable") {
+        return {
+          ...prev,
+          salary_mode: mode,
+          salary_min: "",
+          salary_max: "",
+          salary_note: prev.salary_note || "เงินเดือนตามตกลง",
+        };
+      }
+
+      return {
+        ...prev,
+        salary_mode: mode,
+        salary_note: "",
+      };
     });
   }
+
+
+  function updateSection(section, index, key, value) {
+  setForm((prev) => {
+    const next = [...prev[section]];
+
+    if (key === "sort_order" || key === "showpage") {
+      next[index] = {
+        ...next[index],
+        [key]: value,
+      };
+    } else {
+      next[index] = {
+        ...next[index],
+        text: {
+          ...next[index].text,
+          [key]: value,
+        },
+      };
+    }
+
+    return {
+      ...prev,
+      [section]: next,
+    };
+  });
+}
 
   function addRow(section) {
     setForm((prev) => ({
       ...prev,
-      [section]: [...prev[section], buildLocalizedRow(languages)],
+      [section]: [...prev[section], buildSectionRow(languages)],
     }));
   }
 
@@ -175,7 +263,7 @@ export default function JobDescriptionForm({
       const next = prev[section].filter((_, i) => i !== index);
       return {
         ...prev,
-        [section]: next.length > 0 ? next : [buildLocalizedRow(languages)],
+        [section]: next.length > 0 ? next : [buildSectionRow(languages)],
       };
     });
   }
@@ -189,18 +277,30 @@ export default function JobDescriptionForm({
   // ── Filtered lists ──────────────────────────────────────────────────────────
   // แต่ละ memo กรองตาม parent แล้ว inject item ที่ถูก select ไว้เสมอ
   // เพื่อให้ <select value={...}> เจอ <option> ตรงกันแม้ filter จะพลาด
-
   const filteredDepartments = useMemo(() => {
-    const byBranch = form.branch_id
-      ? (() => {
-          const ids = branchDepartments
-            .filter((i) => i.branch_id?.toString() === form.branch_id.toString())
-            .map((i) => i.department_id?.toString());
-          return departments.filter((i) => ids.includes(i.id?.toString()));
-        })()
-      : [];
-    return ensureSelected(byBranch, form.department_id, departments);
-  }, [form.branch_id, form.department_id, branchDepartments, departments]);
+    if (form.branch_id.length === 0) return [];
+
+    const ids = branchDepartments
+      .filter((item) =>
+        form.branch_id.includes(item.branch_id?.toString())
+      )
+      .map((item) => item.department_id?.toString());
+
+    const departmentsByBranch = departments.filter((item) =>
+      ids.includes(item.id?.toString())
+    );
+
+    return ensureSelected(
+      departmentsByBranch,
+      form.department_id,
+      departments
+    );
+  }, [
+    form.branch_id,
+    form.department_id,
+    branchDepartments,
+    departments,
+  ]);
 
   const filteredDivisions = useMemo(() => {
     const byDept = form.department_id
@@ -231,11 +331,11 @@ export default function JobDescriptionForm({
   // ── Disabled conditions ────────────────────────────────────────────────────
   // disabled ก็ต่อเมื่อ parent ว่าง AND ตัวเองก็ยังไม่มีค่า
   // (กรณี edit ที่โหลดมาแล้วมีค่าครบ จะไม่ถูก disabled)
-  const deptDisabled = !form.branch_id && !form.department_id;
+  const deptDisabled = form.branch_id.length === 0 && !form.department_id;
   const divDisabled = !form.department_id && !form.division_id;
   const unitDisabled = !form.division_id && !form.unit_id;
   const posDisabled = !form.unit_id && !form.positions_id;
-
+  
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -262,15 +362,19 @@ export default function JobDescriptionForm({
       requirements: form.requirements,
       responsibilities: form.responsibilities,
       benefits: form.benefits,
+      workDay: form.workDay,
+      workOff: form.workOff,
+      remark: form.remark,
     };
-
+    
     const isEdit = mode === "edit";
     const url = isEdit ? `/recruitment/api/job_description/${initialData.id}` : "/recruitment/api/job_description";
     const method = isEdit ? "PUT" : "POST";
-
+    
     try {
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await res.json();
+      
       if (!res.ok) throw new Error(result.message || "บันทึกไม่สำเร็จ");
       router.push("/recruitment/setting/job_description");
       router.refresh();
@@ -300,18 +404,35 @@ export default function JobDescriptionForm({
           <div className="grid gap-4 md:grid-cols-2">
             {/* Branch */}
             <div>
-              <label className="mb-2 block text-sm font-medium">Branch</label>
-              <select
+              <label className="mb-2 block text-sm font-medium">Company</label>
+              <Select
+                mode="multiple"
                 value={form.branch_id}
-                onChange={(e) => handleBranchChange(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                required
-              >
-                <option value="">-- เลือก branch --</option>
-                {branches.map((item) => (
-                  <option key={item.id} value={item.id?.toString()}>{item.branch_name}</option>
-                ))}
-              </select>
+                placeholder="-- เลือก Company --"
+                onChange={handleBranchChange}
+                options={branches.map((item) => ({
+                  value: item.id.toString(),
+                  label: item.branch_name,
+                }))}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toString()
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                styles={{
+                  root: {
+                    width: "100%",
+                    border: "1px solid",
+                    padding: "9px 16px",
+                    borderRadius: "12px",
+                    outlineStyle: "none",
+                  },
+                }}
+              />
             </div>
 
             {/* Department */}
@@ -393,10 +514,38 @@ export default function JobDescriptionForm({
                 className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
                 required
               >
-                <option value="daily">รายวัน</option>
-                <option value="monthly">รายเดือน</option>
+                <option value="">-- เลือก รูปแบบการจ้างงาน --</option>
+                {emptype.map((item) => (
+                  <option key={item.id} value={item.id?.toString()}>{item.type_name}</option>
+                ))}
               </select>
             </div>
+
+
+            {/* Working day */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">วันที่ทำงาน</label>
+              <input
+                type="text"
+                value={form.workDay}
+                onChange={(e) => updateField("workDay", e.target.value)}
+                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                placeholder="วันที่ทำงาน"
+              />
+            </div>
+
+            {/* Work Off */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">วันหยุด</label>
+              <input
+                type="text"
+                value={form.workOff}
+                onChange={(e) => updateField("workOff", e.target.value)}
+                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                placeholder="วันหยุด"
+              />
+            </div>
+
 
             {/* Work location */}
             <div>
@@ -413,27 +562,113 @@ export default function JobDescriptionForm({
             <div />
 
             {/* Salary */}
-            <div>
-              <label className="mb-2 block text-sm font-medium">เงินเดือนต่ำสุด</label>
-              <input
-                type="number"
-                value={form.salary_min}
-                onChange={(e) => updateField("salary_min", e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                placeholder="0"
-              />
+            <div className="md:col-span-2">
+              <label className="mb-3 block text-sm font-semibold text-gray-800"> การแสดงเงินเดือน </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* กรอกเงินเดือน */}
+                <label
+                  className={`cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200
+                    ${
+                      form.salary_mode === "range"
+                        ? "border-blue-600 bg-blue-50 shadow-lg"
+                        : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="salary_mode"
+                      value="range"
+                      checked={form.salary_mode === "range"}
+                      onChange={(e) => handleSalaryModeChange(e.target.value)}
+                      className="mt-1 h-5 w-5 accent-blue-600"
+                    />
+
+                    <div>
+                      <div className="font-semibold text-gray-900"> 💰 กรอกช่วงเงินเดือน </div>
+                      <div className="mt-1 text-sm text-gray-500">
+                        ระบุเงินเดือนขั้นต่ำและสูงสุด
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                {/* ไม่กรอกเงินเดือน */}
+                <label
+                  className={`cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200
+                    ${
+                      form.salary_mode === "negotiable"
+                        ? "border-emerald-600 bg-emerald-50 shadow-lg"
+                        : "border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md"
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="salary_mode"
+                      value="negotiable"
+                      checked={form.salary_mode === "negotiable"}
+                      onChange={(e) => handleSalaryModeChange(e.target.value)}
+                      className="mt-1 h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <div className="font-semibold text-gray-900"> 🤝 ไม่ระบุเงินเดือน </div>
+                      <div className="mt-1 text-sm text-gray-500">
+                        แสดงข้อความแทนช่วงเงินเดือน
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">เงินเดือนสูงสุด</label>
-              <input
-                type="number"
-                value={form.salary_max}
-                onChange={(e) => updateField("salary_max", e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                placeholder="0"
-              />
-            </div>
+
+            {form.salary_mode === "range" && (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-medium"> เงินเดือนต่ำสุด </label>
+                  <input
+                    type="number"
+                    value={form.salary_min}
+                    onChange={(e) => updateField("salary_min", e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium"> เงินเดือนสูงสุด </label>
+                  <input
+                    type="number"
+                    value={form.salary_max}
+                    onChange={(e) => updateField("salary_max", e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
+              </>
+            )}
+
+            {form.salary_mode === "negotiable" && (
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium"> กรอกข้อมูลเงินเดือน </label>
+                <input
+                  type="text"
+                  value={form.salary_note}
+                  onChange={(e) => updateField("salary_note", e.target.value)}
+                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                  placeholder="เงินเดือนตามตกลง"
+                />
+              </div>
+            )}
           </div>
+
+          {/* Remark (localized per language) */}
+          <LocalizedTextareaGroup
+            title="Remark สำหรับแสดงหน้าแรก"
+            value={form.remark}
+            languages={languages}
+            onChange={(langSlug, value) => updateLocalizedField("remark", langSlug, value)}
+          />
 
           {/* Description (localized per language) */}
           <LocalizedTextareaGroup
@@ -531,7 +766,8 @@ function LocalizedTextareaGroup({ title, value = {}, languages = [], onChange })
   );
 }
 
-function SectionList({ title, items, languages = [], onAdd, onRemove, onChange }) {
+function SectionList({ title, sectionKey , items, languages = [], onAdd, onRemove, onChange }) {
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -549,20 +785,79 @@ function SectionList({ title, items, languages = [], onAdd, onRemove, onChange }
                 ลบ
               </button>
             </div>
-            <div className={`grid gap-3 ${languages.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+            <div
+              className={`grid gap-4 ${
+                languages.length > 1 ? "md:grid-cols-2" : "grid-cols-1"
+              }`}
+            >
               {languages.map((lang) => (
                 <div key={lang.language_slug}>
-                  <label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     {lang.language_name || lang.language_slug}
                   </label>
+
                   <input
-                    value={item[lang.language_slug] ?? ""}
-                    onChange={(e) => onChange(index, lang.language_slug, e.target.value)}
-                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    value={item.text?.[lang.language_slug] ?? ""}
+                    onChange={(e) =>
+                      onChange(index, lang.language_slug, e.target.value)
+                    }
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     placeholder={`กรอก${title} (${lang.language_slug})`}
                   />
                 </div>
               ))}
+
+              {/* Sort Order */}
+              <div>
+                <label
+                  htmlFor={`sort_order_${index}`}
+                  className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
+                >
+                  <span className="text-base">🔢</span>
+                  ลำดับการแสดง
+                </label>
+
+                <input
+                  id={`sort_order_${index}`}
+                  type="number"
+                  min="0"
+                  value={item.sort_order ?? index+1}
+                  onChange={(e) =>
+                    onChange(index, "sort_order", Number(e.target.value))
+                  }
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="เช่น 1"
+                />
+              </div>
+
+              {sectionKey === "requirements" && (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      id={`showpage_${index}`}
+                      type="checkbox"
+                      checked={item.showpage ?? false}
+                      onChange={(e) =>
+                        onChange(index, "showpage", e.target.checked)
+                      }
+                      className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+
+                    <div>
+                      <label
+                        htmlFor={`showpage_${index}`}
+                        className="text-sm font-medium text-gray-800"
+                      >
+                        แสดงในหน้าแรก
+                      </label>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        เมื่อเปิดใช้งาน รายการนี้จะปรากฏบนหน้าแรก
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

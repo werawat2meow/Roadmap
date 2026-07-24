@@ -56,6 +56,7 @@ export type EvaluationFormData = {
   newSalary: number;
   managerComment: string;
   examScore: number;
+  examMaxScore: number;
   maxScore: number;
   summaryData: SummaryPanelData;
   disciplineData: DisciplinePanelData;
@@ -83,6 +84,11 @@ const makeRow = (prefix: string): RowState => ({
 const calcScore = (rows: RowState[]) =>
   rows.reduce(
     (sum, row) => sum + (Number.isFinite(row.score) ? row.score : 0),
+    0,
+  );
+const calcMaxScore = (rows: RowState[]) =>
+  rows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.maxScore) ? row.maxScore : 0),
     0,
   );
 
@@ -127,12 +133,18 @@ export default function EvaluationForm({
     const cs = calcScore(nextCompany);
     const ds = calcScore(nextDept);
     const es = calcScore(nextExp);
+    const max =
+      calcMaxScore(nextCompany) +
+      calcMaxScore(nextDept) +
+      calcMaxScore(nextExp);
+
     onFormChange?.({
       ...updates,
       companyScore: cs,
       departmentScore: ds,
       expectationScore: es,
       totalScore: cs + ds + es,
+      maxScore: max,
     });
   };
 

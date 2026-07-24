@@ -33,6 +33,7 @@ type EvaluatemgrRecord = {
   departmentScore: number | null;
   expectationScore: number | null;
   examScore: number | null;
+  examMaxScore: number | null;
   maxScore: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
@@ -85,6 +86,7 @@ const initialFormData: EvaluationFormData = {
   newSalary: 0,
   managerComment: "",
   examScore: 0,
+  examMaxScore: 100,
   maxScore: 100,
   summaryData: defaultSummaryData,
   disciplineData: defaultDisciplineData,
@@ -155,6 +157,7 @@ export default function EvaluateMgrPage() {
         newSalary: extra.newSalary ?? 0,
         managerComment: record.managerComment ?? "",
         examScore: record.examScore ?? 0,
+        examMaxScore: record.examMaxScore ?? 100,
         maxScore: record.maxScore ?? 100,
         summaryData: extra.summaryData ?? defaultSummaryData,
         disciplineData: extra.disciplineData ?? defaultDisciplineData,
@@ -401,6 +404,9 @@ export default function EvaluateMgrPage() {
                 }
                 onExamScoreChange={(value) =>
                   handleFormChange({ examScore: value })
+                }
+                onExamMaxScoreChange={(value) =>
+                  handleFormChange({ examMaxScore: value })
                 }
                 onMaxScoreChange={(value) =>
                   handleFormChange({ maxScore: value })

@@ -25,6 +25,7 @@ interface JobDetail {
   responsibilities: MultiLang[];
   benefits: MultiLang[];
   type_of_work?: string | null;
+  type_name?: string | null;
   workLocation?: string | null;
   salary_min?: number | string | null;
   salary_max?: number | string | null;
@@ -56,6 +57,7 @@ export default function JobDetailPage() {
           throw new Error(body?.error ?? `HTTP ${res.status}`);
         }
         const data: JobDetail = await res.json();
+        
         setJob(data);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -118,12 +120,22 @@ export default function JobDetailPage() {
                   <h1 className="text-3xl font-bold">{job.positionTitle}</h1>
                   <div className="mt-5">
                     <div className="space-y-2">
-                      {job.type_of_work && (
+                      {/* {job.type_of_work && (
                         <p>
                           <span className="font-medium">
                             💼 {getUIText(uiText.workType, locale)}:
                           </span>{" "}
                           {job.type_of_work.charAt(0).toUpperCase() + job.type_of_work.slice(1)}
+                        </p>
+                      )} */}
+
+                      { job.type_name && (
+                        <p>
+                          <span className="font-medium">
+                            💼 {getUIText(uiText.workType, locale)}:
+                          </span>{" "}
+                          {/* { getText(job.type_name, locale) } */}
+                          { job.type_name }
                         </p>
                       )}
 

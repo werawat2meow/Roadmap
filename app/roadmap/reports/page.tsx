@@ -6,16 +6,14 @@ import ReportsTabs from './components/ReportsTabs';
 import ReportPanel from './components/ReportPanel';
 
 const tabs = [
-  { id: 'evaluation', label: 'ผลการประเมิน' },
-  { id: 'kpi', label: 'KPI / ตัวชี้วัด' },
-  { id: 'promotion', label: 'การเลื่อนตำแหน่ง' },
-  { id: 'roadmap', label: 'Roadmap' },
-  { id: 'employee', label: 'พนักงาน' },
-  { id: 'settings', label: 'การตั้งค่า' },
+  { id: 'probation', label: 'Probation' },
+  { id: 'performance', label: 'Performance' },
+  { id: 'promote', label: 'Promote' },
+  { id: 'progression', label: 'Progression' },
 ];
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState('evaluation');
+  const [activeTab, setActiveTab] = useState('probation');
   const [quarter, setQuarter] = useState('Level 2');
   const [scope, setScope] = useState('ทุกแผนก');
 

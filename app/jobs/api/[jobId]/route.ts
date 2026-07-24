@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
     const { jobId } = await params;
-    
+
     if (!jobId) {
         return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
@@ -38,13 +38,10 @@ export async function GET(
 
     // ── 2. ค้นหา recruit_job_description ด้วย position_id → branch_id → ... ──
     const { data: jobDesc, error: jobDescError } = await supabase
-        .from("recruit_job_description")
+        .from("v_recruit_job_open_detail")
         .select("*")
-        .eq("positions_id", jobOpen.position_id)
+        .eq("position_id", jobOpen.position_id)
         .eq("branch_id", jobOpen.branch_id)
-        .eq("department_id", jobOpen.department_id)
-        .eq("division_id", jobOpen.division_id)
-        .eq("unit_id", jobOpen.unit_id)
         .maybeSingle();
     
     if (jobDescError) {
@@ -54,7 +51,7 @@ export async function GET(
         );
     }
 
-    const jobDescriptionId = jobDesc?.id ?? null;
+    const jobDescriptionId = jobDesc?.job_description_id ?? null;
 
     // ── 3. ดึง requirements / responsibilities / benefits ──────────────────────
     const [reqRes, respRes, benRes] = await Promise.all([
@@ -135,6 +132,7 @@ export async function GET(
         salary_min: jobDesc?.salary_min ?? null,
         salary_max: jobDesc?.salary_max ?? null,
         type_of_work: jobDesc?.type_of_work ?? null,
+        type_name: jobDesc?.type_name ?? null,
         workLocation: jobDesc?.workLocation ?? null,
         companyName: (jobOpen as any)?.branches?.branch_name ?? null,
         positionTitle: (jobOpen as any).positions?.position_name,

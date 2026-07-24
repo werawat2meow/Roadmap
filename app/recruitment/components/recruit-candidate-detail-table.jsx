@@ -2,16 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  Table,
-  Select,
-  DatePicker,
-  Button,
-  Tag,
-  Space,
-  Typography,
-  Modal,
-} from 'antd';
+import { Table, Select, DatePicker, Button, Tag, Space, Typography, Modal, } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;

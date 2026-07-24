@@ -15,10 +15,20 @@ function cleanRows(rows = []) {
   });
 }
 
-export async function GET() {
-  const { data, error } = await supabaseAdmin
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+
+  const page = Number(searchParams.get("page")) || 1;
+  const pageSize = Number(searchParams.get("pageSize")) || 10;
+  const positionId = searchParams.get("position_id");
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabaseAdmin
     .from("recruit_job_description")
-    .select(`
+    .select(
+      `
       id,
       positions_id,
       salary_min,
@@ -36,8 +46,17 @@ export async function GET() {
           branch_name
         )
       )
-    `)
-    .order("updated_at", { ascending: false });
+    `,
+      { count: "exact" }
+    )
+    .order("updated_at", { ascending: false })
+    .range(from, to);
+
+  if (positionId) {
+    query = query.eq("positions_id", positionId);
+  }
+
+  const { data, error, count } = await query;
 
   if (error) {
     return NextResponse.json(
@@ -70,7 +89,12 @@ export async function GET() {
         .join(", ") || "-",
   }));
 
-  return NextResponse.json(rows);
+  return NextResponse.json({
+    data: rows,
+    total: count ?? 0,
+    page,
+    pageSize,
+  });
 }
 
 export async function POST(request) {

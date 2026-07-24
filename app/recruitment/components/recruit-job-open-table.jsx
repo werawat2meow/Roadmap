@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from "@/lib/supabaseClient";
 import {
   Table,
   Input,
@@ -42,6 +41,16 @@ export default function RecruitJobOpenTable() {
   const [busyId, setBusyId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const [branchFilter, setBranchFilter] = useState();
+  const [departmentFilter, setDepartmentFilter] = useState();
+  const [divisionFilter, setDivisionFilter] = useState();
+  const [unitFilter, setUnitFilter] = useState();
+
+  const [branchOptions, setBranchOptions] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [divisionOptions, setDivisionOptions] = useState([]);
+  const [unitOptions, setUnitOptions] = useState([]);
+
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -56,7 +65,14 @@ export default function RecruitJobOpenTable() {
   // Reset to page 1 on search/pageSize change
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize]);
+  }, [
+    search,
+    pageSize,
+    branchFilter,
+    departmentFilter,
+    divisionFilter,
+    unitFilter,
+  ]);
 
   // Fetch data
   useEffect(() => {
@@ -66,47 +82,68 @@ export default function RecruitJobOpenTable() {
       setLoading(true);
       const pattern = `%${search.toLowerCase()}%`;
 
-      let countQuery = supabase
-        .from('v_recruit_job_open_list')
-        .select('*', { count: 'exact', head: true });
+      const params = new URLSearchParams({
+          page,
+          pageSize,
+      });
 
-      let dataQuery = supabase
-        .from('v_recruit_job_open_list')
-        .select('*')
-        .order('id', { ascending: false })
-        .range(from, to);
+      if (search)
+          params.append("search", search);
 
-      if (search) {
-        countQuery = countQuery.ilike('search_text', pattern);
-        dataQuery = dataQuery.ilike('search_text', pattern);
-      }
+      if (branchFilter)
+          params.append("branch_id", branchFilter);
 
-      const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
+      if (departmentFilter)
+          params.append("department_id", departmentFilter);
 
-      if (!alive) return;
+      if (divisionFilter)
+          params.append("division_id", divisionFilter);
 
-      if (countRes.error) {
-        console.error(countRes.error);
-        Modal.error({ title: 'เกิดข้อผิดพลาด', content: countRes.error.message });
-        setLoading(false);
-        return;
-      }
+      if (unitFilter)
+          params.append("unit_id", unitFilter);
 
-      if (dataRes.error) {
-        console.error(dataRes.error);
-        Modal.error({ title: 'เกิดข้อผิดพลาด', content: dataRes.error.message });
-        setLoading(false);
-        return;
-      }
+      const response = await fetch(
+          `/recruitment/api/job_openings?${params.toString()}`
+      );
 
-      setCount(countRes.count ?? 0);
-      setRows(dataRes.data ?? []);
+      const result = await response.json();
+
+      setRows(result.rows ?? []);
+      setCount(result.total ?? 0);
       setLoading(false);
     }
 
     loadData();
     return () => { alive = false; };
-  }, [search, from, to, reloadKey]);
+  }, [
+    search,
+    branchFilter,
+    departmentFilter,
+    divisionFilter,
+    unitFilter,
+    from,
+    to,
+    reloadKey,
+  ]);
+
+  useEffect(() => {
+    loadFilters();
+  }, []);
+
+  async function loadFilters() {
+    const response = await fetch(
+        "/recruitment/api/job_openings/filters"
+    );
+
+    const result = await response.json();
+    const data = result.data;
+    
+    setBranchOptions(data.branches ?? []);
+    setDepartmentOptions(data.departments ?? []);
+    setDivisionOptions(data.divisions ?? []);
+    setUnitOptions(data.units ?? []);
+    
+}
 
   function showDeleteConfirm(row) {
     confirm({
@@ -149,9 +186,7 @@ export default function RecruitJobOpenTable() {
 
   async function toggleStatus(row) {
     const nextStatus = !row.status;
-
     setBusyId(row.id);
-
     setRows((prev) =>
       prev.map((item) =>
         item.id === row.id
@@ -159,7 +194,6 @@ export default function RecruitJobOpenTable() {
           : item
       )
     );
-
     try {
       const response = await fetch(
         `/recruitment/api/job_openings/${row.id}/status`,
@@ -173,9 +207,7 @@ export default function RecruitJobOpenTable() {
           }),
         }
       );
-
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.message);
       }
@@ -187,10 +219,8 @@ export default function RecruitJobOpenTable() {
             : item
         )
       );
-
       alert(error.message);
     }
-
     setBusyId(null);
   }
 
@@ -345,15 +375,82 @@ export default function RecruitJobOpenTable() {
               }))}
             />
           </Space>
+          
+          <Space wrap>
+            <Select
+              allowClear
+              showSearch
+              placeholder="Company"
+              optionFilterProp="label"
+              value={branchFilter}
+              onChange={setBranchFilter}
+              style={{ width: 220 }}
+              options={branchOptions.map(item => ({
+                value: item.id,
+                label: item.branch_name,
+              }))}
+            />
 
-          <Input
+            <Select
+              allowClear
+              showSearch
+              placeholder="Department"
+              optionFilterProp="label"
+              value={departmentFilter}
+              onChange={setDepartmentFilter}
+              style={{ width: 220 }}
+              options={departmentOptions.map(item => ({
+                value: item.id,
+                label: item.department_name,
+              }))}
+            />
+
+            <Select
+              allowClear
+              showSearch
+              placeholder="Division"
+              optionFilterProp="label"
+              value={divisionFilter}
+              onChange={setDivisionFilter}
+              style={{ width: 220 }}
+              options={divisionOptions.map(item => ({
+                value: item.id,
+                label: item.division_name,
+              }))}
+            />
+
+            <Select
+              allowClear
+              showSearch
+              placeholder="Unit"
+              optionFilterProp="label"
+              value={unitFilter}
+              onChange={setUnitFilter}
+              style={{ width: 220 }}
+              options={unitOptions.map(item => ({
+                value: item.id,
+                label: item.unit_name,
+              }))}
+            />
+
+            <Input
+              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              placeholder="ค้นหาตำแหน่งงาน"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              style={{ width: 320, borderRadius: 10 }}
+              allowClear
+            />
+
+          </Space>
+          {/* <Input
             prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
             placeholder="ค้นหา branch / department / position ..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             style={{ width: 320, borderRadius: 10 }}
             allowClear
-          />
+          /> */}
         </Space>
       </div>
 

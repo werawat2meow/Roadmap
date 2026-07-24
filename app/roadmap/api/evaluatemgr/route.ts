@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,employee_id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,examMaxScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers!inner(manager_id)`,
+      `id,employee_id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers!inner(manager_id)`,
     )
     .eq("rm_evaluation_reviewers.manager_id", reviewerId);
 

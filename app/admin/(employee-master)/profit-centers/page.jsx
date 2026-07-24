@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState , useRef } from "react";
 import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,} from "antd";
 import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,ReloadOutlined,DollarOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
@@ -39,6 +39,7 @@ export default function ProfitCentersPage() {
   const [openModal, setOpenModal] = useState(false);
   const [editingProfitCenter, setEditingProfitCenter] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     if (loadingUser) return;
@@ -119,30 +120,18 @@ export default function ProfitCentersPage() {
   };
 
   useEffect(() => {
-    if (!loadingUser && user && canView) {
+    if (loadingUser || !user || !canView) return;
+    if (isFirstLoad.current) {
       loadBusinessUnits();
-      loadProfitCenters();
     }
-  }, [
-    loadingUser,
-    user,
-    canView,
-  ]);
-
-  useEffect(() => {
+    const delay = isFirstLoad.current ? 0 : 300;
+    isFirstLoad.current = false;
     const timer = setTimeout(() => {
-      if (!loadingUser && user && canView) {
-        loadProfitCenters(search);
-      }
-    }, 300);
+      loadProfitCenters(search);
+    }, delay);
 
     return () => clearTimeout(timer);
-  }, [
-    search,
-    loadingUser,
-    user,
-    canView,
-  ]);
+  }, [search, loadingUser, user, canView]);
 
   const resetForm = () => {
     setEditingProfitCenter(null);

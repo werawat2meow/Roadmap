@@ -1,75 +1,70 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Select } from "antd";
-import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
+import {useCallback,useEffect,useMemo,useRef,useState,} from "react";
 import { useRouter } from "next/navigation";
+import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
+import LoadingOrb from "../../../components/LoadingOrb";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
-import LoadingOrb from "../../../components/LoadingOrb";
+import ManagementOrgChart from "../components/ManagementOrgChart";
 
-const initialForm = {
-  employee_id: "",
-  management_level: "",
-  scope_type: "",
-  company_id: "",
-  branch_group_id: "",
-  branch_id: "",
-  department_id: "",
-  division_id: "",
-  unit_id: "",
-  supervisor_employee_id: "",
-  is_primary: true,
-  status: "active",
-  sort_order: 0,
-};
-
-const managementLevels = ["P9", "P10", "P11", "P12"];
-
-const scopeOptions = [
-  { value: "all", label: "ทั้งหมด / Entire Organization" },
-  { value: "company", label: "บริษัท / Company" },
-  { value: "branch_group", label: "กรุ๊ปสังกัด / Branch Group" },
-  { value: "branch", label: "สังกัด / Branch" },
-  { value: "department", label: "แผนก / Department" },
-  { value: "division", label: "ฝ่าย / Division" },
-  { value: "unit", label: "หน่วยงาน / Unit" },
-];
+import ManagementHeader from "./components/ManagementHeader";
+import ManagementSummary from "./components/ManagementSummary";
+import ManagementToolbar from "./components/ManagementToolbar";
+import ManagementAssignmentTree from "./components/ManagementAssignmentTree";
+import ManagementAssignmentTable from "./components/ManagementAssignmentTable";
+import ManagementAssignmentModal from "./components/ManagementAssignmentModal";
+import {
+  INITIAL_MANAGEMENT_FORM,
+  MANAGEMENT_LEVELS,
+  VIEW_MODES,
+  SUPERVISOR_LEVEL_BY_LEVEL,
+  safeJson,
+  getManagementRank,
+  resolveEmployeeManagementLevel,
+  getEmployeeName,
+  getEmployeePositionName,
+  mapManagementEmployee,
+  sortManagementEmployees,
+  buildEmployeeInitialScopes,
+  normalizeScopes,
+  createEmptyScope,
+  validateManagementScopes,
+  buildManagementAssignmentPayload,
+} from "./utils/scopeUtils";
 
 export default function ManagementAssignmentsPage() {
-  const [search, setSearch] = useState("");
-  const [assignments, setAssignments] = useState([]);
-
-  const [employees, setEmployees] = useState([]);
-  const [companies, setCompanies] = useState([]);
-  const [branchGroups, setBranchGroups] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [divisions, setDivisions] = useState([]);
-  const [units, setUnits] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState("");
-  const [error, setError] = useState("");
-
-  const [form, setForm] = useState(initialForm);
-  const [openModal, setOpenModal] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState(null);
-  const [viewMode, setViewMode] = useState("orgchart");
-  
-  // #region Permissions
   const router = useRouter();
-  const { user, loadingUser } = useAuth();
+  const orgChartRef = useRef(null);
+  const {user,loadingUser,} = useAuth();
 
-  const canView = hasPermission(user, "ems.management_assignments.view");
-  const canCreate = hasPermission(user, "ems.management_assignments.create");
-  const canEdit = hasPermission(user, "ems.management_assignments.edit");
-  const canDelete = hasPermission(user, "ems.management_assignments.delete");
-  // #endregion
+  const canView = hasPermission(user,"ems.management_assignments.view");
+  const canCreate = hasPermission(user,"ems.management_assignments.create");
+  const canEdit = hasPermission(user,"ems.management_assignments.edit");
+  const canDelete = hasPermission(user,"ems.management_assignments.delete");
+
+  const [assignments,setAssignments] = useState([]);
+
+  const [orgChartData,setOrgChartData,] = useState([]);
+  const [employees,setEmployees,] = useState([]);
+  const [scopeOptions,setScopeOptions,] = useState({companies: [],branchGroups: [],branches: [],departments: [],divisions: [],units: [],});
+  const [search,setSearch,] = useState("");
+
+  const [viewMode,setViewMode,] = useState(VIEW_MODES.ORG_CHART);
+  const [loading,setLoading,] = useState(true);
+  const [loadingEmployees,setLoadingEmployees,] = useState(false);
+  const [loadingScopeOptions,setLoadingScopeOptions,] = useState(false);
+  const [saving,setSaving,] = useState(false);
+  const [deletingId,setDeletingId,] = useState("");
+  const [error,setError,] = useState("");
+  const [openModal,setOpenModal,] = useState(false);
+  const [editingAssignment,setEditingAssignment,] = useState(null);
+  const [form,setForm,] = useState(INITIAL_MANAGEMENT_FORM);
 
   useEffect(() => {
-    if (loadingUser) return;
+    if (loadingUser) {
+      return;
+    }
 
     if (!user) {
       router.replace("/login");
@@ -79,923 +74,1777 @@ export default function ManagementAssignmentsPage() {
     if (!canView) {
       router.replace("/admin");
     }
-  }, [user, canView, loadingUser, router]);
+  }, [
+    loadingUser,
+    user,
+    canView,
+    router,
+  ]);
 
-  const loadAssignments = async (keyword = "") => {
-    try {
-      setLoading(true);
-      setError("");
+  const loadAssignments = useCallback(
+    async (keyword = "") => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const url = keyword
-        ? `/api/admin/management-assignments?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/management-assignments";
+        const params =
+          new URLSearchParams();
 
-      const res = await fetch(url, {
-        cache: "no-store",
-      });
+        params.set("tree", "true");
 
-      const data = await res.json();
+        if (keyword.trim()) {
+          params.set(
+            "search",
+            keyword.trim()
+          );
+        }
 
-      if (!res.ok) {
-        throw new Error(data?.error || "Load management assignments failed");
+        const response = await fetch(
+          `/api/admin/management-assignments?${params.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        const result =
+          await safeJson(response);
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ||
+              "ไม่สามารถโหลดสายบังคับบัญชาได้"
+          );
+        }
+
+        const assignmentItems =
+          Array.isArray(result?.data)
+            ? result.data.map(
+                (item) => ({
+                  ...item,
+
+                  management_assignment_scopes:
+                    normalizeScopes(
+                      item
+                        .management_assignment_scopes ||
+                        item.scopes
+                    ),
+                })
+              )
+            : [];
+
+        setAssignments(
+          assignmentItems
+        );
+
+        setOrgChartData(
+          Array.isArray(result?.tree)
+            ? result.tree
+            : []
+        );
+      } catch (loadError) {
+        console.error(
+          "LOAD_MANAGEMENT_ASSIGNMENTS_ERROR:",
+          loadError
+        );
+
+        setAssignments([]);
+        setOrgChartData([]);
+
+        setError(
+          loadError?.message ||
+            "เกิดข้อผิดพลาดในการโหลดสายบังคับบัญชา"
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    []
+  );
 
-      setAssignments(data.data || []);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadEmployees = useCallback(
+    async () => {
+      try {
+        setLoadingEmployees(true);
 
-  const loadMasters = async () => {
+        const response = await fetch(
+          "/api/admin/employees?all=true",
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        const result =
+          await safeJson(response);
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ||
+              "ไม่สามารถโหลดข้อมูลพนักงานได้"
+          );
+        }
+
+        const employeeItems =
+          Array.isArray(result?.data)
+            ? result.data
+            : [];
+
+        const managementEmployees =
+          employeeItems
+            .map((employee) => {
+              const mappedEmployee =
+                mapManagementEmployee(
+                  employee
+                );
+
+              return mappedEmployee;
+            })
+            .filter((employee) =>
+              MANAGEMENT_LEVELS.includes(
+                employee
+                  .resolved_management_level
+              )
+            );
+
+        setEmployees(
+          [...managementEmployees].sort(
+            sortManagementEmployees
+          )
+        );
+      } catch (loadError) {
+        console.error(
+          "LOAD_MANAGEMENT_EMPLOYEES_ERROR:",
+          loadError
+        );
+
+        setEmployees([]);
+
+        swalError(
+          loadError?.message ||
+            "ไม่สามารถโหลดข้อมูลผู้บริหารได้"
+        );
+      } finally {
+        setLoadingEmployees(false);
+      }
+    },
+    []
+  );
+
+  const loadScopeOptions = useCallback(async () => {
     try {
-      const [
-        employeesRes,
-        companiesRes,
-        groupsRes,
-        branchesRes,
-        departmentsRes,
-        divisionsRes,
-        unitsRes,
-      ] = await Promise.all([
-        fetch("/api/admin/employees?page=1&pageSize=200", { cache: "no-store" }),
-        fetch("/api/admin/companies", { cache: "no-store" }),
-        fetch("/api/admin/branch-groups", { cache: "no-store" }),
-        fetch("/api/admin/branches", { cache: "no-store" }),
-        fetch("/api/admin/departments?all=true", { cache: "no-store" }),
-        fetch("/api/admin/divisions?all=true", { cache: "no-store" }),
-        fetch("/api/admin/units?all=true", { cache: "no-store" }),
-      ]);
+      setLoadingScopeOptions(true);
+      const endpoints = [
+        [
+          "companies",
+          "/api/admin/companies?all=true",
+        ],
+        [
+          "branchGroups",
+          "/api/admin/branch-groups?all=true",
+        ],
+        [
+          "branches",
+          "/api/admin/branches?all=true",
+        ],
+        [
+          "departments",
+          "/api/admin/departments?all=true",
+        ],
+        [
+          "divisions",
+          "/api/admin/divisions?all=true",
+        ],
+        [
+          "units",
+          "/api/admin/units?all=true",
+        ],
+      ];
 
-      const [
-        employeesData,
-        companiesData,
-        groupsData,
-        branchesData,
-        departmentsData,
-        divisionsData,
-        unitsData,
-      ] = await Promise.all([
-        employeesRes.json(),
-        companiesRes.json(),
-        groupsRes.json(),
-        branchesRes.json(),
-        departmentsRes.json(),
-        divisionsRes.json(),
-        unitsRes.json(),
-      ]);
+      const responses = await Promise.all(
+          endpoints.map(
+            async ([key, url]) => {
+              try {
+                const response =
+                  await fetch(url, {
+                    method: "GET",
+                    cache: "no-store",
+                  });
 
-      if (!employeesRes.ok) throw new Error(employeesData?.error || "Load employees failed");
-      if (!companiesRes.ok) throw new Error(companiesData?.error || "Load companies failed");
-      if (!groupsRes.ok) throw new Error(groupsData?.error || "Load branch groups failed");
-      if (!branchesRes.ok) throw new Error(branchesData?.error || "Load branches failed");
-      if (!departmentsRes.ok) throw new Error(departmentsData?.error || "Load departments failed");
-      if (!divisionsRes.ok) throw new Error(divisionsData?.error || "Load divisions failed");
-      if (!unitsRes.ok) throw new Error(unitsData?.error || "Load units failed");
+                const result =
+                  await safeJson(
+                    response
+                  );
 
-      setEmployees(employeesData.data || []);
-      setCompanies(companiesData.data || []);
-      setBranchGroups(groupsData.data || []);
-      setBranches(branchesData.data || []);
-      setDepartments(departmentsData.data || []);
-      setDivisions(divisionsData.data || []);
-      setUnits(unitsData.data || []);
-    } catch (err) {
-      console.error(err);
-      swalError(err.message || "ไม่สามารถโหลดข้อมูล Master ได้");
+                if (!response.ok) {
+                  console.warn(
+                    `LOAD_SCOPE_OPTION_${key.toUpperCase()}_ERROR:`,
+                    result?.error
+                  );
+
+                  return [
+                    key,
+                    [],
+                  ];
+                }
+
+                return [
+                  key,
+                  Array.isArray(
+                    result?.data
+                  )
+                    ? result.data
+                    : [],
+                ];
+              } catch (
+                optionError
+              ) {
+                console.error(
+                  `LOAD_SCOPE_OPTION_${key.toUpperCase()}_ERROR:`,
+                  optionError
+                );
+
+                return [
+                  key,
+                  [],
+                ];
+              }
+            }
+          )
+        );
+
+      const nextOptions = responses.reduce(
+          (
+            result,
+            [key, items]
+          ) => {
+            result[key] = items;
+            return result;
+          },
+          {
+            companies: [],
+            branchGroups: [],
+            branches: [],
+            departments: [],
+            divisions: [],
+            units: [],
+          }
+        );
+
+      setScopeOptions(
+        nextOptions
+      );
+    } finally {
+      setLoadingScopeOptions(false);
     }
-  };
-
-  useEffect(() => {
-    loadMasters();
-    loadAssignments();
   }, []);
 
+  /* =========================================================
+      Initial Load
+  ========================================================= */
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadAssignments(search);
-    }, 300);
+    if (loadingUser || !user || !canView) {
+      return;
+    }
+    loadEmployees();
+    loadScopeOptions();
+    loadAssignments();
+  }, [loadingUser,user,canView,loadEmployees,loadScopeOptions,loadAssignments,]);
 
-    return () => clearTimeout(timer);
-  }, [search]);
-    const resetForm = () => {
-    setForm(initialForm);
-    setEditingAssignment(null);
-  };
+  /* =========================================================
+      Search Debounce
+  ========================================================= */
 
-  const handleOpenCreate = () => {
-    if (!canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสายบังคับบัญชา");
+  useEffect(() => {
+    if (loadingUser || !user || !canView) {
       return;
     }
 
-    resetForm();
-    setOpenModal(true);
-  };
+    const timer = window.setTimeout(() => {
+        const keyword =
+          viewMode ===  VIEW_MODES.ORG_CHART ? "": search;
+        loadAssignments(keyword);
+      }, 350);
 
-  const handleOpenEdit = (item) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสายบังคับบัญชา");
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [search,viewMode,loadingUser,user,canView,loadAssignments,]);
+
+  const assignedEmployeeIds =
+    useMemo(() => {
+      return new Set(
+        assignments
+          .filter(
+            (item) =>
+              String(item.id) !==
+              String(
+                editingAssignment?.id ||
+                  ""
+              )
+          )
+          .map((item) =>
+            String(item.employee_id)
+          )
+      );
+    }, [
+      assignments,
+      editingAssignment,
+    ]);
+
+  const availableEmployees =
+    useMemo(() => {
+      return employees.filter(
+        (employee) => {
+          if (
+            editingAssignment &&
+            String(employee.id) ===
+              String(
+                editingAssignment
+                  .employee_id
+              )
+          ) {
+            return true;
+          }
+
+          return !assignedEmployeeIds.has(
+            String(employee.id)
+          );
+        }
+      );
+    }, [
+      employees,
+      assignedEmployeeIds,
+      editingAssignment,
+    ]);
+
+  const selectedEmployee =
+    useMemo(() => {
+      if (!form.employee_id) {
+        return null;
+      }
+
+      return (
+        employees.find(
+          (employee) =>
+            String(employee.id) ===
+            String(form.employee_id)
+        ) || null
+      );
+    }, [
+      employees,
+      form.employee_id,
+    ]);
+
+  const levelGroups =
+    useMemo(() => {
+      return MANAGEMENT_LEVELS.reduce(
+        (result, level) => {
+          result[level] =
+            assignments.filter(
+              (item) =>
+                String(
+                  item.management_level ||
+                    ""
+                )
+                  .trim()
+                  .toUpperCase() ===
+                level
+            );
+
+          return result;
+        },
+        {}
+      );
+    }, [assignments]);
+
+  /* =========================================================
+      Employee Select Options
+  ========================================================= */
+
+  const employeeOptions =
+    useMemo(() => {
+      return availableEmployees.map(
+        (employee) => ({
+          value: employee.id,
+
+          label: `${
+            employee.employee_code ||
+            "-"
+          } - ${
+            employee
+              .resolved_employee_name ||
+            "-"
+          } (${
+            employee
+              .resolved_management_level ||
+            "-"
+          })`,
+
+          searchText: [
+            employee.employee_code,
+            employee
+              .resolved_employee_name,
+            employee
+              .resolved_position_name,
+            employee
+              .resolved_management_level,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase(),
+        })
+      );
+    }, [availableEmployees]);
+
+  /* =========================================================
+      Required Supervisor Level
+  ========================================================= */
+
+  const requiredSupervisorLevel =
+    useMemo(() => {
+      if (!form.management_level) {
+        return "";
+      }
+
+      return (
+        SUPERVISOR_LEVEL_BY_LEVEL[
+          form.management_level
+        ] || ""
+      );
+    }, [form.management_level]);
+
+  /* =========================================================
+      Supervisor Assignments
+  ========================================================= */
+
+  const supervisorAssignments =
+    useMemo(() => {
+      if (
+        !requiredSupervisorLevel
+      ) {
+        return [];
+      }
+
+      return assignments
+        .filter((assignment) => {
+          const assignmentLevel =
+            String(
+              assignment.management_level ||
+                ""
+            )
+              .trim()
+              .toUpperCase();
+
+          const isCorrectLevel =
+            assignmentLevel ===
+            requiredSupervisorLevel;
+
+          const isActive =
+            assignment.status ===
+            "active";
+
+          const isNotCurrentEmployee =
+            String(
+              assignment.employee_id
+            ) !==
+            String(
+              form.employee_id || ""
+            );
+
+          return (
+            isCorrectLevel &&
+            isActive &&
+            isNotCurrentEmployee
+          );
+        })
+        .sort(
+          (
+            firstAssignment,
+            secondAssignment
+          ) => {
+            const firstSortOrder =
+              Number(
+                firstAssignment.sort_order
+              ) || 0;
+
+            const secondSortOrder =
+              Number(
+                secondAssignment.sort_order
+              ) || 0;
+
+            if (
+              firstSortOrder !==
+              secondSortOrder
+            ) {
+              return (
+                firstSortOrder -
+                secondSortOrder
+              );
+            }
+
+            return String(
+              firstAssignment.employee_name ||
+                ""
+            ).localeCompare(
+              String(
+                secondAssignment.employee_name ||
+                  ""
+              ),
+              "th"
+            );
+          }
+        );
+    }, [
+      assignments,
+      requiredSupervisorLevel,
+      form.employee_id,
+    ]);
+
+  /* =========================================================
+      Supervisor Select Options
+  ========================================================= */
+
+  const supervisorOptions =
+    useMemo(() => {
+      return supervisorAssignments.map(
+        (assignment) => ({
+          value:
+            assignment.employee_id,
+
+          label: `${
+            assignment.employee_code ||
+            "-"
+          } - ${
+            assignment.employee_name ||
+            "-"
+          } (${
+            assignment.management_level ||
+            "-"
+          })`,
+
+          assignmentId:
+            assignment.id,
+
+          managementLevel:
+            assignment.management_level,
+        })
+      );
+    }, [supervisorAssignments]);
+
+  /* =========================================================
+      Supervisor Lookup Map
+  ========================================================= */
+
+  const supervisorsByEmployeeId =
+    useMemo(() => {
+      return assignments.reduce(
+        (result, assignment) => {
+          const employeeId =
+            assignment.employee_id ||
+            assignment.employees?.id;
+
+          if (!employeeId) {
+            return result;
+          }
+
+          result[String(employeeId)] = {
+            id: employeeId,
+
+            employee_name:
+              assignment.employee_name ||
+              [
+                assignment.employees
+                  ?.first_name_th,
+                assignment.employees
+                  ?.last_name_th,
+              ]
+                .filter(Boolean)
+                .join(" ")
+                .trim() ||
+              "-",
+
+            employee_code:
+              assignment.employee_code ||
+              assignment.employees
+                ?.employee_code ||
+              "-",
+
+            management_level:
+              assignment.management_level ||
+              "",
+          };
+
+          return result;
+        },
+        {}
+      );
+    }, [assignments]);
+
+  /* =========================================================
+      Reset Form
+  ========================================================= */
+
+  const resetForm =
+    useCallback(() => {
+      setForm({
+        ...INITIAL_MANAGEMENT_FORM,
+
+        scopes: [],
+      });
+
+      setEditingAssignment(null);
+    }, []);
+
+  /* =========================================================
+      Open Create Modal
+  ========================================================= */
+
+  const handleOpenCreate =
+    useCallback(() => {
+      if (!canCreate) {
+        swalError(
+          "คุณไม่มีสิทธิ์เพิ่มสายบังคับบัญชา"
+        );
+
+        return;
+      }
+
+      resetForm();
+      setOpenModal(true);
+    }, [
+      canCreate,
+      resetForm,
+    ]);
+
+  /* =========================================================
+      Open Edit Modal
+  ========================================================= */
+
+  const handleOpenEdit =
+    useCallback(
+      (assignment) => {
+        if (!canEdit) {
+          swalError(
+            "คุณไม่มีสิทธิ์แก้ไขสายบังคับบัญชา"
+          );
+
+          return;
+        }
+
+        if (!assignment) {
+          swalError(
+            "ไม่พบข้อมูลสายบังคับบัญชา"
+          );
+
+          return;
+        }
+
+        const normalizedScopes =
+          normalizeScopes(
+            assignment
+              .management_assignment_scopes ||
+              assignment.scopes
+          );
+
+        setEditingAssignment(
+          assignment
+        );
+
+        setForm({
+          employee_id:
+            assignment.employee_id ||
+            assignment.employees?.id ||
+            "",
+
+          management_level:
+            String(
+              assignment.management_level ||
+                ""
+            )
+              .trim()
+              .toUpperCase(),
+
+          scopes:
+            normalizedScopes.length > 0
+              ? normalizedScopes
+              : [
+                  createEmptyScope({
+                    isPrimary: true,
+                    sort_order: 0,
+                  }),
+                ],
+
+          supervisor_employee_id:
+            assignment
+              .supervisor_employee_id ||
+            assignment.supervisor_id ||
+            "",
+
+          is_primary:
+            assignment.is_primary ??
+            true,
+
+          status:
+            assignment.status ||
+            "active",
+
+          sort_order:
+            Number(
+              assignment.sort_order
+            ) || 0,
+        });
+
+        setOpenModal(true);
+      },
+      [canEdit]
+    );
+
+  /* =========================================================
+      Close Modal
+  ========================================================= */
+
+  const handleCloseModal =
+    useCallback(() => {
+      if (saving) {
+        return;
+      }
+
+      setOpenModal(false);
+      resetForm();
+    }, [
+      saving,
+      resetForm,
+    ]);
+
+  /* =========================================================
+      Employee Change
+  ========================================================= */
+
+  const handleEmployeeChange =
+    useCallback(
+      (employeeId) => {
+        if (!employeeId) {
+          setForm({
+            ...INITIAL_MANAGEMENT_FORM,
+
+            scopes: [],
+          });
+
+          return;
+        }
+
+        const employee =
+          employees.find(
+            (item) =>
+              String(item.id) ===
+              String(employeeId)
+          );
+
+        if (!employee) {
+          swalError(
+            "ไม่พบข้อมูลพนักงานที่เลือก"
+          );
+
+          return;
+        }
+
+        const managementLevel =
+          employee
+            .resolved_management_level ||
+          resolveEmployeeManagementLevel(
+            employee
+          );
+
+        if (
+          !MANAGEMENT_LEVELS.includes(
+            managementLevel
+          )
+        ) {
+          swalError(
+            "พนักงานคนนี้ไม่ได้อยู่ในระดับ P9 ถึง P12"
+          );
+
+          return;
+        }
+
+        const initialScopes =
+          buildEmployeeInitialScopes(
+            employee,
+            managementLevel
+          );
+
+        setForm((previous) => ({
+          ...previous,
+
+          employee_id:
+            employee.id,
+
+          management_level:
+            managementLevel,
+
+          scopes:
+            Array.isArray(
+              initialScopes
+            ) &&
+            initialScopes.length > 0
+              ? initialScopes
+              : [
+                  createEmptyScope({
+                    isPrimary: true,
+                    sort_order: 0,
+                  }),
+                ],
+
+          supervisor_employee_id:
+            "",
+
+          is_primary:
+            previous.is_primary ??
+            true,
+
+          status:
+            previous.status ||
+            "active",
+
+          sort_order:
+            Number(
+              previous.sort_order
+            ) || 0,
+        }));
+      },
+      [employees]
+    );
+
+  /* =========================================================
+      Keep Supervisor Valid
+  ========================================================= */
+
+  useEffect(() => {
+    if (!form.supervisor_employee_id ) {
       return;
     }
 
-    setEditingAssignment(item);
-    setForm({
-      employee_id: item.employee_id || "",
-      management_level: item.management_level || "",
-      scope_type: item.scope_type || "",
-      company_id: item.company_id || "",
-      branch_group_id: item.branch_group_id || "",
-      branch_id: item.branch_id || "",
-      department_id: item.department_id || "",
-      division_id: item.division_id || "",
-      unit_id: item.unit_id || "",
-      supervisor_employee_id: item.supervisor_employee_id || "",
-      is_primary: item.is_primary ?? true,
-      status: item.status || "active",
-      sort_order: item.sort_order || 0,
+    if (form.management_level === "P12") {
+      setForm((previous) => ({
+        ...previous,
+        supervisor_employee_id:
+          "",
+      }));
+
+      return;
+    }
+
+    const supervisorStillValid =
+      supervisorAssignments.some(
+        (assignment) =>
+          String(
+            assignment.employee_id
+          ) ===
+          String(
+            form
+              .supervisor_employee_id
+          )
+      );
+
+    if (!supervisorStillValid) {
+      setForm((previous) => ({
+        ...previous,
+
+        supervisor_employee_id:
+          "",
+      }));
+    }
+  }, [
+    form.management_level,
+    form.supervisor_employee_id,
+    supervisorAssignments,
+  ]);
+
+  /* =========================================================
+      Supervisor Change
+  ========================================================= */
+
+  const handleSupervisorChange =
+    useCallback((employeeId) => {
+      setForm((previous) => ({
+        ...previous,
+
+        supervisor_employee_id:
+          employeeId || "",
+      }));
+    }, []);
+
+  /* =========================================================
+      Assignment Settings Change
+  ========================================================= */
+
+  const handleStatusChange =
+    useCallback((status) => {
+      setForm((previous) => ({
+        ...previous,
+
+        status:
+          status || "active",
+      }));
+    }, []);
+
+  const handleSortOrderChange =
+    useCallback((sortOrder) => {
+      setForm((previous) => ({
+        ...previous,
+
+        sort_order:
+          sortOrder === ""
+            ? ""
+            : Number(sortOrder),
+      }));
+    }, []);
+
+  const handlePrimaryChange =
+    useCallback((checked) => {
+      setForm((previous) => ({
+        ...previous,
+
+        is_primary:
+          Boolean(checked),
+      }));
+    }, []);
+
+  /* =========================================================
+      Add Scope
+  ========================================================= */
+
+  const handleAddScope = useCallback(() => {
+      setForm((previous) => {
+        const currentScopes =
+          Array.isArray(
+            previous.scopes
+          )
+            ? previous.scopes
+            : [];
+
+        const hasPrimaryScope =
+          currentScopes.some(
+            (scope) =>
+              Boolean(
+                scope.is_primary
+              )
+          );
+
+        const newScope =
+          createEmptyScope({
+            is_primary:
+              !hasPrimaryScope,
+
+            sort_order:
+              currentScopes.length,
+          });
+
+        return {
+          ...previous,
+
+          scopes: [
+            ...currentScopes,
+            newScope,
+          ],
+        };
+      });
+    }, []);
+
+  /* =========================================================
+      Remove Scope
+  ========================================================= */
+
+  const handleRemoveScope = useCallback((scopeIndex) => {
+    setForm((previous) => {
+      const currentScopes =
+        Array.isArray(
+          previous.scopes
+        )
+          ? previous.scopes
+          : [];
+
+      if (
+        currentScopes.length <= 1
+      ) {
+        swalError(
+          "ต้องมีขอบเขตการดูแลอย่างน้อย 1 รายการ"
+        );
+
+        return previous;
+      }
+
+      const removedScope =
+        currentScopes[
+          scopeIndex
+        ];
+
+      const nextScopes =
+        currentScopes
+          .filter(
+            (_, index) =>
+              index !==
+              scopeIndex
+          )
+          .map(
+            (scope, index) => ({
+              ...scope,
+
+              sort_order:
+                index,
+            })
+          );
+
+      if (
+        removedScope?.is_primary &&
+        nextScopes.length > 0
+      ) {
+        nextScopes[0] = {
+          ...nextScopes[0],
+
+          is_primary: true,
+        };
+      }
+
+      return {
+        ...previous,
+
+        scopes: nextScopes,
+      };
     });
+  }, []);
 
-    setOpenModal(true);
-  };
+  /* =========================================================
+      Update Scope
+  ========================================================= */
 
-  const handleCloseModal = () => {
-    resetForm();
-    setOpenModal(false);
-  };
+  const handleScopeChange = useCallback((scopeIndex,fieldName,value) => {
+      setForm((previous) => {
+        const currentScopes =
+          Array.isArray(
+            previous.scopes
+          )
+            ? previous.scopes
+            : [];
 
-  const clearScopeByType = (scopeType) => {
-    setForm((prev) => ({
-      ...prev,
-      scope_type: scopeType,
-      company_id: "",
-      branch_group_id: "",
-      branch_id: "",
-      department_id: "",
-      division_id: "",
-      unit_id: "",
-    }));
-  };
+        const nextScopes =
+          currentScopes.map(
+            (scope, index) => {
+              if (index !== scopeIndex) {
+                return scope;
+              }
+              return {
+                ...scope,
 
-  const handleSave = async () => {
-    const isEdit = !!editingAssignment;
+                [fieldName]:
+                  value,
+              };
+            }
+          );
 
-    if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสายบังคับบัญชา");
-      return;
-    }
+        return {
+          ...previous,
 
-    if (!isEdit && !canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสายบังคับบัญชา");
-      return;
-    }
+          scopes:
+            nextScopes,
+        };
+      });
+    },
+    []
+  );
 
+  /* =========================================================
+      Change Scope Type
+  ========================================================= */
+
+  const handleScopeTypeChange = useCallback((scopeIndex,scopeType) => {
+        setForm((previous) => {
+          const currentScopes =
+            Array.isArray(
+              previous.scopes
+            )
+              ? previous.scopes
+              : [];
+
+          const nextScopes = currentScopes.map((scope, index) => {
+                if (index !== scopeIndex) {
+                  return scope;
+                }
+                return {
+                  ...createEmptyScope({
+                    scope_type: scopeType,
+                    is_primary:Boolean(scope.is_primary),
+                    sort_order:Number(scope.sort_order) || scopeIndex,
+                  }),
+                  scope_type: scopeType,
+                };
+              }
+            );
+          return {
+            ...previous,
+            scopes: nextScopes,
+          };
+        });
+      },
+      []
+    );
+
+  /* =========================================================
+      Change Scope Target
+  ========================================================= */
+
+  const handleScopeTargetChange = useCallback((scopeIndex,fieldName,value) => {
+        setForm((previous) => {
+          const currentScopes =
+            Array.isArray(previous.scopes) ? previous.scopes : [];
+          const nextScopes =
+            currentScopes.map(
+              (scope, index) => {
+                if (
+                  index !==
+                  scopeIndex
+                ) {
+                  return scope;
+                }
+                return {
+                  ...scope,
+
+                  [fieldName]:
+                    value || "",
+                };
+              }
+            );
+
+          return {
+            ...previous,
+
+            scopes:
+              nextScopes,
+          };
+        });
+      },
+      []
+    );
+
+  /* =========================================================
+      Set Primary Scope
+  ========================================================= */
+
+  const handleSetPrimaryScope = useCallback((scopeIndex) => {
+      setForm((previous) => {
+        const currentScopes =
+          Array.isArray(
+            previous.scopes
+          )
+            ? previous.scopes
+            : [];
+
+        const nextScopes =
+          currentScopes.map(
+            (scope, index) => ({
+              ...scope,
+
+              is_primary:
+                index ===
+                scopeIndex,
+            })
+          );
+
+        return {
+          ...previous,
+
+          scopes:
+            nextScopes,
+        };
+      });
+    }, []);
+
+  /* =========================================================
+      Scope Sort Order
+  ========================================================= */
+
+  const handleScopeSortOrderChange = useCallback((scopeIndex,sortOrder) => {
+        setForm((previous) => {
+          const currentScopes =
+            Array.isArray(
+              previous.scopes
+            )
+              ? previous.scopes
+              : [];
+
+          const nextScopes =
+            currentScopes.map(
+              (scope, index) => {
+                if (
+                  index !==
+                  scopeIndex
+                ) {
+                  return scope;
+                }
+
+                return {
+                  ...scope,
+                  sort_order: sortOrder === "" ? "" : Number(sortOrder),
+                };
+              }
+            );
+          return {
+            ...previous,
+            scopes:
+              nextScopes,
+          };
+        });
+      },
+      []
+    );
+  /* =========================================================
+      Validate Form
+  ========================================================= */
+
+  const validateForm = useCallback(() => {
     if (!form.employee_id) {
-      swalError("กรุณาเลือกพนักงาน");
-      return;
+      swalError("กรุณาเลือกผู้บริหาร");
+      return false;
     }
 
     if (!form.management_level) {
       swalError("กรุณาเลือกระดับผู้บริหาร");
+      return false;
+    }
+
+    const scopeError = validateManagementScopes(
+      form.scopes
+    );
+
+    if (scopeError) {
+      swalError(scopeError);
+      return false;
+    }
+
+    if (
+      form.management_level !== "P12" &&
+      !form.supervisor_employee_id
+    ) {
+      swalError("กรุณาเลือกผู้บังคับบัญชา");
+      return false;
+    }
+
+    return true;
+  }, [form]);
+
+  /* =========================================================
+      Save
+  ========================================================= */
+
+  const handleSave = useCallback(async () => {
+    if (saving) {
       return;
     }
 
-    if (!form.scope_type) {
-      swalError("กรุณาเลือกขอบเขตการดูแล");
+    if (!validateForm()) {
       return;
     }
 
     try {
       setSaving(true);
 
-      const url = isEdit
-        ? `/api/admin/management-assignments/${editingAssignment.id}`
-        : "/api/admin/management-assignments";
+      const payload =
+        buildManagementAssignmentPayload(form);
 
-      const method = isEdit ? "PATCH" : "POST";
+      const isEdit =
+        Boolean(editingAssignment?.id);
 
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
+      const response = await fetch(
+        isEdit
+          ? `/api/admin/management-assignments/${editingAssignment.id}`
+          : "/api/admin/management-assignments",
+        {
+          method: isEdit ? "PATCH" : "POST",
 
-      const data = await res.json();
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-      if (!res.ok) {
-        throw new Error(data?.error || "Save failed");
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result =
+        await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            "ไม่สามารถบันทึกข้อมูลได้"
+        );
       }
 
       swalSuccess(
         isEdit
-          ? "อัพเดทสายบังคับบัญชาเรียบร้อยแล้ว"
-          : "บันทึกสายบังคับบัญชาเรียบร้อยแล้ว"
+          ? "แก้ไขสายบังคับบัญชาเรียบร้อย"
+          : "เพิ่มสายบังคับบัญชาเรียบร้อย"
       );
 
-      handleCloseModal();
-      await loadAssignments(search);
-    } catch (err) {
-      console.error(err);
-      swalError(err.message || "เกิดข้อผิดพลาดในการบันทึก");
+      setOpenModal(false);
+
+      setEditingAssignment(null);
+
+      setForm(
+        INITIAL_MANAGEMENT_FORM
+      );
+
+      await loadAssignments(viewMode ===  VIEW_MODES.ORG_CHART ? "" : search);
+
+    } catch (error) {
+      console.error(
+        "SAVE_MANAGEMENT_ASSIGNMENT_ERROR",
+        error
+      );
+
+      swalError(
+        error?.message ||
+          "เกิดข้อผิดพลาดในการบันทึกข้อมูล"
+      );
     } finally {
       setSaving(false);
     }
-  };
+  }, [form,saving,editingAssignment,validateForm,loadAssignments,search,viewMode,]);
+    /* =========================================================
+      Delete
+  ========================================================= */
 
-  const handleDelete = async (item) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบสายบังคับบัญชา");
-      return;
-    }
-
-    const confirmed = await swalConfirm(
-      `ต้องการลบสายบังคับบัญชาของ "${item.employee_name}" ใช่หรือไม่?`
-    );
-
-    if (!confirmed) return;
-
-    try {
-      setDeletingId(item.id);
-
-      const res = await fetch(`/api/admin/management-assignments/${item.id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Delete failed");
+  const handleDelete = useCallback(
+    async (assignment) => {
+      if (!canDelete) {
+        swalError(
+          "คุณไม่มีสิทธิ์ลบสายบังคับบัญชา"
+        );
+        return;
       }
 
-      swalSuccess("ลบสายบังคับบัญชาเรียบร้อยแล้ว");
-      await loadAssignments(search);
-    } catch (err) {
-      console.error(err);
-      swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
-    } finally {
-      setDeletingId("");
+      if (!assignment?.id) {
+        swalError("ไม่พบข้อมูล");
+        return;
+      }
+
+      const confirmed =
+        await swalConfirm({
+          title: "ลบสายบังคับบัญชา ?",
+          text:
+            "เมื่อลบแล้วจะไม่สามารถกู้คืนได้",
+          confirmButtonText: "ลบ",
+        });
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        setDeletingId(assignment.id);
+
+        const response = await fetch(
+          `/api/admin/management-assignments/${assignment.id}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        const result =
+          await safeJson(response);
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ||
+              "ไม่สามารถลบข้อมูลได้"
+          );
+        }
+
+        swalSuccess(
+          "ลบสายบังคับบัญชาเรียบร้อย"
+        );
+
+        await loadAssignments(viewMode === VIEW_MODES.ORG_CHART? "": search);
+
+
+      } catch (error) {
+        console.error(
+          "DELETE_MANAGEMENT_ASSIGNMENT_ERROR",
+          error
+        );
+
+        swalError(
+          error?.message ||
+            "เกิดข้อผิดพลาดในการลบข้อมูล"
+        );
+      } finally {
+        setDeletingId("");
+      }
+    },[canDelete,loadAssignments,search,viewMode,]
+  );
+
+  /* =========================================================
+      Refresh
+  ========================================================= */
+
+  const handleRefresh = useCallback(async () => {
+    const keyword =
+      viewMode ===
+      VIEW_MODES.ORG_CHART
+        ? ""
+        : search;
+
+    await Promise.all([
+      loadAssignments(keyword),
+      loadEmployees(),
+      loadScopeOptions(),
+    ]);
+  }, [search,viewMode,loadAssignments,loadEmployees,loadScopeOptions,]);
+
+  /* =========================================================
+      Export Org Chart
+  ========================================================= */
+
+  const handleExportOrgChart = useCallback(() => {
+    if (orgChartRef.current?.exportPNG) {
+      orgChartRef.current.exportPNG();
     }
+  }, []);
+
+  const summary = {
+    total: assignments.length,
+    active: assignments.filter(
+        (item) =>
+          item.status === "active"
+      ).length,
+
+    inactive:
+      assignments.filter(
+        (item) =>
+          item.status !== "active"
+      ).length,
+
+    p12:
+      levelGroups.P12?.length || 0,
+
+    p11:
+      levelGroups.P11?.length || 0,
+
+    p10:
+      levelGroups.P10?.length || 0,
+
+    p9:
+      levelGroups.P9?.length || 0,
   };
 
-  const getScopeLabel = (item) => {
-    if (item.scope_type === "all") return "Entire Organization";
-    if (item.scope_type === "company") return item.company_name || "-";
-    if (item.scope_type === "branch_group") return item.branch_group_name || "-";
-    if (item.scope_type === "branch") return item.branch_name || "-";
-    if (item.scope_type === "department") return item.department_name || "-";
-    if (item.scope_type === "division") return item.division_name || "-";
-    if (item.scope_type === "unit") return item.unit_name || "-";
-    return "-";
-  };
-
-  const levelGroups = useMemo(() => {
-    return {
-      P12: assignments.filter((item) => item.management_level === "P12"),
-      P11: assignments.filter((item) => item.management_level === "P11"),
-      P10: assignments.filter((item) => item.management_level === "P10"),
-      P9: assignments.filter((item) => item.management_level === "P9"),
-    };
-  }, [assignments]);
-
-  const renderScopeField = () => {
-    if (!form.scope_type || form.scope_type === "all") return null;
-
-    if (form.scope_type === "company") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกบริษัท"
-          value={form.company_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, company_id: value || "" }))
-          }
-          options={companies.map((c) => ({
-            value: c.id,
-            label: c.company_name_th || c.company_name_en,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    if (form.scope_type === "branch_group") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกกรุ๊ปสังกัด"
-          value={form.branch_group_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, branch_group_id: value || "" }))
-          }
-          options={branchGroups.map((g) => ({
-            value: g.id,
-            label: g.group_name,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    if (form.scope_type === "branch") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกสังกัด"
-          value={form.branch_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, branch_id: value || "" }))
-          }
-          options={branches.map((b) => ({
-            value: b.id,
-            label: b.branch_name,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    if (form.scope_type === "department") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกแผนก"
-          value={form.department_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, department_id: value || "" }))
-          }
-          options={departments.map((d) => ({
-            value: d.id,
-            label: d.department_name,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    if (form.scope_type === "division") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกฝ่าย"
-          value={form.division_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, division_id: value || "" }))
-          }
-          options={divisions.map((d) => ({
-            value: d.id,
-            label: d.division_name,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    if (form.scope_type === "unit") {
-      return (
-        <Select
-          showSearch
-          allowClear
-          placeholder="เลือกหน่วยงาน"
-          value={form.unit_id || undefined}
-          onChange={(value) =>
-            setForm((prev) => ({ ...prev, unit_id: value || "" }))
-          }
-          options={units.map((u) => ({
-            value: u.id,
-            label: u.unit_name,
-          }))}
-          size="large"
-        />
-      );
-    }
-
-    return null;
-  };
-  
   if (loadingUser) return <LoadingOrb />;
-  if (!user) return null;
+  if (!user ) return null;
   if (!canView) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              สายบังคับบัญชา    
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              กำหนดโครงสร้างผู้บริหารแบบ Tree / Org Chart ตาม P9 - P12   [ ดึงพนักงานเฉพาะ P9 - p12  (Management Level ไม่ต้องเลือก)   (ต้องเช็คตำแหน่ง P9-P12  ที่จะทำการกำหนดสายบังคับบัญชาได้ )  ]
-            </p>
-          </div>
+    <>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto w-full max-w-[1800px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+          {/* =================================================
+              Header
+          ================================================= */}
+          <ManagementHeader
+            canCreate={canCreate}
+            onCreate={
+              handleOpenCreate
+            }
+          />
 
-          {canCreate && (
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              + เพิ่มสายบังคับบัญชา
-            </button>
-          )}
-        </div>
-      </div>
+          {/* =================================================
+              Summary
+          ================================================= */}
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <input
-          type="text"
-          placeholder="ค้นหา: พนักงาน / ระดับ / ขอบเขต / ผู้บังคับบัญชา"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-        />
-      </div>
+          <ManagementSummary
+            levelGroups={
+              levelGroups
+            }
+          />
 
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setViewMode("orgchart")}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-            viewMode === "orgchart"
-              ? "bg-slate-900 text-white"
-              : "border border-slate-300 bg-white text-slate-600"
-          }`}
-        >
-          Org Chart
-        </button>
+          {/* =================================================
+              Toolbar
+          ================================================= */}
 
-        <button
-          type="button"
-          onClick={() => setViewMode("tree")}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-            viewMode === "tree"
-              ? "bg-slate-900 text-white"
-              : "border border-slate-300 bg-white text-slate-600"
-          }`}
-        >
-          Tree View
-        </button>
+          <ManagementToolbar
+            search={search}
+            onSearch={setSearch}
+            viewMode={viewMode}
+            onChangeView={
+              setViewMode
+            }
+          />
 
-        <button
-          type="button"
-          onClick={() => setViewMode("table")}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-            viewMode === "table"
-              ? "bg-slate-900 text-white"
-              : "border border-slate-300 bg-white text-slate-600"
-          }`}
-        >
-          Table View
-        </button>
-      </div>
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+              {error}
+            </div>
+          ) : null}
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      ) : null}
+          {/* =================================================
+              Org Chart Controls
+          ================================================= */}
 
-      {viewMode === "orgchart" && (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="min-w-[1100px]">
-            {["P12", "P11", "P10", "P9"].map((level, levelIndex) => (
-              <div key={level} className="relative">
-                <div className="mb-8 flex justify-center gap-6">
-                  {(levelGroups[level] || []).length > 0 ? (
-                    levelGroups[level].map((item) => (
-                      <div key={item.id} className="relative">
-                        {levelIndex > 0 && (
-                          <div className="absolute -top-8 left-1/2 h-8 w-px -translate-x-1/2 bg-slate-300" />
-                        )}
+          {viewMode ===
+            VIEW_MODES.ORG_CHART && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
-                        <div
-                          className="w-72 rounded-3xl border bg-white p-4 shadow-sm"
-                          style={{
-                            borderColor:
-                              item.branch_group_color ||
-                              item.department_color ||
-                              "#CBD5E1",
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
-                                {item.management_level}
-                              </span>
-
-                              <h3 className="mt-3 text-base font-bold text-slate-800">
-                                {item.employee_name}
-                              </h3>
-
-                              <p className="mt-1 text-xs text-slate-400">
-                                {item.employee_code || "-"}
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(item)}
-                              className="text-slate-400 hover:text-slate-700"
-                            >
-                              ⋮
-                            </button>
-                          </div>
-
-                          <div
-                            className="mt-4 rounded-2xl px-4 py-3 text-sm"
-                            style={{
-                              backgroundColor:
-                                item.branch_group_color ||
-                                item.department_color ||
-                                "#E2E8F0",
-                            }}
-                          >
-                            <p className="text-xs font-semibold text-slate-500">
-                              {item.scope_type}
-                            </p>
-                            <p className="mt-1 font-bold text-slate-800">
-                              {getScopeLabel(item)}
-                            </p>
-                          </div>
-
-                          {item.supervisor_name ? (
-                            <p className="mt-3 text-xs text-slate-500">
-                              Reports to:{" "}
-                              <span className="font-semibold">
-                                {item.supervisor_name}
-                              </span>
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="w-72 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-400">
-                      ยังไม่มีข้อมูล {level}
-                    </div>
-                  )}
-                </div>
-
-                {levelIndex < 3 && (
-                  <div className="mx-auto mb-8 h-8 w-px bg-slate-300" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {viewMode === "tree" && (
-        <div className="space-y-5">
-          {["P12", "P11", "P10", "P9"].map((level) => (
-            <div
-              key={level}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">{level}</h2>
-                  <p className="text-sm text-slate-500">
-                    ทั้งหมด {levelGroups[level]?.length || 0} รายการ
+                  <h2 className="text-base font-black text-slate-800">
+                    เครื่องมือ Org Chart
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    ซูม ปรับขนาด
+                    และแสดงโครงสร้างทั้งหมด
                   </p>
                 </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      orgChartRef.current?.zoomIn?.()
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    Zoom +
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      orgChartRef.current?.zoomOut?.()
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    Zoom -
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      orgChartRef.current?.fit?.()
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    Fit Screen
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      orgChartRef.current?.expandAll?.()
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    Expand All
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      orgChartRef.current?.collapseAll?.()
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    Collapse All
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleExportOrgChart
+                    }
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    Export PNG
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      loading ||
+                      loadingEmployees ||
+                      loadingScopeOptions
+                    }
+                    onClick={
+                      handleRefresh
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-36 animate-pulse rounded-3xl bg-slate-100"
-                    />
-                  ))}
-                </div>
-              ) : levelGroups[level]?.length ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {levelGroups[level].map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
-                            {item.management_level}
-                          </div>
-
-                          <h3 className="mt-3 text-base font-bold text-slate-800">
-                            {item.employee_name}
-                          </h3>
-
-                          <p className="mt-1 text-xs text-slate-400">
-                            {item.employee_code || "-"}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            item.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {item.status === "active" ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-
-                      <div
-                        className="mt-4 rounded-2xl px-4 py-3 text-sm"
-                        style={{
-                          backgroundColor:
-                            item.branch_group_color ||
-                            item.department_color ||
-                            "#E2E8F0",
-                        }}
-                      >
-                        <p className="text-xs font-semibold text-slate-500">
-                          Scope: {item.scope_type}
-                        </p>
-                        <p className="mt-1 font-bold text-slate-800">
-                          {getScopeLabel(item)}
-                        </p>
-                      </div>
-
-                      {item.supervisor_name ? (
-                        <p className="mt-3 text-xs text-slate-500">
-                          Supervisor:{" "}
-                          <span className="font-semibold">
-                            {item.supervisor_name}
-                          </span>
-                        </p>
-                      ) : null}
-
-                      {(canEdit || canDelete) && (
-                        <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-3">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(item)}
-                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                            >
-                              Edit
-                            </button>
-                          )}
-
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item)}
-                              disabled={deletingId === item.id}
-                              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
-                            >
-                              {deletingId === item.id ? "Deleting..." : "Delete"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400">
-                  ยังไม่มีข้อมูลระดับ {level}
-                </div>
-              )}
             </div>
-          ))}
+          )}
+
+          {/* =================================================
+              Org Chart View
+          ================================================= */}
+          
+          {viewMode ===
+            VIEW_MODES.ORG_CHART && (
+              
+            <ManagementOrgChart
+              ref={orgChartRef}
+              data={orgChartData}
+              loading={loading}
+              onNodeClick={(node) => {
+                if (!canEdit) {
+                  return;
+                }
+
+                const assignment =
+                  assignments.find(
+                    (item) =>
+                      String(
+                        item.id
+                      ) ===
+                      String(
+                        node?.assignment_id ||
+                          node?.id ||
+                          ""
+                      )
+                  );
+
+                if (assignment) {
+                  handleOpenEdit(
+                    assignment
+                  );
+                }
+              }}
+            />
+          )}
+
+          {/* =================================================
+              Tree View
+          ================================================= */}
+
+          {viewMode ===
+            VIEW_MODES.TREE && (
+            <ManagementAssignmentTree
+              assignments={
+                assignments
+              }
+              supervisors={
+                supervisorsByEmployeeId
+              }
+              loading={loading}
+              onEdit={
+                canEdit
+                  ? handleOpenEdit
+                  : undefined
+              }
+              onDelete={
+                canDelete
+                  ? handleDelete
+                  : undefined
+              }
+            />
+          )}
+
+          {/* =================================================
+              Table View
+          ================================================= */}
+
+          {viewMode ===
+            VIEW_MODES.TABLE && (
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <ManagementAssignmentTable
+                assignments={
+                  assignments
+                }
+                loading={loading}
+                onEdit={
+                  canEdit
+                    ? handleOpenEdit
+                    : undefined
+                }
+                onDelete={
+                  canDelete
+                    ? handleDelete
+                    : undefined
+                }
+              />
+            </div>
+          )}
         </div>
-      )}
+      </main>
 
-      {viewMode === "table" && (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-slate-600">
-                <tr>
-                  <th className="px-6 py-4 text-left">พนักงาน</th>
-                  <th className="px-6 py-4 text-left">Level</th>
-                  <th className="px-6 py-4 text-left">Scope</th>
-                  <th className="px-6 py-4 text-left">ผู้บังคับบัญชา</th>
-                  <th className="px-6 py-4 text-left">สถานะ</th>
-                  <th className="px-6 py-4 text-right">จัดการ</th>
-                </tr>
-              </thead>
+      {/* =================================================
+          Create / Edit Modal
+      ================================================= */}
 
-              <tbody>
-                {assignments.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-200">
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {item.employee_name}
-                    </td>
-                    <td className="px-6 py-4">{item.management_level}</td>
-                    <td className="px-6 py-4">
-                      {item.scope_type} / {getScopeLabel(item)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.supervisor_name || "-"}
-                    </td>
-                    <td className="px-6 py-4">{item.status}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className="rounded-xl border border-slate-300 px-3 py-2 text-xs"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item)}
-                            className="rounded-xl border border-red-200 px-3 py-2 text-xs text-red-600"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <ManagementAssignmentModal
+        open={openModal}
+        mode={ editingAssignment ? "edit": "create"}
+        loading={loadingEmployees || loadingScopeOptions}
+        saving={saving}
+        loadingEmployees={loadingEmployees}
+        loadingScopeOptions={loadingScopeOptions}
+        form={form}
+        selectedEmployee={selectedEmployee}
+        employees={availableEmployees}
+        supervisorOptions={supervisorOptions}
+        scopeOptions={scopeOptions}
+        onClose={handleCloseModal}
+        onSubmit={handleSave}
+        onFormChange={(field,value) => {
+          setForm(
+            (previous) => ({
+              ...previous,
+              [field]: value,
+            })
+          );
+        }}
+        onEmployeeChange={
+          handleEmployeeChange
+        }
+        onAddScope={
+          handleAddScope
+        }
+        onRemoveScope={
+          handleRemoveScope
+        }
+        onUpdateScope={(
+          scopeIndex,
+          field,
+          value
+        ) => {
+          if (
+            field ===
+            "scope_type"
+          ) {
+            handleScopeTypeChange(
+              scopeIndex,
+              value
+            );
 
-      {openModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">
-                {editingAssignment
-                  ? "แก้ไขสายบังคับบัญชา"
-                  : "เพิ่มสายบังคับบัญชา"}
-              </h2>
-            </div>
+            return;
+          }
 
-            <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  พนักงาน
-                </label>
-                <Select
-                  showSearch
-                  allowClear
-                  value={form.employee_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({ ...prev, employee_id: value || "" }))
-                  }
-                  options={employees.map((e) => ({
-                    value: e.id,
-                    label:
-                      `${e.employee_code || ""} - ${
-                        e.full_name_th ||
-                        `${e.first_name_th || ""} ${e.last_name_th || ""}`
-                      }`.trim(),
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Management Level
-                </label>
-                <Select
-                  value={form.management_level || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      management_level: value || "",
-                    }))
-                  }
-                  options={managementLevels.map((level) => ({
-                    value: level,
-                    label: level,
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Scope Type
-                </label>
-                <Select
-                  value={form.scope_type || undefined}
-                  onChange={(value) => clearScopeByType(value || "")}
-                  options={scopeOptions}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              {form.scope_type && form.scope_type !== "all" && (
-                <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Scope Target
-                  </label>
-                  {renderScopeField()}
-                </div>
-              )}
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Supervisor
-                </label>
-                <Select
-                  showSearch
-                  allowClear
-                  value={form.supervisor_employee_id || undefined}
-                  onChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      supervisor_employee_id: value || "",
-                    }))
-                  }
-                  options={employees.map((e) => ({
-                    value: e.id,
-                    label:
-                      `${e.employee_code || ""} - ${
-                        e.full_name_th ||
-                        `${e.first_name_th || ""} ${e.last_name_th || ""}`
-                      }`.trim(),
-                  }))}
-                  className="w-full"
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Sort Order
-                </label>
-                <input
-                  type="number"
-                  value={form.sort_order}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sort_order: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, status: e.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                disabled={saving}
-                className="rounded-2xl border border-slate-300 px-5 py-3 text-sm"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:bg-slate-400"
-              >
-                {saving ? "Saving..." : editingAssignment ? "Update" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+          if (field ==="sort_order") {
+            handleScopeSortOrderChange(
+              scopeIndex,
+              value
+            );
+            return;
+          }
+          handleScopeTargetChange(scopeIndex,field,value);
+        }}
+        onSetPrimaryScope={
+          handleSetPrimaryScope
+        }
+      />
+    </>
   );
 }
+    

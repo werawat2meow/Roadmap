@@ -12,6 +12,7 @@ import LoadingOrb from "../../../components/LoadingOrb";
 import { RiLineFill } from "react-icons/ri";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/lib/cropImage";
+import {PayrollCompanySelect,PayrollTypeSelect,} from "@/app/components/selectors";
 
 const initialForm = {
   first_name_th: "",
@@ -25,6 +26,8 @@ const initialForm = {
   nationality: "thai",
   hire_date: "",
   employment_type: "",
+
+  company_id: "",
   branch_group_id: "",
   branch_id: "",
   department_id: "",
@@ -43,11 +46,15 @@ const initialForm = {
   passport_no: "",
   birth_date: "",
   line_id: "",
+  payroll_company_id: "",
+  payroll_type_id: "",
+  payment_day: null,
 };
 
 export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [employees, setEmployees] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [branches, setBranches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [divisions, setDivisions] = useState([]);
@@ -110,6 +117,10 @@ export default function EmployeesPage() {
   const [positionTotalPages, setPositionTotalPages] = useState(1);
   const [positionKeyword, setPositionKeyword] = useState("");
 
+  // เอาข้อมูล Payroll มาใส่ในพนักงาน
+  const [selectedPayrollCompany, setSelectedPayrollCompany] = useState(null);
+  const [selectedPayrollType, setSelectedPayrollType] = useState(null);
+
   // #region Permission
   const router = useRouter();
   const { user, loadingUser } = useAuth();
@@ -137,6 +148,18 @@ export default function EmployeesPage() {
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Load business units failed");
     setBusinessUnits(data.data || []);
+  };
+
+  const loadCompanies = async () => {
+    const res = await fetch("/api/admin/companies", {cache: "no-store",});
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(
+        data?.error ||
+          "Load companies failed"
+      );
+    }
+    setCompanies(data.data || []);
   };
 
   const loadCostCenters = async () => {
@@ -336,6 +359,7 @@ export default function EmployeesPage() {
       loadBusinessUnits(),
       loadCostCenters(),
       loadProfitCenters(),
+      loadCompanies(),
     ])
       .then(() => {
         masterDataLoadedRef.current = true;
@@ -559,6 +583,7 @@ export default function EmployeesPage() {
       last_name_th: employee.last_name_th || "",
       first_name_en: employee.first_name_en || "",
       last_name_en: employee.last_name_en || "",
+      company_id:employee.company_id || "",
       nick_name: employee.nick_name || "",
       gender: employee.gender || "",
       phone: employee.phone || "",
@@ -584,6 +609,35 @@ export default function EmployeesPage() {
       business_unit_id: employee.business_unit_id || "",
       cost_center_id: employee.cost_center_id || "",
       profit_center_id: employee.profit_center_id || "",
+      payroll_company_id: employee.payroll_company_id || "", 
+      payroll_type_id: employee.payroll_type_id || "",
+      payment_day: employee.payment_day === null || employee.payment_day === undefined ? null : Number(employee.payment_day),
+      
+    });
+
+
+    setSelectedPayrollCompany({
+      id: employee.payroll_company_id || "",
+      payroll_company_code:
+        employee.payroll_company_code || "",
+      payroll_company_name:
+        employee.payroll_company_name || "",
+      company_name:
+        employee.payroll_company_master_name || "",
+      company_tax_id:
+        employee.payroll_company_tax_id || "",
+    });
+
+    setSelectedPayrollType({
+      id: employee.payroll_type_id || "",
+      payroll_type_code:
+        employee.payroll_type_code || "",
+      payroll_type_name:
+        employee.payroll_type_name || "",
+      payment_frequency:
+        employee.payment_frequency || "",
+      default_payment_day:
+        employee.default_payment_day ?? null,
     });
 
     setPhotoFile(null);
@@ -727,6 +781,11 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (isCompanyScope && !form.company_id) {
+      swalError("กรุณาเลือกบริษัท");
+      return;
+    }
+
     if (isBranchGroupScope && !form.branch_group_id) {
       swalError("กรุณาเลือกกรุ๊ปสังกัด");
       return;
@@ -792,6 +851,16 @@ export default function EmployeesPage() {
       return;
     }
 
+    if (!form.payroll_company_id) {
+      swalError("กรุณาเลือก Payroll Company");
+      return;
+    }
+
+    if (!form.payroll_type_id) {
+      swalError("กรุณาเลือก Payroll Type");
+      return;
+    }
+
     try {
       setSaving(true);
       let employeePhotoUrl = form.employee_photo_url || "";
@@ -806,6 +875,7 @@ export default function EmployeesPage() {
       const payload = {
         ...form,
         employee_photo_url: employeePhotoUrl,
+        company_id: isCompanyScope ? form.company_id : null,
         branch_group_id: isBranchGroupScope ? form.branch_group_id : null,
         branch_id: isBranchScope || isOperationLevel ? form.branch_id : null,
         department_id: isDepartmentScope || isOperationLevel ? form.department_id : null,
@@ -815,6 +885,8 @@ export default function EmployeesPage() {
         business_unit_id: form.business_unit_id || null,
         cost_center_id: form.cost_center_id || null,
         profit_center_id: form.profit_center_id || null,
+        payroll_company_id: form.payroll_company_id || null,
+        payroll_type_id: form.payroll_type_id || null,
       };
 
       const url = isEdit
@@ -1296,6 +1368,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   ชื่อ (TH)
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1311,6 +1384,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   นามสกุล (TH)
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1424,6 +1498,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   เลขบัตรประชาชน
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
 
                 <input
@@ -1619,6 +1694,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   วันที่เริ่มงาน
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -1633,6 +1709,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   ประเภทการจ้าง
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
                 <select
                   value={form.employment_type}
@@ -1667,6 +1744,7 @@ export default function EmployeesPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   ตำแหน่ง
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
 
                 <Select
@@ -1706,6 +1784,7 @@ export default function EmployeesPage() {
                       ...prev,
                       position_id: value ?? "",
                       job_id: "",
+                      company_id: "",
                       branch_group_id: "",
                       branch_id: "",
                       department_id: "",
@@ -1733,6 +1812,7 @@ export default function EmployeesPage() {
                 <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Job / Business Role
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1746,6 +1826,10 @@ export default function EmployeesPage() {
                       setForm((prev) => ({
                         ...prev,
                         job_id: value ?? "",
+                        company_id:
+                          job?.scope_type === "company"
+                            ? prev.company_id
+                            : "",
                         branch_group_id:
                           job?.scope_type === "branch_group"
                             ? prev.branch_group_id
@@ -1792,10 +1876,59 @@ export default function EmployeesPage() {
                 </div>
               )}
 
+              {isCompanyScope && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    บริษัทหลัก
+                    <span className="ml-1 text-red-500">
+                      *
+                    </span>
+                  </label>
+
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกบริษัท"
+                    value={
+                      form.company_id ||
+                      undefined
+                    }
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+
+                        company_id:
+                          value ?? "",
+                      }))
+                    }
+                    options={companies
+                      .filter(
+                        (company) =>
+                          !company.status ||
+                          company.status ===
+                            "active"
+                      )
+                      .map((company) => ({
+                        value: company.id,
+
+                        label:
+                          company.company_name_th ||
+                          company.company_name_en ||
+                          company.company_code ||
+                          "-",
+                      }))}
+                    optionFilterProp="label"
+                    className="w-full"
+                    size="large"
+                  />
+                </div>
+              )}
+
               {isBranchGroupScope && (
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     กรุ๊ปสังกัด
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1823,6 +1956,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     สาขา
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1853,6 +1987,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     แผนก
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1882,6 +2017,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     ฝ่าย
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1918,6 +2054,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     หน่วยงาน
+                    <span className="ml-1 text-red-500">*</span>
                   </label>
 
                   <Select
@@ -1949,6 +2086,57 @@ export default function EmployeesPage() {
                 </div>
               )}
 
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Payroll Company
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+
+                <PayrollCompanySelect
+                  value={form.payroll_company_id}
+                  onChange={(payrollCompanyId, payrollCompany) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      payroll_company_id:
+                        payrollCompanyId || "",
+                      payroll_type_id:
+                        payrollCompany?.payroll_type_id || "",
+                      payment_day:
+                        payrollCompany?.payment_day ?? null,
+                    }));
+
+                    setSelectedPayrollCompany(
+                      payrollCompany || null
+                    );
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Payroll Type
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+
+                <PayrollTypeSelect
+                  value={form.payroll_type_id}
+                  onChange={(payrollTypeId, payrollType) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      payroll_type_id:
+                        payrollTypeId || "",
+                      payment_day:
+                        payrollType?.default_payment_day ??
+                        null,
+                    }));
+
+                    setSelectedPayrollType(
+                      payrollType || null
+                    );
+                  }}
+                />
+              </div>
+
               <div className="md:col-span-2 border-t border-slate-200 pt-5">
                 <h3 className="mb-3 text-base font-bold text-slate-800">
                   ข้อมูลบัญชี / ต้นทุนเงินเดือน
@@ -1963,7 +2151,7 @@ export default function EmployeesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Business Unit
                   {selectedJob?.business_unit_required && (
-                    <span className="text-red-500"> *</span>
+                    <span className="ml-1 text-red-500">*</span>
                   )}
                 </label>
 
@@ -1996,7 +2184,7 @@ export default function EmployeesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Cost Center
                   {selectedJob?.cost_center_required && (
-                    <span className="text-red-500"> *</span>
+                    <span className="ml-1 text-red-500">*</span>
                   )}
                 </label>
 
@@ -2027,7 +2215,7 @@ export default function EmployeesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Profit Center
                   {selectedJob?.profit_center_required && (
-                    <span className="text-red-500"> *</span>
+                    <span className="ml-1 text-red-500">*</span>
                   )}
                 </label>
 
@@ -2101,6 +2289,7 @@ export default function EmployeesPage() {
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   สถานะพนักงาน
+                  <span className="ml-1 text-red-500">*</span>
                 </label>
 
                 <select
@@ -2197,3 +2386,23 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
+
+
+/*
+ Job
+├── สิทธิ์การบริหาร
+├── สิทธิ์การแสดงผล
+├── โครงสร้างองค์กร
+├── โครงสร้างบัญชี
+└── Workflow Template
+
+Employee Scope Assignment
+├── View Scope
+├── Manage Scope
+├── Approve Scope
+├── Accounting Scope
+└── Budget Scope
+
+    // เลือก Role และบันทึกพนักงาน เสร็จ  เอารหัสพนักงานคนนั้น ไปกำหนด password เลยยย 
+*/

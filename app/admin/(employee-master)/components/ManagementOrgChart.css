@@ -1,0 +1,1381 @@
+/* =====================================================
+   Management Org Chart
+   Base / Layout / Card / Avatar / Text
+===================================================== */
+
+/* =========================
+   Wrapper
+========================= */
+
+.management-chart-wrapper {
+  width: 100%;
+  overflow: hidden;
+
+  border: 1px solid #dbeafe;
+  border-radius: 24px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+/* =========================
+   Chart Container
+========================= */
+
+.management-chart-container {
+  width: 100%;
+  height: 760px;
+  min-height: 620px;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(224, 242, 254, 0.55),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f8fbff 100%
+    );
+}
+
+/* =========================
+   SVG
+========================= */
+
+.management-chart-container svg {
+  width: 100%;
+  height: 100%;
+
+  background: transparent;
+
+  touch-action: none;
+  user-select: none;
+}
+
+/* =========================
+   Loading / Empty State
+========================= */
+
+.management-chart-state,
+.management-chart-empty {
+  width: 100%;
+  height: 720px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #dbeafe;
+  border-radius: 24px;
+
+  background: #ffffff;
+}
+
+.management-chart-empty {
+  height: 560px;
+
+  border-style: dashed;
+  border-color: #bfdbfe;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f8fbff 100%
+    );
+}
+
+.management-chart-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.management-chart-spinner {
+  width: 42px;
+  height: 42px;
+
+  border: 4px solid #dbeafe;
+  border-top-color: #0284c7;
+
+  border-radius: 9999px;
+
+  animation:
+    management-spin 0.8s linear infinite;
+}
+
+.management-chart-state-title {
+  margin-top: 14px;
+
+  color: #334155;
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.management-chart-state-description {
+  margin-top: 6px;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.management-chart-empty-icon {
+  width: 56px;
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #bae6fd;
+  border-radius: 18px;
+
+  background: #f0f9ff;
+  color: #0284c7;
+
+  font-size: 28px;
+  font-weight: 800;
+}
+
+/* =====================================================
+   Employee Node
+===================================================== */
+
+.management-node {
+  position: relative;
+
+  width: 380px;
+  height: 170px;
+
+  box-sizing: border-box;
+
+  cursor: pointer;
+
+  user-select: none;
+  -webkit-user-select: none;
+
+  filter:
+    drop-shadow(
+      0 10px 18px rgba(2, 132, 199, 0.12)
+    );
+
+  transition:
+    transform 0.22s ease,
+    filter 0.22s ease;
+}
+
+.management-node:hover {
+  transform: translateY(-4px);
+
+  filter:
+    drop-shadow(
+      0 18px 28px rgba(2, 132, 199, 0.2)
+    );
+}
+
+/* =========================
+   Outer Border
+========================= */
+
+.management-node-border {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      #38bdf8 0%,
+      #0ea5e9 48%,
+      #2563eb 100%
+    );
+
+  clip-path:
+    polygon(
+      18px 0,
+      120px 0,
+      132px 12px,
+      248px 12px,
+      260px 0,
+      362px 0,
+      380px 18px,
+      380px 152px,
+      362px 170px,
+      260px 170px,
+      248px 158px,
+      132px 158px,
+      120px 170px,
+      18px 170px,
+      0 152px,
+      0 18px
+    );
+
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.15);
+}
+
+/* =========================
+   Inner White Body
+========================= */
+
+.management-node-body {
+  position: absolute;
+  inset: 3px;
+
+  display: flex;
+  align-items: center;
+
+  box-sizing: border-box;
+
+  padding: 26px 28px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fbfdff 100%
+    );
+
+  clip-path:
+    polygon(
+      16px 0,
+      118px 0,
+      130px 12px,
+      250px 12px,
+      262px 0,
+      364px 0,
+      380px 16px,
+      380px 154px,
+      364px 170px,
+      262px 170px,
+      250px 158px,
+      130px 158px,
+      118px 170px,
+      16px 170px,
+      0 154px,
+      0 16px
+    );
+}
+
+/* =====================================================
+   Avatar
+===================================================== */
+
+.management-avatar-wrapper {
+  width: 92px;
+  height: 92px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border: 4px solid #0b4c6a;
+  border-radius: 9999px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 5px #e0f2fe,
+    0 8px 20px rgba(2, 132, 199, 0.18);
+}
+
+.management-avatar-image {
+  width: 78px;
+  height: 78px;
+
+  display: block;
+
+  border-radius: 9999px;
+
+  object-fit: cover;
+
+  background: #f8fafc;
+}
+
+.management-avatar-placeholder {
+  width: 78px;
+  height: 78px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9999px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #e0f2fe,
+      #dbeafe
+    );
+
+  color: #0369a1;
+
+  font-size: 29px;
+  font-weight: 900;
+}
+
+/* =====================================================
+   Employee Content
+===================================================== */
+
+.management-node-content {
+  flex: 1;
+  min-width: 0;
+
+  margin-left: 24px;
+}
+
+/* =========================
+   Employee Name
+========================= */
+
+.management-node-name {
+  width: 100%;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  color: #0f172a;
+
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 900;
+}
+
+/* =========================
+   Employee Code
+========================= */
+
+.management-node-code {
+  margin-top: 7px;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  color: #64748b;
+
+  font-size: 14px;
+  line-height: 1.3;
+  font-weight: 700;
+
+  letter-spacing: 0.035em;
+}
+
+/* =========================
+   Position
+========================= */
+
+.management-node-position {
+  max-width: 205px;
+
+  display: inline-flex;
+  align-items: center;
+
+  margin-top: 14px;
+  padding: 7px 17px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  border: 1px solid #7dd3fc;
+  border-radius: 9999px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f0f9ff 0%,
+      #e0f2fe 100%
+    );
+
+  color: #0369a1;
+
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 800;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* =====================================================
+   Animations
+===================================================== */
+
+@keyframes management-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================================
+   Expand / Collapse Button
+===================================================== */
+
+.management-expand-button {
+  position: relative;
+  z-index: 30;
+
+  min-width: 36px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  padding: 0 8px;
+
+  border: 2px solid #0ea5e9;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #0369a1;
+
+  box-shadow:
+    0 4px 12px rgba(2, 132, 199, 0.18);
+
+  cursor: pointer;
+
+  user-select: none;
+  -webkit-user-select: none;
+
+  transform: translateY(-8px);
+
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.management-expand-button:hover {
+  transform:
+    translateY(-10px)
+    scale(1.05);
+
+  border-color: #0284c7;
+
+  background: #e0f2fe;
+
+  box-shadow:
+    0 7px 18px rgba(2, 132, 199, 0.24);
+}
+
+.management-expand-button:active {
+  transform:
+    translateY(-8px)
+    scale(0.98);
+}
+
+.management-expand-symbol {
+  min-width: 11px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #0369a1;
+
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.management-expand-count {
+  min-width: 9px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #0284c7;
+
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+/* =====================================================
+   D3 Node Button Container
+===================================================== */
+
+.management-chart-container .node-button-g,
+.management-chart-container .node-button,
+.management-chart-container g[class*="button"],
+.management-chart-container foreignObject[class*="button"] {
+  overflow: visible !important;
+
+  pointer-events: all !important;
+
+  cursor: pointer !important;
+}
+
+/* =====================================================
+   Connector Links
+===================================================== */
+
+.management-chart-container svg path.link,
+.management-chart-container svg path[class~="link"],
+.management-chart-container svg path[class*="link"],
+.management-chart-container svg .links-wrapper path,
+.management-chart-container svg .connections-wrapper path {
+  stroke: #0ea5e9 !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+
+  fill: none !important;
+
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+
+  filter:
+    drop-shadow(
+      0 1px 1px rgba(2, 132, 199, 0.12)
+    );
+
+  transition:
+    stroke 0.18s ease,
+    stroke-width 0.18s ease,
+    opacity 0.18s ease;
+}
+
+/* เส้นตอน Hover */
+.management-chart-container svg path.link:hover,
+.management-chart-container svg path[class*="link"]:hover {
+  stroke: #0284c7 !important;
+  stroke-width: 3px !important;
+}
+
+/* =====================================================
+   Node Wrapper
+===================================================== */
+
+.management-chart-container .node {
+  overflow: visible !important;
+}
+
+.management-chart-container .node foreignObject {
+  overflow: visible !important;
+}
+
+/* =====================================================
+   Highlight / Selected Node
+===================================================== */
+
+.management-chart-container
+  .node.highlighted
+  .management-node,
+.management-chart-container
+  .node.highlighting
+  .management-node,
+.management-chart-container
+  .node.selected
+  .management-node,
+.management-chart-container
+  [class*="highlighted"]
+  .management-node {
+  transform: translateY(-4px);
+
+  filter:
+    drop-shadow(
+      0 20px 32px rgba(37, 99, 235, 0.32)
+    );
+}
+
+.management-chart-container
+  .node.highlighted
+  .management-node-border,
+.management-chart-container
+  .node.highlighting
+  .management-node-border,
+.management-chart-container
+  .node.selected
+  .management-node-border {
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb 0%,
+      #0284c7 48%,
+      #0ea5e9 100%
+    );
+}
+
+/* =====================================================
+   Node Transition
+===================================================== */
+
+.management-chart-container .node {
+  transition:
+    opacity 0.28s ease,
+    transform 0.35s ease;
+}
+
+.management-chart-container .node[style*="opacity: 0"] {
+  pointer-events: none;
+}
+
+/* =====================================================
+   Link Transition
+===================================================== */
+
+.management-chart-container svg path.link,
+.management-chart-container svg path[class*="link"] {
+  transition:
+    stroke 0.2s ease,
+    stroke-width 0.2s ease,
+    opacity 0.28s ease;
+}
+
+/* =====================================================
+   Chart Interaction
+===================================================== */
+
+.management-chart-container,
+.management-chart-container svg,
+.management-chart-container .management-node {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.management-chart-container svg {
+  cursor: grab;
+}
+
+.management-chart-container svg:active {
+  cursor: grabbing;
+}
+
+/* ป้องกันข้อความโดนเลือกตอนลากผัง */
+.management-chart-container,
+.management-chart-container * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* แต่ยังให้ Tooltip จาก title ทำงาน */
+.management-node-name,
+.management-node-code,
+.management-node-position {
+  pointer-events: auto;
+}
+
+/* =====================================================
+   Scrollbar
+===================================================== */
+
+.management-chart-wrapper::-webkit-scrollbar,
+.management-chart-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.management-chart-wrapper::-webkit-scrollbar-track,
+.management-chart-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.management-chart-wrapper::-webkit-scrollbar-thumb,
+.management-chart-container::-webkit-scrollbar-thumb {
+  border: 2px solid #f8fafc;
+  border-radius: 9999px;
+
+  background: #bae6fd;
+}
+
+.management-chart-wrapper::-webkit-scrollbar-thumb:hover,
+.management-chart-container::-webkit-scrollbar-thumb:hover {
+  background: #7dd3fc;
+}
+
+/* =====================================================
+   Focus Accessibility
+===================================================== */
+
+.management-expand-button:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.28);
+  outline-offset: 3px;
+}
+
+/* =====================================================
+   Reduced Motion
+===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .management-node,
+  .management-expand-button,
+  .management-chart-container .node,
+  .management-chart-container svg path.link,
+  .management-chart-container svg path[class*="link"] {
+    transition: none !important;
+  }
+
+  .management-chart-spinner {
+    animation-duration: 1.4s;
+  }
+}
+
+/* =====================================================
+   Responsive
+===================================================== */
+
+/* =========================
+   Large Desktop
+========================= */
+
+@media (min-width: 1440px) {
+  .management-chart-container {
+    height: 800px;
+  }
+
+  .management-chart-state {
+    height: 760px;
+  }
+}
+
+/* =========================
+   Desktop / Laptop
+========================= */
+
+@media (max-width: 1280px) {
+  .management-chart-container {
+    height: 720px;
+    min-height: 580px;
+  }
+
+  .management-chart-state {
+    height: 680px;
+  }
+
+  .management-chart-empty {
+    height: 520px;
+  }
+}
+
+/* =========================
+   Tablet
+========================= */
+
+@media (max-width: 1024px) {
+  .management-chart-wrapper {
+    border-radius: 20px;
+  }
+
+  .management-chart-container {
+    height: 680px;
+    min-height: 540px;
+  }
+
+  .management-chart-state {
+    height: 640px;
+
+    border-radius: 20px;
+  }
+
+  .management-chart-empty {
+    height: 500px;
+
+    border-radius: 20px;
+  }
+
+  .management-node {
+    width: 340px;
+    height: 156px;
+  }
+
+  .management-node-border {
+    clip-path:
+      polygon(
+        16px 0,
+        105px 0,
+        116px 10px,
+        224px 10px,
+        235px 0,
+        324px 0,
+        340px 16px,
+        340px 140px,
+        324px 156px,
+        235px 156px,
+        224px 146px,
+        116px 146px,
+        105px 156px,
+        16px 156px,
+        0 140px,
+        0 16px
+      );
+  }
+
+  .management-node-body {
+    padding: 22px 24px;
+
+    clip-path:
+      polygon(
+        14px 0,
+        103px 0,
+        114px 10px,
+        226px 10px,
+        237px 0,
+        326px 0,
+        340px 14px,
+        340px 142px,
+        326px 156px,
+        237px 156px,
+        226px 146px,
+        114px 146px,
+        103px 156px,
+        14px 156px,
+        0 142px,
+        0 14px
+      );
+  }
+
+  .management-avatar-wrapper {
+    width: 82px;
+    height: 82px;
+  }
+
+  .management-avatar-image,
+  .management-avatar-placeholder {
+    width: 68px;
+    height: 68px;
+  }
+
+  .management-avatar-placeholder {
+    font-size: 25px;
+  }
+
+  .management-node-content {
+    margin-left: 20px;
+  }
+
+  .management-node-name {
+    font-size: 18px;
+  }
+
+  .management-node-code {
+    margin-top: 5px;
+
+    font-size: 13px;
+  }
+
+  .management-node-position {
+    max-width: 180px;
+
+    margin-top: 11px;
+    padding: 6px 14px;
+
+    font-size: 12px;
+  }
+}
+
+/* =========================
+   Mobile
+========================= */
+
+@media (max-width: 768px) {
+  .management-chart-wrapper {
+    border-radius: 18px;
+  }
+
+  .management-chart-container {
+    height: 620px;
+    min-height: 500px;
+  }
+
+  .management-chart-state {
+    height: 580px;
+
+    border-radius: 18px;
+  }
+
+  .management-chart-empty {
+    height: 460px;
+
+    border-radius: 18px;
+  }
+
+  .management-chart-state-title {
+    font-size: 14px;
+  }
+
+  .management-chart-state-description {
+    font-size: 12px;
+  }
+
+  .management-node {
+    width: 300px;
+    height: 142px;
+  }
+
+  .management-node-border {
+    clip-path:
+      polygon(
+        14px 0,
+        92px 0,
+        102px 9px,
+        198px 9px,
+        208px 0,
+        286px 0,
+        300px 14px,
+        300px 128px,
+        286px 142px,
+        208px 142px,
+        198px 133px,
+        102px 133px,
+        92px 142px,
+        14px 142px,
+        0 128px,
+        0 14px
+      );
+  }
+
+  .management-node-body {
+    inset: 2px;
+
+    padding: 18px 20px;
+
+    clip-path:
+      polygon(
+        12px 0,
+        90px 0,
+        100px 9px,
+        200px 9px,
+        210px 0,
+        288px 0,
+        300px 12px,
+        300px 130px,
+        288px 142px,
+        210px 142px,
+        200px 133px,
+        100px 133px,
+        90px 142px,
+        12px 142px,
+        0 130px,
+        0 12px
+      );
+  }
+
+  .management-avatar-wrapper {
+    width: 72px;
+    height: 72px;
+
+    border-width: 3px;
+
+    box-shadow:
+      0 0 0 4px #e0f2fe,
+      0 6px 16px rgba(2, 132, 199, 0.16);
+  }
+
+  .management-avatar-image,
+  .management-avatar-placeholder {
+    width: 60px;
+    height: 60px;
+  }
+
+  .management-avatar-placeholder {
+    font-size: 22px;
+  }
+
+  .management-node-content {
+    margin-left: 16px;
+  }
+
+  .management-node-name {
+    font-size: 16px;
+  }
+
+  .management-node-code {
+    margin-top: 4px;
+
+    font-size: 12px;
+  }
+
+  .management-node-position {
+    max-width: 155px;
+
+    margin-top: 9px;
+    padding: 5px 12px;
+
+    font-size: 11px;
+  }
+
+  .management-expand-button {
+    min-width: 34px;
+    height: 26px;
+
+    padding: 0 7px;
+
+    border-radius: 7px;
+
+    transform: translateY(-7px);
+  }
+
+  .management-expand-button:hover {
+    transform:
+      translateY(-8px)
+      scale(1.03);
+  }
+
+  .management-expand-symbol {
+    font-size: 14px;
+  }
+}
+
+/* =========================
+   Small Mobile
+========================= */
+
+@media (max-width: 480px) {
+  .management-chart-container {
+    height: 560px;
+    min-height: 460px;
+  }
+
+  .management-chart-state {
+    height: 520px;
+  }
+
+  .management-chart-empty {
+    height: 420px;
+  }
+
+  .management-node {
+    width: 270px;
+    height: 132px;
+  }
+
+  .management-node-border {
+    clip-path:
+      polygon(
+        12px 0,
+        82px 0,
+        91px 8px,
+        179px 8px,
+        188px 0,
+        258px 0,
+        270px 12px,
+        270px 120px,
+        258px 132px,
+        188px 132px,
+        179px 124px,
+        91px 124px,
+        82px 132px,
+        12px 132px,
+        0 120px,
+        0 12px
+      );
+  }
+
+  .management-node-body {
+    inset: 2px;
+
+    padding: 16px 17px;
+
+    clip-path:
+      polygon(
+        10px 0,
+        80px 0,
+        89px 8px,
+        181px 8px,
+        190px 0,
+        260px 0,
+        270px 10px,
+        270px 122px,
+        260px 132px,
+        190px 132px,
+        181px 124px,
+        89px 124px,
+        80px 132px,
+        10px 132px,
+        0 122px,
+        0 10px
+      );
+  }
+
+  .management-avatar-wrapper {
+    width: 64px;
+    height: 64px;
+  }
+
+  .management-avatar-image,
+  .management-avatar-placeholder {
+    width: 53px;
+    height: 53px;
+  }
+
+  .management-avatar-placeholder {
+    font-size: 20px;
+  }
+
+  .management-node-content {
+    margin-left: 14px;
+  }
+
+  .management-node-name {
+    font-size: 15px;
+  }
+
+  .management-node-code {
+    font-size: 11px;
+  }
+
+  .management-node-position {
+    max-width: 138px;
+
+    margin-top: 8px;
+    padding: 4px 10px;
+
+    font-size: 10px;
+  }
+}
+
+/* =====================================================
+   Fullscreen
+===================================================== */
+
+.management-chart-wrapper:fullscreen {
+  width: 100vw;
+  height: 100vh;
+
+  border: none;
+  border-radius: 0;
+
+  background: #ffffff;
+}
+
+.management-chart-wrapper:fullscreen
+  .management-chart-container {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+
+  background: #ffffff;
+}
+
+.management-chart-wrapper:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+
+  border: none;
+  border-radius: 0;
+
+  background: #ffffff;
+}
+
+.management-chart-wrapper:-webkit-full-screen
+  .management-chart-container {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+/* =====================================================
+   Print
+===================================================== */
+
+@media print {
+  .management-chart-wrapper {
+    width: 100%;
+
+    overflow: visible;
+
+    border: none;
+    border-radius: 0;
+
+    box-shadow: none;
+  }
+
+  .management-chart-container {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+
+    overflow: visible;
+
+    background: #ffffff;
+  }
+
+  .management-chart-container svg {
+    width: 100%;
+    height: auto;
+
+    overflow: visible;
+  }
+
+  .management-node {
+    filter: none;
+  }
+
+  .management-expand-button {
+    display: none;
+  }
+
+  .management-chart-container svg path.link,
+  .management-chart-container
+    svg path[class*="link"] {
+    filter: none;
+  }
+}
+
+/* =====================================================
+   High Contrast
+===================================================== */
+
+@media (prefers-contrast: more) {
+  .management-chart-wrapper {
+    border-color: #0284c7;
+  }
+
+  .management-node-border {
+    background: #0284c7;
+  }
+
+  .management-node-name {
+    color: #000000;
+  }
+
+  .management-node-code {
+    color: #334155;
+  }
+
+  .management-node-position {
+    border-color: #0284c7;
+
+    background: #ffffff;
+    color: #075985;
+  }
+
+  .management-expand-button {
+    border-color: #0284c7;
+    color: #075985;
+  }
+
+  .management-chart-container svg path.link,
+  .management-chart-container
+    svg path[class*="link"] {
+    stroke: #0284c7 !important;
+    stroke-width: 3px !important;
+  }
+}
+
+/* =====================================================
+   Forced Colors
+===================================================== */
+
+@media (forced-colors: active) {
+  .management-node,
+  .management-node-border,
+  .management-node-body,
+  .management-avatar-wrapper,
+  .management-node-position,
+  .management-expand-button {
+    forced-color-adjust: auto;
+  }
+
+  .management-node-border {
+    background: CanvasText;
+  }
+
+  .management-node-body {
+    background: Canvas;
+  }
+
+  .management-chart-container svg path.link,
+  .management-chart-container
+    svg path[class*="link"] {
+    stroke: CanvasText !important;
+  }
+}
+
+
+
+
+.management-expand-hitbox {
+  width: 64px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  pointer-events: auto;
+
+  position: relative;
+  z-index: 999;
+}
+
+.management-expand-button {
+  min-width: 42px;
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  padding: 0 9px;
+
+  border: 2px solid #0ea5e9;
+  border-radius: 9px;
+
+  background: #ffffff;
+  color: #0369a1;
+
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+
+  cursor: pointer;
+  user-select: none;
+
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.18);
+
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.management-expand-hitbox:hover
+  .management-expand-button {
+  transform: scale(1.08);
+  background: #f0f9ff;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.28);
+}
+
+.management-expand-symbol {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.management-expand-count {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+
+

@@ -56,6 +56,7 @@ export type EvaluationFormData = {
   newSalary: number;
   managerComment: string;
   examScore: number;
+  examMaxScore: number;
   maxScore: number;
   summaryData: SummaryPanelData;
   disciplineData: DisciplinePanelData;

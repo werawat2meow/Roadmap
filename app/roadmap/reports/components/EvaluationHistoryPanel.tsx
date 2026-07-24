@@ -68,16 +68,20 @@ export default function EvaluationHistoryPanel({
 
   const handlePreview = async (record: EvaluationRecord) => {
     setIsLoadingPreview(true);
+
     const res = await fetch(
-      `/roadmap/api/reports/evaluation-preview?id=${record.id}`,
+      `/roadmap/api/reports/evaluation-preview?id=${encodeURIComponent(record.id)}`,
     );
     const json = await res.json();
+
     if (json.success) {
       setPreviewData(json.data);
       setIsPreviewOpen(true);
     } else {
-      console.error("Preview load failed", json.error);
+      console.error("Failed to load evaluation preview", json.error);
+      setPreviewData(null);
     }
+
     setIsLoadingPreview(false);
   };
 
@@ -140,7 +144,7 @@ export default function EvaluationHistoryPanel({
           ...row,
           actions: (
             <button
-              className="rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 active:from-amber-600 active:to-yellow-600 text-amber-950 text-xs font-semibold px-4 py-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+              className="rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 active:from-amber-600 active:to-yellow-600 text-amber-950 text-xs font-semibold px-4 py-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => handlePreview(row)}
               disabled={isLoadingPreview}
             >

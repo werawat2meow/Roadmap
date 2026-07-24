@@ -45,6 +45,7 @@ type HistoryRecord = {
   departmentScore: number | null;
   expectationScore: number | null;
   examScore: number | null;
+  examMaxScore: number | null;
   maxScore: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
@@ -110,6 +111,7 @@ export default function EvaluateEmployeePage() {
     newSalary: 0,
     managerComment: "",
     examScore: 0,
+    examMaxScore: 100,
     maxScore: 100,
     summaryData: defaultSummaryData,
     disciplineData: defaultDisciplineData,
@@ -275,6 +277,7 @@ export default function EvaluateEmployeePage() {
           totalScore: record.totalScore ?? prev.totalScore,
           managerComment: record.managerComment ?? prev.managerComment,
           examScore: record.examScore ?? prev.examScore,
+          examMaxScore: record.examMaxScore ?? prev.examMaxScore,
           maxScore: record.maxScore ?? prev.maxScore,
         };
       });
@@ -670,6 +673,9 @@ export default function EvaluateEmployeePage() {
             }
             onExamScoreChange={(value) =>
               handleFormChange({ examScore: value })
+            }
+            onExamMaxScoreChange={(value) =>
+              handleFormChange({ examMaxScore: value })
             }
             onMaxScoreChange={(value) => handleFormChange({ maxScore: value })}
             onSaveDraft={handleSaveDraft}

@@ -22,6 +22,7 @@ interface SummarySidebarProps {
     currentSalary?: number;
     newSalary?: number;
     examScore?: number;
+    examMaxScore?: number;
     maxScore?: number;
     lateData?: any;
     disciplineData?: any;
@@ -35,6 +36,7 @@ interface SummarySidebarProps {
   onCurrentSalaryChange?: (value: number) => void;
   onNewSalaryChange?: (value: number) => void;
   onExamScoreChange?: (value: number) => void;
+  onExamMaxScoreChange?: (value: number) => void;
   onMaxScoreChange?: (value: number) => void;
   onSaveDraft?: () => void;
   onSubmit?: () => void;
@@ -102,6 +104,7 @@ export default function SummarySidebar({
   onCurrentSalaryChange,
   onNewSalaryChange,
   onExamScoreChange,
+  onExamMaxScoreChange,
   onMaxScoreChange,
   onSaveDraft,
   onSubmit,
@@ -120,9 +123,12 @@ export default function SummarySidebar({
   };
 
   const totalScore = allFormData.totalScore ?? 0;
-  const maxScore = allFormData.maxScore ?? 100;
+  const summaryMaxScore = allFormData.maxScore ?? 100;
+  const examMaxScore = allFormData.examMaxScore ?? 100;
   const percentage =
-    maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+    summaryMaxScore > 0
+      ? Math.round((totalScore / summaryMaxScore) * 100)
+      : 0;
 
   const computedGrade = getGrade(percentage);
 
@@ -238,7 +244,7 @@ export default function SummarySidebar({
           <input
             type="number"
             min={0}
-            max={allFormData.maxScore ?? 100}
+            max={examMaxScore}
             value={allFormData.examScore ?? 0}
             onChange={(e) => onExamScoreChange?.(Number(e.target.value))}
             className="w-full border rounded-md p-2 text-sm text-black"
@@ -249,8 +255,8 @@ export default function SummarySidebar({
           <input
             type="number"
             min={0}
-            value={allFormData.maxScore ?? 100}
-            onChange={(e) => onMaxScoreChange?.(Number(e.target.value))}
+            value={examMaxScore}
+            onChange={(e) => onExamMaxScoreChange?.(Number(e.target.value))}
             className="w-full border rounded-md p-2 text-sm text-black"
           />
         </div>
@@ -313,7 +319,7 @@ export default function SummarySidebar({
             </div>
             <div className="flex justify-between">
               <span>คะแนนเต็ม</span>
-              <span className="font-semibold text-slate-900">{maxScore}</span>
+              <span className="font-semibold text-slate-900">{summaryMaxScore}</span>
             </div>
             <div className="flex justify-between">
               <span>คิดเป็นเปอร์เซ็นต์</span>

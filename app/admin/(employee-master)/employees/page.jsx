@@ -2404,5 +2404,5 @@ Employee Scope Assignment
 ├── Accounting Scope
 └── Budget Scope
 
-
+    // เลือก Role และบันทึกพนักงาน เสร็จ  เอารหัสพนักงานคนนั้น ไปกำหนด password เลยยย 
 */

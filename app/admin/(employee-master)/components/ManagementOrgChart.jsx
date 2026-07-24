@@ -8,8 +8,9 @@ import {
 } from "react";
 
 import { OrgChart } from "d3-org-chart";
-
+import * as htmlToImage from "html-to-image";
 import "./ManagementOrgChart.css";
+import html2canvas from "html2canvas";
 
 /* =====================================================
    Management Org Chart
@@ -47,7 +48,6 @@ const ManagementOrgChart = forwardRef(
       () => ({
         fit() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
           chart.fit();
@@ -55,7 +55,6 @@ const ManagementOrgChart = forwardRef(
 
         zoomIn() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
           chart.zoomIn();
@@ -63,7 +62,6 @@ const ManagementOrgChart = forwardRef(
 
         zoomOut() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
           chart.zoomOut();
@@ -71,16 +69,12 @@ const ManagementOrgChart = forwardRef(
 
         expandAll() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
-          chart
-            .expandAll()
-            .render();
+          chart.expandAll().render();
 
           scheduleChartUpdate({
-            container:
-              containerRef.current,
+            container: containerRef.current,
             chart,
             fitChart: true,
           });
@@ -88,31 +82,239 @@ const ManagementOrgChart = forwardRef(
 
         collapseAll() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
-          chart
-            .collapseAll()
-            .render();
+          chart.collapseAll().render();
 
           scheduleChartUpdate({
-            container:
-              containerRef.current,
+            container: containerRef.current,
             chart,
             fitChart: true,
           });
         },
 
+        async exportPNG() {
+          const container =
+            containerRef.current;
+
+          const chart =
+            chartRef.current;
+
+          if (!container || !chart) {
+            return;
+          }
+
+          try {
+            /*
+            * ให้ Chart แสดงเต็มพื้นที่ก่อน Export
+            */
+            chart.expandAll().render();
+
+            await new Promise((resolve) => {
+              window.setTimeout(resolve, 500);
+            });
+
+            applyConnectorStyles(container);
+            applyExpandButtonPosition(container);
+
+            /*
+            * รอให้รูปภาพโหลดครบ
+            */
+            const images = Array.from(
+              container.querySelectorAll("img")
+            );
+
+            await Promise.all(
+              images.map((image) => {
+                if (image.complete) {
+                  return Promise.resolve();
+                }
+
+                return new Promise((resolve) => {
+                  image.onload = resolve;
+                  image.onerror = resolve;
+                });
+              })
+            );
+
+            const canvas =
+              await html2canvas(container, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+
+                /*
+                * ป้องกันการจับส่วนที่อยู่นอก viewport ไม่ครบ
+                */
+                scrollX: 0,
+                scrollY: 0,
+
+                windowWidth:
+                  container.scrollWidth,
+
+                windowHeight:
+                  container.scrollHeight,
+
+                width:
+                  container.scrollWidth,
+
+                height:
+                  container.scrollHeight,
+
+                onclone: (
+                  clonedDocument
+                ) => {
+                  const clonedContainer =
+                    clonedDocument.querySelector(
+                      ".management-chart-container"
+                    );
+
+                  if (!clonedContainer) {
+                    return;
+                  }
+
+                  clonedContainer.style.width =
+                    `${container.scrollWidth}px`;
+
+                  clonedContainer.style.height =
+                    `${container.scrollHeight}px`;
+
+                  clonedContainer.style.overflow =
+                    "visible";
+
+                  /*
+                  * ล็อกขนาด Avatar
+                  * ป้องกันรูปขยายเต็มหน้า
+                  */
+                  clonedContainer
+                    .querySelectorAll(
+                      ".management-avatar-wrapper"
+                    )
+                    .forEach((element) => {
+                      element.style.width =
+                        "96px";
+
+                      element.style.height =
+                        "96px";
+
+                      element.style.minWidth =
+                        "96px";
+
+                      element.style.maxWidth =
+                        "96px";
+
+                      element.style.flex =
+                        "0 0 96px";
+
+                      element.style.overflow =
+                        "hidden";
+
+                      element.style.borderRadius =
+                        "9999px";
+                    });
+
+                  clonedContainer
+                    .querySelectorAll(
+                      ".management-avatar-image"
+                    )
+                    .forEach((image) => {
+                      image.style.width =
+                        "100%";
+
+                      image.style.height =
+                        "100%";
+
+                      image.style.maxWidth =
+                        "96px";
+
+                      image.style.maxHeight =
+                        "96px";
+
+                      image.style.objectFit =
+                        "cover";
+
+                      image.style.display =
+                        "block";
+
+                      image.style.borderRadius =
+                        "9999px";
+                    });
+
+                  clonedContainer
+                    .querySelectorAll(
+                      ".management-avatar-placeholder"
+                    )
+                    .forEach((element) => {
+                      element.style.width =
+                        "100%";
+
+                      element.style.height =
+                        "100%";
+
+                      element.style.display =
+                        "flex";
+
+                      element.style.alignItems =
+                        "center";
+
+                      element.style.justifyContent =
+                        "center";
+
+                      element.style.borderRadius =
+                        "9999px";
+                    });
+
+                  /*
+                  * ป้องกัน Card แตก
+                  */
+                  clonedContainer
+                    .querySelectorAll(
+                      ".management-node"
+                    )
+                    .forEach((element) => {
+                      element.style.width =
+                        "400px";
+
+                      element.style.height =
+                        "174px";
+
+                      element.style.boxSizing =
+                        "border-box";
+                    });
+                },
+              });
+
+            const fileName =
+              `organization-chart-${Date.now()}.png`;
+
+            const link =
+              document.createElement("a");
+
+            link.download = fileName;
+            link.href =
+              canvas.toDataURL("image/png");
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          } catch (error) {
+            console.error(
+              "EXPORT_ORG_CHART_ERROR:",
+              error
+            );
+          }
+        },
+
         refresh() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
           chart.render();
 
           scheduleChartUpdate({
-            container:
-              containerRef.current,
+            container: containerRef.current,
             chart,
             fitChart: false,
           });
@@ -121,10 +323,11 @@ const ManagementOrgChart = forwardRef(
         highlightNode(nodeId) {
           const chart = chartRef.current;
 
-          if (!chart || !nodeId) return;
+          if (!chart || !nodeId) {
+            return;
+          }
 
-          const targetId =
-            String(nodeId);
+          const targetId = String(nodeId);
 
           if (
             typeof chart.setHighlighted ===
@@ -136,8 +339,7 @@ const ManagementOrgChart = forwardRef(
           }
 
           scheduleChartUpdate({
-            container:
-              containerRef.current,
+            container: containerRef.current,
             chart,
             fitChart: false,
           });
@@ -145,7 +347,6 @@ const ManagementOrgChart = forwardRef(
 
         clearHighlight() {
           const chart = chartRef.current;
-
           if (!chart) return;
 
           if (
@@ -158,8 +359,7 @@ const ManagementOrgChart = forwardRef(
           }
 
           scheduleChartUpdate({
-            container:
-              containerRef.current,
+            container: containerRef.current,
             chart,
             fitChart: false,
           });
@@ -569,6 +769,7 @@ function buildEmployeeNode(item = {}) {
       <img
         src="${safePhotoUrl}"
         alt="${safeName}"
+        crossorigin="anonymous"
         class="management-avatar-image"
         onerror="
           this.style.display='none';
@@ -580,13 +781,6 @@ function buildEmployeeNode(item = {}) {
           }
         "
       />
-
-      <div
-        class="management-avatar-placeholder"
-        style="display:none;"
-      >
-        ${escapeHtml(initial)}
-      </div>
     `
     : `
       <div
@@ -679,24 +873,22 @@ function buildExpandButton(node) {
 
   return `
     <div
-      class="management-expand-button"
+      class="management-expand-hitbox"
       title="${
         isExpanded
           ? "ย่อสายบังคับบัญชา"
           : "ขยายสายบังคับบัญชา"
       }"
     >
-      <span
-        class="management-expand-symbol"
-      >
-        ${isExpanded ? "−" : "+"}
-      </span>
+      <div class="management-expand-button">
+        <span class="management-expand-symbol">
+          ${isExpanded ? "−" : "+"}
+        </span>
 
-      <span
-        class="management-expand-count"
-      >
-        ${childCount}
-      </span>
+        <span class="management-expand-count">
+          ${childCount}
+        </span>
+      </div>
     </div>
   `;
 }

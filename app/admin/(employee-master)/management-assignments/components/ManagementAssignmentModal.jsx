@@ -97,43 +97,24 @@ function filterEmployeeOption(
 
 export default function ManagementAssignmentModal({
   open = false,
-
   mode = "create",
-
   loading = false,
-
   saving = false,
-
   loadingEmployees = false,
-
   loadingScopeOptions = false,
-
   form,
-
   selectedEmployee,
-
   employees = [],
-
   supervisorOptions = [],
-
   scopeOptions,
-
   onClose,
-
   onSubmit,
-
   onFormChange,
-
   onEmployeeChange,
-
   onManagementLevelChange,
-
   onAddScope,
-
   onRemoveScope,
-
   onUpdateScope,
-
   onSetPrimaryScope,
 }) {
   const safeForm = {
@@ -238,7 +219,9 @@ export default function ManagementAssignmentModal({
       width={980}
       centered
       destroyOnHidden
-      maskClosable={!saving}
+      mask={{
+        closable: true,
+      }}
       keyboard={!saving}
       closable={false}
       onCancel={() => {
@@ -451,10 +434,9 @@ export default function ManagementAssignmentModal({
                       <Select
                         size="large"
                         className="w-full"
-                        disabled={
-                          saving ||
-                          !safeForm.employee_id
-                        }
+                        disabled
+                        showSearch={false}
+                        allowClear={false}
                         value={
                           safeForm.management_level ||
                           undefined

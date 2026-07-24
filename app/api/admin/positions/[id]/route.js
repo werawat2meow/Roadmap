@@ -13,7 +13,16 @@ export async function PATCH(req, { params }) {
     const position_code = body?.position_code?.trim();
     const position_name = body?.position_name?.trim();
     const position_group = body?.position_group?.trim() || null;
+    const position_family_id = body?.position_family_id || null;
+
+    // Backward Compatible
     const position_level = body?.position_level?.trim() || null;
+
+    // Version 2
+    const position_levels = Array.isArray(body?.position_levels)
+      ? body.position_levels
+      : [];
+
     const status = body?.status || "active";
 
     if (!position_code || !position_name) {
@@ -26,6 +35,7 @@ export async function PATCH(req, { params }) {
       );
     }
 
+    // ตรวจสอบรหัสตำแหน่งซ้ำ
     const { data: existingPosition } = await supabaseAdmin
       .from("positions")
       .select("id")
@@ -43,6 +53,7 @@ export async function PATCH(req, { params }) {
       );
     }
 
+    // ข้อมูลเดิม
     const { data: oldPosition, error: oldPositionError } = await supabaseAdmin
       .from("positions")
       .select(`
@@ -51,6 +62,7 @@ export async function PATCH(req, { params }) {
         position_name,
         position_group,
         position_level,
+        position_family_id,
         status,
         sort_order
       `)
@@ -59,13 +71,18 @@ export async function PATCH(req, { params }) {
 
     if (oldPositionError) throw oldPositionError;
 
+    // Update Position
     const { error: updateError } = await supabaseAdmin
       .from("positions")
       .update({
         position_code,
         position_name,
         position_group,
+        position_family_id,
+
+        // ของเดิม ยังเก็บไว้ก่อน
         position_level,
+
         status,
         updated_at: new Date().toISOString(),
       })
@@ -73,6 +90,33 @@ export async function PATCH(req, { params }) {
 
     if (updateError) throw updateError;
 
+    /* =========================
+       Sync Position Levels
+    ========================= */
+
+    // ลบ Mapping เดิม
+    const { error: deleteMappingError } = await supabaseAdmin
+      .from("position_level_mappings")
+      .delete()
+      .eq("position_id", id);
+
+    if (deleteMappingError) throw deleteMappingError;
+
+    // เพิ่ม Mapping ใหม่
+    if (position_levels.length > 0) {
+      const { error: insertMappingError } = await supabaseAdmin
+        .from("position_level_mappings")
+        .insert(
+          position_levels.map((levelId) => ({
+            position_id: id,
+            position_level_id: levelId,
+          }))
+        );
+
+      if (insertMappingError) throw insertMappingError;
+    }
+
+    // โหลดข้อมูลล่าสุด
     const { data, error } = await supabaseAdmin
       .from("positions")
       .select(`
@@ -81,6 +125,7 @@ export async function PATCH(req, { params }) {
         position_name,
         position_group,
         position_level,
+        position_family_id,
         status,
         sort_order,
         created_at
@@ -90,25 +135,31 @@ export async function PATCH(req, { params }) {
 
     if (error) throw error;
 
+    // Activity Log
     await writeActivityLog({
       module_name: "positions",
       action_type: "update",
       reference_table: "positions",
       reference_id: data.id,
       description: `แก้ไขตำแหน่ง ${data.position_code} - ${data.position_name}`,
+
       old_data: {
         position_code: oldPosition.position_code,
         position_name: oldPosition.position_name,
         position_group: oldPosition.position_group,
+        position_family_id: oldPosition.position_family_id,
         position_level: oldPosition.position_level,
         status: oldPosition.status,
         sort_order: oldPosition.sort_order,
       },
+
       new_data: {
         position_code: data.position_code,
         position_name: data.position_name,
         position_group: data.position_group,
+        position_family_id: data.position_family_id,
         position_level: data.position_level,
+        position_levels,
         status: data.status,
         sort_order: data.sort_order,
       },

@@ -284,7 +284,7 @@
 
   overflow: hidden;
 
-  border: 4px solid #0ea5e9;
+  border: 4px solid #0b4c6a;
   border-radius: 9999px;
 
   background: #ffffff;
@@ -1309,3 +1309,73 @@
     stroke: CanvasText !important;
   }
 }
+
+
+
+
+.management-expand-hitbox {
+  width: 64px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  pointer-events: auto;
+
+  position: relative;
+  z-index: 999;
+}
+
+.management-expand-button {
+  min-width: 42px;
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  padding: 0 9px;
+
+  border: 2px solid #0ea5e9;
+  border-radius: 9px;
+
+  background: #ffffff;
+  color: #0369a1;
+
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+
+  cursor: pointer;
+  user-select: none;
+
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.18);
+
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.management-expand-hitbox:hover
+  .management-expand-button {
+  transform: scale(1.08);
+  background: #f0f9ff;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.28);
+}
+
+.management-expand-symbol {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.management-expand-count {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+
+

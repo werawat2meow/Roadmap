@@ -18,7 +18,7 @@ export default function ManagementHeader({canCreate,onCreate,}) {
             กำหนดโครงสร้างผู้บริหารและแสดงผลในรูปแบบ Org Chart
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            รองรับ Multiple Scope (Version 2)
+            รองรับ Multiple Scope
           </p>
         </div>
 

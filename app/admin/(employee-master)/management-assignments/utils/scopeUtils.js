@@ -48,7 +48,7 @@ export const SCOPE_FIELD_BY_TYPE = {
 export const SCOPE_LABELS = {
   all: "ทั้งองค์กร",
   company: "บริษัท",
-  branch_group: "กลุ่มสาขา",
+  branch_group: "กลุ่มสังกัด",
   branch: "สาขา",
   department: "แผนก",
   division: "ฝ่าย",

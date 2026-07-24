@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, Tag, Avatar, Typography, Input, Empty } from "antd";
 import {UserOutlined,UnlockOutlined,ArrowRightOutlined,AppstoreOutlined,SafetyCertificateOutlined,SearchOutlined,TeamOutlined,SettingOutlined,LockOutlined,} from "@ant-design/icons";
 
-import useAuth from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../components/LoadingOrb";
 import { systemApps } from "./(employee-master)/components/systemApps";
@@ -114,7 +114,6 @@ export default function AdminPage() {
       return hasPermission(user, menu.permission);
     });
   }, [adminMenus, user]);
-
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
 

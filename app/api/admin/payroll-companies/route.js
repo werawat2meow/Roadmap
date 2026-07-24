@@ -4,42 +4,144 @@ import { writeActivityLog } from "@/lib/activityLogger";
 
 const payrollCompanySelect = `
   id,
+
   payroll_company_code,
   payroll_company_name,
+
   company_id,
-  tax_id,
+
   social_security_no,
-  address,
-  phone,
-  email,
+
+  payroll_type_id,
+  payment_day,
+
   status,
   sort_order,
+
   created_at,
   updated_at,
+
   companies (
+    id,
     company_code,
     company_name_th,
-    company_name_en
+    company_name_en,
+    tax_id,
+    branch_no,
+    address,
+    province,
+    district,
+    subdistrict,
+    postcode,
+    phone,
+    email,
+    website
+  ),
+
+  payroll_types (
+    id,
+    payroll_type_code,
+    payroll_type_name,
+    payment_frequency,
+    default_payment_day
   )
 `;
 
 function mapPayrollCompany(item) {
   return {
     id: item.id,
-    payroll_company_code: item.payroll_company_code,
-    payroll_company_name: item.payroll_company_name,
-    company_id: item.company_id || "",
-    company_code: item.companies?.company_code || "",
-    company_name: item.companies?.company_name_th || item.companies?.company_name_en || "-",
-    tax_id: item.tax_id || "",
-    social_security_no: item.social_security_no || "",
-    address: item.address || "",
-    phone: item.phone || "",
-    email: item.email || "",
-    status: item.status || "active",
-    sort_order: Number(item.sort_order || 0),
-    created_at: item.created_at,
-    updated_at: item.updated_at,
+
+    payroll_company_code:
+      item.payroll_company_code || "",
+
+    payroll_company_name:
+      item.payroll_company_name || "",
+
+    company_id:
+      item.company_id || "",
+
+    company_code:
+      item.companies?.company_code || "",
+
+    company_name:
+      item.companies?.company_name_th ||
+      item.companies?.company_name_en ||
+      "-",
+
+    company_name_th:
+      item.companies?.company_name_th || "",
+
+    company_name_en:
+      item.companies?.company_name_en || "",
+
+    company_tax_id:
+      item.companies?.tax_id || "",
+
+    company_branch_no:
+      item.companies?.branch_no || "",
+
+    company_address:
+      item.companies?.address || "",
+
+    company_province:
+      item.companies?.province || "",
+
+    company_district:
+      item.companies?.district || "",
+
+    company_subdistrict:
+      item.companies?.subdistrict || "",
+
+    company_postcode:
+      item.companies?.postcode || "",
+
+    company_phone:
+      item.companies?.phone || "",
+
+    company_email:
+      item.companies?.email || "",
+
+    company_website:
+      item.companies?.website || "",
+
+    social_security_no:
+      item.social_security_no || "",
+
+    payroll_type_id:
+      item.payroll_type_id || "",
+
+    payroll_type_code:
+      item.payroll_types?.payroll_type_code || "",
+
+    payroll_type_name:
+      item.payroll_types?.payroll_type_name || "",
+
+    payment_frequency:
+      item.payroll_types?.payment_frequency || "",
+
+    default_payment_day:
+      item.payroll_types?.default_payment_day === null ||
+      item.payroll_types?.default_payment_day === undefined
+        ? null
+        : Number(item.payroll_types.default_payment_day),
+
+    payment_day:
+      item.payment_day === null ||
+      item.payment_day === undefined
+        ? null
+        : Number(item.payment_day),
+
+    status:
+      item.status || "active",
+
+    sort_order:
+      Number(item.sort_order || 0),
+
+    created_at:
+      item.created_at,
+
+    updated_at:
+      item.updated_at,
   };
 }
 
@@ -73,7 +175,7 @@ export async function GET(req) {
             item.company_name
               ?.toLowerCase()
               .includes(search) ||
-            item.tax_id
+            item.company_tax_id
               ?.toLowerCase()
               .includes(search)
           );
@@ -110,13 +212,11 @@ export async function POST(req) {
     const payroll_company_code = body?.payroll_company_code?.trim()?.toUpperCase();
     const payroll_company_name = body?.payroll_company_name?.trim();
     const company_id = body?.company_id || null;
-    const tax_id = body?.tax_id?.trim() || null;
     const social_security_no = body?.social_security_no?.trim() || null;
-    const address = body?.address?.trim() || null;
-    const phone = body?.phone?.trim() || null;
-    const email = body?.email?.trim() || null;
     const status = body?.status || "active";
     const sort_order = Number(body?.sort_order || 0);
+    const payroll_type_id = body?.payroll_type_id || null;
+    const payment_day = body?.payment_day === "" || body?.payment_day === null || body?.payment_day === undefined ? payrollType.default_payment_day : Number(body.payment_day);
 
     if (!payroll_company_code || !payroll_company_name) {
       return NextResponse.json(
@@ -128,11 +228,67 @@ export async function POST(req) {
       );
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+
+    if ( payment_day !== null && ( !Number.isInteger(Number(payment_day)) || Number(payment_day) < 1 ||  Number(payment_day) > 31)) {
       return NextResponse.json(
         {
           success: false,
-          error: "กรุณากรอก Email ให้ถูกต้อง",
+          error: "วันที่จ่ายเงินเดือนต้องอยู่ระหว่าง 1 ถึง 31",
+        },
+        { status: 400 }
+      );
+    }
+
+
+    if (!company_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Company Master",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!payroll_type_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือกประเภท Payroll",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: payrollType, error: payrollTypeError } =
+      await supabaseAdmin
+        .from("payroll_types")
+        .select(`
+          id,
+          payment_frequency,
+          default_payment_day,
+          status
+        `)
+        .eq("id", payroll_type_id)
+        .maybeSingle();
+
+    if (payrollTypeError) throw payrollTypeError;
+
+    if (!payrollType) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ไม่พบประเภท Payroll ที่เลือก",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (payrollType.status !== "active") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ประเภท Payroll ที่เลือกถูกปิดใช้งาน",
         },
         { status: 400 }
       );
@@ -160,11 +316,9 @@ export async function POST(req) {
       payroll_company_code,
       payroll_company_name,
       company_id,
-      tax_id,
       social_security_no,
-      address,
-      phone,
-      email,
+      payroll_type_id,
+      payment_day,
       status,
       sort_order,
     };

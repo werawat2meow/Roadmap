@@ -6,11 +6,13 @@ import { swalSuccess, swalError } from "../components/Swal";
 import { Form, Input, Button, Alert, Card, Typography } from "antd";
 import { UserOutlined, LockOutlined, EyeTwoTone, EyeInvisibleOutlined } from "@ant-design/icons";
 import Image from "next/image";
+import { useAuth } from "@/contexts/AuthContext"; 
 
 const { Title, Text } = Typography;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth(); 
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,7 +42,7 @@ export default function LoginPage() {
       }
 
       swalSuccess("Login สำเร็จ");
-      localStorage.setItem("employee_user", JSON.stringify(data.user));
+      await refreshUser();
       router.push("/admin");
       router.refresh();
 

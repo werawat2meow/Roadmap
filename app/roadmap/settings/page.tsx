@@ -62,7 +62,7 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
 
   const visibleCategories = useMemo(() => {
     if (tab === 'ทั้งหมด') return categories;
@@ -290,10 +290,9 @@ export default function SettingsPage() {
   }
 };
 
-  useEffect(() => {
-    const found = users.find((user) => user.id === selectedUserId) ?? users[0] ?? null;
-    setSelectedUser(found);
-  }, [users, selectedUserId]);
+const selectedUser = useMemo(() => {
+  return users.find((user) => user.id === selectedUserId) ?? users[0] ?? null;
+}, [users, selectedUserId]);
 
   const handleUpdateUser = async (updatedUser: User) => {
     try {
@@ -333,7 +332,6 @@ export default function SettingsPage() {
         prev.map((user) => (user.id === nextUser.id ? nextUser : user))
       );
 
-      setSelectedUser(nextUser); // <--- เพิ่ม
       setSelectedUserId(nextUser.id); // <--- เพิ่ม
 
       return nextUser;
@@ -380,6 +378,7 @@ export default function SettingsPage() {
                   menus: access?.menus ?? [],
                 } as User;
               })
+              .filter((user: User) => user.menus.length > 0) // แสดงเฉพาะพนักงานที่มี access เมนู
             : [];
 
         setUsers(mappedUsers);

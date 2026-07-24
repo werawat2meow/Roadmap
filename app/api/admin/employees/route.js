@@ -84,11 +84,14 @@ function mapEmployee(item) {
     resignation_date: item.resignation_date || "",
     employee_status_name: item.employee_statuses?.status_name || "-",
     employee_status_color: item.employee_statuses?.color || "slate",
+    company_id: item.company_id || "",
     branch_id: item.branch_id || "",
     department_id: item.department_id || "",
     division_id: item.division_id || "",
     unit_id: item.unit_id || "",
     position_id: item.position_id || "",
+    company_code: item.companies?.company_code || "",
+    company_name: item.companies?.company_name_th || item.companies?.company_name_en || "-",
     branch_name: item.branches?.branch_name || "-",
     department_name: item.departments?.department_name || "-",
     division_name: item.divisions?.division_name || "-",
@@ -96,7 +99,72 @@ function mapEmployee(item) {
     position_name: item.positions?.position_name || "-",
     position_level: item.positions?.position_level || "",
     branch_group_id: item.branch_group_id || "",
-    job_id: item.job_id || "",
+    branch_group_code: item.branch_groups?.group_code || "",
+    branch_group_name:item.branch_groups?.group_name || "-",
+    branch_group_color:item.branch_groups?.group_color || "",
+    job_id:item.job_id || "",
+    job_code:item.jobs?.job_code || "",
+    job_name:item.jobs?.job_name || "-",
+    job_level:item.jobs?.job_level || "",
+    management_level:item.jobs?.management_level ||item.positions?.position_level ||"",
+    scope_type:item.jobs?.scope_type || "",
+    job_color:item.jobs?.job_color || "",
+    job_icon:item.jobs?.job_icon || "",
+    can_manage_employees:Boolean(item.jobs?.can_manage_employees),
+    can_approve_budget: Boolean(item.jobs?.can_approve_budget),
+
+    /*
+    * ส่ง Object เดิมไปด้วย
+    * เพื่อรองรับหน้าที่อ่าน employee.jobs.management_level
+    */
+    jobs: item.jobs
+      ? {
+          job_code:
+            item.jobs.job_code || "",
+
+          job_name:
+            item.jobs.job_name || "-",
+
+          job_level:
+            item.jobs.job_level || "",
+
+          management_level:
+            item.jobs.management_level ||
+            "",
+
+          scope_type:
+            item.jobs.scope_type || "",
+
+          job_color:
+            item.jobs.job_color || "",
+
+          job_icon:
+            item.jobs.job_icon || "",
+
+          can_manage_employees:
+            Boolean(
+              item.jobs.can_manage_employees
+            ),
+
+          can_approve_budget:
+            Boolean(
+              item.jobs.can_approve_budget
+            ),
+        }
+      : null,
+
+    positions: item.positions
+      ? {
+          position_name:
+            item.positions.position_name ||
+            "-",
+
+          position_level:
+            item.positions.position_level ||
+            "",
+        }
+      : null,
+
     management_assignment_id: item.management_assignment_id || "",
     created_at: item.created_at,
     probation_days: item.probation_days ?? null,
@@ -111,6 +179,20 @@ function mapEmployee(item) {
     cost_center_name: item.cost_centers?.cost_center_name || "-",
     profit_center_code: item.profit_centers?.profit_center_code || "",
     profit_center_name: item.profit_centers?.profit_center_name || "-",
+    payroll_company_id: item.payroll_company_id || "",
+    payroll_type_id: item.payroll_type_id || "",
+    payroll_company_code: item.payroll_companies?.payroll_company_code || "",
+    payroll_company_name: item.payroll_companies?.payroll_company_name || "-",
+    payroll_payment_day: item.payroll_companies?.payment_day === null || item.payroll_companies?.payment_day === undefined ? null : Number(item.payroll_companies.payment_day),
+    payroll_company_master_id: item.payroll_companies?.companies?.id || "",
+    payroll_company_master_code: item.payroll_companies?.companies?.company_code || "",
+    payroll_company_master_name: item.payroll_companies?.companies?.company_name_th || item.payroll_companies?.companies?.company_name_en || "-",
+    payroll_company_tax_id: item.payroll_companies?.companies?.tax_id || "",
+    payroll_type_code: item.payroll_types?.payroll_type_code || "",
+    payroll_type_name: item.payroll_types?.payroll_type_name || "-",
+    payment_frequency: item.payroll_types?.payment_frequency || "",
+    default_payment_day: item.payroll_types?.default_payment_day === null || item.payroll_types?.default_payment_day === undefined ? null : Number(item.payroll_types.default_payment_day),
+
   };
 }
 
@@ -218,6 +300,7 @@ export async function GET(req) {
         status,
         employee_status_id,
         resignation_date,
+        company_id,
         branch_id,
         department_id,
         division_id,
@@ -229,11 +312,20 @@ export async function GET(req) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
+        payroll_company_id,
+        payroll_type_id,
         created_at,
         citizen_id,
         passport_no,
         birth_date,
         line_id,
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
+        ),
         branch_groups (
           group_code,
           group_name,
@@ -281,6 +373,29 @@ export async function GET(req) {
         profit_centers (
           profit_center_code,
           profit_center_name
+        ),
+        payroll_companies (
+          id,
+          payroll_company_code,
+          payroll_company_name,
+          payroll_type_id,
+          payment_day,
+          status,
+          companies (
+            id,
+            company_code,
+            company_name_th,
+            company_name_en,
+            tax_id
+          )
+        ),
+        payroll_types (
+          id,
+          payroll_type_code,
+          payroll_type_name,
+          payment_frequency,
+          default_payment_day,
+          status
         )
       `,
         { count: "exact" }
@@ -411,6 +526,7 @@ export async function POST(req) {
     const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
 
+    const company_id = body?.company_id || null;
     const branch_group_id = body?.branch_group_id || null;
     const branch_id = body?.branch_id || null;
     const department_id = body?.department_id || null;
@@ -422,6 +538,8 @@ export async function POST(req) {
     const business_unit_id = body?.business_unit_id || null;
     const cost_center_id = body?.cost_center_id || null;
     const profit_center_id = body?.profit_center_id || null;
+    const payroll_company_id = body?.payroll_company_id || null;
+    const payroll_type_id = body?.payroll_type_id || null;
 
     let probation_days = null;
     let probation_end_date = null;
@@ -471,6 +589,103 @@ export async function POST(req) {
       );
     }
 
+    if (!payroll_company_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Payroll Company",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!payroll_type_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือกประเภท Payroll",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: selectedPayrollCompany, error: payrollCompanyError, } = await supabaseAdmin
+      .from("payroll_companies")
+      .select(`
+        id,
+        payroll_type_id,
+        status,
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          tax_id
+        )
+      `)
+      .eq("id", payroll_company_id)
+      .maybeSingle();
+
+    if (payrollCompanyError) {
+      throw payrollCompanyError;
+    }
+
+    if (!selectedPayrollCompany) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ไม่พบ Payroll Company ที่เลือก",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (selectedPayrollCompany.status !== "active") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Payroll Company ที่เลือกถูกปิดใช้งาน",
+        },
+        { status: 400 }
+      );
+    }
+
+
+    const {data: selectedPayrollType,error: payrollTypeError,} = await supabaseAdmin
+      .from("payroll_types")
+      .select(`
+        id,
+        payroll_type_code,
+        payroll_type_name,
+        payment_frequency,
+        default_payment_day,
+        status
+      `)
+      .eq("id", payroll_type_id)
+      .maybeSingle();
+
+    if (payrollTypeError) {
+      throw payrollTypeError;
+    }
+
+    if (!selectedPayrollType) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ไม่พบประเภท Payroll ที่เลือก",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (selectedPayrollType.status !== "active") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ประเภท Payroll ที่เลือกถูกปิดใช้งาน",
+        },
+        { status: 400 }
+      );
+    }
 
     if (employment_type) {
       const { data: employmentTypeData, error: employmentTypeError } =
@@ -512,6 +727,11 @@ export async function POST(req) {
         .from("jobs")
         .select(`
           id,
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
           business_unit_required,
           cost_center_required,
           profit_center_required,
@@ -523,6 +743,74 @@ export async function POST(req) {
       if (jobError) throw jobError;
 
       selectedJob = jobData;
+
+      const jobScopeType = selectedJob?.scope_type || "";
+
+      if (jobScopeType === "company" && !company_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกบริษัทสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch_group" && !branch_group_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกกรุ๊ปสังกัดสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch" && !branch_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกสาขาสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "department" && !department_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกแผนกสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "division" && !division_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกฝ่ายสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if ( jobScopeType === "unit" && !unit_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "กรุณาเลือกหน่วยงานสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
 
       if (selectedJob?.business_unit_required && !business_unit_id) {
         return NextResponse.json(
@@ -591,7 +879,7 @@ export async function POST(req) {
       employee_status_id,
       resignation_date,
       status,
-
+      company_id,
       branch_group_id,
       branch_id,
       department_id,
@@ -603,6 +891,8 @@ export async function POST(req) {
       business_unit_id,
       cost_center_id,
       profit_center_id,
+      payroll_company_id,
+      payroll_type_id,
       employee_type_digit,
       employee_year_2d,
       employee_running_no,
@@ -639,6 +929,7 @@ export async function POST(req) {
         probation_days,
         probation_end_date,
         probation_status,
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -650,13 +941,22 @@ export async function POST(req) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
-
+        payroll_company_id,
+        payroll_type_id,
         created_at,
         updated_at,
 
         employee_statuses (
           status_name,
           color
+        ),
+
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
         ),
 
         branch_groups (
@@ -705,7 +1005,30 @@ export async function POST(req) {
           profit_center_code,
           profit_center_name
         ),
+        payroll_companies (
+          id,
+          payroll_company_code,
+          payroll_company_name,
+          payroll_type_id,
+          payment_day,
+          status,
 
+          companies (
+            id,
+            company_code,
+            company_name_th,
+            company_name_en,
+            tax_id
+          )
+        ),
+        payroll_types (
+          id,
+          payroll_type_code,
+          payroll_type_name,
+          payment_frequency,
+          default_payment_day,
+          status
+        ),
         jobs (
           job_code,
           job_name,

@@ -1,19 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Layout, Avatar, Tag, Button, Tooltip, Dropdown } from "antd";
-import {UserOutlined,LogoutOutlined,LoadingOutlined,HomeOutlined,KeyOutlined,} from "@ant-design/icons";
-import useAuth from "@/hooks/useAuth";
+import {
+  UserOutlined,
+  LogoutOutlined,
+  LoadingOutlined,
+  HomeOutlined,
+  KeyOutlined,
+} from "@ant-design/icons";
+import { useAuth } from "@/contexts/AuthContext";
 import { swalSuccess, swalError, swalConfirm } from "../components/Swal";
+import { NO_HEADER_PREFIXES } from "./_config/noHeaderPrefixes";
 
 const { Header, Content } = Layout;
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, setUser } = useAuth();
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // เช็คว่า path ปัจจุบันอยู่ในระบบย่อยที่มี layout ของตัวเองอยู่แล้วหรือไม่
+  // ถ้าใช่ -> ไม่ต้องแสดง Header ตัวนี้ซ้อนทับ
+  const hideHeader = useMemo(
+    () => NO_HEADER_PREFIXES.some((p) => pathname.startsWith(p)),
+    [pathname]
+  );
+
+  useEffect(() => {
+    if (hideHeader) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+
+        if (currentScrollY < 80) {
+          setShowHeader(true);
+        } else if (currentScrollY > lastScrollY.current) {
+          setShowHeader(false);
+        } else {
+          setShowHeader(true);
+        }
+
+        lastScrollY.current = currentScrollY;
+        ticking = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hideHeader]);
 
   const handleLogout = async () => {
     const result = await swalConfirm(
@@ -42,7 +86,7 @@ export default function AdminLayout({ children }) {
 
       swalSuccess("Logout สำเร็จ");
       router.push("/login");
-      router.refresh();
+      // router.refresh();
     } catch (error) {
       console.error("LOGOUT_ERROR:", error);
       swalError(error?.message || "Logout failed");
@@ -77,9 +121,19 @@ export default function AdminLayout({ children }) {
     },
   ];
 
+  // 🔑 ระบบย่อย (Employee Master, Benefit, ...) มี sidebar/layout ของตัวเองอยู่แล้ว
+  // ไม่ต้องมี Header ตัวนี้ครอบซ้อนอีกชั้น
+  if (hideHeader) {
+    return <>{children}</>;
+  }
+
   return (
     <Layout className="min-h-screen bg-slate-100">
-      <Header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-[#06192c] px-3 sm:px-4 lg:px-8">
+      <Header
+        className={`fixed top-0 left-0 right-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-[#06192c] px-3 transition-transform duration-300 ease-in-out sm:px-4 lg:px-8 ${
+          showHeader ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
         <button
           type="button"
           onClick={() => router.push("/admin")}
@@ -147,7 +201,7 @@ export default function AdminLayout({ children }) {
         </div>
       </Header>
 
-      <Content>{children}</Content>
+      <Content className="pt-16">{children}</Content>
     </Layout>
   );
 }

@@ -39,6 +39,7 @@ function mapEmployee(data) {
     employee_status_name: data.employee_statuses?.status_name || "-",
     employee_status_color: data.employee_statuses?.color || "slate",
 
+    company_id: data.company_id || "",
     branch_group_id: data.branch_group_id || "",
     branch_id: data.branch_id || "",
     department_id: data.department_id || "",
@@ -47,6 +48,8 @@ function mapEmployee(data) {
     position_id: data.position_id || "",
     job_id: data.job_id || "",
     management_assignment_id: data.management_assignment_id || "",
+    company_code: data.companies?.company_code || "",
+    company_name: data.companies?.company_name_th || data.companies?.company_name_en || "-",
 
     branch_group_code: data.branch_groups?.group_code || "",
     branch_group_name: data.branch_groups?.group_name || "-",
@@ -63,12 +66,12 @@ function mapEmployee(data) {
     job_code: data.jobs?.job_code || "",
     job_name: data.jobs?.job_name || "-",
     job_level: data.jobs?.job_level || "",
-    management_level: data.jobs?.management_level || "",
+    management_level: data.jobs?.management_level || data.positions?.position_level || "",
     scope_type: data.jobs?.scope_type || "",
     job_color: data.jobs?.job_color || "#E2E8F0",
     job_icon: data.jobs?.job_icon || "",
-    can_manage_employees: data.jobs?.can_manage_employees || false,
-    can_approve_budget: data.jobs?.can_approve_budget || false,
+    can_manage_employees: Boolean(data.jobs?.can_manage_employees),
+    can_approve_budget: Boolean(data.jobs?.can_approve_budget),
 
     probation_days: data.probation_days ?? null,
     probation_end_date: data.probation_end_date || "",
@@ -79,15 +82,25 @@ function mapEmployee(data) {
     business_unit_id: data.business_unit_id || "",
     cost_center_id: data.cost_center_id || "",
     profit_center_id: data.profit_center_id || "",
-
     business_unit_code: data.business_units?.business_unit_code || "",
     business_unit_name: data.business_units?.business_unit_name || "-",
-
     cost_center_code: data.cost_centers?.cost_center_code || "",
     cost_center_name: data.cost_centers?.cost_center_name || "-",
-
     profit_center_code: data.profit_centers?.profit_center_code || "",
     profit_center_name: data.profit_centers?.profit_center_name || "-",
+    payroll_company_id: data.payroll_company_id || "",
+    payroll_type_id: data.payroll_type_id || "",
+    payroll_company_code: data.payroll_companies?.payroll_company_code || "",
+    payroll_company_name: data.payroll_companies?.payroll_company_name || "-",
+    payroll_payment_day:data.payroll_companies?.payment_day === null || data.payroll_companies?.payment_day === undefined ? null : Number(data.payroll_companies.payment_day),
+    payroll_company_master_id: data.payroll_companies?.companies?.id || "",
+    payroll_company_master_code: data.payroll_companies?.companies?.company_code || "",
+    payroll_company_master_name: data.payroll_companies?.companies?.company_name_th || data.payroll_companies?.companies?.company_name_en || "-",
+    payroll_company_tax_id: data.payroll_companies?.companies?.tax_id || "",
+    payroll_type_code: data.payroll_types?.payroll_type_code || "",
+    payroll_type_name: data.payroll_types?.payroll_type_name || "-",
+    payment_frequency: data.payroll_types?.payment_frequency || "",
+    default_payment_day: data.payroll_types?.default_payment_day === null || data.payroll_types?.default_payment_day === undefined ? null : Number(data.payroll_types.default_payment_day),
   };
 }
 
@@ -119,7 +132,7 @@ export async function PATCH(req, { params }) {
     const employee_status_id = body?.employee_status_id || null;
     const resignation_date = body?.resignation_date || null;
     const status = body?.status || "active";
-
+    const company_id = body?.company_id || null;
     const branch_group_id = body?.branch_group_id || null;
     const branch_id = body?.branch_id || null;
     const department_id = body?.department_id || null;
@@ -131,6 +144,8 @@ export async function PATCH(req, { params }) {
     const business_unit_id = body?.business_unit_id || null;
     const cost_center_id = body?.cost_center_id || null;
     const profit_center_id = body?.profit_center_id || null;
+    const payroll_company_id = body?.payroll_company_id || null;
+    const payroll_type_id = body?.payroll_type_id || null;
 
     let probation_days = null;
     let probation_end_date = null;
@@ -179,6 +194,31 @@ export async function PATCH(req, { params }) {
     }
 
 
+    if (!payroll_company_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Payroll Company",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (!payroll_type_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเลือก Payroll Type",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+
     if (employment_type) {
       const { data: employmentTypeData, error: employmentTypeError } =
         await supabaseAdmin
@@ -210,6 +250,11 @@ export async function PATCH(req, { params }) {
         .from("jobs")
         .select(`
           id,
+          job_code,
+          job_name,
+          job_level,
+          management_level,
+          scope_type,
           business_unit_required,
           cost_center_required,
           profit_center_required,
@@ -219,6 +264,78 @@ export async function PATCH(req, { params }) {
         .maybeSingle();
 
       if (jobError) throw jobError;
+
+      if (!selectedJob) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "ไม่พบ Job ที่เลือก",
+          },
+          { status: 400 }
+        );
+      }
+
+      const jobScopeType = selectedJob.scope_type || "";
+
+      if (jobScopeType === "company" && !company_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "กรุณาเลือกบริษัทสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if ( jobScopeType === "branch_group" && !branch_group_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกกรุ๊ปสังกัดสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "branch" && !branch_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "กรุณาเลือกสาขาสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "department" && !department_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกแผนกสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "division" && !division_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกฝ่ายสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (jobScopeType === "unit" && !unit_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:"กรุณาเลือกหน่วยงานสำหรับ Job นี้",
+          },
+          { status: 400 }
+        );
+      }
 
       if (selectedJob?.business_unit_required && !business_unit_id) {
         return NextResponse.json(
@@ -240,6 +357,62 @@ export async function PATCH(req, { params }) {
           { status: 400 }
         );
       }
+    }
+
+    const { data: payrollCompany, error: payrollCompanyError,} =
+      await supabaseAdmin
+        .from("payroll_companies")
+        .select(`
+          id,
+          payroll_type_id,
+          payment_day,
+          status
+        `)
+        .eq("id", payroll_company_id)
+        .maybeSingle();
+
+    if (payrollCompanyError)
+      throw payrollCompanyError;
+
+    if (!payrollCompany) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ไม่พบ Payroll Company",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+
+    const {data: payrollType,error: payrollTypeError,} = await supabaseAdmin
+      .from("payroll_types")
+      .select(`
+        id,
+        payment_frequency,
+        default_payment_day,
+        status
+      `)
+      .eq("id", payroll_type_id)
+      .maybeSingle();
+
+    if (payrollTypeError)
+      throw payrollTypeError;
+
+    if (!payrollType) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ไม่พบ Payroll Type",
+        },
+        {
+          status: 400,
+        }
+      );
     }
 
     const { data: oldEmployee, error: oldEmployeeError } = await supabaseAdmin
@@ -272,7 +445,7 @@ export async function PATCH(req, { params }) {
         employee_status_id,
         resignation_date,
         status,
-
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -284,6 +457,8 @@ export async function PATCH(req, { params }) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
+        payroll_company_id,
+        payroll_type_id,
 
         probation_days,
         probation_end_date,
@@ -321,7 +496,7 @@ export async function PATCH(req, { params }) {
         status,
         employee_status_id,
         resignation_date,
-
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
@@ -333,12 +508,21 @@ export async function PATCH(req, { params }) {
         business_unit_id,
         cost_center_id,
         profit_center_id,
+        payroll_company_id,
+        payroll_type_id,
         created_at,
         updated_at,
 
         employee_statuses (
           status_name,
           color
+        ),
+        companies (
+          id,
+          company_code,
+          company_name_th,
+          company_name_en,
+          tax_id
         ),
         branch_groups (
           group_code,
@@ -383,6 +567,29 @@ export async function PATCH(req, { params }) {
         profit_centers (
           profit_center_code,
           profit_center_name
+        ),
+        payroll_companies (
+          id,
+          payroll_company_code,
+          payroll_company_name,
+          payroll_type_id,
+          payment_day,
+
+          companies (
+            id,
+            company_code,
+            company_name_th,
+            company_name_en,
+            tax_id
+          )
+        ),
+        payroll_types (
+          id,
+          payroll_type_code,
+          payroll_type_name,
+          payment_frequency,
+          default_payment_day,
+          status
         )
       `)
       .eq("id", id)

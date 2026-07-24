@@ -1,8 +1,44 @@
 "use client";
 
-import {FileTextOutlined,FundProjectionScreenOutlined,DollarOutlined,PartitionOutlined,ProfileOutlined,EnvironmentOutlined,AppstoreOutlined,HomeOutlined,DashboardOutlined,WarningOutlined,ShopOutlined,BankOutlined,ApartmentOutlined,ClusterOutlined,TeamOutlined,SolutionOutlined,UserOutlined,IdcardOutlined,UsergroupAddOutlined,SafetyOutlined,LockOutlined,KeyOutlined,SafetyCertificateOutlined,AuditOutlined,ApiOutlined,BarChartOutlined,ToolOutlined,} from "@ant-design/icons";
+import {
+  NodeIndexOutlined,
+  StarOutlined,
+  TagsOutlined,
+  FileTextOutlined,
+  FundProjectionScreenOutlined,
+  DollarOutlined,
+  PartitionOutlined,
+  ProfileOutlined,
+  EnvironmentOutlined,
+  AppstoreOutlined,
+  HomeOutlined,
+  DashboardOutlined,
+  WarningOutlined,
+  ShopOutlined,
+  BankOutlined,
+  ApartmentOutlined,
+  ClusterOutlined,
+  TeamOutlined,
+  SolutionOutlined,
+  UserOutlined,
+  IdcardOutlined,
+  UsergroupAddOutlined,
+  SafetyOutlined,
+  LockOutlined,
+  KeyOutlined,
+  SafetyCertificateOutlined,
+  AuditOutlined,
+  ApiOutlined,
+  BarChartOutlined,
+  ToolOutlined,
+  WalletOutlined,
+  AccountBookOutlined,
+} from "@ant-design/icons";
 
 export const sidebarMenus = [
+  /* =========================================================
+   * MAIN
+   * ========================================================= */
   {
     title: "MAIN",
     icon: <HomeOutlined />,
@@ -22,8 +58,11 @@ export const sidebarMenus = [
     ],
   },
 
+  /* =========================================================
+   * ORGANIZATION
+   * ========================================================= */
   {
-    title: "ORGANIZATION",
+    title: "ORGANIZATION *",
     icon: <BankOutlined />,
     items: [
       {
@@ -62,6 +101,16 @@ export const sidebarMenus = [
         icon: <TeamOutlined />,
         permission: "ems.units.view",
       },
+    ],
+  },
+
+  /* =========================================================
+   * JOB ARCHITECTURE    กลุ่มสายงานตำแหน่ง ในบริษัท 
+   * ========================================================= */
+  {
+    title: "JOB ARCHITECTURE",
+    icon: <ProfileOutlined />,
+    items: [
       {
         label: "ตำแหน่ง",
         href: "/admin/positions",
@@ -69,10 +118,28 @@ export const sidebarMenus = [
         permission: "ems.positions.view",
       },
       {
-        label: "บทบาทงาน / โครงสร้างธุรกิจ",
-        href: "/admin/jobs",
-        icon: <ProfileOutlined  />,
-        permission: "ems.jobs.view",
+        label: "กลุ่มสายงาน",
+        href: "/admin/position-families",
+        icon: <ProfileOutlined />,
+        permission: "ems.position_families.view",
+      },
+      {
+        label: "ระดับของกลุ่มสายงาน",
+        href: "/admin/position-family-levels",
+        icon: <NodeIndexOutlined />,
+        permission: "ems.position_family_levels.view",
+      },
+      {
+        label: "ระดับตำแหน่ง",
+        href: "/admin/position-levels",
+        icon: <TagsOutlined />,
+        permission: "ems.position_levels.view",
+      },
+      {
+        label: "โครงสร้างเงินเดือน",
+        href: "/admin/position-level-bands",
+        icon: <DollarOutlined />,
+        permission: "ems.position_level_bands.view",
       },
       {
         label: "ตำแหน่งตามหน่วย",
@@ -80,19 +147,129 @@ export const sidebarMenus = [
         icon: <PartitionOutlined />,
         permission: "ems.unit_positions.view",
       },
+      {
+        label: "บทบาทงาน / โครงสร้างธุรกิจ",
+        href: "/admin/jobs",
+        icon: <ProfileOutlined />,
+        permission: "ems.jobs.view",
+      },
+      {
+        label: "เส้นทางอาชีพ",
+        href: "/admin/career-paths",
+        icon: <ApartmentOutlined />,
+        permission: "ems.career_paths.view",
+      },
+
+      // =====================================================
+      // Future
+      // =====================================================
+      // {
+      //   label: "นโยบายค่าตอบแทน",
+      //   href: "/admin/compensation-policies",
+      //   icon: <SafetyCertificateOutlined />,
+      //   permission: "ems.compensation_policies.view",
+      // },
     ],
   },
 
-  {
-    title: "ACCOUNTING STRUCTURE",
-    icon: <DollarOutlined />,
+  /* =========================================================
+   * SKILL & COMPETENCY    โครงสร้างข้อมูลด้านทักษะ/สมรรถนะของพนักงาน
+   * ========================================================= */
+   {
+    title: "SKILL & COMPETENCY",
+    icon: <StarOutlined />,
     items: [
+      {
+        label: "หมวดหมู่ทักษะ",
+        href: "/admin/skill-categories",
+        icon: <AppstoreOutlined />,
+        permission: "ems.skill_categories.view",
+      },
+      {
+        label: "จัดการทักษะ",
+        href: "/admin/skills",
+        icon: <ToolOutlined />,
+        permission: "ems.skills.view",
+      },
+      {
+        label: "ระดับทักษะ",
+        href: "/admin/skill-levels",
+        icon: <TagsOutlined />,
+        permission: "ems.skill_levels.view",
+      },
+
+      // ===============================
+      // Competency Master
+      // ===============================
+
+      {
+        label: "จัดการสมรรถนะ",
+        href: "/admin/competencies",
+        icon: <StarOutlined />,
+        permission: "ems.competencies.view",
+      },
+      {
+        label: "ระดับสมรรถนะ",
+        href: "/admin/competency-levels",
+        icon: <TagsOutlined />,
+        permission: "ems.competency_levels.view",
+      },
+
+      // ===============================
+      // Mapping
+      // ===============================
+
+      {
+        label: "ทักษะตำแหน่ง",
+        href: "/admin/position-skills",
+        icon: <NodeIndexOutlined />,
+        permission: "ems.position_skills.view",
+      },
+      {
+        label: "สมรรถนะตำแหน่ง",
+        href: "/admin/position-competencies",
+        icon: <NodeIndexOutlined />,
+        permission: "ems.position_competencies.view",
+      },
+
+      {
+        label: "ทักษะพนักงาน",
+        href: "/admin/employee-skills",
+        icon: <ToolOutlined />,
+        permission: "ems.employee_skills.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+   * PAYROLL
+   * ========================================================= */
+  {
+    title: "PAYROLL *",
+    icon: <WalletOutlined />,
+    items: [
+      {
+        label: "Payroll Types",
+        href: "/admin/payroll-types",
+        icon: <TagsOutlined />,
+        permission: "ems.payroll_types.view",
+      },
       {
         label: "Payroll Company",
         href: "/admin/payroll-companies",
         icon: <BankOutlined />,
         permission: "ems.payroll_companies.view",
       },
+    ],
+  },
+
+  /* =========================================================
+   * COST STRUCTURE
+   * ========================================================= */
+  {
+    title: "COST STRUCTURE *",
+    icon: <AccountBookOutlined />,
+    items: [
       {
         label: "Business Unit",
         href: "/admin/business-units",
@@ -120,6 +297,9 @@ export const sidebarMenus = [
     ],
   },
 
+  /* =========================================================
+   * EMPLOYEE MASTER
+   * ========================================================= */
   {
     title: "EMPLOYEE MASTER",
     icon: <IdcardOutlined />,
@@ -149,12 +329,6 @@ export const sidebarMenus = [
         permission: "ems.employee_statuses.view",
       },
       {
-        label: "ทักษะ / Skills",
-        href: "/admin/skills",
-        icon: <ToolOutlined />,
-        permission: "ems.skills.view",
-      },
-      {
         label: "รายงานพนักงาน",
         href: "/admin/employee-reports",
         icon: <BarChartOutlined />,
@@ -163,6 +337,9 @@ export const sidebarMenus = [
     ],
   },
 
+  /* =========================================================
+   * USER ACCESS
+   * ========================================================= */
   {
     title: "USER ACCESS",
     icon: <SafetyCertificateOutlined />,
@@ -186,13 +363,13 @@ export const sidebarMenus = [
         permission: "access.permissions.view",
       },
       {
-        label: "กำหนดสิทธิ์การใช้งานให้แต่ละ บทบาทหน้าที่",
+        label: "กำหนดสิทธิ์การใช้งานให้แต่ละบทบาทหน้าที่",
         href: "/admin/role-permissions",
         icon: <LockOutlined />,
         permission: "access.role_permissions.view",
       },
       {
-        label: "log activity",
+        label: "Activity Logs",
         href: "/admin/activity-logs",
         icon: <AuditOutlined />,
         permission: "access.activity_logs.view",
@@ -200,6 +377,9 @@ export const sidebarMenus = [
     ],
   },
 
+  /* =========================================================
+   * API MANAGEMENT
+   * ========================================================= */
   {
     title: "API MANAGEMENT",
     icon: <ApiOutlined />,

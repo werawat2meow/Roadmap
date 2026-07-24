@@ -1,6 +1,6 @@
 "use client";
 
-import BaseSelect from "./BaseSelect";
+import BaseSelect from "../BaseSelect";
 
 export default function DepartmentSelect({
   branchId = "",

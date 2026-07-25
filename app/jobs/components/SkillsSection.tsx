@@ -237,6 +237,7 @@ export default function SkillsSection({
 
       <Card
         title={getUIText(uiText.languageSkillsSubSection, locale)}
+        style={{ marginBottom: 24 }}
       >
         <Button
           type="primary"

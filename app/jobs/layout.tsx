@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import LanguageHeader from "@/app/jobs/components/LanguageHeader";
 import { LanguageProvider } from "@/app/jobs/contexts/LanguageContext";
+import { BranchProvider } from "@/app/jobs/contexts/BranchContext";
 import "./job.css";
 
 export const metadata = {
@@ -16,11 +17,10 @@ export default function JobsLayout({
 }) {
   return (
     <LanguageProvider>
-      <LanguageHeader />
-      
-      <main>
-        {children}
-      </main>
+      <BranchProvider>
+        <LanguageHeader />
+        <main>{children}</main>
+      </BranchProvider>
     </LanguageProvider>
   );
 }

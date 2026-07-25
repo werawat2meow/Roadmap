@@ -891,6 +891,7 @@ export default function PersonalInformation({
                     ? "ข้อมูลสุขภาพและประวัติ"
                     : "Health & Criminal Record"
                 }
+                style={{ marginBottom: 24 }}
             >
                 <Row gutter={[16, 16]}>
                     {/* -------------------------------------------------------------- */}

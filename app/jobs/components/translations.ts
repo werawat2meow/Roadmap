@@ -569,6 +569,36 @@ export const uiText = {
     TH: "หลักฐานประกอบการสมัครงาน",
   },
 
+  facebook :{
+    EN:"Facebook",
+    TH:"Facebook",
+  },
+
+  instagram :{
+    EN:"Instagram",
+    TH:"Instagram",
+  },
+
+  jobthai :{
+    EN:"JobThai",
+    TH:"JobThai",
+  },
+
+  jobbkk :{
+    EN:"JobBKK",
+    TH:"JobBKK",
+  },
+
+  linkedin :{
+    EN:"LinkedIn",
+    TH:"LinkedIn",
+  },
+
+  other :{
+    EN:"Other",
+    TH:"อื่น ๆ",
+  },
+
   docPhoto: {
     EN: "1-inch Photograph",
     TH: "รูปถ่ายหน้าตรง 1 นิ้ว",

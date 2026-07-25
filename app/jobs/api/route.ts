@@ -1,7 +1,7 @@
 // app/api/jobs/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     const branchId = searchParams.get("branch_id") ?? "";
     const urgent = searchParams.get("urgent");
     const departmentId = searchParams.get("department_id");
-
+    
     const today = new Date().toISOString().split("T")[0];
 
-    let query = supabase
+    let query = supabaseAdmin
       .from("v_recruit_job_open_detail")
       .select("*")
       .eq("status", true)
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .order("updated_at", { ascending: false });
 
     const { data: jobs, error } = await query;
-
+    
     if (error) throw error;
 
     // -------------------------------
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     let requirementMap: Record<number, any[]> = {};
 
     if (jobDescriptionIds.length) {
-      const { data: requirements, error: requirementError } = await supabase
+      const { data: requirements, error: requirementError } = await supabaseAdmin
         .from("recruit_job_description_requirements")
         .select(`
           job_description_id,

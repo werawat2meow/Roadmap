@@ -7,6 +7,9 @@ import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import Link from "next/link";
 import { readFilters, updateFilter } from "@/app/jobs/lib/filters";
 import { useBranches } from "@/app/jobs/contexts/BranchContext";
+import { uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
+
 
 interface Language {
   id: string;
@@ -119,22 +122,31 @@ export default function LanguageHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden text-sm text-gray-50 sm:block">Language</span>
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
-            value={locale}
-            onChange={handleChange}
-          >
-            {languages.length === 0 ? (
-              <option value="">No language</option>
-            ) : (
-              languages.map((lang) => (
-                <option key={lang.language_slug} value={lang.language_slug}>
-                  {lang.language_name.toUpperCase()}
-                </option>
-              ))
-            )}
-          </select>
+          <div>
+            <button className="Btn">
+              <Link href="/jobs/register/resume">
+                <span>{getUIText(uiText.btnResume, locale)}</span>
+              </Link>
+            </button>
+          </div>
+          <div>
+            {/* <span className="hidden text-sm text-gray-50 sm:block">Language</span> */}
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
+              value={locale}
+              onChange={handleChange}
+            >
+              {languages.length === 0 ? (
+                <option value="">No language</option>
+              ) : (
+                languages.map((lang) => (
+                  <option key={lang.language_slug} value={lang.language_slug}>
+                    {lang.language_name.toUpperCase()}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
       </div>
 

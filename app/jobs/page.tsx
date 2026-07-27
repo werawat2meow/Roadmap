@@ -129,7 +129,7 @@ export default function JobsPage() {
 
         <main className="min-w-0 flex-1">
           <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-            <h1 className="text-2xl font-bold text-gray-900">Find Your Next Career</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Find the perfect job for you.</h1>
             <p className="mt-1 text-sm text-gray-600">
               Discover opportunities from leading companies.
             </p>

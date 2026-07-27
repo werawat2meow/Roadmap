@@ -49,13 +49,13 @@ export default function SidebarContent({
         icon: LayoutList,
       },
       {
-        label: "Schedule interviews",
-        href: "/recruitment/schedule_interviews",
+        label: "Update interview appointment",
+        href: "/recruitment/update_interview_appointment",
         icon: LayoutList,
       },
       {
-        label: "Update interview appointment",
-        href: "/recruitment/update_interview_appointment",
+        label: "Schedule interviews",
+        href: "/recruitment/schedule_interviews",
         icon: LayoutList,
       },
       {

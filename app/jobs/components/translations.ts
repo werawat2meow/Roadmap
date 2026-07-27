@@ -659,6 +659,11 @@ export const uiText = {
     TH: "บันทึกใบสมัคร",
   },
 
+  cancel:{
+    EN:"Cancel",
+    TH:"ยกเลิก",
+  },
+
   saving: {
     EN: "Saving...",
     TH: "กำลังบันทึก...",
@@ -727,7 +732,14 @@ export const uiText = {
   backToJobs:{
     EN:"Back to Job Listings",
     TH:"กลับไปที่รายการประกาศรับสมัครงาน",
-  }
+  },
+
+  btnResume:{
+    EN:"Submit your resume.",
+    TH:"ฝาก Resume",
+  },
+
+
 
 } as const;
 

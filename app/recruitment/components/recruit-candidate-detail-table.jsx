@@ -22,6 +22,7 @@ const STATUS_MAP = {
   6: { label: 'ขาดการสัมภาษณ์', color: 'green' },
   7: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
   8: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
+  15: { label: 'ยื่น Resume', color: 'default' },
   99: { label: 'backlist', color: 'red' },
   0: { label: 'ยกเลิก', color: 'red' },
 };

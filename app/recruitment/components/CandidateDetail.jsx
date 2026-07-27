@@ -30,10 +30,17 @@ const statusColor = {
 };
 
 const statusText = {
-  0: "รอพิจารณา",
-  1: "กำลังพิจารณา",
-  2: "ผ่าน",
-  3: "ไม่ผ่าน",
+  1:"รอพิจารณา",
+  2:"ผ่านการคัดเลือกเข้าสัมภาษณ์",
+  3:"นัดสัมภาษณ์",
+  4:"ยืนยันการสัมภาษณ์",
+  5:"เลื่อนการสัมภาษณ์",
+  6:"ขาดการสัมภาษณ์",
+  7:"ส่งต่อการสัมภาษณ์",
+  8:"ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน",
+  15:"ยื่น Resume",
+  99:"backlist",
+  0:"ยกเลิก",
 };
 
 const APPLICATION_STATUS = [
@@ -45,6 +52,7 @@ const APPLICATION_STATUS = [
   { value: 6, label: "ขาดการสัมภาษณ์" },
   { value: 7, label: "ส่งต่อการสัมภาษณ์" },
   { value: 8, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
+  { value: 15, label: "ยื่น Resume" },
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
 ];
@@ -387,6 +395,10 @@ export default function CandidateDetail({
 
           <Descriptions.Item label="เบอร์โทรศัพท์">
             {value(application.phone_number)}
+          </Descriptions.Item>
+
+          <Descriptions.Item label="E-mail">
+            {value(application.email)}
           </Descriptions.Item>
 
           <Descriptions.Item label="ลักษณะที่อยู่อาศัย">

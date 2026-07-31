@@ -41,30 +41,15 @@ export default function PositionCompetenciesPage() {
   const [importance,setImportance,] = useState("");
   const [status, setStatus] = useState("active");
 
-  /* ============================
-        Pagination
-  ============================ */
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] =useState(0);
 
-  /* ============================
-        Loading
-  ============================ */
-
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  /* ============================
-        Modal
-  ============================ */
-
   const [openModal,setOpenModal,] = useState(false);
   const [editingItem,setEditingItem,] = useState(null);
-
-  /* ============================
-        Load Data
-  ============================ */
 
   const loadData = async (
     currentPage = page,
@@ -156,10 +141,6 @@ export default function PositionCompetenciesPage() {
       setLoading(false);
     }
   };
-
-  /* ============================
-        Load Positions
-  ============================ */
 
   const loadPositions =
     async () => {

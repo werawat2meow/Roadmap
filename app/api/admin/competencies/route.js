@@ -15,24 +15,14 @@ function mapCompetency(item) {
 
     competency_name:
       item.competency_name,
-
-    competency_type:
-      item.competency_type || "",
-
-    description:
-      item.description || "",
-
-    status:
-      item.status,
-
-    sort_order:
-      item.sort_order,
-
-    created_at:
-      item.created_at,
-
-    updated_at:
-      item.updated_at,
+    competency_type_id: item.competency_type_id,
+    competency_type: item.competency_types?.type_code || "",
+    competency_type_name: item.competency_types?.type_name || "",
+    description:item.description || "",
+    status:item.status,
+    sort_order:item.sort_order,
+    created_at:item.created_at,
+    updated_at:item.updated_at,
   };
 }
 
@@ -64,13 +54,23 @@ export async function GET(req) {
 
     let query = supabaseAdmin
       .from("competencies")
-      .select("*", {
-        count: "exact",
-      });
+      .select(
+        `
+          *,
+          competency_types (
+            id,
+            type_code,
+            type_name
+          )
+        `,
+        {
+          count: "exact",
+        }
+      );
 
     if (search) {
       query = query.or(
-        `competency_code.ilike.%${search}%,competency_name.ilike.%${search}%,competency_type.ilike.%${search}%`
+        `competency_code.ilike.%${search}%,competency_name.ilike.%${search}%`
       );
     }
 
@@ -147,7 +147,6 @@ export async function GET(req) {
   }
 }
 
-
 /* =========================
    POST
 ========================= */
@@ -164,9 +163,7 @@ export async function POST(req) {
     const competency_name =
       body?.competency_name?.trim();
 
-    const competency_type =
-      body?.competency_type?.trim() ||
-      null;
+    const competency_type_id = body?.competency_type_id || null;
 
     const description =
       body?.description?.trim() ||
@@ -240,7 +237,7 @@ export async function POST(req) {
       .insert({
         competency_code,
         competency_name,
-        competency_type,
+        competency_type_id,
         description,
         status,
         sort_order,

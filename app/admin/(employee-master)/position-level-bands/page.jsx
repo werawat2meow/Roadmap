@@ -381,3 +381,16 @@ export default function PositionLevelBandsPage() {
     </Card>
   );
 }
+
+
+
+/****
+ * 
+ * 
+ *  คิดเรื่องเงินเดือน ต่างชาติที่มี passport/ พม่า ที่ไม่มี passport    แล้วมีการจ่ายจริง และมีการเสียภาษี 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */

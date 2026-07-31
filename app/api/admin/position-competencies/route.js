@@ -11,42 +11,31 @@ function mapPositionCompetency(item) {
     id: item.id,
 
     position_id: item.position_id,
-    position_code:
-      item.positions?.position_code || "",
-    position_name:
-      item.positions?.position_name || "",
+    position_code: item.position_code,
+    position_name: item.position_name,
 
-    competency_id:
-      item.competency_id,
-    competency_code:
-      item.competencies?.competency_code || "",
-    competency_name:
-      item.competencies?.competency_name || "",
-    competency_type:
-      item.competencies?.competency_type || "",
+    competency_id: item.competency_id,
+    competency_code: item.competency_code,
+    competency_name: item.competency_name,
 
-    required_level_id:
-      item.required_level_id,
+    competency_type_id: item.competency_type_id,
+    competency_type: item.competency_type_code,
+    competency_type_name: item.competency_type_name,
 
-    required_level_code:
-      item.competency_levels?.level_code || "",
+    required_level_id: item.required_level_id,
+    required_level_code: item.level_code,
+    required_level_name: item.level_name,
 
-    required_level_name:
-      item.competency_levels?.level_name || "",
+    required_level: item.required_level,
 
-    importance_level:
-      item.importance_level,
+    importance_level: item.importance_level,
 
     status: item.status,
 
-    sort_order:
-      item.sort_order,
+    sort_order: item.sort_order,
 
-    created_at:
-      item.created_at,
-
-    updated_at:
-      item.updated_at,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
   };
 }
 
@@ -96,54 +85,22 @@ export async function GET(req) {
       searchParams.get("all") ===
       "true";
 
-    let query =
-      supabaseAdmin
-        .from(
-          "position_competencies"
-        )
-        .select(
-          `
-id,
-position_id,
-competency_id,
-required_level_id,
-importance_level,
-status,
-sort_order,
-created_at,
-updated_at,
-
-positions(
-id,
-position_code,
-position_name
-),
-
-competencies(
-id,
-competency_code,
-competency_name,
-competency_type
-),
-
-competency_levels(
-id,
-level_code,
-level_name
-)
-`,
-          {
-            count: "exact",
-          }
-        );
+    let query = supabaseAdmin
+      .from("vw_position_competencies")
+      .select("*", {
+          count: "exact",
+      });
 
     if (search) {
       query = query.or(
         [
-          `positions.position_code.ilike.%${search}%`,
-          `positions.position_name.ilike.%${search}%`,
-          `competencies.competency_code.ilike.%${search}%`,
-          `competencies.competency_name.ilike.%${search}%`,
+          `position_code.ilike.%${search}%`,
+          `position_name.ilike.%${search}%`,
+          `competency_code.ilike.%${search}%`,
+          `competency_name.ilike.%${search}%`,
+          `competency_type_name.ilike.%${search}%`,
+          `level_code.ilike.%${search}%`,
+          `level_name.ilike.%${search}%`,
         ].join(",")
       );
     }
@@ -363,35 +320,41 @@ export async function POST(req) {
       })
       .select(
         `
-id,
-position_id,
-competency_id,
-required_level_id,
-importance_level,
-status,
-sort_order,
-created_at,
-updated_at,
+          id,
+          position_id,
+          competency_id,
+          required_level_id,
+          importance_level,
+          status,
+          sort_order,
+          created_at,
+          updated_at,
 
-positions(
-id,
-position_code,
-position_name
-),
+          positions(
+          id,
+          position_code,
+          position_name
+          ),
 
-competencies(
-id,
-competency_code,
-competency_name,
-competency_type
-),
+          competencies(
+            id,
+            competency_code,
+            competency_name,
+            competency_type_id,
 
-competency_levels(
-id,
-level_code,
-level_name
-)
-`
+            competency_types(
+              id,
+              type_code,
+              type_name
+            )
+          ),
+
+          competency_levels(
+          id,
+          level_code,
+          level_name
+          )
+        `
       )
       .single();
 

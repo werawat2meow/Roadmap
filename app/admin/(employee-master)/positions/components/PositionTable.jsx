@@ -1,206 +1,255 @@
 "use client";
 
+import {
+  Button,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
+
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+
 export default function PositionTable({
-  loading,
-  positions,
-  page,
-  pageSize,
-  canEdit,
-  canDelete,
-  deletingId,
+  loading = false,
+
+  data = [],
+
   onEdit,
+
   onDelete,
+
+  onView,
 }) {
+  const columns = [
+    {
+      title: "รหัส",
+
+      dataIndex: "position_code",
+
+      key: "position_code",
+
+      width: 130,
+
+      fixed: "left",
+    },
+
+    {
+      title: "ชื่อตำแหน่ง",
+
+      dataIndex: "position_name",
+
+      key: "position_name",
+
+      width: 260,
+
+      render: (_, row) => (
+        <div>
+          <div
+            style={{
+              fontWeight: 600,
+            }}
+          >
+            {row.position_name}
+          </div>
+
+          {row.short_name && (
+            <div
+              style={{
+                color: "#999",
+                fontSize: 12,
+              }}
+            >
+              {row.short_name}
+            </div>
+          )}
+        </div>
+      ),
+    },
+
+    {
+      title: "กลุ่มสายงาน",
+
+      key: "family",
+
+      width: 220,
+
+      render: (_, row) => {
+         if (!row.family) return "-";
+
+        return (
+          <>
+            <div>{row.family.code}</div>
+            <small style={{ color: "#888" }}>
+              {row.family.name}
+            </small>
+          </>
+        );
+      },
+    },
+
+    {
+      title: "Job",
+
+      key: "job",
+
+      width: 220,
+
+      render: (_, row) => {
+        if (!row.job) return "-";
+        return (
+          <>
+            <div>{row.job.code}</div>
+            <small style={{ color:"#888" }}>
+              {row.job.name}
+            </small>
+          </>
+        );
+      },
+    },
+
+    {
+      title: "Position Levels",
+      key: "levels",
+      width: 260,
+      render: (_, row) => (
+        <Space wrap>
+          {(row.levels || []).map((level) => (
+            <Tag
+                key={level.id}
+                color={
+                    level.is_default
+                        ? "blue"
+                        : "default"
+                }
+            >
+                {level.level_code} - {level.level_name}
+            </Tag>
+          ))}
+        </Space>
+      ),
+    },
+        {
+      title: "Manager",
+      key: "is_manager",
+      width: 110,
+      align: "center",
+      render: (_, row) =>
+        row.is_manager ? (
+          <Tag color="processing">YES</Tag>
+        ) : (
+          <Tag>NO</Tag>
+        ),
+    },
+
+    {
+      title: "Executive",
+      key: "is_executive",
+      width: 110,
+      align: "center",
+      render: (_, row) =>
+        row.is_executive ? (
+          <Tag color="volcano">YES</Tag>
+        ) : (
+          <Tag>NO</Tag>
+        ),
+    },
+
+    {
+      title: "Multiple",
+      key: "allow_multiple_assignment",
+      width: 130,
+      align: "center",
+      render: (_, row) =>
+        row.allow_multiple_assignment ? (
+          <Tag color="purple">
+            รองรับ
+          </Tag>
+        ) : (
+          <Tag>
+            ไม่รองรับ
+          </Tag>
+        ),
+    },
+
+    {
+      title: "สถานะ",
+      dataIndex: "status",
+      key: "status",
+      width: 110,
+      align: "center",
+      render: (status) => (
+        <Tag
+          color={
+            status === "active"
+              ? "success"
+              : "default"
+          }
+        >
+          {status?.toUpperCase()}
+        </Tag>
+      ),
+    },
+
+    {
+      title: "จัดการ",
+      key: "action",
+      fixed: "right",
+      width: 180,
+      align: "center",
+
+      render: (_, row) => (
+        <Space>
+
+          <Tooltip title="รายละเอียด">
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() =>
+                onView?.(row)
+              }
+            />
+          </Tooltip>
+
+          <Tooltip title="แก้ไข">
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() =>
+                onEdit?.(row)
+              }
+            />
+          </Tooltip>
+
+          <Tooltip title="ลบ">
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => onDelete?.(row)}
+            />
+          </Tooltip>
+
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-
-          <thead className="bg-slate-100 text-slate-600">
-            <tr>
-              <th className="px-6 py-4 text-left font-semibold">
-                #
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Position Code
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Position Name
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Family
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Group
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Allowed Levels
-              </th>
-
-              <th className="px-6 py-4 text-left font-semibold">
-                Status
-              </th>
-
-              <th className="px-6 py-4 text-right font-semibold">
-                Action
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {loading ? (
-
-              [...Array(pageSize)].map((_, i) => (
-                <tr
-                  key={i}
-                  className="border-t"
-                >
-                  {[...Array(8)].map((__, j) => (
-                    <td
-                      key={j}
-                      className="px-6 py-4"
-                    >
-                      <div className="h-4 animate-pulse rounded bg-slate-200" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-
-            ) : positions.length === 0 ? (
-
-              <tr>
-                <td
-                  colSpan={8}
-                  className="py-10 text-center text-slate-400"
-                >
-                  ไม่พบข้อมูลตำแหน่ง
-                </td>
-              </tr>
-
-            ) : (
-
-              positions.map((position, index) => (
-
-                <tr
-                  key={position.id}
-                  className="border-t hover:bg-slate-50"
-                >
-
-                  <td className="px-6 py-4">
-                    {(page - 1) * pageSize + index + 1}
-                  </td>
-
-                  <td className="px-6 py-4 font-medium">
-                    {position.code}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    {position.name}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    {position.family_name || "-"}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    {position.group || "-"}
-                  </td>
-
-                  <td className="px-6 py-4">
-
-                    <div className="flex flex-wrap gap-2">
-
-                      {(position.position_levels || []).length > 0 ? (
-
-                        position.position_levels.map((level) => (
-
-                          <span
-                            key={level.id}
-                            className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700"
-                          >
-                            {level.level_code}
-                          </span>
-
-                        ))
-
-                      ) : (
-
-                        <span className="text-slate-400">
-                          -
-                        </span>
-
-                      )}
-
-                    </div>
-
-                  </td>
-
-                  <td className="px-6 py-4">
-
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold
-                      ${
-                        position.status === "active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {position.status}
-                    </span>
-
-                  </td>
-
-                  <td className="px-6 py-4">
-
-                    <div className="flex justify-end gap-2">
-
-                      {canEdit && (
-
-                        <button
-                          onClick={() => onEdit(position)}
-                          className="rounded-xl border border-slate-300 px-3 py-2 text-xs hover:bg-slate-100"
-                        >
-                          Edit
-                        </button>
-
-                      )}
-
-                      {canDelete && (
-
-                        <button
-                          disabled={deletingId === position.id}
-                          onClick={() => onDelete(position)}
-                          className="rounded-xl border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
-                        >
-                          {deletingId === position.id
-                            ? "Deleting..."
-                            : "Delete"}
-                        </button>
-
-                      )}
-
-                    </div>
-
-                  </td>
-
-                </tr>
-
-              ))
-
-            )}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
+    <Table
+      rowKey="id"
+      loading={loading}
+      columns={columns}
+      dataSource={data}
+      pagination={false}
+      bordered
+      size="middle"
+      scroll={{
+        x: 1800,
+      }}
+    />
   );
 }

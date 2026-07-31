@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
@@ -26,7 +26,7 @@ export default function SkillsPage() {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const initialLoaded = useRef(false);
+  // const initialLoaded = useRef(false);
 
   const canView = hasPermission(user,"ems.skills.view");
   const canCreate = hasPermission(user,"ems.skills.create");
@@ -95,35 +95,45 @@ export default function SkillsPage() {
     }
   };
 
-  const checkedRef = useRef(false);
+  // const checkedRef = useRef(false);
 
   useEffect(() => {
     if (loadingUser) return;
-
-    if (checkedRef.current) return;
-    checkedRef.current = true;
 
     if (!user) {
       router.replace("/login");
       return;
     }
-  }, [loadingUser, user, router]);
+
+    if (!canView) {
+      router.replace("/admin");
+    }
+  }, [loadingUser, user, canView, router]);
   
   useEffect(() => {
     if (loadingUser) return;
+    if (!user) return;
     if (!canView) return;
 
-    if (initialLoaded.current) return;
+    const timer = setTimeout(() => {
+      loadData(
+        pagination.page,
+        pagination.pageSize,
+        filters.search,
+        filters.status
+      );
+    }, 300);
 
-    initialLoaded.current = true;
-
-    loadData(
-      pagination.page,
-      pagination.pageSize,
-      filters.search,
-      filters.status
-    );
-  }, [loadingUser, canView]);
+    return () => clearTimeout(timer);
+  }, [
+    filters.search,
+    filters.status,
+    pagination.page,
+    pagination.pageSize,
+    loadingUser,
+    user,
+    canView,
+  ]);
 
   /* ===========================================
    * Search
@@ -133,19 +143,15 @@ export default function SkillsPage() {
     search,
     status,
   }) => {
-    const nextFilters = {
+    setPagination((prev) => ({
+      ...prev,
+      page: 1,
+    }));
+
+    setFilters({
       search,
       status,
-    };
-
-    setFilters(nextFilters);
-
-    loadData(
-      1,
-      pagination.pageSize,
-      search,
-      status
-    );
+    });
   };
 
   /* ===========================================
@@ -156,12 +162,11 @@ export default function SkillsPage() {
     page,
     pageSize
   ) => {
-    loadData(
+    setPagination((prev) => ({
+      ...prev,
       page,
       pageSize,
-      filters.search,
-      filters.status
-    );
+    }));
   };
 
   /* ===========================================

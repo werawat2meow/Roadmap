@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
+      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,examMaxScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
     )
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });
@@ -138,6 +138,7 @@ export async function POST(req: Request) {
     newSalary: body.newSalary ?? null,
     managerComment: body.managerComment ?? null,
     examScore: body.examScore ?? null,
+    examMaxScore: body.examMaxScore ?? null,
     maxScore: body.maxScore ?? null,
     extra_data: body.extra_data ?? null,
   };

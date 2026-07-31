@@ -2,16 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  Table,
-  Select,
-  DatePicker,
-  Button,
-  Tag,
-  Space,
-  Typography,
-  Modal,
-} from 'antd';
+import { Table, Select, DatePicker, Button, Tag, Space, Typography, Modal, } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -23,11 +14,16 @@ const API_URL = '/recruitment/api/candidate_detail';
  * ปรับ mapping นี้ให้ตรงกับค่า status จริงที่เก็บใน recruit_job_applications
  */
 const STATUS_MAP = {
-  0: { label: 'รอดำเนินการ', color: 'default' },
-  1: { label: 'นัดสัมภาษณ์', color: 'blue' },
-  2: { label: 'ผ่านการพิจารณา', color: 'green' },
-  3: { label: 'ไม่ผ่านการพิจารณา', color: 'red' },
-  4: { label: 'ยกเลิก', color: 'volcano' },
+  1: { label: 'รอพิจารณา', color: 'default' },
+  2: { label: 'ผ่านการคัดเลือกเข้าสัมภาษณ์', color: 'blue' },
+  3: { label: 'นัดสัมภาษณ์', color: 'green' },
+  4: { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
+  5: { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
+  6: { label: 'ขาดการสัมภาษณ์', color: 'green' },
+  7: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
+  8: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
+  99: { label: 'backlist', color: 'red' },
+  0: { label: 'ยกเลิก', color: 'red' },
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_MAP).map(([value, v]) => ({
@@ -197,12 +193,12 @@ export default function CandidateDetailTable() {
         width: 190,
         render: (_, row) => (
           <Space size="small">
-            <Link href={`/recruitment/setting/candidate_detail/${row.id}/edit`}>
+            <Link href={`/recruitment/candidate_detail/${row.id}/edit`}>
               <Button type="primary" size="small">
                 อัปเดต
               </Button>
             </Link>
-            <Link href={`/recruitment/setting/candidate_detail/${row.id}`}>
+            <Link href={`/recruitment/candidate_detail/${row.id}`}>
               <Button size="small">ดูรายละเอียด</Button>
             </Link>
           </Space>

@@ -45,6 +45,7 @@ type HistoryRecord = {
   departmentScore: number | null;
   expectationScore: number | null;
   examScore: number | null;
+  examMaxScore: number | null;
   maxScore: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
@@ -110,6 +111,7 @@ export default function EvaluateEmployeePage() {
     newSalary: 0,
     managerComment: "",
     examScore: 0,
+    examMaxScore: 100,
     maxScore: 100,
     summaryData: defaultSummaryData,
     disciplineData: defaultDisciplineData,
@@ -275,6 +277,7 @@ export default function EvaluateEmployeePage() {
           totalScore: record.totalScore ?? prev.totalScore,
           managerComment: record.managerComment ?? prev.managerComment,
           examScore: record.examScore ?? prev.examScore,
+          examMaxScore: record.examMaxScore ?? prev.examMaxScore,
           maxScore: record.maxScore ?? prev.maxScore,
         };
       });
@@ -301,8 +304,35 @@ export default function EvaluateEmployeePage() {
 
   useEffect(() => {
     if (!id) return;
-    fetchEvaluationHistory();
-  }, [id, fetchEvaluationHistory]);
+
+    let canceled = false;
+
+    async function loadHistory() {
+      const employeeId =
+        typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+      if (!employeeId) return;
+
+      const response = await fetch(
+        `/roadmap/api/evaluations?employeeId=${encodeURIComponent(employeeId)}`,
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        console.error("Failed to load evaluation history", data);
+        return;
+      }
+
+      if (!canceled) {
+        setEvaluationHistory(data.data || []);
+      }
+    }
+
+    loadHistory();
+
+    return () => {
+      canceled = true;
+    };
+  }, [id]);
 
   const handleFormChange = useCallback((next: Partial<EvaluationFormData>) => {
     setFormData((prev) => {
@@ -643,6 +673,9 @@ export default function EvaluateEmployeePage() {
             }
             onExamScoreChange={(value) =>
               handleFormChange({ examScore: value })
+            }
+            onExamMaxScoreChange={(value) =>
+              handleFormChange({ examMaxScore: value })
             }
             onMaxScoreChange={(value) => handleFormChange({ maxScore: value })}
             onSaveDraft={handleSaveDraft}

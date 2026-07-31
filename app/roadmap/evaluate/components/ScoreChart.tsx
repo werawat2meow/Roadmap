@@ -4,9 +4,10 @@ import 'react-circular-progressbar/dist/styles.css';
 
 type ScoreChartProps = {
   score: number;
+  grade: string;
 };
 
-export default function ScoreChart({ score }: ScoreChartProps) {
+export default function ScoreChart({ score, grade }: ScoreChartProps) {
   return (
     <div style={{ width: 120, height: 120 }}>
       <CircularProgressbar
@@ -22,7 +23,7 @@ export default function ScoreChart({ score }: ScoreChartProps) {
           backgroundColor: '#3e98c7',
         })}
       />
-      <p className="text-center text-sm text-gray-500 mt-1">Grade</p>
+      <p className="text-center text-sm text-gray-500 mt-1">{grade}</p>
     </div>
   );
 }

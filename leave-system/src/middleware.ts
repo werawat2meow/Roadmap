@@ -2,53 +2,43 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const BASE = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? "http://localhost:3000";
-
-const ROLE_HOME: Record<string, string> = {
-  SUPER_ADMIN: `${BASE}/leave/dashboard`,
-  HR_ADMIN:    `${BASE}/leave/dashboard`,
-  HR_USER:     `${BASE}/leave/dashboard`,
-  MANAGER:     `${BASE}/leave/approvals`,
-  USER:        `${BASE}/leave/requests`,
-  LEAVE:       `${BASE}/leave/requests`,
-};
-
-function pathAllowed(path: string, role?: string): boolean {
-  if (path.startsWith("/_next") || path.startsWith("/favicon") || path.startsWith("/api/")) return true;
-  if (!role) return false;
-  if (role === "SUPER_ADMIN" || role === "HR_ADMIN" || role === "HR_USER") return true;
-  if (role === "MANAGER") return path.startsWith("/leave/approvals") || path.startsWith("/leave/requests");
-  if (role === "USER" || role === "LEAVE") return path.startsWith("/leave/requests");
-  return false;
-}
-
 export async function middleware(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
   const token = req.cookies.get("employee_token")?.value;
-  let role: string | undefined;
 
-  if (token) {
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      role = ((payload as any).role ?? (payload as any).role_code) as string;
-    } catch {}
+  // 1. ปล่อยผ่านไฟล์ระบบ (ห้ามยุ่ง)
+  if (pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/api/")) {
+    return NextResponse.next();
   }
 
-  if (pathname === "/" || pathname === "/leave" || pathname === "/leave/" || pathname === "/leave/login") {
-    if (role) return NextResponse.redirect(ROLE_HOME[role] ?? `${BASE}/leave/dashboard`);
-    return NextResponse.redirect(`${BASE}/login`);
+  // 2. ถ้าไม่มีคุกกี้ -> แสดงข้อความบอกตรงๆ (ไม่เด้งหนี)
+  if (!token) {
+    return new NextResponse("🛑 [DEBUG] ไม่พบคุกกี้ 'employee_token' ในเบราว์เซอร์ของคุณ กรุณาล็อกอินที่หน้าหลักก่อน", { status: 401 });
   }
 
-  const allowed = pathAllowed(pathname, role);
-  if (!allowed) {
-    if (!role) return NextResponse.redirect(`${BASE}/login`);
-    return NextResponse.redirect(ROLE_HOME[role] ?? `${BASE}/leave/dashboard`);
-  }
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    
+    // ดึงสิทธิ์ (Role)
+    const role = ((payload as any).role ?? (payload as any).role_code) as string;
 
-  return NextResponse.next();
+    // 3. ตรวจสอบสิทธิ์ (Permission) รายหน้า
+    // ถ้าพยายามเข้าหน้าอนุมัติ แต่ไม่ใช่ MANAGER หรือ ADMIN -> บล็อกไว้ตรงนี้
+    if (pathname.startsWith("/approvals") && !(role === "MANAGER" || role === "SUPER_ADMIN" || role === "HR_ADMIN")) {
+      return new NextResponse(`🚫 [DEBUG] คุณมีสิทธิ์เป็น '${role}' ซึ่งไม่ได้รับอนุญาตให้เข้าหน้า Approvals`, { status: 403 });
+    }
+
+    // ✅ ถ้าผ่านทุกอย่าง ให้ "ปล่อยผ่าน" ไปหน้าเว็บจริง
+    // การใช้ next() จะทำให้หน้าเว็บโหลดได้โดยไม่เกิดการ Redirect วนลูปครับ
+    return NextResponse.next();
+
+  } catch (error: any) {
+    // 4. ถ้ากุญแจไม่ตรง (JWT_SECRET) จะเห็นข้อความนี้
+    return new NextResponse(`❌ [DEBUG] รหัสลับ JWT_SECRET ไม่ตรงกัน หรือ Token หมดอายุ (Error: ${error.message})`, { status: 403 });
+  }
 }
 
 export const config = {
-  matcher: ["/", "/leave", "/leave/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

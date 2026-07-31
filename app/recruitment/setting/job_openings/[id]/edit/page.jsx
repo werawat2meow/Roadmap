@@ -41,9 +41,7 @@ export default function RecruitJobOpenEditPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
         <LoadingOrb />
-      </div>
     );
   }
 

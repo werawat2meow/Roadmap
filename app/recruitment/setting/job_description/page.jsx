@@ -1,48 +1,98 @@
 "use client";
 
-import { useEffect , useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Table, Tag, Button, Space, Select, Typography } from "antd";
 import DeleteModal from "@/app/recruitment/components/DeleteModal";
 
-export default function JobDescriptionPage({ initialData }) {
+const pageSizeOptions = [10, 20, 50, 100];
+const { Text } = Typography;
 
+export default function JobDescriptionPage({ initialData }) {
   const router = useRouter();
 
   const [data, setData] = useState(initialData || []);
+  const [total, setTotal] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
 
+  const [positions, setPositions] = useState([]);
+  const [positionId, setPositionId] = useState();
+
+  // ดึงข้อมูล position สำหรับ filter (โหลดครั้งเดียว)
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+    fetchPositions();
+  }, []);
 
-        const res = await fetch("/recruitment/api/job_description", {
+  // ดึงข้อมูล job description ใหม่ทุกครั้งที่ page, pageSize หรือ positionId เปลี่ยน
+  useEffect(() => {
+    fetchData(page, pageSize, positionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, positionId]);
+
+  async function fetchData(currentPage, currentPageSize, currentPositionId) {
+    try {
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: String(currentPageSize),
+      });
+
+      if (currentPositionId) {
+        params.append("position_id", currentPositionId);
+      }
+
+      const res = await fetch(
+        `/recruitment/api/job_description?${params.toString()}`,
+        {
           method: "GET",
           cache: "no-store",
-        });
-
-        const result = await res.json();
-
-        if (!res.ok) {
-          throw new Error(result?.message || "Fetch failed");
         }
+      );
 
-        setData(result || []);
+      const result = await res.json();
 
-      } catch (err) {
-        console.error(err);
-        alert(err.message || "ดึงข้อมูลไม่สำเร็จ");
-      } finally {
-        setLoading(false);
+      if (!res.ok || result?.success === false) {
+        throw new Error(result?.message || "Fetch failed");
       }
-    };
 
-    fetchData();
-  }, []);
+      // ปรับตรงนี้ให้ตรงกับ shape จริงของ response จาก backend
+      // สมมติ backend ส่งกลับเป็น { data: [...], total: number }
+      setData(result?.data ?? []);
+      setTotal(result?.total ?? 0);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "ดึงข้อมูลไม่สำเร็จ");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchPositions() {
+    try {
+      const res = await fetch( `/recruitment/api/job_description/positions`,
+        {
+          method: "GET",
+          cache: "no-store",
+        } );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Load position failed");
+      }
+
+      setPositions(result?.data ?? result ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   function handleDelete(item) {
     setDeleteItem(item);
@@ -53,25 +103,97 @@ export default function JobDescriptionPage({ initialData }) {
     if (!deleteItem?.id) return;
 
     setDeleting(true);
+
     try {
-      const res = await fetch(`/recruitment/api/job_description/${deleteItem.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/recruitment/api/job_description/${deleteItem.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!res.ok) {
         const result = await res.json();
         throw new Error(result?.message || "Delete failed");
       }
 
-      setData((prev) => prev.filter((row) => row.id !== deleteItem.id));
       setDeleteOpen(false);
       setDeleteItem(null);
+
+      // ถ้าลบตัวสุดท้ายของหน้านั้นและไม่ใช่หน้าแรก ให้ถอยกลับไปหน้าก่อนหน้า
+      const isLastItemOnPage = data.length === 1 && page > 1;
+      const nextPage = isLastItemOnPage ? page - 1 : page;
+
+      if (isLastItemOnPage) {
+        setPage(nextPage); // useEffect จะ trigger fetchData เอง
+      } else {
+        fetchData(nextPage, pageSize, positionId);
+      }
     } catch (err) {
       alert(err.message || "ลบไม่สำเร็จ");
     } finally {
       setDeleting(false);
     }
   }
+
+  const columns = [
+    {
+      title: "No.",
+      width: 80,
+      align: "center",
+      render: (_, __, index) => (page - 1) * pageSize + index + 1,
+    },
+    {
+      title: "Company",
+      dataIndex: "branches",
+      key: "branches",
+      render: (branches) =>
+        branches?.length ? (
+          <Space wrap>
+            {branches.map((branch) => (
+              <Tag color="blue" key={branch.branch_id}>
+                {branch.branch_name}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          "-"
+        ),
+    },
+    {
+      title: "Position",
+      key: "position",
+      render: (_, row) =>
+        row.positions_name
+          ? `${row.positions_name} (${row.position_level})`
+          : "-",
+    },
+    {
+      title: "Updated at",
+      dataIndex: "updated_at",
+      align: "center",
+      width: 220,
+      render: (value) =>
+        value ? new Date(value).toLocaleString("th-TH") : "-",
+    },
+    {
+      title: "Action",
+      key: "action",
+      align: "center",
+      width: 220,
+      render: (_, row) => (
+        <Space>
+          <Link href={`/recruitment/setting/job_description/${row.id}/edit`}>
+            <Button type="primary">แก้ไขข้อมูล</Button>
+          </Link>
+
+          <Button danger onClick={() => handleDelete(row)}>
+            ลบ
+          </Button>
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <div className="h-full w-full">
@@ -85,7 +207,7 @@ export default function JobDescriptionPage({ initialData }) {
             <button
               type="button"
               onClick={() => router.push("/recruitment/setting/job_description/create")}
-              className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
+              className="rounded-lg px-4 py-2 text-white font-medium shadow-sm transition-colors cursor-pointer"
               style={{ backgroundColor: "green" }}
             >
               <span>+</span>
@@ -96,73 +218,96 @@ export default function JobDescriptionPage({ initialData }) {
       </div>
 
       <div className="p-4 md:p-6 w-full">
+        <div
+          style={{
+            borderRadius: 16,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "16px 20px",
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            <Space wrap>
+              <Space size="small">
+                <Text style={{ fontSize: 13, color: "#475569" }}>แสดง</Text>
+                <Select
+                  value={pageSize}
+                  onChange={(val) => {
+                    setPageSize(val);
+                    setPage(1); // เปลี่ยน pageSize ให้กลับไปหน้าแรกเสมอ
+                  }}
+                  style={{ width: 110 }}
+                  options={pageSizeOptions.map((n) => ({
+                    value: n,
+                    label: `${n} rows`,
+                  }))}
+                />
+              </Space>
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between">
+              <Space size="small">
+                <Text style={{ fontSize: 13, color: "#475569" }}>
+                  Position
+                </Text>
 
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="เลือกตำแหน่ง"
+                  style={{ width: 320 }}
+                  value={positionId}
+                  optionFilterProp="label"
+                  onChange={(value) => {
+                    setPositionId(value);
+                    setPage(1); // เปลี่ยน filter ให้กลับไปหน้าแรกเสมอ
+                  }}
+                  options={positions.map((item) => ({
+                    value: item.id,
+                    label: item.position_name+" - "+item.position_level,
+                  }))}
+                />
+              </Space>
+            </Space>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr className="text-center text-slate-600">
-                  <th className="px-4 py-3 font-medium">No.</th>
-                  <th className="px-4 py-3 font-medium">Position</th>
-                  <th className="px-4 py-3 font-medium">Updated at</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-center">
-                {data && data.length > 0 ? (
-                  data.map((row , index) => (
-                    <tr key={row.id}>
-                      <td className="px-4 py-4 text-sm text-gray-700">
-                      {index + 1}
-                    </td>
-                      <td className="px-4 py-4 text-sm text-gray-700">{row.positions_name || "-"} {"( "+row.position_level+" )"} </td>
 
-                      <td className="px-4 py-4 text-sm text-gray-700">
-                        {row.updated_at
-                          ? new Date(row.updated_at).toLocaleString("th-TH")
-                          : "-"}
-                      </td>
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              showSizeChanger: false, // ควบคุม pageSize ด้วย Select ด้านบนแทน
+              showTotal: (t) => `ทั้งหมด ${t} รายการ`,
+              onChange: (newPage) => setPage(newPage),
+            }}
+            scroll={{ x: 900 }}
+            locale={{
+              emptyText: "ไม่พบข้อมูล",
+            }}
+          />
 
-                      <td className="px-4 py-4 text-sm text-gray-700">
-                        <div className="flex gap-2 justify-center">
-                          <Link
-                            href={`/recruitment/setting/job_description/${row.id}/edit`}
-                            className="rounded-xl border px-4 py-2 text-sm"
-                          >
-                            แก้ไขข้อมูล
-                          </Link>
-
-                          <button
-                            onClick={() => handleDelete(row)}
-                            className="rounded-lg border border-red-300 px-3 py-1.5 text-red-600 hover:bg-red-50"
-                          >
-                            ลบ
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-6 text-slate-500 text-center">
-                      ไม่พบข้อมูล
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DeleteModal
+            open={deleteOpen}
+            item={deleteItem}
+            onClose={() => setDeleteOpen(false)}
+            onConfirm={confirmDelete}
+            loading={deleting}
+          />
         </div>
-        <DeleteModal
-          open={deleteOpen}
-          item={deleteItem}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={confirmDelete}
-          loading={deleting}
-        />
       </div>
     </div>
   );

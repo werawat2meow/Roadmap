@@ -4,8 +4,16 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
 
-  const branchId = searchParams.get("branch_id");
+  const branchIdParam = searchParams.get("branch_id");
   const q = searchParams.get("q") || "";
+
+  const branchIds = branchIdParam
+    ? branchIdParam.split(",").map((id) => id.trim()).filter(Boolean)
+    : [];
+
+  if (!branchIds.length) {
+    return NextResponse.json([]);
+  }
 
   let query = supabaseAdmin
     .from("recruit_job_description")
@@ -21,7 +29,7 @@ export async function GET(request) {
       )
     `)
     .eq("departments.status", "active")
-    .eq("departments.branch_departments.branch_id", branchId);
+    .in("departments.branch_departments.branch_id", branchIds);
 
   if (q) {
     query = query.ilike(

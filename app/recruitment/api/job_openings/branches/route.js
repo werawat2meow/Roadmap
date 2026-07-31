@@ -6,7 +6,7 @@ export async function GET(request) {
   const q = searchParams.get("q") || "";
 
   let query = supabaseAdmin
-    .from("recruit_job_description")
+    .from("recruit_job_description_branches")
     .select(`
       branch_id,
       branches!inner (

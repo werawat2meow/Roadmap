@@ -31,8 +31,13 @@ export const uiText = {
   },
 
   jobDetails: {
-    EN: "Job Details",
-    TH: "รายละเอียดงาน",
+    EN: "Qualifications",
+    TH: "คุณสมบัติ",
+  },
+
+  shortDetail:{
+    EN:"Brief details",
+    TH:"รายละเอียดย่อ",
   },
 
   workType: {

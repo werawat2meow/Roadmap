@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import LoadingOrb from "@/app/components/LoadingOrb";
 
 function EvaluationAuthGuard({ children }) {
   const { user, loadingUser } = useAuth();
@@ -17,13 +16,6 @@ function EvaluationAuthGuard({ children }) {
     }
   }, [user, loadingUser, router]);
 
-  if (loadingUser) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingOrb />
-      </div>
-    );
-  }
 
   if (!user) return null;
 

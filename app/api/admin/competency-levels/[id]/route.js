@@ -41,7 +41,7 @@ export async function PATCH(
   { params }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const body = await req.json();
 
@@ -204,8 +204,6 @@ export async function PATCH(
   }
 }
 
-
-
 /* =========================
    DELETE
 ========================= */
@@ -215,7 +213,7 @@ export async function DELETE(
   { params }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     /* =========================
        Load Old Data

@@ -33,6 +33,10 @@ import {
   ToolOutlined,
   WalletOutlined,
   AccountBookOutlined,
+  GlobalOutlined,
+  FunctionOutlined,
+  CodeOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 
 export const sidebarMenus = [
@@ -62,7 +66,7 @@ export const sidebarMenus = [
    * ORGANIZATION
    * ========================================================= */
   {
-    title: "ORGANIZATION *",
+    title: "ORGANIZATION",
     icon: <BankOutlined />,
     items: [
       {
@@ -112,12 +116,6 @@ export const sidebarMenus = [
     icon: <ProfileOutlined />,
     items: [
       {
-        label: "ตำแหน่ง",
-        href: "/admin/positions",
-        icon: <SolutionOutlined />,
-        permission: "ems.positions.view",
-      },
-      {
         label: "กลุ่มสายงาน",
         href: "/admin/position-families",
         icon: <ProfileOutlined />,
@@ -136,22 +134,28 @@ export const sidebarMenus = [
         permission: "ems.position_levels.view",
       },
       {
-        label: "โครงสร้างเงินเดือน",
+        label: "โครงสร้างเงินเดือน",                       // เป็น Master Data ของโครงสร้างเงินเดือน
         href: "/admin/position-level-bands",
         icon: <DollarOutlined />,
         permission: "ems.position_level_bands.view",
-      },
-      {
-        label: "ตำแหน่งตามหน่วย",
-        href: "/admin/unit-positions",
-        icon: <PartitionOutlined />,
-        permission: "ems.unit_positions.view",
       },
       {
         label: "บทบาทงาน / โครงสร้างธุรกิจ",
         href: "/admin/jobs",
         icon: <ProfileOutlined />,
         permission: "ems.jobs.view",
+      },
+      {
+        label: "ตำแหน่ง",
+        href: "/admin/positions",
+        icon: <SolutionOutlined />,
+        permission: "ems.positions.view",
+      },
+      {
+        label: "ตำแหน่งตามหน่วย",
+        href: "/admin/unit-positions",
+        icon: <PartitionOutlined />,
+        permission: "ems.unit_positions.view",
       },
       {
         label: "เส้นทางอาชีพ",
@@ -175,7 +179,7 @@ export const sidebarMenus = [
   /* =========================================================
    * SKILL & COMPETENCY    โครงสร้างข้อมูลด้านทักษะ/สมรรถนะของพนักงาน
    * ========================================================= */
-   {
+  {
     title: "SKILL & COMPETENCY",
     icon: <StarOutlined />,
     items: [
@@ -186,54 +190,60 @@ export const sidebarMenus = [
         permission: "ems.skill_categories.view",
       },
       {
-        label: "จัดการทักษะ",
+        label: "ทักษะทั้งหมด",
         href: "/admin/skills",
         icon: <ToolOutlined />,
         permission: "ems.skills.view",
       },
       {
-        label: "ระดับทักษะ",
+        label: "ระดับความเชี่ยวชาญทักษะ",
         href: "/admin/skill-levels",
         icon: <TagsOutlined />,
         permission: "ems.skill_levels.view",
       },
 
       // ===============================
-      // Competency Master
+      // Competency Master   ทักษะเฉพาะทางงง
       // ===============================
 
       {
-        label: "จัดการสมรรถนะ",
+        label: "ประเภทความสามารถ",
+        href: "/admin/competency-types",
+        icon: <AppstoreOutlined />,
+        permission: "ems.competency_types.view",
+      },
+      {
+        label: "Competencies",
         href: "/admin/competencies",
         icon: <StarOutlined />,
         permission: "ems.competencies.view",
       },
       {
-        label: "ระดับสมรรถนะ",
+        label: "ระดับความสามารถ (1-5)",
         href: "/admin/competency-levels",
         icon: <TagsOutlined />,
         permission: "ems.competency_levels.view",
       },
 
       // ===============================
-      // Mapping
+      // Mapping กับตำแหน่งในบริษัท
       // ===============================
 
       {
-        label: "ทักษะตำแหน่ง",
+        label: "กำหนดทักษะตามตำแหน่ง *",
         href: "/admin/position-skills",
         icon: <NodeIndexOutlined />,
         permission: "ems.position_skills.view",
       },
       {
-        label: "สมรรถนะตำแหน่ง",
+        label: "กำหนดสมรรถนะตามตำแหน่ง*",
         href: "/admin/position-competencies",
         icon: <NodeIndexOutlined />,
         permission: "ems.position_competencies.view",
       },
 
       {
-        label: "ทักษะพนักงาน",
+        label: "ทักษะรายบุคคล *",
         href: "/admin/employee-skills",
         icon: <ToolOutlined />,
         permission: "ems.employee_skills.view",
@@ -242,23 +252,219 @@ export const sidebarMenus = [
   },
 
   /* =========================================================
-   * PAYROLL
+   * PAYROLL SETUP
    * ========================================================= */
   {
-    title: "PAYROLL *",
+    title: "PAYROLL SETUP",
     icon: <WalletOutlined />,
     items: [
+
+      // ===============================
+      // Payroll Setup
+      // ===============================
+
       {
-        label: "Payroll Types",
+        label: "รอบการจ่ายเงิน",
         href: "/admin/payroll-types",
         icon: <TagsOutlined />,
         permission: "ems.payroll_types.view",
       },
+
       {
-        label: "Payroll Company",
+        label: "บริษัทเงินเดือน",
         href: "/admin/payroll-companies",
         icon: <BankOutlined />,
         permission: "ems.payroll_companies.view",
+      },
+
+      {
+        label: "กลุ่มเงินเดือน",
+        href: "/admin/payroll-groups",
+        icon: <AppstoreOutlined />,
+        permission: "ems.payroll_groups.view",
+      },
+
+      // ===============================
+      // Salary Master    
+      // ===============================
+
+      {
+        label: "รายการเงินเดือน",
+        href: "/admin/salary-components",
+        icon: <DollarOutlined />,
+        permission: "ems.salary_components.view",
+      },
+      {
+        label: "ประเภทเงินได้",
+        href: "/admin/earning-types",
+        icon: <FundProjectionScreenOutlined />,
+        permission: "ems.earning_types.view",
+      },
+      {
+        label: "ประเภทรายการหัก",
+        href: "/admin/deduction-types",
+        icon: <FileTextOutlined />,
+        permission: "ems.deduction_types.view",
+      },
+      // ⭐ เพิ่ม
+      {
+        label: "สูตรการคำนวณเงินเดือน",
+        href: "/admin/payroll-formulas",
+        icon: <FunctionOutlined />,
+        permission: "ems.payroll_formulas.view",
+      },
+      // ⭐ เพิ่ม
+      {
+        label: "ตัวแปรสูตรคำนวณ",
+        href: "/admin/formula-variables",
+        icon: <CodeOutlined />,
+        permission: "ems.formula_variables.view",
+      },
+      // ⭐ เพิ่ม
+      {
+        label: "โครงสร้างเงินเดือน",
+        href: "/admin/salary-structures",
+        icon: <ApartmentOutlined />,
+        permission: "ems.salary_structures.view",
+      },
+
+      // ===============================
+      // Employee Payroll
+      // ===============================
+
+      // เปลี่ยนชื่อ
+      {
+        label: "โครงสร้างเงินเดือนพนักงาน",
+        href: "/admin/employee-compensations",
+        icon: <DollarOutlined />,
+        permission: "ems.employee_compensations.view",
+      },
+
+      // ===============================
+      // Payroll Process
+      // ===============================
+
+      // เปลี่ยนชื่อ
+      {
+        label: "งวดเงินเดือน",
+        href: "/admin/payroll-periods",
+        icon: <CalendarOutlined />,
+        permission: "ems.payroll_periods.view",
+      },
+      {
+        label: "ประมวลผลเงินเดือน",
+        href: "/admin/payroll-runs",
+        icon: <WalletOutlined />,
+        permission: "ems.payroll_runs.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+   * TAX & SOCIAL SECURITY
+   * ========================================================== */
+  {
+    title: "TAX & SOCIAL SECURITY",
+    icon: <SafetyCertificateOutlined />,
+    items: [
+      {
+        label: "โปรไฟล์ภาษี",
+        href: "/admin/tax-profiles",
+        icon: <SafetyCertificateOutlined />,
+        permission: "ems.tax_profiles.view",
+      },
+      {
+        label: "อัตราภาษี",
+        href: "/admin/tax-rates",
+        icon: <BarChartOutlined />,
+        permission: "ems.tax_rates.view",
+      },
+      {
+        label: "ประกันสังคม",
+        href: "/admin/social-security",
+        icon: <SafetyOutlined />,
+        permission: "ems.social_security.view",
+      },
+      {
+        label: "กองทุนสำรองเลี้ยงชีพ",
+        href: "/admin/provident-funds",
+        icon: <WalletOutlined />,
+        permission: "ems.provident_funds.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+   * BANKING & COMPENSATION
+   * ========================================================= */
+
+  {
+    title: "BANKING & COMPENSATION",
+    icon: <BankOutlined />,
+    items: [
+      {
+        label: "ธนาคาร",
+        href: "/admin/banks",
+        icon: <BankOutlined />,
+        permission: "ems.banks.view",
+      },
+      {
+        label: "วิธีการจ่ายเงิน",
+        href: "/admin/payment-methods",
+        icon: <AccountBookOutlined />,
+        permission: "ems.payment_methods.view",
+      },
+      {
+        label: "โครงสร้างเงินเดือนพนักงาน",
+        href: "/admin/employee-compensations",
+        icon: <DollarOutlined />,
+        permission: "ems.employee_compensations.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+  * HR MASTER  ข้อมูลทั่วไป
+  * ========================================================= */
+  {
+    title: "ข้อมูลทั่วไป",
+    icon: <IdcardOutlined />,
+    items: [
+      {
+        label: "ประเทศ",
+        href: "/admin/countries",
+        icon: <EnvironmentOutlined />,
+        permission: "ems.countries.view",
+      },
+      {
+        label: "สัญชาติ",
+        href: "/admin/nationalities",
+        icon: <GlobalOutlined />,
+        permission: "ems.nationalities.view",
+      },
+      {
+        label: "คำนำหน้า",
+        href: "/admin/titles",
+        icon: <UserOutlined />,
+        permission: "ems.titles.view",
+      },
+      {
+        label: "ศาสนา",
+        href: "/admin/religions",
+        icon: <SafetyOutlined />,
+        permission: "ems.religions.view",
+      },
+      {
+        label: "สถานภาพสมรส",
+        href: "/admin/marital-statuses",
+        icon: <TeamOutlined />,
+        permission: "ems.marital_statuses.view",
+      },
+      {
+        label: "เพศ",
+        href: "/admin/genders",
+        icon: <UsergroupAddOutlined />,
+        permission: "ems.genders.view",
       },
     ],
   },
@@ -267,7 +473,7 @@ export const sidebarMenus = [
    * COST STRUCTURE
    * ========================================================= */
   {
-    title: "COST STRUCTURE *",
+    title: "COST STRUCTURE",
     icon: <AccountBookOutlined />,
     items: [
       {
@@ -404,4 +610,113 @@ export const sidebarMenus = [
       },
     ],
   },
+  
 ];
+
+
+
+/***
+ * 
+ * 
+ * 
+ * Phase 1 (ต้องมี ก่อนทำ Employee)
+  ✅ Payroll Cycles
+  ✅ Payroll Companies
+  ✅ Payroll Groups
+  ✅ Salary Components   รายการเงินเดือนนน   
+  ✅ Tax Profiles     โปรไฟล์ภาษี เริ่ม 
+  ✅ Banks      เสร็จแล้ววว 
+  ✅ Payment Methods   เริ่ม 
+
+
+  แล้วไปที่ HR Master เสร็จ แล้ว ไป Employee Master ได้เลยย
+  เสร็จแล้วสามารถไปทำ Employee ได้เลย เพราะพนักงานจะอ้างอิงข้อมูลเหล่านี้
+
+  /* =========================================================
+   * PAYROLL SETUP
+
+  {
+    title: "PAYROLL SETUP",
+    icon: <WalletOutlined />,
+    items: [
+      {
+        label: "รอบการจ่ายเงิน",
+        href: "/admin/payroll-types",
+        icon: <TagsOutlined />,
+        permission: "ems.payroll_types.view",
+      },
+      {
+        label: "บริษัทเงินเดือน",
+        href: "/admin/payroll-companies",
+        icon: <BankOutlined />,
+        permission: "ems.payroll_companies.view",
+      },
+      {
+        label: "กลุ่มเงินเดือน",
+        href: "/admin/payroll-groups",
+        icon: <AppstoreOutlined />,
+        permission: "ems.payroll_groups.view",
+      },
+      {
+        label: "รายการเงินเดือน",
+        href: "/admin/salary-components",
+        icon: <DollarOutlined />,
+        permission: "ems.salary_components.view",
+      },
+      {
+        label: "ประเภทเงินได้",
+        href: "/admin/earning-types",
+        icon: <FundProjectionScreenOutlined />,
+        permission: "ems.earning_types.view",
+      },
+      {
+        label: "ประเภทรายการหัก",
+        href: "/admin/deduction-types",
+        icon: <FileTextOutlined />,
+        permission: "ems.deduction_types.view",
+      },
+      {
+        label: "สูตรการคำนวณเงินเดือน",
+        href: "/admin/payroll-formulas",
+        icon: <FunctionOutlined />,
+        permission: "ems.payroll_formulas.view",
+      },
+      {
+        label: "ตัวแปรสูตรคำนวณ",
+        href: "/admin/formula-variables",
+        icon: <CodeOutlined />,
+        permission: "ems.formula_variables.view",
+      },
+      {
+        label: "โครงสร้างเงินเดือน",
+        href: "/admin/salary-structures",
+        icon: <ApartmentOutlined />,
+        permission: "ems.salary_structures.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+   * PAYROLL PROCESS
+
+  {
+    title: "PAYROLL PROCESS",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        label: "งวดเงินเดือน",
+        href: "/admin/payroll-periods",
+        icon: <CalendarOutlined />,
+        permission: "ems.payroll_periods.view",
+      },
+      {
+        label: "ประมวลผลเงินเดือน",
+        href: "/admin/payroll-runs",
+        icon: <WalletOutlined />,
+        permission: "ems.payroll_runs.view",
+      },
+    ],
+  },
+
+ * 
+ */

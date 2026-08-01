@@ -100,37 +100,41 @@ export default function LanguageHeader() {
 
   return (
     <header className="border-b border-gray-200 bg-[#123a63] sticky top-0 z-50 backdrop-blur-md shadow-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-6">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 text-gray-50 md:hidden"
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
+      <div className="mx-auto flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl lg:px-6">
+        {/* บรรทัดที่ 1 บน Mobile: โลโก้/ปุ่ม เมนู */}
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 text-gray-50 md:hidden"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
 
-          <div>
-            <div className="text-base font-semibold text-gray-50">
-              <Link href="/jobs">Recruitment System</Link>
+            <div>
+              <div className="text-base font-semibold text-gray-50">
+                <Link href="/jobs">Recruitment System</Link>
+              </div>
+              {loading ? (
+                <div className="text-xs text-gray-500">Loading...</div>
+              ) : null}
             </div>
-            {loading ? (
-              <div className="text-xs text-gray-500">Loading...</div>
-            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* บรรทัดที่ 2 บน Mobile: ปุ่ม Action และ ตัวเลือกภาษา */}
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
           <div>
-            <button className="Btn">
-              <Link href="/jobs/register/resume">
-                <span>{getUIText(uiText.btnResume, locale)}</span>
-              </Link>
-            </button>
+            <Link 
+              href="/jobs/register/resume"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-5 py-2.5 text-sm font-bold text-gray-950 shadow-lg shadow-amber-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-amber-300 hover:to-amber-500 hover:shadow-amber-500/40 active:scale-95"
+            >
+              <span>{getUIText(uiText.btnResume, locale)}</span>
+            </Link>
           </div>
           <div>
-            {/* <span className="hidden text-sm text-gray-50 sm:block">Language</span> */}
             <select
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
               value={locale}

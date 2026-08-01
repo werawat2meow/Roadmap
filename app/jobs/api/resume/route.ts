@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         certify,
         pdpa,
         from_social_media: from_social_media || null,
-        status: 15,
+        status: 16,
       })
       .select("id")
       .single();

@@ -16,8 +16,7 @@ export const spacesClient = new S3Client({
   },
 });
 
-const BUCKET =
-  process.env.DO_SPACES_BUCKET!;
+const BUCKET = process.env.DO_SPACES_BUCKET!;
 
 export async function uploadFileToSpaces(
   file: File,

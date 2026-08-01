@@ -165,7 +165,7 @@ export default function JobDescriptionPage({ initialData }) {
       key: "position",
       render: (_, row) =>
         row.positions_name
-          ? `${row.positions_name} (${row.position_level})`
+          ? `${row.positions_name}`
           : "-",
     },
     {
@@ -274,7 +274,7 @@ export default function JobDescriptionPage({ initialData }) {
                   }}
                   options={positions.map((item) => ({
                     value: item.id,
-                    label: item.position_name+" - "+item.position_level,
+                    label: item.position_name,
                   }))}
                 />
               </Space>

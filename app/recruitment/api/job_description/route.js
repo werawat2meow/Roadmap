@@ -37,8 +37,7 @@ export async function GET(request) {
       updated_at,
       description,
       positions (
-        position_name,
-        position_level
+        position_name
       ),
       recruit_job_description_branches (
         branch_id,
@@ -69,7 +68,6 @@ export async function GET(request) {
     id: row.id,
     positions_id: row.positions_id,
     positions_name: row.positions?.position_name || "-",
-    position_level: row.positions?.position_level || "-",
     salary_min: row.salary_min,
     salary_max: row.salary_max,
     type_of_work: row.type_of_work,

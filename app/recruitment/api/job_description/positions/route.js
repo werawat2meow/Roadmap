@@ -7,7 +7,7 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from("positions")
-      .select("id, position_name, position_level, position_group")
+      .select("id, position_name, position_group")
       .eq("status", "active")
       .order("position_name", { ascending: true });
 

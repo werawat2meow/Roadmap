@@ -153,8 +153,7 @@ export async function GET(request) {
       const keyword = `%${search}%`;
 
       const searchCondition = [
-        `position_name.ilike.${keyword}`,
-        `position_level.ilike.${keyword}`,
+        `position_name.ilike.${keyword}`
       ].join(",");
 
       countQuery = countQuery.or(searchCondition);

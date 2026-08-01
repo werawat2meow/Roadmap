@@ -45,14 +45,14 @@ export default function SidebarContent({
       },
       {
         label: "Check Candidate Detail",
-        href: "/recruitment/candidate_detail",
+        href: "/recruitment/candidate",
         icon: LayoutList,
       },
-      {
-        label: "Update interview appointment",
-        href: "/recruitment/update_interview_appointment",
-        icon: LayoutList,
-      },
+      // {
+      //   label: "Update interview appointment",
+      //   href: "/recruitment/update_interview_appointment",
+      //   icon: LayoutList,
+      // },
       {
         label: "Schedule interviews",
         href: "/recruitment/schedule_interviews",

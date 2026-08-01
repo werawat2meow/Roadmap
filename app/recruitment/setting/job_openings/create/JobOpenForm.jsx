@@ -389,7 +389,7 @@ export default function JobOpenForm({ editId }) {
                     >
                       <div className="font-medium text-slate-800">{opt.position_name}</div>
                       <div className="text-xs text-slate-400">
-                        {[opt.position_level, opt.position_group].filter(Boolean).join(" · ")}
+                        {[opt.position_group].filter(Boolean).join(" · ")}
                       </div>
                     </button>
                   ))}

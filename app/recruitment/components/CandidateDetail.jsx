@@ -4,7 +4,7 @@ import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import dayjs from "dayjs";
 import {
   Button,
   Card,
@@ -16,10 +16,12 @@ import {
   Tag,
   Typography,
   Select,
-  message,
+  DatePicker,
+  Radio,
+  Input
 } from "antd";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 const statusColor = {
@@ -55,6 +57,15 @@ const APPLICATION_STATUS = [
   { value: 15, label: "ยื่น Resume" },
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
+];
+
+// status ที่ต้องกรอกวันเวลานัดสัมภาษณ์ + ประเภทการสัมภาษณ์
+const STATUS_CONFIRMED_INTERVIEW = 4;
+
+const INTERVIEW_TYPE_OPTIONS = [
+  { value: "onsite", label: "Onsite (สัมภาษณ์ที่บริษัท)" },
+  { value: "online", label: "Online (สัมภาษณ์ผ่านวิดีโอคอล)" },
+  { value: "phone", label: "Phone (สัมภาษณ์ทางโทรศัพท์)" },
 ];
 
 const yesNo = (value) => {
@@ -192,44 +203,94 @@ export default function CandidateDetail({
   documents,
 }) {
 
-  const router = useRouter();
 
   const [status, setStatus] = useState(application.status);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [message, setMessage] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // ข้อมูลนัดสัมภาษณ์ (แสดงเมื่อ status === STATUS_CONFIRMED_INTERVIEW)
+  const [interviewDateTime, setInterviewDateTime] = useState(
+    application.interview_datetime ? dayjs(application.interview_datetime) : null
+  );
+  const [interviewType, setInterviewType] = useState(
+    application.interview_type ?? undefined
+  );
+
+  const [interviewData, setInterviewData] = useState({
+    location: "",
+    meeting_url: "",
+  });
+
+  const [interviewErrors, setInterviewErrors] = useState({});
+
+  const requiresInterviewDetails = status === STATUS_CONFIRMED_INTERVIEW;
+
+  const handleStatusChange = (val) => {
+    setStatus(val);
+    if (val !== STATUS_CONFIRMED_INTERVIEW) {
+      setInterviewErrors({});
+    }
+  };
+
+  const validateInterviewFields = () => {
+    if (!requiresInterviewDetails) return true;
+
+    const errors = {};
+    if (!interviewDateTime) {
+      errors.interviewDateTime = "กรุณาระบุวันเวลานัดสัมภาษณ์";
+    }
+    if (!interviewType) {
+      errors.interviewType = "กรุณาเลือกประเภทการสัมภาษณ์";
+    }
+    setInterviewErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSaveStatus = async () => {
-  try {
-    setLoading(true);
-    console.log("test" , application.id);
-    
-    const res = await fetch("/recruitment/api/candidate_detail/UpdateStatus", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: application.id,
-        status,
-      }),
-    });
+    setErrorMessage("");
+    setSuccessMessage(null);
 
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.message);
+    if (!validateInterviewFields()) {
+      return;
     }
 
-    // router.push("/recruitment/candidate_detail");
+    try {
+      setLoading(true);
 
-    setMessage("บันทึกข้อมูลเรียบร้อย");
-  } catch (err) {
-    setErrorMessage(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      const body = {
+        id: application.id,
+        status,
+      };
+
+      if (requiresInterviewDetails) {
+        body.interview_datetime = interviewDateTime.toISOString();
+        body.interview_type = interviewType;
+      }
+
+      const res = await fetch("/recruitment/api/candidate_detail/UpdateStatus", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message);
+      }
+
+      // router.push("/recruitment/candidate_detail");
+
+      setSuccessMessage("บันทึกข้อมูลเรียบร้อย");
+    } catch (err) {
+      setErrorMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ padding: 24 }}>
@@ -238,7 +299,7 @@ export default function CandidateDetail({
       {/* Header */}
       {/* ====================================================== */}
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card className="mb-6">
         <Row justify="space-between" align="middle">
 
           <Col>
@@ -254,6 +315,22 @@ export default function CandidateDetail({
                 {application.positions?.position_name || "-"}
               </strong>
             </div>
+
+            { application.from_social_media &&(
+              <div style={{ marginTop: 8 }}>
+                ทราบข่าวการเปิดรับสมัครจาก : 
+                {/* <strong> {application.from_social_media} </strong> */}
+
+                <Tag
+                  color={"success"}
+                  style={{ fontSize: 16, padding: "6px 14px" }}
+                >
+                  {application.from_social_media}
+                </Tag>
+
+              </div>
+            )}
+            
           </Col>
 
           <Col>
@@ -274,7 +351,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลส่วนตัว"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Descriptions
           bordered
@@ -354,7 +431,7 @@ export default function CandidateDetail({
 
       <Card
         title="ที่อยู่ปัจจุบัน"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Descriptions
           bordered
@@ -418,7 +495,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลครอบครัว"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Descriptions
           bordered
@@ -445,7 +522,7 @@ export default function CandidateDetail({
 
       <Card
         title="บุคคลที่ติดต่อกรณีฉุกเฉิน"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Descriptions
           bordered
@@ -472,7 +549,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลสุขภาพและประวัติ"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Descriptions
           bordered
@@ -501,7 +578,7 @@ export default function CandidateDetail({
 
       <Card
         title="ประวัติการศึกษา"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Table
           rowKey="id"
@@ -576,7 +653,7 @@ export default function CandidateDetail({
 
       <Card
         title="ประสบการณ์การทำงาน"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Table
           rowKey="id"
@@ -627,7 +704,7 @@ export default function CandidateDetail({
       {/* ทักษะ */}
       {/* ====================================================== */}
 
-      <Card title="ทักษะด้านโปรแกรม" style={{ marginBottom: 24 }}>
+      <Card title="ทักษะด้านโปรแกรม" className="mb-6">
         <Table
           rowKey="id"
           bordered
@@ -662,7 +739,7 @@ export default function CandidateDetail({
         />
       </Card>
 
-      <Card title="ทักษะด้านภาษา" style={{ marginBottom: 24 }}>
+      <Card title="ทักษะด้านภาษา" className="mb-6">
         <Table
           rowKey="id"
           bordered
@@ -715,7 +792,7 @@ export default function CandidateDetail({
 
       <Card
         title="เอกสารแนบ"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
         <Table
           rowKey="id"
@@ -763,23 +840,108 @@ export default function CandidateDetail({
 
       <Card
         title="สถานะการสมัคร"
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 16,
-            alignItems: "center",
-          }}
-        >
-          <Select
-            value={status}
-            onChange={setStatus}
-            style={{ width: 250 }}
-            options={APPLICATION_STATUS}
-          />
+        <div className="flex flex-col gap-4" >
+          <div className="flex gap-4 items-center">
+            <Select
+              value={status}
+              onChange={handleStatusChange}
+              style={{ width: 250 }}
+              options={APPLICATION_STATUS}
+            />
+          </div>
 
-          
+          {requiresInterviewDetails && (
+            <div className="flex-wrap gap-6 p-4 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] grid grid-cols-1 md:grid-cols-2">
+              <div>
+                <div>
+                  <Text strong>วันเวลานัดสัมภาษณ์</Text>
+                </div>
+                <DatePicker
+                  showTime
+                  format="DD/MM/YYYY HH:mm"
+                  value={interviewDateTime}
+                  onChange={(val) => {
+                    setInterviewDateTime(val);
+                    setInterviewErrors((prev) => ({ ...prev, interviewDateTime: undefined }));
+                  }}
+                  status={interviewErrors.interviewDateTime ? "error" : ""}
+                  placeholder="เลือกวันและเวลา"
+                  className="w-full mt-1"
+                />
+                {interviewErrors.interviewDateTime && (
+                  <div>
+                    <Text type="danger" style={{ fontSize: 12 }}>
+                      {interviewErrors.interviewDateTime}
+                    </Text>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div>
+                  <Text strong>ประเภทการสัมภาษณ์</Text>
+                </div>
+                <div className="mt-1">
+                  <Radio.Group
+                    value={interviewType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      setInterviewType(value);
+                      setInterviewErrors((prev) => ({
+                        ...prev,
+                        interviewType: undefined,
+                      }));
+
+                      // ถ้าไม่ใช่ Online ให้ล้าง URL
+                      if (value !== "online") {
+                        setInterviewData((prev) => ({
+                          ...prev,
+                          meeting_url: "",
+                        }));
+                      }
+                    }}
+                    options={INTERVIEW_TYPE_OPTIONS}
+                    optionType="button"
+                    buttonStyle="solid"
+                  />
+                </div>
+                {interviewErrors.interviewType && (
+                  <div>
+                    <Text type="danger" style={{ fontSize: 12 }}>
+                      {interviewErrors.interviewType}
+                    </Text>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div><Text strong>สถานที่สัมภาษณ์</Text></div>
+                <div className="mt-1">
+                  <Input name="location" />
+                </div>
+              </div>
+              {interviewType === "online" && (
+                <div>
+                  <div>
+                    <Text strong>URL การประชุม</Text>
+                  </div>
+                  <div className="mt-1">
+                    <Input
+                      value={interviewData.meeting_url}
+                      onChange={(e) =>
+                        setInterviewData((prev) => ({
+                          ...prev,
+                          meeting_url: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -790,9 +952,9 @@ export default function CandidateDetail({
           </div>
         )}
 
-        {message ? (
+        {successMessage ? (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {message}
+            {successMessage}
           </div>
         ) : null}
       </div>
@@ -801,7 +963,7 @@ export default function CandidateDetail({
         <div>
           <button
             type="button"
-            onClick={() => router.push("/recruitment/candidate_detail")}
+            onClick={() => window.history.back()}
             className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
             style={{ backgroundColor: "orange" , color:"black" }}
           >
@@ -810,14 +972,12 @@ export default function CandidateDetail({
         </div>
         <div>
           <Button
-              type="primary"
-              loading={loading}
-              onClick={handleSaveStatus}
-            >
-              บันทึก
-            </Button>
-
-          
+            type="primary"
+            loading={loading}
+            onClick={handleSaveStatus}
+          >
+            บันทึก
+          </Button>          
         </div>
       </div>
     </div>

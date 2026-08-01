@@ -2,7 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Table, Select, DatePicker, Button, Tag, Space, Typography, Modal, } from 'antd';
+import dayjs from 'dayjs';
+import {
+  Table,
+  Select,
+  DatePicker,
+  Button,
+  Tag,
+  Space,
+  Typography,
+  Modal,
+  Radio,
+  App,
+} from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -15,17 +27,27 @@ const API_URL = '/recruitment/api/candidate_detail';
  */
 const STATUS_MAP = {
   1: { label: 'รอพิจารณา', color: 'default' },
-  2: { label: 'ผ่านการคัดเลือกเข้าสัมภาษณ์', color: 'blue' },
-  3: { label: 'นัดสัมภาษณ์', color: 'green' },
-  4: { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
-  5: { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
-  6: { label: 'ขาดการสัมภาษณ์', color: 'green' },
-  7: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
-  8: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
-  15: { label: 'ยื่น Resume', color: 'default' },
+  2: { label: 'HRD ส่งต่อ HRM', color: 'volcano' },
+  3: { label: 'ผ่านการคัดเลือกเข้าสัมภาษณ์', color: 'blue' },
+  4: { label: 'นัดสัมภาษณ์', color: 'green' },
+  5: { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
+  6: { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
+  7: { label: 'ขาดการสัมภาษณ์', color: 'green' },
+  8: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
+  9: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
+  16: { label: 'ยื่น Resume', color: 'default' },
   99: { label: 'backlist', color: 'red' },
   0: { label: 'ยกเลิก', color: 'red' },
 };
+
+// status ที่ต้องกรอกวันเวลานัดสัมภาษณ์ + ประเภทการสัมภาษณ์
+const STATUS_CONFIRMED_INTERVIEW = 4;
+
+const INTERVIEW_TYPE_OPTIONS = [
+  { value: 'onsite', label: 'Onsite (สัมภาษณ์ที่บริษัท)' },
+  { value: 'online', label: 'Online (สัมภาษณ์ผ่านวิดีโอคอล)' },
+  { value: 'phone', label: 'Phone (สัมภาษณ์ทางโทรศัพท์)' },
+];
 
 const STATUS_OPTIONS = Object.entries(STATUS_MAP).map(([value, v]) => ({
   value: Number(value),
@@ -57,6 +79,8 @@ function StatusTag({ value }) {
 }
 
 export default function CandidateDetailTable() {
+  const { modal } = App.useApp();
+
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -72,9 +96,21 @@ export default function CandidateDetailTable() {
 
   const [reloadKey, setReloadKey] = useState(0);
 
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState();
+  const [updating, setUpdating] = useState(false);
+
+  // interview fields (แสดงเมื่อ selectedStatus === STATUS_CONFIRMED_INTERVIEW)
+  const [interviewDateTime, setInterviewDateTime] = useState(null); // dayjs | null
+  const [interviewType, setInterviewType] = useState(); // 'onsite' | 'online' | 'phone'
+  const [interviewErrors, setInterviewErrors] = useState({});
+
   const isAll = pageSize === 'all';
   const numericPageSize = isAll ? undefined : pageSize;
   const from = isAll ? 0 : (page - 1) * numericPageSize;
+
+  const requiresInterviewDetails = selectedStatus === STATUS_CONFIRMED_INTERVIEW;
 
   // Reset to page 1 when filters/pageSize change
   useEffect(() => {
@@ -127,14 +163,12 @@ export default function CandidateDetailTable() {
         params.set('pageSize', String(pageSize));
 
         const res = await fetch(`${API_URL}?${params.toString()}`);
-        const json = await res.json();
+        const json = await res.json();  
 
         if (!alive) return;
 
         if (!res.ok) {
-          Modal.error({ title: 'เกิดข้อผิดพลาด', content: json?.error || 'โหลดข้อมูลไม่สำเร็จ' });
-          setLoading(false);
-          return;
+          modal.error({ title: "เกิดข้อผิดพลาด", content: json?.error || "โหลดข้อมูลไม่สำเร็จ", });
         }
 
         setCount(json.count ?? 0);
@@ -142,7 +176,7 @@ export default function CandidateDetailTable() {
       } catch (err) {
         if (!alive) return;
         console.error(err);
-        Modal.error({ title: 'เกิดข้อผิดพลาด', content: err.message });
+        modal.error({ title: 'เกิดข้อผิดพลาด', content: err.message });
       } finally {
         if (alive) setLoading(false);
       }
@@ -166,16 +200,21 @@ export default function CandidateDetailTable() {
         title: 'Position',
         dataIndex: ['positions', 'position_name'],
         key: 'position_name',
-        render: (_, row) => row.positions?.position_name ?? '-',
+        render: (_, row) => row.position_name ?? '-',
       },
       {
         title: 'Name',
         key: 'first_name',
         render: (_, row) =>
-          [row.first_name, row.last_name].filter(Boolean).join(' ') || '-',
+          [row.first_name, row.last_name].filter(Boolean).join(' ')|| '-',
       },
       {
-        title: 'Register Date',
+        title:'Register Count',
+        key: 'count_num',
+        render: (_, row) => row.count_num ?? '0',
+      },
+      {
+        title: 'Last Register Date',
         dataIndex: 'created_at',
         key: 'created_at',
         width: 170,
@@ -194,13 +233,11 @@ export default function CandidateDetailTable() {
         width: 190,
         render: (_, row) => (
           <Space size="small">
-            <Link href={`/recruitment/candidate_detail/${row.id}/edit`}>
-              <Button type="primary" size="small">
-                อัปเดต
-              </Button>
-            </Link>
-            <Link href={`/recruitment/candidate_detail/${row.id}`}>
-              <Button size="small">ดูรายละเอียด</Button>
+            {/* <Button color="purple" variant="solid" size="small" onClick={() => openStatusModal(row)}>
+              อัปเดตสถานะ
+            </Button> */}
+            <Link href={`/recruitment/candidate/candidate_history/${row.id}`}>
+              <Button type="primary" size="small">ดูข้อมูลประวัติการสมัคร</Button>
             </Link>
           </Space>
         ),
@@ -208,6 +245,90 @@ export default function CandidateDetailTable() {
     ],
     [from]
   );
+
+  function openStatusModal(row) {
+    setSelectedRow(row);
+    setSelectedStatus(row.status);
+
+    // pre-fill ข้อมูลนัดสัมภาษณ์เดิม (ถ้ามี) เผื่อผู้ใช้แก้ไขซ้ำ
+    setInterviewDateTime(row.interview_datetime ? dayjs(row.interview_datetime) : null);
+    setInterviewType(row.interview_type ?? undefined);
+    setInterviewErrors({});
+
+    setStatusModalOpen(true);
+  }
+
+  function validateInterviewFields() {
+    if (!requiresInterviewDetails) return true;
+
+    const errors = {};
+    if (!interviewDateTime) {
+      errors.interviewDateTime = 'กรุณาระบุวันเวลานัดสัมภาษณ์';
+    }
+    if (!interviewType) {
+      errors.interviewType = 'กรุณาเลือกประเภทการสัมภาษณ์';
+    }
+    setInterviewErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleUpdateStatus() {
+    if (!selectedRow) return;
+
+    if (!validateInterviewFields()) {
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const body = {
+        id: selectedRow.id,
+        status: selectedStatus,
+      };
+
+      if (requiresInterviewDetails) {
+        body.interview_datetime = interviewDateTime.toISOString();
+        body.interview_type = interviewType;
+      }
+
+      const res = await fetch(API_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        modal.error({
+          title: "เกิดข้อผิดพลาด",
+          content: json.error || "ไม่สามารถอัปเดตสถานะได้",
+        });
+        return;
+      }
+
+      modal.success({
+        title: "สำเร็จ",
+        content: "อัปเดตสถานะเรียบร้อย",
+      });
+
+      setStatusModalOpen(false);
+      setSelectedRow(null);
+
+      // Reload Table
+      setReloadKey((k) => k + 1);
+
+    } catch (err) {
+      modal.error({
+        title: "เกิดข้อผิดพลาด",
+        content: err.message,
+      });
+    } finally {
+      setUpdating(false);
+    }
+  }
 
   return (
     <div
@@ -233,11 +354,8 @@ export default function CandidateDetailTable() {
       >
         <div>
           <Title level={4} style={{ margin: 0 }}>
-            Candidate Detail
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
             รายการสมัครงาน
-          </Text>
+          </Title>
         </div>
 
         <Space wrap>
@@ -322,6 +440,93 @@ export default function CandidateDetailTable() {
         }}
         style={{ margin: 0 }}
       />
+
+      <Modal
+        title="อัปเดตสถานะผู้สมัคร"
+        open={statusModalOpen}
+        onCancel={() => setStatusModalOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setStatusModalOpen(false)} > ยกเลิก </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={updating}
+            onClick={handleUpdateStatus}
+          >
+            อัปเดตสถานะ
+          </Button>,
+        ]}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%" }}
+          size="middle"
+        >
+          <Text strong> ผู้สมัคร {selectedRow ? `${selectedRow.first_name} ${selectedRow.last_name}` : "-"} </Text>
+
+          <div>
+            <Text strong>สถานะ</Text>
+            <Select
+              value={selectedStatus}
+              onChange={(val) => {
+                setSelectedStatus(val);
+                // ถ้าเปลี่ยนออกจากสถานะยืนยันสัมภาษณ์ ให้เคลียร์ error เดิม
+                if (val !== STATUS_CONFIRMED_INTERVIEW) {
+                  setInterviewErrors({});
+                }
+              }}
+              style={{ width: "100%", marginTop: 4 }}
+              options={STATUS_OPTIONS}
+            />
+          </div>
+
+          {requiresInterviewDetails && (
+            <>
+              <div>
+                <Text strong>วันเวลานัดสัมภาษณ์</Text>
+                <DatePicker
+                  showTime
+                  format="DD/MM/YYYY HH:mm"
+                  value={interviewDateTime}
+                  onChange={(val) => {
+                    setInterviewDateTime(val);
+                    setInterviewErrors((prev) => ({ ...prev, interviewDateTime: undefined }));
+                  }}
+                  style={{ width: "100%", marginTop: 4 }}
+                  status={interviewErrors.interviewDateTime ? 'error' : ''}
+                  placeholder="เลือกวันและเวลา"
+                />
+                {interviewErrors.interviewDateTime && (
+                  <Text type="danger" style={{ fontSize: 12 }}>
+                    {interviewErrors.interviewDateTime}
+                  </Text>
+                )}
+              </div>
+
+              <div>
+                <Text strong>ประเภทการสัมภาษณ์</Text>
+                <div style={{ marginTop: 4 }}>
+                  <Radio.Group
+                    value={interviewType}
+                    onChange={(e) => {
+                      setInterviewType(e.target.value);
+                      setInterviewErrors((prev) => ({ ...prev, interviewType: undefined }));
+                    }}
+                    options={INTERVIEW_TYPE_OPTIONS}
+                    optionType="button"
+                    buttonStyle="solid"
+                  />
+                </div>
+                {interviewErrors.interviewType && (
+                  <Text type="danger" style={{ fontSize: 12, display: 'block' }}>
+                    {interviewErrors.interviewType}
+                  </Text>
+                )}
+              </div>
+            </>
+          )}
+        </Space>
+      </Modal>
     </div>
   );
 }

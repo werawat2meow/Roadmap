@@ -45,31 +45,52 @@ export async function GET(request) {
     const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
     const pageSizeParam = searchParams.get('pageSize') || '10';
     const isAll = pageSizeParam === 'all';
-    const pageSize = isAll ? null : parseInt(pageSizeParam, 10);
+    let pageSize = isAll ? null : parseInt(pageSizeParam, 10);
+    if (!isAll && (!Number.isFinite(pageSize) || pageSize <= 0)) {
+      pageSize = 10;
+    }
+    if (!isAll) {
+      pageSize = Math.min(pageSize, 100); // จำกัด max
+    }
 
     let query = supabaseAdmin
       .from('recruit_job_applications')
       .select(
-        'id, first_name, last_name, created_at, status, position_id, positions ( position_name )',
+        `id, first_name, last_name, created_at, status, position_id,
+        positions ( position_name ) , 
+        recruit_job_interviews!inner ( interview_datetime , interview_order )`
+        ,
         { count: 'exact' }
       )
-      .in("status", [4,7,8,9,11])
+      .in("status", [5,6,8])
       .order('created_at', { ascending: false });
 
     if (status !== null && status !== '' && status !== undefined) {
-      query = query.eq('status', Number(status));
+      const statusNum = Number(status);
+      if (!Number.isNaN(statusNum)) {
+        query = query.eq('status', statusNum);
+      }
+    } else {
+      query = query.in('status', [5, 6, 8]); // default เฉพาะตอนไม่ระบุ status
     }
 
     if (positionId) {
       query = query.eq('position_id', positionId);
     }
 
+    // Filter interview_datetime
     if (dateFrom) {
-      query = query.gte('created_at', dateFrom);
+      query = query.gte(
+        "recruit_job_interviews.interview_datetime",
+        `${dateFrom} 00:00:00`
+      );
     }
 
     if (dateTo) {
-      query = query.lte('created_at', dateTo);
+      query = query.lte(
+        "recruit_job_interviews.interview_datetime",
+        `${dateTo} 23:59:59`
+      );
     }
 
     if (!isAll) {
@@ -79,9 +100,6 @@ export async function GET(request) {
     }
 
     const { data, error, count } = await query;
-
-    console.log(data);
-    
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

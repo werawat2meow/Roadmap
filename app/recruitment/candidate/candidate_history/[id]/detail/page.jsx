@@ -1,89 +1,68 @@
+"use client";
+
+import { useEffect, useState, use } from "react";
 import { notFound } from "next/navigation";
-import { supabaseAdmin } from "@/lib/supabaseServer";
 import CandidateDetail from "@/app/recruitment/components/CandidateDetail";
-import {
-    getProvinceByCode,
-    getDistrictByCode,
-    getSubdistrictByCode,
-} from "geothai";
+import LoadingOrb from "@/app/components/LoadingOrb";
 
-export default async function Page({ params }) {
-  const { id } = await params;
+export default function Page({ params }) {
+  const { id } = use(params);
 
-  // ============================
-  // Application
-  // ============================
-  const { data: application, error: applicationError } =
-    await supabaseAdmin
-      .from("recruit_job_applications")
-      .select(`
-        *,
-        positions (
-          id,
-          position_name
-        )
-      `)
-      .eq("id", id)
-      .single();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (applicationError || !application) {
-    notFound();
+  useEffect(() => {
+    if (id) fetchCandidateDetail();
+  }, [id]);
+
+  async function fetchCandidateDetail() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch(`/recruitment/api/candidate_detail/${id}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Load candidate detail failed");
+      }
+
+      setData(result ?? result ?? null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // ============================
-  // Education
-  // ============================
-  const { data: education = [] } = await supabaseAdmin
-    .from("recruit_job_education_history")
-    .select("*")
-    .eq("application_id", id)
-    .order("id");
+  // ยังโหลดอยู่ -> แสดง loading เท่านั้น ห้ามไปต่อ
+  if (loading) {
+    return <LoadingOrb />;
+  }
 
-  // ============================
-  // Work Experience
-  // ============================
-  const { data: workExperience = [] } = await supabaseAdmin
-    .from("recruit_job_work_experience")
-    .select("*")
-    .eq("application_id", id)
-    .order("id");
-
-  // ============================
-  // Skills
-  // ============================
-  const { data: skills = [] } = await supabaseAdmin
-    .from("recruit_job_skills")
-    .select("*")
-    .eq("application_id", id)
-    .order("id");
-
-  // ============================
-  // Documents
-  // ============================
-  const { data: documents = [] } = await supabaseAdmin
-    .from("recruit_job_documents")
-    .select("*")
-    .eq("application_id", id)
-    .order("id");
-
-  application.province_name = getProvinceByCode(application.province_id)?.name_th;  
-  application.district_name = getDistrictByCode(application.district_id)?.name_th;
-  application.subdistrict_name = getSubdistrictByCode(application.subdistrict_id)?.name_th;
-
-  const languageSkills = skills.filter( (item) => item.skill_type === "language");
-  const systemProgramSkills = skills.filter( (item) => item.skill_type === "system_program");
+  // โหลดเสร็จแล้วแต่ไม่มีข้อมูล/error -> หยุดที่นี่ ห้ามไปต่อ
+  if (error || !data) {
+    return notFound(); // ★ ใส่ return กันไว้ให้ชัวร์ว่า component หยุดทำงานจริง
+  }
 
   // ============================
   // Layout
   // ============================
   return (
     <CandidateDetail
-      application={application}
-      education={education}
-      workExperience={workExperience}
-      languageSkills={languageSkills}
-      systemProgramSkills={systemProgramSkills}
-      documents={documents}
+      application={data?.application}
+      education={data?.education}
+      workExperience={data?.workExperience}
+      languageSkills={data?.languageSkills}
+      systemProgramSkills={data?.systemProgramSkills}
+      documents={data?.documents}
+      interviews={data?.interviews}
     />
   );
 }

@@ -39,7 +39,7 @@ export default function SidebarContent({
   const menuItems = useMemo(
     () => [
       {
-        label: "Dashboard",
+        label: "Overview",
         href: "/recruitment",
         icon: LayoutDashboard,
       },
@@ -56,6 +56,11 @@ export default function SidebarContent({
       {
         label: "Schedule interviews",
         href: "/recruitment/schedule_interviews",
+        icon: LayoutList,
+      },
+      {
+        label: "Approve Employees",
+        href: "/recruitment/approve_employees",
         icon: LayoutList,
       },
       {

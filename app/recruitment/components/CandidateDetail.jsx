@@ -32,35 +32,37 @@ const statusColor = {
 };
 
 const statusText = {
-  1:"รอพิจารณา",
-  2:"ผ่านการคัดเลือกเข้าสัมภาษณ์",
-  3:"นัดสัมภาษณ์",
-  4:"ยืนยันการสัมภาษณ์",
-  5:"เลื่อนการสัมภาษณ์",
-  6:"ขาดการสัมภาษณ์",
-  7:"ส่งต่อการสัมภาษณ์",
-  8:"ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน",
-  15:"ยื่น Resume",
-  99:"backlist",
-  0:"ยกเลิก",
+  1: "รอพิจารณา",
+  2: "HRD ส่งต่อ HRM",
+  3: "ผ่านการคัดเลือกเข้าสัมภาษณ์",
+  4: "นัดสัมภาษณ์",
+  5: "ยืนยันการสัมภาษณ์",
+  6: "เลื่อนการสัมภาษณ์",
+  7: "ขาดการสัมภาษณ์",
+  8: "ส่งต่อการสัมภาษณ์",
+  9: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน",
+  16: "ยื่น Resume",
+  99: "backlist",
+  0: "ยกเลิก",
 };
 
 const APPLICATION_STATUS = [
   { value: 1, label: "รอพิจารณา" },
-  { value: 2, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
-  { value: 3, label: "นัดสัมภาษณ์" },
-  { value: 4, label: "ยืนยันการสัมภาษณ์" },
-  { value: 5, label: "เลื่อนการสัมภาษณ์" },
-  { value: 6, label: "ขาดการสัมภาษณ์" },
-  { value: 7, label: "ส่งต่อการสัมภาษณ์" },
-  { value: 8, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
-  { value: 15, label: "ยื่น Resume" },
+  { value: 2, label: "HRD ส่งต่อ HRM" },
+  { value: 3, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
+  { value: 4, label: "นัดสัมภาษณ์" },
+  { value: 5, label: "ยืนยันการสัมภาษณ์" },
+  { value: 6, label: "เลื่อนการสัมภาษณ์" },
+  { value: 7, label: "ขาดการสัมภาษณ์" },
+  { value: 8, label: "ส่งต่อการสัมภาษณ์" },
+  { value: 9, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
+  { value: 16, label: "ยื่น Resume" },
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
 ];
 
 // status ที่ต้องกรอกวันเวลานัดสัมภาษณ์ + ประเภทการสัมภาษณ์
-const STATUS_CONFIRMED_INTERVIEW = 4;
+const STATUS_CONFIRMED_INTERVIEW = 5;
 
 const INTERVIEW_TYPE_OPTIONS = [
   { value: "onsite", label: "Onsite (สัมภาษณ์ที่บริษัท)" },
@@ -201,9 +203,13 @@ export default function CandidateDetail({
   languageSkills,
   systemProgramSkills,
   documents,
+  interviews,
 }) {
 
+  console.log(interviews);
+  
 
+  const router = useRouter();
   const [status, setStatus] = useState(application.status);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -282,7 +288,7 @@ export default function CandidateDetail({
         throw new Error(result.message);
       }
 
-      // router.push("/recruitment/candidate_detail");
+      router.push("/recruitment/candidate");
 
       setSuccessMessage("บันทึกข้อมูลเรียบร้อย");
     } catch (err) {
@@ -293,13 +299,13 @@ export default function CandidateDetail({
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24 }} >
 
       {/* ====================================================== */}
       {/* Header */}
       {/* ====================================================== */}
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: 24 }}>
         <Row justify="space-between" align="middle">
 
           <Col>
@@ -351,7 +357,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลส่วนตัว"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Descriptions
           bordered
@@ -431,7 +437,7 @@ export default function CandidateDetail({
 
       <Card
         title="ที่อยู่ปัจจุบัน"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Descriptions
           bordered
@@ -495,7 +501,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลครอบครัว"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Descriptions
           bordered
@@ -522,7 +528,7 @@ export default function CandidateDetail({
 
       <Card
         title="บุคคลที่ติดต่อกรณีฉุกเฉิน"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Descriptions
           bordered
@@ -549,7 +555,7 @@ export default function CandidateDetail({
 
       <Card
         title="ข้อมูลสุขภาพและประวัติ"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Descriptions
           bordered
@@ -578,7 +584,7 @@ export default function CandidateDetail({
 
       <Card
         title="ประวัติการศึกษา"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Table
           rowKey="id"
@@ -653,7 +659,7 @@ export default function CandidateDetail({
 
       <Card
         title="ประสบการณ์การทำงาน"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Table
           rowKey="id"
@@ -704,7 +710,7 @@ export default function CandidateDetail({
       {/* ทักษะ */}
       {/* ====================================================== */}
 
-      <Card title="ทักษะด้านโปรแกรม" className="mb-6">
+      <Card title="ทักษะด้านโปรแกรม" style={{ marginBottom: 24 }}>
         <Table
           rowKey="id"
           bordered
@@ -739,7 +745,7 @@ export default function CandidateDetail({
         />
       </Card>
 
-      <Card title="ทักษะด้านภาษา" className="mb-6">
+      <Card title="ทักษะด้านภาษา" style={{ marginBottom: 24 }}>
         <Table
           rowKey="id"
           bordered
@@ -792,7 +798,7 @@ export default function CandidateDetail({
 
       <Card
         title="เอกสารแนบ"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <Table
           rowKey="id"
@@ -840,7 +846,7 @@ export default function CandidateDetail({
 
       <Card
         title="สถานะการสมัคร"
-        className="mb-6"
+        style={{ marginBottom: 24 }}
       >
         <div className="flex flex-col gap-4" >
           <div className="flex gap-4 items-center">

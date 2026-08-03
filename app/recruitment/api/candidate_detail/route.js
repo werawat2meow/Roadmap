@@ -53,24 +53,12 @@ export async function GET(request) {
     const { data, error } = await supabaseAdmin.rpc(
       "search_recruit_job_applications",
       {
-        p_status:
-          status !== null && status !== ""
-            ? Number(status)
-            : null,
-
+        p_status: status !== null && status !== "" ? Number(status) : null,
         p_position_id: positionId || null,
-
         p_date_from: dateFrom || null,
-
         p_date_to: dateTo || null,
-
-        p_allow_position_ids:
-          allowPositionIds.length
-            ? allowPositionIds
-            : null,
-
+        p_allow_position_ids: allowPositionIds.length ? allowPositionIds : null,
         p_page: page,
-
         p_page_size: isAll ? 999999 : pageSize,
       }
     );
@@ -81,6 +69,8 @@ export async function GET(request) {
         { status: 500 }
       );
     }
+
+    console.log(data);
 
     const total = data?.length ? Number(data[0].total_count) : 0;
 

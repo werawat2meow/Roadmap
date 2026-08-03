@@ -1,34 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
-
-async function getUserIdFromRequest() {
-  try {
-    const cookieStore = await cookies();
-
-    const token = cookieStore.get("employee_token")?.value;
-
-    if (!token) {
-      throw new Error("Unauthorized");
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "dev-secret-key"
-    );
-
-    const userId = decoded?.user_id;
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-
-    return userId;
-  } catch (error) {
-    return null;
-  }
-}
+import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
 
 export async function POST(request) {
   try {

@@ -38,6 +38,29 @@ const departments = [
   "Operations",
 ];
 
+function downloadCsvFile(
+  filename: string,
+  columns: { header: string; key: string }[],
+  rows: Record<string, any>[],
+) {
+  const header = columns
+    .map((col) => `"${col.header.replace(/"/g, '""')}"`)
+    .join(",");
+  const csvRows = rows.map((row) =>
+    columns
+      .map((col) => `"${String(row[col.key] ?? "").replace(/"/g, '""')}"`)
+      .join(","),
+  );
+  const csv = [header, ...csvRows].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function EvaluationHistoryPanel({
   evaluationType,
 }: {
@@ -70,7 +93,9 @@ export default function EvaluationHistoryPanel({
     setIsLoadingPreview(true);
 
     const res = await fetch(
-      `/roadmap/api/reports/evaluation-preview?id=${encodeURIComponent(record.id)}`,
+      `/roadmap/api/reports/evaluation-preview?id=${encodeURIComponent(
+        record.id,
+      )}`,
     );
     const json = await res.json();
 
@@ -84,6 +109,21 @@ export default function EvaluationHistoryPanel({
 
     setIsLoadingPreview(false);
   };
+
+  const columns: {
+    header: string;
+    key: string;
+    align: "left" | "center" | "right";
+  }[] = [
+    { header: "พนักงาน", key: "name", align: "center" },
+    { header: "สังกัด", key: "department", align: "center" },
+    { header: "แผนก", key: "division", align: "center" },
+    { header: "หน่วย", key: "unit", align: "center" },
+    { header: "Level", key: "level", align: "center" },
+    { header: "คะแนน", key: "scorePercent", align: "center" },
+    { header: "สถานะ", key: "status", align: "center" },
+    { header: "Actions", key: "actions", align: "center" },
+  ];
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -108,6 +148,23 @@ export default function EvaluationHistoryPanel({
     });
   }, [rows, searchTerm, filters]);
 
+  const handleExport = () => {
+    const exportColumns = columns.filter((col) => col.key !== "actions");
+    const exportRows = filteredRows.map((row) => {
+      const copy: Record<string, any> = {};
+      exportColumns.forEach((col) => {
+        copy[col.key] = row[col.key];
+      });
+      return copy;
+    });
+
+    downloadCsvFile(
+      `evaluation-history-${evaluationType}.csv`,
+      exportColumns,
+      exportRows,
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-[1fr_auto]">
@@ -115,31 +172,34 @@ export default function EvaluationHistoryPanel({
           <h2 className="text-2xl font-semibold text-slate-900">
             ประวัติการประเมิน {evaluationType}
           </h2>
-          <p className="text-sm text-slate-500">แสดงพนักงานที่ถูกประเมินแล้ว</p>
+          <p className="text-sm text-slate-500">
+            แสดงพนักงานที่ถูกประเมินแล้ว
+          </p>
         </div>
 
-        <SearchBar
-          placeholder="ค้นหาชื่อพนักงาน..."
-          onSearch={setSearchTerm}
-          onFilter={setFilters}
-          filterOptions={{
-            departments,
-            statuses: ["Active", "On Leave"],
-          }}
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+          >
+            Export CSV
+          </button>
+
+          <SearchBar
+            placeholder="ค้นหาชื่อพนักงาน..."
+            onSearch={setSearchTerm}
+            onFilter={setFilters}
+            filterOptions={{
+              departments,
+              statuses: ["Active", "On Leave"],
+            }}
+          />
+        </div>
       </div>
 
       <ReportTable
-        columns={[
-          { header: "พนักงาน", key: "name", align: "center" },
-          { header: "สังกัด", key: "department", align: "center" },
-          { header: "แผนก", key: "division", align: "center" },
-          { header: "หน่วย", key: "unit", align: "center" },
-          { header: "Level", key: "level", align: "center" },
-          { header: "คะแนน", key: "scorePercent", align: "center" },
-          { header: "สถานะ", key: "status", align: "center" },
-          { header: "Actions", key: "actions", align: "center" },
-        ]}
+        columns={columns}
         rows={filteredRows.map((row) => ({
           ...row,
           actions: (

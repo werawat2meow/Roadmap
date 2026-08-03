@@ -18,7 +18,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Executive' | 'ยังไม่กำหนด';
+  role: 'Admin' | 'Manager' | 'Management' | 'ยังไม่กำหนด';
   menus: string[];
 };
 
@@ -64,7 +64,7 @@ const menuIconBgStyles: Record<string, string> = {
   'Send Account': 'bg-green-100',
 };
 
-const roleOptions: User['role'][] = ['Admin', 'Manager', 'Executive', 'ยังไม่กำหนด'];
+const roleOptions: User['role'][] = ['Admin', 'Manager', 'Management', 'ยังไม่กำหนด'];
 
   const getRoleButtonClass = (role: User['role'], selectedRole: User['role']) => {
     if (selectedRole === role) {
@@ -73,7 +73,7 @@ const roleOptions: User['role'][] = ['Admin', 'Manager', 'Executive', 'ยัง
           return 'bg-red-600 text-white border-red-600';
         case 'Manager':
           return 'bg-blue-600 text-white border-blue-600';
-        case 'Executive':
+        case 'Management':
           return 'bg-violet-600 text-white border-violet-600';
         case 'ยังไม่กำหนด':
           return 'bg-slate-700 text-white border-slate-700';
@@ -88,7 +88,7 @@ const roleOptions: User['role'][] = ['Admin', 'Manager', 'Executive', 'ยัง
         return 'text-red-700 bg-red-100 border-red-200';
       case 'Manager':
         return 'text-blue-700 bg-blue-100 border-blue-200';
-      case 'Executive':
+      case 'Management':
         return 'text-violet-700 bg-violet-100 border-violet-200';
       case 'ยังไม่กำหนด':
         return 'text-slate-600 bg-slate-100 border-slate-200';
@@ -107,10 +107,6 @@ export default function AccessPermissionsPanel({
 }: Props) {
   const [draftUser, setDraftUser] = useState<User>(selectedUser);
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    setDraftUser(selectedUser);
-  }, [selectedUser]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -141,7 +137,7 @@ export default function AccessPermissionsPanel({
   const counts = {
     Admin: users.filter((user) => user.role === 'Admin').length,
     Manager: users.filter((user) => user.role === 'Manager').length,
-    Executive: users.filter((user) => user.role === 'Executive').length,
+    Executive: users.filter((user) => user.role === 'Management').length,
     unassigned: users.filter((user) => user.role === 'ยังไม่กำหนด').length,
   };
 

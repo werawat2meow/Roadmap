@@ -19,7 +19,7 @@ export async function GET() {
       branches(branch_name),
       departments(department_name),
       divisions(division_name),
-      positions(position_name, position_level)
+      positions(position_name)
     `)
     .order('created_at', { ascending: false });
 
@@ -34,12 +34,11 @@ export async function GET() {
     name: `${item.first_name_th || ''} ${item.last_name_th || ''}`.trim(),
     firstNameEn: item.first_name_en || '',
     lastNameEn: item.last_name_en || '',
-    // ใช้รูปจากระบบ ถ้าไม่มีให้ใช้ตัวอักษรย่อจากชื่อเล่น
     avatar: item.employee_photo_url || (item.nick_name ? item.nick_name.slice(0, 2).toUpperCase() : ''),
     department: item.departments?.department_name || '',
     division: item.divisions?.division_name || '',
     role: item.positions?.position_name || '',
-    level: item.positions?.position_level || '',
+    level: '',
     status: item.status || 'Active',
     hireDate: item.hire_date || null,
   }));

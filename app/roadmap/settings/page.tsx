@@ -32,7 +32,7 @@ const menuOptions = [
   'Evaluate HR',
   'Evaluate MGR',
   'Reports',
-  'Executive',
+  'Management',
   'Send Account',
   'Settings',
 ];
@@ -48,7 +48,7 @@ type User = {
   accessId?: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Executive' | 'ยังไม่กำหนด';
+  role: 'Admin' | 'Manager' | 'Management' | 'ยังไม่กำหนด';
   menus: string[];
 };
 
@@ -411,6 +411,7 @@ const selectedUser = useMemo(() => {
       <div className="space-y-6 mt-6">
         {tab === 'สิทธิ์การเข้าถึง' ? (
           <AccessPermissionsPanel
+            key={selectedUser?.id}
             users={users}
             selectedUserId={selectedUserId}
             selectedUser={

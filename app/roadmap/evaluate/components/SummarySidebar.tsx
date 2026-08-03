@@ -8,7 +8,7 @@ interface SummarySidebarProps {
     id?: string;
     employeeName?: string;
     nickname?: string;
-    position?: string;
+    position?: string;ไ
     department?: string;
     division?: string;
     level?: string;

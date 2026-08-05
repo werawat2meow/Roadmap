@@ -70,8 +70,6 @@ export async function GET(request) {
       );
     }
 
-    console.log(data);
-
     const total = data?.length ? Number(data[0].total_count) : 0;
 
     return NextResponse.json({

@@ -206,9 +206,6 @@ export default function CandidateDetail({
   interviews,
 }) {
 
-  console.log(interviews);
-  
-
   const router = useRouter();
   const [status, setStatus] = useState(application.status);
   const [loading, setLoading] = useState(false);
@@ -217,15 +214,15 @@ export default function CandidateDetail({
 
   // ข้อมูลนัดสัมภาษณ์ (แสดงเมื่อ status === STATUS_CONFIRMED_INTERVIEW)
   const [interviewDateTime, setInterviewDateTime] = useState(
-    application.interview_datetime ? dayjs(application.interview_datetime) : null
+    interviews?.interview_datetime ? dayjs(interviews.interview_datetime) : null
   );
   const [interviewType, setInterviewType] = useState(
-    application.interview_type ?? undefined
+    interviews?.interview_type ?? undefined
   );
 
   const [interviewData, setInterviewData] = useState({
-    location: "",
-    meeting_url: "",
+    location: interviews?.location ?? "",
+    meeting_url: interviews?.meeting_url ?? "",
   });
 
   const [interviewErrors, setInterviewErrors] = useState({});
@@ -266,6 +263,8 @@ export default function CandidateDetail({
 
       const body = {
         id: application.id,
+        location: interviewData.location,
+        meeting_url: interviewData.meeting_url,
         status,
       };
 
@@ -925,7 +924,16 @@ export default function CandidateDetail({
               <div>
                 <div><Text strong>สถานที่สัมภาษณ์</Text></div>
                 <div className="mt-1">
-                  <Input name="location" />
+                  <Input
+                    name="location"
+                    value={interviewData.location}
+                    onChange={(e) =>
+                      setInterviewData((prev) => ({
+                        ...prev,
+                        location: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
               </div>
               {interviewType === "online" && (
@@ -936,6 +944,7 @@ export default function CandidateDetail({
                   <div className="mt-1">
                     <Input
                       value={interviewData.meeting_url}
+                      name="meeting_url"
                       onChange={(e) =>
                         setInterviewData((prev) => ({
                           ...prev,

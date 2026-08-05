@@ -72,9 +72,8 @@ export async function GET(request, { params }) {
         .from("recruit_job_interviews")
         .select("*")
         .eq("application_id", id)
-        .order("interview_datetime", {
-          ascending: false,
-        }),
+        .order("interview_round", { ascending: false })
+        .limit(1),
     ]);
 
     application.province_name =

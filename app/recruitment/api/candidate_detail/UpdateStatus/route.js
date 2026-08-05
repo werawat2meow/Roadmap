@@ -4,19 +4,14 @@ import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
 
 export async function PUT(request) {
   try {
-    const { id, status, interview_datetime, interview_type } = await request.json();
+    const { id, status, interview_datetime, interview_type, location, meeting_url } = await request.json();
 
     const userId = await getUserIdFromRequest();
 
     if (!userId) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized",
-        },
-        {
-          status: 401,
-        }
+        { success: false, message: "Unauthorized", },
+        { status: 401, }
       );
     }
 
@@ -69,6 +64,8 @@ export async function PUT(request) {
           interview_round: nextRound,
           interview_type,
           interview_datetime,
+          location,
+          meeting_url,
           created_by: userId,
           status,
         });

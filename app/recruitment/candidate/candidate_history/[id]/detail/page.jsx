@@ -62,7 +62,7 @@ export default function Page({ params }) {
       languageSkills={data?.languageSkills}
       systemProgramSkills={data?.systemProgramSkills}
       documents={data?.documents}
-      interviews={data?.interviews}
+      interviews={data?.interviews[0]}
     />
   );
 }

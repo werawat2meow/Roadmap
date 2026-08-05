@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ClipboardCheck, BarChart3, Settings, ChevronLeft, ArrowLeftSquare, UserCheck } from 'lucide-react';
 
 const menuItems = [
-  { name: 'Dashboard', href: '/leave', icon: LayoutDashboard },
+  { name: 'Overview', href: '/leave', icon: LayoutDashboard },
   { name: 'Approvals', href: '/leave/approvals', icon: ClipboardCheck },
   { name: 'Reports', href: '/leave/reports', icon: BarChart3 },
-    { name: 'Eligibility', href: '/leave/eligibility', icon: UserCheck },
+  { name: 'Eligibility', href: '/leave/eligibility', icon: UserCheck },
   { name: 'Settings', href: '/leave/settings', icon: Settings },
   { name: 'Main Website', href: '/admin', icon: ArrowLeftSquare },
 ];

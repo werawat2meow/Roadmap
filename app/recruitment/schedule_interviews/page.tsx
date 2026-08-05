@@ -46,9 +46,12 @@ const STATUS_MAP = {
   4: { label: 'นัดสัมภาษณ์', color: 'green' },
   5: { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
   6: { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
+  7: { label: 'ขาดการสัมภาษณ์', color: 'volcano' },
   8: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
-  9: { label: 'ผ่านการคัดเลือก', color: 'volcano' },
-  11: { label: 'นัดวันเริ่มทำงาน', color: 'volcano' },
+  9: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
+  10: { label: 'ผ่านการคัดเลือก', color: 'volcano' },
+  11: { label: 'ไม่ผ่านการคัดเลือก', color: 'volcano' },
+  12: { label: 'นัดวันเริ่มทำงาน', color: 'volcano' },
 };
 
 const pageSizeOptions = [

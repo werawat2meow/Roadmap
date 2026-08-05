@@ -22,6 +22,36 @@ export async function PUT(request) {
 
     if (error) throw error;
 
+    // หา Interview ล่าสุดของ Application นี้
+    const { data: interview, error: findError } = await supabaseAdmin
+      .from("recruit_job_interviews")
+      .select("id")
+      .eq("application_id", application_id)
+      .order("interview_round", { ascending: false })
+      .limit(1)
+      .single();
+
+      console.log(interview);      
+
+    if (findError || !interview) {
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลการสัมภาษณ์" },
+        { status: 404 }
+      );
+    }
+
+    // อัปเดต interview_round
+    const { error: updateError } = await supabaseAdmin
+      .from("recruit_job_interviews")
+      .update({
+        status: Number(status),
+      })
+      .eq("id", interview.id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
     return NextResponse.json({
       success: true,
     });

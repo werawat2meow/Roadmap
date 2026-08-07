@@ -32,8 +32,18 @@ export async function GET(req) {
             )
           ),
           positions (
+            id,
             position_name,
-            position_level
+            position_level_mappings (
+              is_default,
+              sort_order,
+
+              position_level:position_levels (
+                id,
+                level_code,
+                level_name
+              )
+            )
           )
         `,
         { count: "exact" }
@@ -49,7 +59,6 @@ export async function GET(req) {
         .or(
           [
             `position_name.ilike.${keyword}`,
-            `position_level.ilike.${keyword}`,
           ].join(",")
         );
 
@@ -142,19 +151,26 @@ export async function GET(req) {
 
     if (error) throw error;
 
-    const mappedData = (data || []).map((item) => ({
-      id: item.id,
-      unit_id: item.unit_id,
-      position_id: item.position_id,
-      unit_name: item.units?.unit_name || "-",
-      division_name: item.units?.divisions?.division_name || "-",
-      department_name: item.units?.divisions?.departments?.department_name || "-",
-      position_name: item.positions?.position_name || "-",
-      position_level: item.positions?.position_level || "",
-      headcount_target: item.headcount_target ?? 0,
-      status: item.status,
-      created_at: item.created_at,
-    }));
+    const mappedData = (data || []).map((item) => {
+      const defaultLevel = item.positions?.position_level_mappings?.find(
+          (mapping) => mapping.is_default
+        )?.position_level;
+
+      return {
+        id: item.id,
+        unit_id: item.unit_id,
+        position_id: item.position_id,
+        unit_name:item.units?.unit_name || "-",
+        division_name:item.units?.divisions?.division_name || "-",
+        department_name:item.units?.divisions?.departments?.department_name || "-",
+        position_name:item.positions?.position_name || "-",
+        position_level:defaultLevel?.level_code || "",
+        position_level_name:defaultLevel?.level_name || "",
+        headcount_target:item.headcount_target ?? 0,
+        status:item.status,
+        created_at:item.created_at,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -250,8 +266,17 @@ export async function POST(req) {
           )
         ),
         positions (
+          id,
           position_name,
-          position_level
+          position_level_mappings (
+            is_default,
+            sort_order,
+            position_level:position_levels (
+              id,
+              level_code,
+              level_name
+            )
+          )
         )
       `)
       .single();
@@ -267,8 +292,7 @@ export async function POST(req) {
         position_id: inserted.position_id,
         unit_name: inserted.units?.unit_name || "-",
         division_name: inserted.units?.divisions?.division_name || "-",
-        department_name:
-          inserted.units?.divisions?.departments?.department_name || "-",
+        department_name:inserted.units?.divisions?.departments?.department_name || "-",
         position_name: inserted.positions?.position_name || "-",
         position_level: inserted.positions?.position_level || "",
         headcount_target: inserted.headcount_target ?? 0,

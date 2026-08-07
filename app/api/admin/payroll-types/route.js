@@ -8,6 +8,8 @@ const payrollTypeSelect = `
   payroll_type_name,
   description,
   default_payment_day,
+  cutoff_end_day,
+  payment_offset_month,
   payment_frequency,
   status,
   sort_order,
@@ -22,6 +24,8 @@ function mapPayrollType(item) {
     payroll_type_name: item.payroll_type_name,
     description: item.description || "",
     default_payment_day: item.default_payment_day,
+    cutoff_end_day: item.cutoff_end_day,
+    payment_offset_month:Number(item.payment_offset_month || 0),
     payment_frequency: item.payment_frequency,
     status: item.status || "active",
     sort_order: Number(item.sort_order || 0),
@@ -32,39 +36,23 @@ function mapPayrollType(item) {
 
 export async function GET(req) {
   try {
-
     const { searchParams } = new URL(req.url);
-
-    const search =
-      searchParams
-        .get("search")
-        ?.trim()
-        ?.toLowerCase() || "";
-    const status =
-      searchParams
-        .get("status")
-        ?.trim();
-    let query =
-      supabaseAdmin
-        .from("payroll_types")
-        .select(payrollTypeSelect)
-        .order("sort_order")
-        .order("payroll_type_code");
+    const search = searchParams.get("search")?.trim()?.toLowerCase() || "";
+    const status = searchParams.get("status")?.trim();
+    let query =supabaseAdmin
+      .from("payroll_types")
+      .select(payrollTypeSelect)
+      .order("sort_order")
+      .order("payroll_type_code");
     if (status) {
-      query =
-        query.eq(
-          "status",
-          status
-        );
+      query = query.eq(
+        "status",
+        status
+      );
     }
-    const {
-      data,
-      error,
-    } = await query;
+    const {data,error,} = await query;
     if (error) throw error;
-    let rows =
-      (data || [])
-      .map(mapPayrollType);
+    let rows =(data || []).map(mapPayrollType);
 
     if (search) {
       rows =
@@ -126,13 +114,9 @@ export async function POST(req) {
         ?.description
         ?.trim() || null;
 
-    const default_payment_day =
-      body
-        ?.default_payment_day
-        ? Number(
-            body.default_payment_day
-          )
-        : null;
+    const default_payment_day = body?.default_payment_day? Number( body.default_payment_day): null;
+    const cutoff_end_day = body?.cutoff_end_day? Number(body.cutoff_end_day): null;
+    const payment_offset_month = Number(body?.payment_offset_month || 0);
 
     const payment_frequency = body ?.payment_frequency || "monthly";
     const status = body?.status || "active";
@@ -148,8 +132,39 @@ export async function POST(req) {
       });
     }
 
-    const {data:exists,} =
-      await supabaseAdmin
+
+    if (default_payment_day && (default_payment_day < 1 || default_payment_day > 31)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Payment Day ต้องอยู่ระหว่าง 1 - 31",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (cutoff_end_day && (cutoff_end_day < 1 || cutoff_end_day > 31)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Cutoff End Day ต้องอยู่ระหว่าง 1 - 31",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (![0, 1].includes(payment_offset_month)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Payment Offset Month ต้องเป็น 0 หรือ 1",
+        },
+        { status: 400 }
+      );
+    }
+
+    const {data:exists,} = await supabaseAdmin
       .from("payroll_types")
       .select("id")
       .eq(
@@ -173,6 +188,8 @@ export async function POST(req) {
       payroll_type_name,
       description,
       default_payment_day,
+      cutoff_end_day,
+      payment_offset_month,
       payment_frequency,
       status,
       sort_order,

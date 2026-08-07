@@ -32,56 +32,16 @@ export async function GET(req) {
     const to = from + pageSize - 1;
 
     let query = supabaseAdmin
-      .from("position_skills")
-      .select(
-        `
-          id,
-          position_id,
-          skill_id,
-          required_level,
-          importance_level,
-          is_mandatory,
-          description,
-          status,
-          sort_order,
-          created_at,
-          updated_at,
-
-          positions (
-            id,
-            position_code,
-            position_name,
-            position_level,
-            position_family_id,
-            position_families (
-              id,
-              family_code,
-              family_name
-            )
-          ),
-
-          skills (
-            id,
-            skill_code,
-            skill_name,
-            category_id,
-            skill_categories (
-              id,
-              category_code,
-              category_name
-            )
-          )
-        `,
-        {
-          count: "exact",
-        }
-      )
+      .from("vw_position_skills")
+      .select("*", {
+        count: "exact",
+      })
       .order("sort_order", {
         ascending: true,
       })
       .order("created_at", {
         ascending: false,
-      });
+    });
 
     if (positionId) {
       query = query.eq("position_id", positionId);
@@ -95,21 +55,16 @@ export async function GET(req) {
       query = query.eq("status", status);
     }
 
-    /*
-      ใช้ !inner เพื่อค้นหาข้อมูลในตาราง relation
-
-      หมายเหตุ:
-      ถ้า Supabase แจ้งว่าไม่สามารถ filter relation ได้
-      เราจะเปลี่ยนเป็น RPC หรือโหลด ID ที่ตรงเงื่อนไขก่อน
-    */
     if (search) {
       query = query.or(
         [
           `description.ilike.%${search}%`,
-          `positions.position_code.ilike.%${search}%`,
-          `positions.position_name.ilike.%${search}%`,
-          `skills.skill_code.ilike.%${search}%`,
-          `skills.skill_name.ilike.%${search}%`,
+          `position_code.ilike.%${search}%`,
+          `position_name.ilike.%${search}%`,
+          `skill_code.ilike.%${search}%`,
+          `skill_name.ilike.%${search}%`,
+          `position_family_name.ilike.%${search}%`,
+          `skill_category_name.ilike.%${search}%`,
         ].join(",")
       );
     }
@@ -128,26 +83,21 @@ export async function GET(req) {
       id: item.id,
 
       position_id: item.position_id,
-      position_code: item.positions?.position_code || "",
-      position_name: item.positions?.position_name || "",
-      position_level: item.positions?.position_level || "",
+      position_code: item.position_code,
+      position_name: item.position_name,
+      position_level: item.position_level,
 
-      position_family_id:
-        item.positions?.position_family_id || null,
-      position_family_code:
-        item.positions?.position_families?.family_code || "",
-      position_family_name:
-        item.positions?.position_families?.family_name || "",
+      position_family_id: item.position_family_id,
+      position_family_code: item.position_family_code,
+      position_family_name: item.position_family_name,
 
       skill_id: item.skill_id,
-      skill_code: item.skills?.skill_code || "",
-      skill_name: item.skills?.skill_name || "",
+      skill_code: item.skill_code,
+      skill_name: item.skill_name,
 
-      skill_category_id: item.skills?.category_id || null,
-      skill_category_code:
-        item.skills?.skill_categories?.category_code || "",
-      skill_category_name:
-        item.skills?.skill_categories?.category_name || "",
+      skill_category_id: item.category_id,
+      skill_category_code: item.skill_category_code,
+      skill_category_name: item.skill_category_name,
 
       required_level: Number(item.required_level || 1),
       importance_level: item.importance_level || "medium",
@@ -381,10 +331,18 @@ export async function POST(req) {
           updated_at,
 
           positions (
-            id,
-            position_code,
-            position_name,
-            position_level
+          id,
+          position_code,
+          position_name,
+          position_level_mappings (
+            is_default,
+            sort_order,
+
+            position_level:position_levels (
+              id,
+              level_code,
+              level_name
+            )
           ),
 
           skills (

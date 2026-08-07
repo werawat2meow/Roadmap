@@ -117,19 +117,39 @@ export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
 
-    // ตรวจสอบว่ามี Position Mapping ใช้งานอยู่หรือไม่
-    const { count, error: countError } = await supabaseAdmin
-      .from("positions")
-      .select("*", { count: "exact", head: true })
-      .eq("position_level_id", id);
+    const { data: oldData, error: oldDataError } = await supabaseAdmin
+      .from("position_levels")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
-    if (countError) throw countError;
+    if (oldDataError) throw oldDataError;
 
-    if ((count || 0) > 0) {
+    if (!oldData) {
       return NextResponse.json(
         {
           success: false,
-          error: "ไม่สามารถลบได้ เนื่องจากมี Position ใช้งานอยู่",
+          error: "ไม่พบข้อมูล Position Level",
+        },
+        { status: 404 }
+      );
+    }
+
+
+    const { count: familyLevelCount, error: familyLevelError } =
+      await supabaseAdmin
+        .from("position_family_levels")
+        .select("*", { count: "exact", head: true })
+        .eq("position_level_id", id);
+
+    if (familyLevelError) throw familyLevelError;
+
+    if ((familyLevelCount || 0) > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ไม่สามารถลบได้ เนื่องจากยังมี Position Family ใช้งาน Position Level นี้อยู่",
         },
         { status: 400 }
       );
@@ -146,34 +166,20 @@ export async function DELETE(req, { params }) {
       return NextResponse.json(
         {
           success: false,
-          error: "ไม่สามารถลบได้ เนื่องจากยังมี Position Level Bands อยู่",
+          error:
+            "ไม่สามารถลบได้ เนื่องจากยังมี Position Level Bands อยู่",
         },
         { status: 400 }
       );
     }
 
-    // ดึงข้อมูลเดิมไว้ก่อนลบ (หลังลบแล้วจะดึงไม่ได้อีก)
-    const { data: oldData, error: oldDataError } = await supabaseAdmin
-      .from("position_levels")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
 
-    if (oldDataError) throw oldDataError;
-
-    if (!oldData) {
-      return NextResponse.json(
-        { success: false, error: "ไม่พบข้อมูล Position Level" },
-        { status: 404 }
-      );
-    }
-
-    const { error } = await supabaseAdmin
+    const { error: deleteError } = await supabaseAdmin
       .from("position_levels")
       .delete()
       .eq("id", id);
 
-    if (error) throw error;
+    if (deleteError) throw deleteError;
 
     await writeActivityLog({
       module_name: "position-levels",
@@ -195,9 +201,18 @@ export async function DELETE(req, { params }) {
       message: "ลบ Position Level สำเร็จ",
     });
   } catch (err) {
+    console.error("DELETE Position Level Error:", JSON.stringify(err, null, 2));
+    console.error("===== DELETE ERROR =====");
     console.error(err);
+    console.error("message:", err?.message);
+    console.error("code:", err?.code);
+    console.error("details:", err?.details);
+    console.error("hint:", err?.hint);
     return NextResponse.json(
-      { success: false, error: err.message },
+      {
+        success: false,
+        error: err.message,
+      },
       { status: 500 }
     );
   }

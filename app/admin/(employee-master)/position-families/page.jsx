@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { Modal } from "antd";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
-
-import {
-  swalConfirm,
-  swalError,
-  swalSuccess,
-} from "../../../components/Swal";
-
+import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
 import LoadingOrb from "../../../components/LoadingOrb";
-
 import PositionFamilySearch from "./components/PositionFamilySearch";
 import PositionFamilyTable from "./components/PositionFamilyTable";
 import PositionFamilyPagination from "./components/PositionFamilyPagination";
@@ -164,136 +157,133 @@ export default function PositionFamiliesPage() {
       setOpenModal(false);
     };
 
-  const handleSave =
-    async () => {
-      if (
-        !form.family_code.trim()
-      ) {
-        swalError(
-          "กรุณากรอก Family Code"
-        );
+  const handleSave = async () => {
+    if (!form.family_code.trim()) {
+      swalError(
+        "กรุณากรอก Family Code"
+      );
+      return;
+    }
 
-        return;
-      }
+    if (!form.family_name.trim()) {
+      swalError(
+        "กรุณากรอก Family Name"
+      );
+      return;
+    }
 
-      if (
-        !form.family_name.trim()
-      ) {
-        swalError(
-          "กรุณากรอก Family Name"
-        );
+    try {
+      setSaving(true);
 
-        return;
-      }
+      const isEdit =
+        !!editingFamily;
 
-      try {
-        setSaving(true);
-
-        const isEdit =
-          !!editingFamily;
-
-        const res =
-          await fetch(
-            isEdit
-              ? `/api/admin/position-families/${editingFamily.id}`
-              : "/api/admin/position-families",
-            {
-              method:
-                isEdit
-                  ? "PATCH"
-                  : "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify(
-                form
-              ),
-            }
-          );
-
-        const json =
-          await res.json();
-
-        if (!res.ok) {
-          throw new Error(
-            json.error
-          );
-        }
-
-        swalSuccess(
+      const res =
+        await fetch(
           isEdit
-            ? "แก้ไขสำเร็จ"
-            : "เพิ่มสำเร็จ"
+            ? `/api/admin/position-families/${editingFamily.id}`
+            : "/api/admin/position-families",
+          {
+            method:
+              isEdit
+                ? "PATCH"
+                : "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify(
+              form
+            ),
+          }
         );
 
-        await loadFamilies(
-          search,
-          page
-        );
+      const json =
+        await res.json();
 
-        handleCloseModal();
-      } catch (err) {
-        console.error(err);
-
-        swalError(
-          err.message
+      if (!res.ok) {
+        throw new Error(
+          json.error
         );
-      } finally {
-        setSaving(false);
       }
-    };
-      const handleDelete = async (family) => {
+
+      swalSuccess(
+        isEdit
+          ? "แก้ไขสำเร็จ"
+          : "เพิ่มสำเร็จ"
+      );
+
+      await loadFamilies(
+        search,
+        page
+      );
+
+      handleCloseModal();
+    } catch (err) {
+      console.error(err);
+
+      swalError(
+        err.message
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = (family) => {
     if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบข้อมูล");
       return;
     }
 
-    const confirmed = await swalConfirm(
-      `ต้องการลบ Position Family "${family.family_name}" ใช่หรือไม่?`
-    );
+    Modal.confirm({
+      title: "ยืนยันการลบข้อมูล",
+      content: `ต้องการลบ Position Family "${family.family_name}" ใช่หรือไม่?`,
+      okText: "ลบ",
+      okType: "danger",
+      cancelText: "ยกเลิก",
+      onOk: async () => {
+        try {
+          setDeletingId(family.id);
 
-    if (!confirmed) return;
+          const res = await fetch(
+            `/api/admin/position-families/${family.id}`,
+            {
+              method: "DELETE",
+            }
+          );
 
-    try {
-      setDeletingId(family.id);
+          const json = await res.json();
 
-      const res = await fetch(
-        `/api/admin/position-families/${family.id}`,
-        {
-          method: "DELETE",
+          if (!res.ok) {
+            throw new Error(
+              json.error || "Delete Failed"
+            );
+          }
+
+          swalSuccess("ลบข้อมูลเรียบร้อย");
+
+          const nextPage =
+            families.length === 1 &&
+            page > 1
+              ? page - 1
+              : page;
+
+          await loadFamilies(
+            search,
+            nextPage
+          );
+        } catch (err) {
+          console.error(err);
+
+          swalError(err.message);
+        } finally {
+          setDeletingId("");
         }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          json.error || "Delete Failed"
-        );
-      }
-
-      swalSuccess("ลบข้อมูลเรียบร้อย");
-
-      const nextPage =
-        families.length === 1 &&
-        page > 1
-          ? page - 1
-          : page;
-
-      await loadFamilies(
-        search,
-        nextPage
-      );
-    } catch (err) {
-      console.error(err);
-
-      swalError(err.message);
-    } finally {
-      setDeletingId("");
-    }
+      },
+    });
   };
 
   if (loadingUser) return <LoadingOrb />;

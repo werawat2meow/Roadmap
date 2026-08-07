@@ -79,8 +79,17 @@ export async function PATCH(req, { params }) {
           )
         ),
         positions (
+          id,
           position_name,
-          position_level
+          position_level_mappings (
+            is_default,
+            sort_order,
+            position_level:position_levels (
+              id,
+              level_code,
+              level_name
+            )
+          )
         )
       `)
       .eq("id", id)

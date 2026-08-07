@@ -1,399 +1,210 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card, Pagination, Alert } from "antd";
 import { useRouter } from "next/navigation";
-
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
+import LoadingOrb from "@/app/components/LoadingOrb";
+import {swalConfirm,swalError,swalSuccess} from "../../../components/Swal";
 
-import {
-  swalConfirm,
-  swalError,
-  swalSuccess,
-} from "../../../components/Swal";
-
-import LoadingOrb from "../../../components/LoadingOrb";
-
+import PositionSearch from "./components/PositionSearch";
 import PositionTable from "./components/PositionTable";
 import PositionModal from "./components/PositionModal";
-import PositionSearch from "./components/PositionSearch";
-import PositionPagination from "./components/PositionPagination";
-
-const initialForm = {
-  code: "",
-  name: "",
-  group: "",
-  position_family_id: "",
-  position_levels: [],
-  status: "active",
-};
+import PositionViewDrawer from "./components/PositionViewDrawer";
 
 export default function PositionsPage() {
   const router = useRouter();
-
-  const { user, loadingUser } = useAuth();
-
-  const canView = hasPermission(user, "ems.positions.view");
-  const canCreate = hasPermission(user, "ems.positions.create");
-  const canEdit = hasPermission(user, "ems.positions.edit");
-  const canDelete = hasPermission(user, "ems.positions.delete");
-
-  const [search, setSearch] = useState("");
-
-  const [positions, setPositions] = useState([]);
-
+  const { user, loadingUser: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
+  const [items, setItems] = useState([]);
 
-  const [deletingId, setDeletingId] = useState("");
-
-  const [error, setError] = useState("");
-
-  const [openModal, setOpenModal] = useState(false);
-
-  const [editingPosition, setEditingPosition] = useState(null);
-
-  const [form, setForm] = useState(initialForm);
-
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
-
-  const [pageSize] = useState(20);
-
+  const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
+  const [families, setFamilies] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [showGuide, setShowGuide] = useState(true);
 
-  const [totalPages, setTotalPages] = useState(1);
-
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [
-    loadingUser,
-    user,
-    canView,
-    router,
-  ]);
-
-  const loadPositions = async (
-    keyword = "",
-    nextPage = 1
-  ) => {
+  async function loadData() {
     try {
       setLoading(true);
 
-      setError("");
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
 
-      const params = new URLSearchParams();
-
-      params.set("page", nextPage);
-
-      params.set("pageSize", pageSize);
-
-      if (keyword) {
-        params.set("search", keyword);
+      if (appliedSearch?.trim()) {
+        params.set("search", appliedSearch.trim());
       }
 
       const res = await fetch(
-        `/api/admin/positions?${params.toString()}`,
-        {
-          cache: "no-store",
-        }
+        `/api/admin/positions?${params.toString()}`
       );
 
       const json = await res.json();
 
-      if (!res.ok) {
+      if (!json.success) {
         throw new Error(
-          json.error || "Load failed"
+          json.error || "Load Error"
         );
       }
 
-      const mapped = (json.data || []).map(
-        (item) => ({
-          id: item.id,
-
-          code: item.position_code,
-
-          name: item.position_name,
-
-          group:
-            item.position_group || "",
-
-          family_name:
-            item.position_family
-              ?.family_name || "",
-
-          position_family_id:
-            item.position_family_id || "",
-
-          position_levels:
-            item.position_levels || [],
-
-          status: item.status,
-        })
-      );
-
-      setPositions(mapped);
-
-      setPage(
-        json.pagination.page
-      );
-
-      setTotal(
-        json.pagination.total
-      );
-
-      setTotalPages(
-        json.pagination.totalPages
-      );
+      setItems(json.data || []);
+      setTotal(json.pagination?.total || 0);
     } catch (err) {
       console.error(err);
 
-      setError(
+      swalError(
         err.message ||
-          "Load Failed"
+          "โหลดข้อมูลไม่สำเร็จ"
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    loadPositions();
-  }, []);
+  async function loadMasters() {
+    try {
+      const [
+        familyRes,
+        jobRes,
+      ] = await Promise.all([
+        fetch("/api/admin/position-families?all=true"),
+        fetch("/api/admin/jobs?all=true"),
+      ]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadPositions(search, 1);
-    }, 300);
+      const [
+        familyJson,
+        jobJson,
+      ] = await Promise.all([
+        familyRes.json(),
+        jobRes.json(),
+      ]);
 
-    return () => clearTimeout(timer);
-  }, [search]);
+      if (familyJson.success) {
+        setFamilies(familyJson.data || []);
+      }
 
-  const resetForm = () => {
-    setEditingPosition(null);
+      if (jobJson.success) {
+        setJobs(jobJson.data || []);
+      }
 
-    setForm(initialForm);
-  };
-
-  const handleOpenCreate = () => {
-    if (!canCreate) {
-      swalError(
-        "คุณไม่มีสิทธิ์เพิ่มข้อมูล"
+      
+    } catch (err) {
+      console.error(
+        "LOAD_MASTER_ERROR",
+        err
       );
 
-      return;
-    }
-
-    resetForm();
-
-    setOpenModal(true);
-  };
-
-  const handleOpenEdit = (
-    position
-  ) => {
-    if (!canEdit) {
       swalError(
-        "คุณไม่มีสิทธิ์แก้ไข"
+        "โหลดข้อมูล Master ไม่สำเร็จ"
       );
-
-      return;
     }
+  }
 
-    setEditingPosition(position);
-
-    setForm({
-      code: position.code,
-
-      name: position.name,
-
-      group: position.group,
-
-      position_family_id:
-        position.position_family_id,
-
-      position_levels:
-        (
-          position.position_levels ||
-          []
-        ).map(
-          (x) => x.id
-        ),
-
-      status:
-        position.status ||
-        "active",
-    });
-
-    setOpenModal(true);
-  };
-
-  const handleCloseModal = () => {
-    resetForm();
-
-    setOpenModal(false);
-  };
-
-  const handleSave = async () => {
-    const isEdit =
-      !!editingPosition;
-
-    if (
-      isEdit &&
-      !canEdit
-    ) {
-      swalError(
-        "คุณไม่มีสิทธิ์แก้ไข"
-      );
-
-      return;
-    }
-
-    if (
-      !isEdit &&
-      !canCreate
-    ) {
-      swalError(
-        "คุณไม่มีสิทธิ์เพิ่ม"
-      );
-
-      return;
-    }
-
-    if (
-      !form.code.trim() ||
-      !form.name.trim()
-    ) {
-      swalError(
-        "กรุณากรอกรหัสและชื่อตำแหน่ง"
-      );
-
-      return;
-    }
-
-    if (
-      !form.position_family_id
-    ) {
-      swalError(
-        "กรุณาเลือก Position Family"
-      );
-
-      return;
-    }
-
-    if (
-      form.position_levels
-        .length === 0
-    ) {
-      swalError(
-        "กรุณาเลือก Position Level"
-      );
-
-      return;
-    }
-
+  async function handleSubmit(values) {
     try {
       setSaving(true);
-
+      const isEdit = !!editingItem;
       const url = isEdit
-        ? `/api/admin/positions/${editingPosition.id}`
+        ? `/api/admin/positions/${editingItem.id}`
         : "/api/admin/positions";
 
       const method = isEdit
         ? "PATCH"
         : "POST";
 
-      const res =
-        await fetch(url, {
-          method,
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify(values),
+      });
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+      const json = await res.json();
 
-          body: JSON.stringify({
-            position_code:
-              form.code.trim(),
-
-            position_name:
-              form.name.trim(),
-
-            position_group:
-              form.group || null,
-
-            position_family_id:
-              form.position_family_id,
-
-            position_levels:
-              form.position_levels,
-
-            status:
-              form.status,
-          }),
-        });
-
-      const json =
-        await res.json();
-
-      if (!res.ok) {
+      if (!json.success) {
         throw new Error(
-          json.error ||
-            "Save Failed"
+          json.error || "Save Error"
         );
       }
 
-      swalSuccess(
+      await swalSuccess(
         isEdit
-          ? "อัปเดตข้อมูลเรียบร้อย"
-          : "บันทึกข้อมูลเรียบร้อย"
+          ? "แก้ไขตำแหน่งสำเร็จ"
+          : "เพิ่มตำแหน่งสำเร็จ"
       );
 
-      await loadPositions(
-        search,
-        isEdit
-          ? page
-          : 1
-      );
+      closeModal();
 
-      handleCloseModal();
+      await loadData();
     } catch (err) {
       console.error(err);
 
       swalError(
-        err.message
+        err.message ||
+          "บันทึกข้อมูลไม่สำเร็จ"
       );
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-    const handleDelete = async (position) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบข้อมูล");
-      return;
-    }
+  function handleSearch() {
+    setAppliedSearch(searchInput);
+    setPage(1);
+  }
 
-    const confirmed = await swalConfirm(
-      `ต้องการลบตำแหน่ง "${position.name}" ใช่หรือไม่?`
+  function handleReset() {
+    setSearchInput("");
+    setAppliedSearch("");
+    setPage(1);
+  }
+
+  function handleCreate() {
+    setEditingItem(null);
+    setModalOpen(true);
+  }
+
+  function handleEdit(item) {
+    setEditingItem(item);
+    setModalOpen(true);
+  }
+
+  function handleView(item) {
+    setViewItem(item);
+    setDrawerOpen(true);
+  }
+
+  function closeModal() {
+    setEditingItem(null);
+    setModalOpen(false);
+  }
+
+  async function handleDelete(item) {
+    const result = await swalConfirm(
+      "ยืนยันการลบ",
+      `ต้องการลบ "${item.position_name}" ใช่หรือไม่ ?`
     );
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     try {
-      setDeletingId(position.id);
+      setLoading(true);
 
       const res = await fetch(
-        `/api/admin/positions/${position.id}`,
+        `/api/admin/positions/${item.id}`,
         {
           method: "DELETE",
         }
@@ -401,41 +212,74 @@ export default function PositionsPage() {
 
       const json = await res.json();
 
-      if (!res.ok) {
+      if (!json.success) {
         throw new Error(
-          json.error || "Delete Failed"
+          json.error || "Delete Error"
         );
       }
 
-      swalSuccess(
-        "ลบข้อมูลเรียบร้อยแล้ว"
-      );
+      await swalSuccess("ลบตำแหน่งสำเร็จ");
 
-      const nextPage =
-        positions.length === 1 &&
-        page > 1
-          ? page - 1
-          : page;
-
-      await loadPositions(
-        search,
-        nextPage
-      );
+      await loadData();
     } catch (err) {
       console.error(err);
 
-      swalError(err.message);
+      swalError(
+        err.message ||
+          "ลบข้อมูลไม่สำเร็จ"
+      );
     } finally {
-      setDeletingId("");
+      setLoading(false);
     }
-  };
-
-  if (loadingUser) {
-    return <LoadingOrb />;
   }
 
-  if (!user) {
-    return null;
+  const canView = hasPermission(user, "ems.positions.view");
+  const canCreate = hasPermission(user, "ems.positions.create");
+  const canEdit = hasPermission(user, "ems.positions.edit");
+  const canDelete = hasPermission(user, "ems.positions.delete");
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && !canView) {
+      router.replace("/admin");
+    }
+  }, [authLoading, user, canView, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && canView) {
+      loadData();
+    }
+  }, [
+    authLoading,
+    user,
+    canView,
+    page,
+    pageSize,
+    appliedSearch,
+  ]);
+
+  useEffect(() => {
+    if (!authLoading && user && canView) {
+      loadMasters();
+    }
+  }, [authLoading, user, canView]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedSearch(searchInput);
+      setPage(1); 
+    }, 500); 
+
+    return () => clearTimeout(timer); 
+  }, [searchInput]);
+
+  if (authLoading || (loading && !user)) {
+    return <LoadingOrb />;
   }
 
   if (!canView) {
@@ -443,111 +287,116 @@ export default function PositionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-          <div>
-
-            <h1 className="text-2xl font-bold text-slate-800">
-              Position Management
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Enterprise Position Master
-            </p>
-
-          </div>
-
-          {canCreate && (
-
-            <button
-              onClick={handleOpenCreate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
-            >
-              + Add Position
-            </button>
-
-          )}
-
-        </div>
-
-      </div>
-
-      {/* Search */}
-
-      <PositionSearch
-        value={search}
-        onChange={setSearch}
-      />
-
-      {/* Error */}
-
-      {error && (
-
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600">
-
-          {error}
-
-        </div>
-
+    <Card
+      title="จัดการตำแหน่ง (Position Management)"
+      variant="borderless"
+    >
+      {showGuide && (
+        <Alert
+          type="info"
+          showIcon
+          closable
+          title="จัดการตำแหน่งงาน (Position Management) คืออะไร?"
+          description={
+            <div>
+              <p style={{ marginBottom: 8 }}>
+                เมนูนี้ใช้สำหรับกำหนด <b>"ตำแหน่งงาน"</b> ทั้งหมดขององค์กร เช่น
+                พนักงานขับรถ, หัวหน้าแผนก, ผู้จัดการฝ่าย ฯลฯ
+                ซึ่งจะถูกนำไปใช้ผูกกับพนักงานแต่ละคนในระบบ Employee Master
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                <li><b>รหัส/ชื่อตำแหน่ง</b> — ใช้ระบุตัวตนตำแหน่งแต่ละอัน ห้ามซ้ำกัน</li>
+                <li><b>กลุ่มสายงาน (Job Family)</b> — จัดกลุ่มตำแหน่งที่มีลักษณะงานใกล้เคียงกัน</li>
+                <li><b>บทบาทงาน (Job)</b> — เชื่อมโยงตำแหน่งกับหน้าที่ความรับผิดชอบ</li>
+                <li><b>ระดับตำแหน่ง</b> — กำหนดลำดับขั้น เช่น จูเนียร์ ซีเนียร์ หัวหน้างาน</li>
+                <li><b>ตำแหน่งผู้จัดการ / ผู้บริหาร</b> — ใช้ระบุว่าตำแหน่งนี้มีลูกน้องในสายบังคับบัญชาหรือไม่</li>
+                <li><b>รองรับหลายตำแหน่ง</b> — เปิดไว้ถ้าพนักงาน 1 คนสามารถถือหลายตำแหน่งพร้อมกันได้</li>
+              </ul>
+              <p style={{ marginTop: 8, marginBottom: 0 }}>
+                ข้อมูลตำแหน่งเหล่านี้จะถูกใช้ต่อในหลายส่วน เช่น
+                โครงสร้างองค์กร, การกำหนดสิทธิ์ (RBAC), เงินเดือน/สวัสดิการ,
+                และการจับคู่ทักษะที่จำเป็นต่อตำแหน่ง (Position-Competencies)
+              </p>
+            </div>
+          }
+          onClose={() => setShowGuide(false)}
+          style={{ marginBottom: 16 }}
+        />
       )}
 
-      {/* Table */}
+      <PositionSearch
+        search={searchInput}
+        setSearch={setSearchInput}
+        loading={loading}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        onCreate={
+          canCreate
+            ? handleCreate
+            : undefined
+        }
+      />
 
       <PositionTable
         loading={loading}
-        positions={positions}
-        page={page}
-        pageSize={pageSize}
-        canEdit={canEdit}
-        canDelete={canDelete}
-        deletingId={deletingId}
-        onEdit={handleOpenEdit}
-        onDelete={handleDelete}
-      />
-
-      {/* Pagination */}
-
-      <PositionPagination
-        page={page}
-        total={total}
-        totalPages={totalPages}
-        loading={loading}
-        onPrevious={() =>
-          loadPositions(
-            search,
-            page - 1
-          )
+        data={items}
+        onView={handleView}
+        onEdit={
+          canEdit
+            ? handleEdit
+            : undefined
         }
-        onNext={() =>
-          loadPositions(
-            search,
-            page + 1
-          )
+        onDelete={
+          canDelete
+            ? handleDelete
+            : undefined
         }
       />
 
-      {/* Modal */}
+      <div
+        style={{
+          marginTop: 16,
+          textAlign: "right",
+        }}
+      >
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showTotal={(t) => `ทั้งหมด ${t} รายการ`}
+          pageSizeOptions={["10", "20", "50", "100"]}
+          disabled={loading}
+          onChange={(nextPage, nextPageSize) => {
+            if (nextPageSize !== pageSize) {
+              // เปลี่ยนขนาดหน้า -> รีเซ็ตกลับไปหน้า 1
+              setPage(1);
+              setPageSize(nextPageSize);
+            } else {
+              setPage(nextPage);
+            }
+          }}
+        />
+      </div>
 
       <PositionModal
-        open={openModal}
-        saving={saving}
-        editingPosition={
-          editingPosition
-        }
-        form={form}
-        setForm={setForm}
-        onClose={
-          handleCloseModal
-        }
-        onSave={handleSave}
+        open={modalOpen}
+        loading={saving}
+        initialValues={editingItem}
+        families={families}
+        jobs={jobs}
+        onCancel={closeModal}
+        onSubmit={handleSubmit}
       />
 
-    </div>
+      <PositionViewDrawer
+        open={drawerOpen}
+        data={viewItem}
+        onClose={() => {
+          setDrawerOpen(false);
+          setViewItem(null);
+        }}
+      />
+    </Card>
   );
 }

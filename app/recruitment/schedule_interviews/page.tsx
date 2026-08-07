@@ -254,7 +254,7 @@ export default function RecruitmentApplicationsPage() {
           )}`
         );
         const json = await res.json();
-        setSortOrder((json.latest_order ?? 0) + 1);
+        setSortOrder(json.latest_order ?? 0);
       } catch (err) {
         console.error(err);
         setSortOrder(latest.interview_order ?? 1);

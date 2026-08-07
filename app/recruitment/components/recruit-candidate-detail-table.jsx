@@ -75,7 +75,7 @@ function fmtDateTime(value) {
   }).format(new Date(value));
 }
 
-function StatusTag({ value }) {
+function StatusTag({ value }) {  
   const meta = STATUS_MAP[value] ?? { label: value ?? '-', color: 'default' };
   return <Tag color={meta.color}>{meta.label}</Tag>;
 }

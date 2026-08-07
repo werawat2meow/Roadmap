@@ -81,27 +81,45 @@ export async function GET(request, { params }) {
 
 function getStatusText(status) {
   switch (status) {
-    case 1:
+    case 1 :
       return "รอพิจารณา";
-    case 2:
+    case 2 :
       return "HRD ส่งต่อ HRM";
-    case 3:
+    case 3 :
       return "ผ่านการคัดเลือกเข้าสัมภาษณ์";
-    case 4:
+    case 4 :
       return "นัดสัมภาษณ์";
-    case 5:
+    case 5 :
       return "ยืนยันการสัมภาษณ์";
-    case 6:
+    case 6 :
       return "เลื่อนการสัมภาษณ์";
-    case 7:
+    case 7 :
       return "ขาดการสัมภาษณ์";
-    case 8:
+    case 8 :
       return "ส่งต่อการสัมภาษณ์";
-    case 16:
+    case 9 :
+      return "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน";
+    case 10 :
+      return "ผ่านการคัดเลือก";
+    case 11 :
+      return "ไม่ผ่านการคัดเลือก";
+    case 12 :
+      return "นัดวันเริ่มทำงาน";
+    case 13 :
+      return "เลื่อนวันเริ่มทำงาน";
+    case 14 :
+      return "ไม่มาทำงานตามนัด";
+    case 15 :
+      return "อัพเดตเข้าฐานข้อมูลกลาง";
+    case 16 :
       return "ฝาก resume";
-    case 99:
+    case 0 :
+      return "ยกเลิก";
+    case 99 :
       return "backlist";
     default:
       return "ไม่ทราบสถานะ";
   }
 }
+
+

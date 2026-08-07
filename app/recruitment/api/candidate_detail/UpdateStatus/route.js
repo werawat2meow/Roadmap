@@ -67,6 +67,7 @@ export async function PUT(request) {
           location,
           meeting_url,
           created_by: userId,
+          reviewer: null,
           status,
         });
 

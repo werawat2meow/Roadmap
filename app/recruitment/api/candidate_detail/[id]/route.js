@@ -85,7 +85,7 @@ export async function GET(request, { params }) {
     application.subdistrict_name =
       getSubdistrictByCode(application.subdistrict_id)?.name_th;
 
-    const skills = skillsResult.data || [];
+    const skills = skillsResult.data || [];  
 
     return NextResponse.json({
       application,

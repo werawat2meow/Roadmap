@@ -45,7 +45,7 @@ export const uiText = {
     TH: "ประเภทงาน",
   },
 
-  workLocation: {
+  workplace: {
     EN: "Work Location",
     TH: "สถานที่ปฏิบัติงาน",
   },

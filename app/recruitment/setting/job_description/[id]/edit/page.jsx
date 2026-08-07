@@ -51,7 +51,7 @@ export default async function EditJobDescriptionPage({ params }) {
 
     supabaseAdmin
       .from("positions")
-      .select("id, position_name, position_level")
+      .select("id, position_name")
       .order("sort_order", { ascending: true }),
 
     supabaseAdmin

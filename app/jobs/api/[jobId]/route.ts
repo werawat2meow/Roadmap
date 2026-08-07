@@ -133,7 +133,7 @@ export async function GET(
         salary_max: jobDesc?.salary_max ?? null,
         type_of_work: jobDesc?.type_of_work ?? null,
         type_name: jobDesc?.type_name ?? null,
-        workLocation: jobDesc?.workLocation ?? null,
+        workplace: jobDesc?.workplace ?? null,
         companyName: (jobOpen as any)?.branches?.branch_name ?? null,
         positionTitle: (jobOpen as any).positions?.position_name,
         description: (jobDesc as any)?.description ?? null,

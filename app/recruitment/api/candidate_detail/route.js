@@ -117,12 +117,8 @@ export async function PUT(request) {
 
   } catch (err) {
     return NextResponse.json(
-      {
-        error: err.message,
-      },
-      {
-        status: 500,
-      }
+      { error: err.message, },
+      { status: 500, }
     );
   }
 }

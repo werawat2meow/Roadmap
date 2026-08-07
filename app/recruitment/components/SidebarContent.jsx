@@ -57,6 +57,7 @@ export default function SidebarContent({
         label: "Schedule interviews",
         href: "/recruitment/schedule_interviews",
         icon: LayoutList,
+        permission: "recruitment.schedule.interviews.view",
       },
       {
         label: "Approve Employees",

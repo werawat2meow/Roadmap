@@ -85,7 +85,7 @@ export async function GET(request) {
         query = query.eq('status', statusNum);
       }
     } else {
-      query = query.in('status', [4, 5, 6, 8]); // default เฉพาะตอนไม่ระบุ status
+      query = query.in('status', [4, 5, 6, 8, 9, 10, 11]); // default เฉพาะตอนไม่ระบุ status
     }
 
     if (positionId) {
@@ -114,9 +114,7 @@ export async function GET(request) {
     }
 
     const { data, error, count } = await query;   
-
-    console.log(data[0].recruit_job_interviews);
-
+    
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

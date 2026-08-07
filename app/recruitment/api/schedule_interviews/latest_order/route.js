@@ -5,7 +5,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const datetime = searchParams.get("datetime");
-    console.log("datetime", datetime);
+    
     if (!datetime) {
       return NextResponse.json(
         { error: "datetime is required" },

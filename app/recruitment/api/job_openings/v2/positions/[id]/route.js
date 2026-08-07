@@ -4,10 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 
 // GET /recruitment/api/positions/:id
 export async function GET(request, { params }) {
-  // try {
+  try {
     const { id } = await params;
-
-    console.log("test");  
 
     const { data, error } = await supabaseAdmin
       .from("positions")
@@ -23,13 +21,13 @@ export async function GET(request, { params }) {
     }
 
     return NextResponse.json({ success: true, data });
-  // } catch (error) {
-  //   return NextResponse.json(
-  //     {
-  //       success: false,
-  //       message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
-  //     },
-  //     { status: 500 }
-  //   );
-  // }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+      },
+      { status: 500 }
+    );
+  }
 }

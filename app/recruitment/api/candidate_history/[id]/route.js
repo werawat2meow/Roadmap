@@ -5,8 +5,6 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    console.log(id);    
-
     // 1. หาเจ้าของใบสมัคร
     const { data: applicant, error: applicantError } = await supabaseAdmin
       .from("recruit_job_applications")
@@ -38,7 +36,7 @@ export async function GET(request, { params }) {
       `)
       .eq("first_name", applicant.first_name)
       .eq("last_name", applicant.last_name)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false });      
 
     if (historyError) {
       return NextResponse.json(
@@ -86,23 +84,23 @@ function getStatusText(status) {
     case 1:
       return "รอพิจารณา";
     case 2:
-      return "ผ่านการคัดกรอง";
+      return "HRD ส่งต่อ HRM";
     case 3:
-      return "นัดสัมภาษณ์";
+      return "ผ่านการคัดเลือกเข้าสัมภาษณ์";
     case 4:
-      return "ผ่านสัมภาษณ์";
+      return "นัดสัมภาษณ์";
     case 5:
-      return "ผ่านการอนุมัติ";
+      return "ยืนยันการสัมภาษณ์";
     case 6:
-      return "ไม่ผ่าน";
+      return "เลื่อนการสัมภาษณ์";
     case 7:
-      return "ยกเลิก";
+      return "ขาดการสัมภาษณ์";
     case 8:
-      return "รับเข้าทำงาน";
-    case 15:
-      return "Resume";
+      return "ส่งต่อการสัมภาษณ์";
+    case 16:
+      return "ฝาก resume";
     case 99:
-      return "Archive";
+      return "backlist";
     default:
       return "ไม่ทราบสถานะ";
   }

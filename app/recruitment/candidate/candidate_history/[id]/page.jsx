@@ -2,6 +2,8 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
 
 import {
   Card,
@@ -17,6 +19,11 @@ import {
 const { Title, Text } = Typography;
 
 export default function CandidateHistoryPage({ params }) {
+
+  const { isChecking, canView, canEdit } = usePageGuard({
+    module: "recruitment.candidate.history",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   const { id } = use(params);
 
@@ -72,20 +79,19 @@ export default function CandidateHistoryPage({ params }) {
       title: "Action",
       align: "center",
       render: (_, row) => (
-        <Link href={`/recruitment/candidate/candidate_history/${row.id}/detail`}>
-          <Button type="primary">ดูรายละเอียด</Button>
-        </Link>
+        <Space size="small">
+          { canEdit && (
+            <Link href={`/recruitment/candidate/candidate_history/${row.id}/detail`}>
+              <Button type="primary">ดูรายละเอียด</Button>
+            </Link>
+          )}
+        </Space>
       ),
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex justify-center p-10">
-        <Spin size="large" />
-      </div>
-    );
-  }
+  if (isChecking && loading) return <LoadingOrb />;
+  if (!canView) return null;
 
   if (error) {
     return <Alert type="error" title={error} />;

@@ -37,7 +37,7 @@ export async function PUT(request) {
       );
     }
 
-    if (status === 5) {
+    if (status === 4) {
       // ดึงรอบสัมภาษณ์ล่าสุด
       const { data: latestInterview, error: interviewError } =
         await supabaseAdmin

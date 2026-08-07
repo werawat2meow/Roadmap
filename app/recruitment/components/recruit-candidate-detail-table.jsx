@@ -16,6 +16,8 @@ import {
   App,
 } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -79,6 +81,12 @@ function StatusTag({ value }) {
 }
 
 export default function CandidateDetailTable() {
+
+  const { isChecking, canView, canEdit } = usePageGuard({
+    module: "recruitment.candidate",
+    unauthorizedRedirect: "/recruitment",
+  });
+
   const { modal } = App.useApp();
 
   const [rows, setRows] = useState([]);
@@ -230,33 +238,20 @@ export default function CandidateDetailTable() {
       {
         title: 'Action',
         key: 'action',
-        width: 190,
+        width: 260,
         render: (_, row) => (
           <Space size="small">
-            {/* <Button color="purple" variant="solid" size="small" onClick={() => openStatusModal(row)}>
-              อัปเดตสถานะ
-            </Button> */}
-            <Link href={`/recruitment/candidate/candidate_history/${row.id}`}>
-              <Button type="primary" size="small">ดูข้อมูลประวัติการสมัคร</Button>
-            </Link>
+            {canView && (
+              <Link href={`/recruitment/candidate/candidate_history/${row.id}`}>
+                <Button type="primary" size="small">ดูข้อมูลประวัติการสมัคร</Button>
+              </Link>
+            )}
           </Space>
         ),
       },
     ],
-    [from]
+    [from, canView, canEdit]
   );
-
-  function openStatusModal(row) {
-    setSelectedRow(row);
-    setSelectedStatus(row.status);
-
-    // pre-fill ข้อมูลนัดสัมภาษณ์เดิม (ถ้ามี) เผื่อผู้ใช้แก้ไขซ้ำ
-    setInterviewDateTime(row.interview_datetime ? dayjs(row.interview_datetime) : null);
-    setInterviewType(row.interview_type ?? undefined);
-    setInterviewErrors({});
-
-    setStatusModalOpen(true);
-  }
 
   function validateInterviewFields() {
     if (!requiresInterviewDetails) return true;
@@ -329,6 +324,9 @@ export default function CandidateDetailTable() {
       setUpdating(false);
     }
   }
+
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
 
   return (
     <div

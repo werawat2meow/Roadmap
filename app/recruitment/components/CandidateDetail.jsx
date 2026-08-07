@@ -5,6 +5,7 @@ import { getUIText } from "@/app/jobs/lib/ui";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+
 import {
   Button,
   Card,
@@ -25,10 +26,25 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 const statusColor = {
-  0: "default",
-  1: "processing",
-  2: "success",
-  3: "error",
+  1: "default",
+  2: "processing",
+  3: "success",
+  4: "processing",
+  5: "processing",
+  6: "processing",
+  7: "error",
+  8: "processing",
+  9: "processing",
+  10: "success",
+  11: "error",
+  12: "success",
+  13: "success",
+  14: "error",
+  15: "success",
+  16: "default",
+  99: "error",
+  0: "error",
+
 };
 
 const statusText = {
@@ -41,6 +57,12 @@ const statusText = {
   7: "ขาดการสัมภาษณ์",
   8: "ส่งต่อการสัมภาษณ์",
   9: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน",
+  10: "ผ่านการคัดเลือก",
+  11: "ไม่ผ่านการคัดเลือก",
+  12: "นัดวันเริ่มทำงาน",
+  13: "เลื่อนวันเริ่มทำงาน",
+  14: "ไม่มาทำงานตามนัด",
+  15: "อัพเดตเข้าฐานข้อมูลกลาง",
   16: "ยื่น Resume",
   99: "backlist",
   0: "ยกเลิก",
@@ -62,7 +84,7 @@ const APPLICATION_STATUS = [
 ];
 
 // status ที่ต้องกรอกวันเวลานัดสัมภาษณ์ + ประเภทการสัมภาษณ์
-const STATUS_CONFIRMED_INTERVIEW = 5;
+const STATUS_CONFIRMED_INTERVIEW = 4;
 
 const INTERVIEW_TYPE_OPTIONS = [
   { value: "onsite", label: "Onsite (สัมภาษณ์ที่บริษัท)" },
@@ -842,123 +864,127 @@ export default function CandidateDetail({
           ]}
         />
       </Card>
-
-      <Card
-        title="สถานะการสมัคร"
-        style={{ marginBottom: 24 }}
-      >
-        <div className="flex flex-col gap-4" >
-          <div className="flex gap-4 items-center">
-            <Select
-              value={status}
-              onChange={handleStatusChange}
-              style={{ width: 250 }}
-              options={APPLICATION_STATUS}
-            />
-          </div>
-
-          {requiresInterviewDetails && (
-            <div className="flex-wrap gap-6 p-4 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] grid grid-cols-1 md:grid-cols-2">
-              <div>
-                <div>
-                  <Text strong>วันเวลานัดสัมภาษณ์</Text>
-                </div>
-                <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
-                  value={interviewDateTime}
-                  onChange={(val) => {
-                    setInterviewDateTime(val);
-                    setInterviewErrors((prev) => ({ ...prev, interviewDateTime: undefined }));
-                  }}
-                  status={interviewErrors.interviewDateTime ? "error" : ""}
-                  placeholder="เลือกวันและเวลา"
-                  className="w-full mt-1"
+      
+      { APPLICATION_STATUS.some((item) => item.value === status) && (
+        <Card
+          title="สถานะการสมัคร"
+          style={{ marginBottom: 24 }}
+        >
+          <div className="flex flex-col gap-4" >
+            
+              <div className="flex gap-4 items-center">
+                <Select
+                  value={status}
+                  onChange={handleStatusChange}
+                  style={{ width: 250 }}
+                  options={APPLICATION_STATUS}
                 />
-                {interviewErrors.interviewDateTime && (
-                  <div>
-                    <Text type="danger" style={{ fontSize: 12 }}>
-                      {interviewErrors.interviewDateTime}
-                    </Text>
-                  </div>
-                )}
               </div>
+            
 
-              <div>
+            {requiresInterviewDetails && (
+              <div className="flex-wrap gap-6 p-4 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] grid grid-cols-1 md:grid-cols-2">
                 <div>
-                  <Text strong>ประเภทการสัมภาษณ์</Text>
-                </div>
-                <div className="mt-1">
-                  <Radio.Group
-                    value={interviewType}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      setInterviewType(value);
-                      setInterviewErrors((prev) => ({
-                        ...prev,
-                        interviewType: undefined,
-                      }));
-
-                      // ถ้าไม่ใช่ Online ให้ล้าง URL
-                      if (value !== "online") {
-                        setInterviewData((prev) => ({
-                          ...prev,
-                          meeting_url: "",
-                        }));
-                      }
+                  <div>
+                    <Text strong>วันเวลานัดสัมภาษณ์</Text>
+                  </div>
+                  <DatePicker
+                    showTime
+                    format="DD/MM/YYYY HH:mm"
+                    value={interviewDateTime}
+                    onChange={(val) => {
+                      setInterviewDateTime(val);
+                      setInterviewErrors((prev) => ({ ...prev, interviewDateTime: undefined }));
                     }}
-                    options={INTERVIEW_TYPE_OPTIONS}
-                    optionType="button"
-                    buttonStyle="solid"
+                    status={interviewErrors.interviewDateTime ? "error" : ""}
+                    placeholder="เลือกวันและเวลา"
+                    className="w-full mt-1"
                   />
+                  {interviewErrors.interviewDateTime && (
+                    <div>
+                      <Text type="danger" style={{ fontSize: 12 }}>
+                        {interviewErrors.interviewDateTime}
+                      </Text>
+                    </div>
+                  )}
                 </div>
-                {interviewErrors.interviewType && (
-                  <div>
-                    <Text type="danger" style={{ fontSize: 12 }}>
-                      {interviewErrors.interviewType}
-                    </Text>
-                  </div>
-                )}
-              </div>
-              <div>
-                <div><Text strong>สถานที่สัมภาษณ์</Text></div>
-                <div className="mt-1">
-                  <Input
-                    name="location"
-                    value={interviewData.location}
-                    onChange={(e) =>
-                      setInterviewData((prev) => ({
-                        ...prev,
-                        location: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              {interviewType === "online" && (
+
                 <div>
                   <div>
-                    <Text strong>URL การประชุม</Text>
+                    <Text strong>ประเภทการสัมภาษณ์</Text>
                   </div>
                   <div className="mt-1">
+                    <Radio.Group
+                      value={interviewType}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
+                        setInterviewType(value);
+                        setInterviewErrors((prev) => ({
+                          ...prev,
+                          interviewType: undefined,
+                        }));
+
+                        // ถ้าไม่ใช่ Online ให้ล้าง URL
+                        if (value !== "online") {
+                          setInterviewData((prev) => ({
+                            ...prev,
+                            meeting_url: "",
+                          }));
+                        }
+                      }}
+                      options={INTERVIEW_TYPE_OPTIONS}
+                      optionType="button"
+                      buttonStyle="solid"
+                    />
+                  </div>
+                  {interviewErrors.interviewType && (
+                    <div>
+                      <Text type="danger" style={{ fontSize: 12 }}>
+                        {interviewErrors.interviewType}
+                      </Text>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div><Text strong>สถานที่สัมภาษณ์</Text></div>
+                  <div className="mt-1">
                     <Input
-                      value={interviewData.meeting_url}
-                      name="meeting_url"
+                      name="location"
+                      value={interviewData.location}
                       onChange={(e) =>
                         setInterviewData((prev) => ({
                           ...prev,
-                          meeting_url: e.target.value,
+                          location: e.target.value,
                         }))
                       }
                     />
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </Card>
+                {interviewType === "online" && (
+                  <div>
+                    <div>
+                      <Text strong>URL การประชุม</Text>
+                    </div>
+                    <div className="mt-1">
+                      <Input
+                        value={interviewData.meeting_url}
+                        name="meeting_url"
+                        onChange={(e) =>
+                          setInterviewData((prev) => ({
+                            ...prev,
+                            meeting_url: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="pb-5">
         {errorMessage && (
@@ -986,13 +1012,15 @@ export default function CandidateDetail({
           </button>
         </div>
         <div>
-          <Button
-            type="primary"
-            loading={loading}
-            onClick={handleSaveStatus}
-          >
-            บันทึก
-          </Button>          
+          {APPLICATION_STATUS.some((item) => item.value === status) && (
+            <Button
+              type="primary"
+              loading={loading}
+              onClick={handleSaveStatus}
+            >
+              บันทึก
+            </Button>
+          )}   
         </div>
       </div>
     </div>

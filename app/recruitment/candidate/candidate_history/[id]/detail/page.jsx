@@ -4,8 +4,17 @@ import { useEffect, useState, use } from "react";
 import { notFound } from "next/navigation";
 import CandidateDetail from "@/app/recruitment/components/CandidateDetail";
 import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
+import { useRouter } from "next/navigation";
 
 export default function Page({ params }) {
+  const router = useRouter();
+
+  const { isChecking, canView, canEdit } = usePageGuard({
+    module: "recruitment.candidate.history",
+    unauthorizedRedirect: "/recruitment",
+  });
+
   const { id } = use(params);
 
   const [data, setData] = useState(null);
@@ -21,10 +30,7 @@ export default function Page({ params }) {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`/recruitment/api/candidate_detail/${id}`, {
-        method: "GET",
-        cache: "no-store",
-      });
+      const res = await fetch(`/recruitment/api/candidate_detail/${id}`, { method: "GET", cache: "no-store",});
 
       const result = await res.json();
 
@@ -32,7 +38,7 @@ export default function Page({ params }) {
         throw new Error(result.message || "Load candidate detail failed");
       }
 
-      setData(result ?? result ?? null);
+      setData(result ?? null);
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -41,14 +47,19 @@ export default function Page({ params }) {
     }
   }
 
-  // ยังโหลดอยู่ -> แสดง loading เท่านั้น ห้ามไปต่อ
-  if (loading) {
-    return <LoadingOrb />;
-  }
+  useEffect(() => {
+    if (!isChecking && !canEdit) {
+      router.replace("/recruitment/candidate");
+    }
+  }, [isChecking, canEdit, router]);
+
+  // ยังโหลดอยู่ (ไม่ว่าจะเช็คสิทธิ์หรือโหลดข้อมูล) -> แสดง loading เท่านั้น ห้ามไปต่อ
+  if (isChecking || loading) return <LoadingOrb />;
+  if (!canEdit) return null;
 
   // โหลดเสร็จแล้วแต่ไม่มีข้อมูล/error -> หยุดที่นี่ ห้ามไปต่อ
   if (error || !data) {
-    return notFound(); // ★ ใส่ return กันไว้ให้ชัวร์ว่า component หยุดทำงานจริง
+    return notFound();
   }
 
   // ============================
@@ -62,7 +73,7 @@ export default function Page({ params }) {
       languageSkills={data?.languageSkills}
       systemProgramSkills={data?.systemProgramSkills}
       documents={data?.documents}
-      interviews={data?.interviews[0]}
+      interviews={data?.interviews?.[0]}
     />
   );
 }

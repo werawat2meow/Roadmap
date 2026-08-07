@@ -54,16 +54,30 @@ export async function GET(request) {
     }
 
     let query = supabaseAdmin
-      .from('recruit_job_applications')
-      .select(
-        `id, first_name, last_name, created_at, status, position_id,
-        positions ( position_name ) , 
-        recruit_job_interviews!inner ( interview_datetime , interview_order )`
-        ,
-        { count: 'exact' }
-      )
-      .in("status", [5,6,8])
-      .order('created_at', { ascending: false });
+    .from("recruit_job_applications")
+    .select(
+      `
+        id,
+        first_name,
+        last_name,
+        created_at,
+        status,
+        position_id,
+        positions (position_name),
+        recruit_job_interviews!inner (
+          interview_datetime,
+          interview_order
+        )
+      `,
+      { count: "exact" }
+    )
+    .order("interview_order", {
+      foreignTable: "recruit_job_interviews",
+      ascending: false,
+    })
+    .order("created_at", {
+      ascending: false,
+    });
 
     if (status !== null && status !== '' && status !== undefined) {
       const statusNum = Number(status);
@@ -71,7 +85,7 @@ export async function GET(request) {
         query = query.eq('status', statusNum);
       }
     } else {
-      query = query.in('status', [5, 6, 8]); // default เฉพาะตอนไม่ระบุ status
+      query = query.in('status', [4, 5, 6, 8]); // default เฉพาะตอนไม่ระบุ status
     }
 
     if (positionId) {
@@ -99,7 +113,9 @@ export async function GET(request) {
       query = query.range(from, to);
     }
 
-    const { data, error, count } = await query;
+    const { data, error, count } = await query;   
+
+    console.log(data[0].recruit_job_interviews);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

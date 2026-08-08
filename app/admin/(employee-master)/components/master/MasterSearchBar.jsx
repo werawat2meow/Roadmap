@@ -26,7 +26,7 @@ export default function MasterSearchBar({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-[290px] lg:min-w-[350px]">
 
           <Input
             allowClear={allowClear}

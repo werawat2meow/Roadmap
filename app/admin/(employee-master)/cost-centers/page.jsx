@@ -371,7 +371,7 @@ export default function CostCentersPage() {
       </motion.div>
 
       {/* Summary */}
-      <Row gutter={16}>
+      <Row>
         <Col xs={24} md={8}>
           <Card>
             <div className="text-slate-500 text-sm">

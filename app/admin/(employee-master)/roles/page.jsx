@@ -1,511 +1,1184 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { swalConfirm, swalError, swalSuccess } from "../../../components/Swal";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
-import LoadingOrb from "../../../components/LoadingOrb";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-const initialForm = {
-  role_code: "",
-  role_name: "",
-  description: "",
-  is_active: true,
-};
+import { Form } from "antd";
+import usePermissions from "@/hooks/usePermissions";
+import LoadingOrb from "@/app/components/LoadingOrb";
+import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
+import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
+import RoleSearch from "./components/RoleSearch";
+import RoleSummaryCards from "./components/RoleSummaryCards";
+import RoleTable from "./components/RoleTable";
+import RoleModal from "./components/RoleModal";
+import {getInitialRoleValues,} from "./components/RoleForm";
+import {swalError,swalSuccess,} from "@/components/Swal";
+import {SafetyOutlined,} from "@ant-design/icons";
+
+
+const API_URL =
+  "/api/admin/roles";
+
+const PERMISSION_API_URL =
+  "/api/admin/permissions";
+
+const ROLE_PERMISSION_API_URL =
+  "/api/admin/role-permissions";
+
+const DEFAULT_PAGE_SIZE = 20;
+
+function getRows(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+
+  if (
+    Array.isArray(
+      payload?.data?.items
+    )
+  ) {
+    return payload.data.items;
+  }
+
+  if (Array.isArray(payload?.items)) {
+    return payload.items;
+  }
+
+  if (Array.isArray(payload?.rows)) {
+    return payload.rows;
+  }
+
+  return [];
+}
+
+function getTotal(
+  payload,
+  fallback = 0
+) {
+  return (
+    payload?.pagination?.total ??
+    payload?.total ??
+    fallback
+  );
+}
+
+function getSavedRoleId(payload) {
+  return (
+    payload?.data?.id ||
+    payload?.data?.role?.id ||
+    payload?.role?.id ||
+    payload?.id ||
+    null
+  );
+}
+
+function normalizeRoleDetail(role) {
+  return {
+    id: role?.id || null,
+
+    role_code:
+      role?.role_code || "",
+
+    role_name:
+      role?.role_name || "",
+
+    description:
+      role?.description || "",
+
+    is_active:
+      role?.is_active !== false,
+
+    is_system:
+      Boolean(role?.is_system),
+
+    permission_ids:
+      Array.isArray(
+        role?.permission_ids
+      )
+        ? role.permission_ids
+        : Array.isArray(
+              role?.permissions
+            )
+          ? role.permissions
+              .map(
+                (permission) =>
+                  permission?.id
+              )
+              .filter(Boolean)
+          : [],
+  };
+}
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState("");
-  const [error, setError] = useState("");
+  // const router = useRouter();
+  const [form] = Form.useForm();
+  // const {user,loadingUser,} = useAuth();
 
-  const [openModal, setOpenModal] = useState(false);
-  const [editingRole, setEditingRole] = useState(null);
-  const [form, setForm] = useState(initialForm);
+  // const canView = hasPermission(user,"access.roles.view");
+  // const canCreate = hasPermission(user,"access.roles.create");
+  // const canEdit = hasPermission(user,"access.roles.edit");
+  // const canDelete = hasPermission(user,"access.roles.delete");
+  // const canManagePermissions = hasPermission(user,"access.role_permissions.manage");
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("access.roles");
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "access.roles.view");
-  const canCreate = hasPermission(user, "access.roles.create");
-  const canEdit = hasPermission(user, "access.roles.edit");
-  const canDelete = hasPermission(user, "access.roles.delete");
+  const canEditRole = canEdit;
 
-  
-  useEffect(() => {
-    if (loadingUser) return;
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch,setDebouncedSearch,] = useState("");
+  const [statusFilter,setStatusFilter,] = useState("");
+  const [roleTypeFilter,setRoleTypeFilter,] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize,setPageSize,] = useState(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] =useState(0);
 
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
-
-  const loadRoles = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await fetch("/api/admin/roles", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Load roles failed");
-      }
-
-      setRoles(data.data || []);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [permissions,setPermissions,] = useState([]);
+  const [permissionLoading,setPermissionLoading,] = useState(false);
+  const [permissionsLoaded,setPermissionsLoaded,] = useState(false);
+  const [modalOpen,setModalOpen,] = useState(false);
+  const [modalMode,setModalMode,] = useState("create");
+  const [selectedRecord,setSelectedRecord,] = useState(null);
+  const [detailLoading,setDetailLoading,] = useState(false);
+  const [saving, setSaving] =useState(false);
+  const [deletingId,setDeletingId,] = useState(null);
 
   useEffect(() => {
-    loadRoles();
-  }, []);
+    const timer =
+      window.setTimeout(() => {
+        setDebouncedSearch(
+          search.trim()
+        );
 
-  const resetForm = () => {
-    setForm(initialForm);
-    setEditingRole(null);
-  };
+        setPage(1);
+      }, 350);
 
-  const handleOpenCreate = () => {
-    if (!canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่ม Role");
-      return;
-    }
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [search]);
 
-    resetForm();
-    setOpenModal(true);
-  };
+  const fetchJson =
+    useCallback(
+      async (
+        url,
+        options = {}
+      ) => {
+        const response =
+          await fetch(url, {
+            cache: "no-store",
+            ...options,
+          });
 
-  const handleOpenEdit = (item) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไข Role");
-      return;
-    }
+        const contentType =
+          response.headers.get(
+            "content-type"
+          ) || "";
 
-    if (item.is_system) {
-      swalError("ไม่สามารถแก้ไข System Role ได้");
-      return;
-    }
+        if (
+          !contentType.includes(
+            "application/json"
+          )
+        ) {
+          const text =
+            await response.text();
 
-    setEditingRole(item);
-    setForm({
-      role_code: item.role_code || "",
-      role_name: item.role_name || "",
-      description: item.description || "",
-      is_active: !!item.is_active,
-    });
-    setOpenModal(true);
-  };
+          throw new Error(
+            text ||
+              "API ไม่ได้ส่งข้อมูล JSON กลับมา"
+          );
+        }
 
-  const handleCloseModal = () => {
-    resetForm();
-    setOpenModal(false);
-  };
+        const payload =
+          await response.json();
 
-  const handleSave = async () => {
-    const isEdit = !!editingRole;
-    if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไข Role");
-      return;
-    }
+        if (!response.ok) {
+          throw new Error(
+            payload?.error ||
+              payload?.message ||
+              "เกิดข้อผิดพลาดจาก API"
+          );
+        }
 
-    if (!isEdit && !canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่ม Role");
-      return;
-    }
-
-    if (!form.role_code.trim()) {
-      swalError("กรุณากรอก Role Code");
-      return;
-    }
-
-    if (!form.role_name.trim()) {
-      swalError("กรุณากรอก Role Name");
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const isEdit = !!editingRole;
-      const url = isEdit
-        ? `/api/admin/roles/${editingRole.id}`
-        : "/api/admin/roles";
-      const method = isEdit ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          role_code: form.role_code.trim().toUpperCase(),
-          role_name: form.role_name.trim(),
-          description: form.description.trim() || null,
-          is_active: form.is_active,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Save failed");
-      }
-
-      swalSuccess(isEdit ? "อัพเดท Role เรียบร้อยแล้ว" : "เพิ่ม Role เรียบร้อยแล้ว");
-      handleCloseModal();
-      await loadRoles();
-    } catch (err) {
-      console.error(err);
-      swalError(err.message || "เกิดข้อผิดพลาดในการบันทึก");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (item) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบ Role");
-      return;
-    }
-
-    if (item.is_system) {
-      swalError("ไม่สามารถลบ System Role ได้");
-      return;
-    }
-
-    const confirmed = await swalConfirm(
-      `ต้องการลบ Role "${item.role_name}" ใช่หรือไม่?`
+        return payload;
+      },
+      []
     );
 
-    if (!confirmed) return;
+  /* =======================================================
+     Load Roles
+  ======================================================= */
 
-    try {
-      setDeletingId(item.id);
-
-      const res = await fetch(`/api/admin/roles/${item.id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Delete failed");
+  const loadData =
+    useCallback(async () => {
+      if (!canView) {
+        return;
       }
 
-      setRoles((prev) => prev.filter((x) => x.id !== item.id));
-      swalSuccess("ลบ Role เรียบร้อยแล้ว");
-    } catch (err) {
-      console.error(err);
-      swalError(err.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
-    } finally {
-      setDeletingId("");
+      setLoading(true);
+
+      try {
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "page",
+          String(page)
+        );
+
+        params.set(
+          "pageSize",
+          String(pageSize)
+        );
+
+        if (debouncedSearch) {
+          params.set(
+            "search",
+            debouncedSearch
+          );
+        }
+
+        if (statusFilter) {
+          params.set(
+            "is_active",
+            statusFilter ===
+              "active"
+              ? "true"
+              : "false"
+          );
+        }
+
+        const payload =
+          await fetchJson(
+            `${API_URL}?${params.toString()}`
+          );
+
+        let nextRows =
+          getRows(payload);
+
+        /*
+         * roleTypeFilter กรอง System / Custom
+         * ฝั่ง Frontend เพราะ API ปัจจุบัน
+         * ยังไม่ได้รับ query is_system
+         */
+
+        if (
+          roleTypeFilter ===
+          "system"
+        ) {
+          nextRows =
+            nextRows.filter(
+              (item) =>
+                item.is_system === true
+            );
+        }
+
+        if (
+          roleTypeFilter ===
+          "custom"
+        ) {
+          nextRows =
+            nextRows.filter(
+              (item) =>
+                item.is_system !== true
+            );
+        }
+
+        setRows(nextRows);
+
+        setTotal(
+          roleTypeFilter === "all"
+            ? getTotal(
+                payload,
+                nextRows.length
+              )
+            : nextRows.length
+        );
+      } catch (error) {
+        console.error(
+          "LOAD_ROLES_ERROR:",
+          error
+        );
+
+        await swalError(
+          "โหลดข้อมูลไม่สำเร็จ",
+          error?.message ||
+            "ไม่สามารถโหลดข้อมูล Role ได้"
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      canView,
+      debouncedSearch,
+      fetchJson,
+      page,
+      pageSize,
+      roleTypeFilter,
+      statusFilter,
+    ]);
+
+  useEffect(() => {
+    if (
+      !loadingUser &&
+      canView
+    ) {
+      loadData();
     }
-  };
+  }, [
+    loadingUser,
+    canView,
+    loadData,
+  ]);
+
+  const loadPermissions =
+    useCallback(async () => {
+      if (permissionsLoaded) {
+        return;
+      }
+
+      setPermissionLoading(true);
+
+      try {
+        const payload =
+          await fetchJson(
+            `${PERMISSION_API_URL}?all=true`
+          );
+
+        const permissionRows =
+          getRows(payload);
+
+        setPermissions(
+          permissionRows.filter(
+            (permission) =>
+              permission?.is_active !==
+              false
+          )
+        );
+
+        setPermissionsLoaded(true);
+      } catch (error) {
+        console.error(
+          "LOAD_PERMISSION_MASTER_ERROR:",
+          error
+        );
+
+        await swalError(
+          "โหลด Permission ไม่สำเร็จ",
+          error?.message ||
+            "ไม่สามารถโหลดข้อมูล Permission ได้"
+        );
+
+        throw error;
+      } finally {
+        setPermissionLoading(false);
+      }
+    }, [
+      fetchJson,
+      permissionsLoaded,
+    ]);
+
+  /* =======================================================
+     Load Role Detail
+  ======================================================= */
+
+  const loadDetail = useCallback(
+    async (roleId) => {
+      const roleParams =
+        new URLSearchParams();
+
+      roleParams.set(
+        "role_id",
+        roleId
+      );
+
+      const permissionParams =
+        new URLSearchParams();
+
+      permissionParams.set(
+        "role_id",
+        roleId
+      );
+
+      const [
+        rolePayload,
+        rolePermissionPayload,
+      ] = await Promise.all([
+        fetchJson(
+          `${API_URL}?${roleParams.toString()}`
+        ),
+
+        fetchJson(
+          `${ROLE_PERMISSION_API_URL}?${permissionParams.toString()}`
+        ),
+      ]);
+
+      const role =
+        rolePayload?.data ||
+        rolePayload?.role ||
+        null;
+
+      if (!role) {
+        return null;
+      }
+
+      const permissionIds =
+        Array.isArray(
+          rolePermissionPayload
+            ?.permission_ids
+        )
+          ? rolePermissionPayload
+              .permission_ids
+          : Array.isArray(
+                rolePermissionPayload
+                  ?.data
+              )
+            ? rolePermissionPayload.data
+                .map(
+                  (item) =>
+                    item?.permission_id
+                )
+                .filter(Boolean)
+            : [];
+
+      return {
+        ...role,
+
+        permission_ids:
+          permissionIds,
+      };
+    },
+    [fetchJson]
+  );
+
+  /* =======================================================
+     Close Modal
+  ======================================================= */
+
+  const closeModal =
+    useCallback(() => {
+      setModalOpen(false);
+
+      setModalMode("create");
+
+      setSelectedRecord(null);
+
+      form.resetFields();
+    }, [form]);
+
+  /* =======================================================
+     Create
+  ======================================================= */
+
+  const handleCreate =
+    useCallback(async () => {
+      if (!canCreate) {
+        await swalError(
+          "ไม่มีสิทธิ์",
+          "คุณไม่มีสิทธิ์เพิ่ม Role"
+        );
+
+        return;
+      }
+
+      try {
+        await loadPermissions();
+
+        setSelectedRecord(null);
+
+        setModalMode("create");
+
+        form.resetFields();
+
+        form.setFieldsValue(
+          getInitialRoleValues()
+        );
+
+        setModalOpen(true);
+      } catch {
+        /*
+         * Error ถูกแสดงใน
+         * loadPermissions แล้ว
+         */
+      }
+    }, [
+      canCreate,
+      form,
+      loadPermissions,
+    ]);
+
+  /* =======================================================
+     Open View / Edit
+  ======================================================= */
+
+  const openRecord =
+    useCallback(
+      async (
+        record,
+        mode
+      ) => {
+        if (
+          mode === "edit" &&
+          !canEditRole
+        ) {
+          await swalError(
+            "ไม่มีสิทธิ์",
+            "คุณไม่มีสิทธิ์แก้ไข Role"
+          );
+
+          return;
+        }
+
+        setDetailLoading(true);
+
+        try {
+          await loadPermissions();
+
+          const detail =
+            await loadDetail(
+              record.id
+            );
+
+          if (!detail) {
+            throw new Error(
+              "ไม่พบรายละเอียด Role"
+            );
+          }
+
+          const values =
+            normalizeRoleDetail(
+              detail
+            );
+
+          setSelectedRecord(detail);
+
+          setModalMode(mode);
+
+          form.resetFields();
+
+          form.setFieldsValue(
+            values
+          );
+
+          setModalOpen(true);
+        } catch (error) {
+          console.error(
+            "LOAD_ROLE_DETAIL_ERROR:",
+            error
+          );
+
+          await swalError(
+            "โหลดรายละเอียดไม่สำเร็จ",
+            error?.message ||
+              "ไม่สามารถโหลดรายละเอียด Role ได้"
+          );
+        } finally {
+          setDetailLoading(false);
+        }
+      },
+      [
+        canEditRole,
+        form,
+        loadDetail,
+        loadPermissions,
+      ]
+    );
+
+  const handleView =
+    useCallback(
+      (record) => {
+        openRecord(
+          record,
+          "view"
+        );
+      },
+      [openRecord]
+    );
+
+  const handleEdit =
+    useCallback(
+      (record) => {
+        openRecord(
+          record,
+          "edit"
+        );
+      },
+      [openRecord]
+    );
+
+  /* =======================================================
+     Build Payload
+  ======================================================= */
+
+  const buildPayload = useCallback((values) => {
+    const permissionIds =
+      Array.isArray(
+        values?.permission_ids
+      )
+        ? [
+            ...new Set(
+              values.permission_ids
+                .map((id) =>
+                  String(
+                    id || ""
+                  ).trim()
+                )
+                .filter(Boolean)
+            ),
+          ]
+        : [];
+
+    const rolePayload = {
+      role_code:
+        values?.role_code
+          ?.trim()
+          .toUpperCase() || "",
+
+      role_name:
+        values?.role_name
+          ?.trim() || "",
+
+      description:
+        values?.description
+          ?.trim() || null,
+
+      is_active:
+        Boolean(
+          values?.is_active
+        ),
+
+      is_system:
+        Boolean(
+          values?.is_system
+        ),
+    };
+
+    return {
+      rolePayload,
+      permissionIds,
+    };
+  }, []);
+
+  const saveRolePermissions = useCallback(
+    async (
+      roleId,
+      permissionIds = []
+    ) => {
+      if (!roleId) {
+        throw new Error(
+          "ไม่พบ Role ID สำหรับบันทึก Permission"
+        );
+      }
+
+      const payload =
+        await fetchJson(
+          ROLE_PERMISSION_API_URL,
+          {
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              role_id: roleId,
+
+              permission_ids:
+                Array.isArray(
+                  permissionIds
+                )
+                  ? permissionIds
+                  : [],
+            }),
+          }
+        );
+
+      if (
+        payload?.success !== true
+      ) {
+        throw new Error(
+          payload?.error ||
+            "ไม่สามารถบันทึก Permission ได้"
+        );
+      }
+
+      return payload;
+    },
+    [fetchJson]
+  );
+
+  /* =======================================================
+     Submit
+  ======================================================= */
+
+  const handleSubmit = useCallback(
+    async (
+      submittedValues = null
+    ) => {
+      if (
+        modalMode === "view"
+      ) {
+        closeModal();
+        return;
+      }
+
+      try {
+        const values =
+          submittedValues &&
+          typeof submittedValues ===
+            "object" &&
+          !Array.isArray(
+            submittedValues
+          )
+            ? submittedValues
+            : await form
+                .validateFields();
+
+        const {
+          rolePayload,
+          permissionIds,
+        } = buildPayload(values);
+
+        setSaving(true);
+
+        let savedRoleId = null;
+
+        if (
+          modalMode === "create"
+        ) {
+          const createPayload =
+            await fetchJson(
+              API_URL,
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify(
+                    rolePayload
+                  ),
+              }
+            );
+
+          savedRoleId =
+            getSavedRoleId(
+              createPayload
+            );
+
+          if (!savedRoleId) {
+            throw new Error(
+              "สร้าง Role สำเร็จ แต่ API ไม่ได้ส่ง Role ID กลับมา"
+            );
+          }
+
+          await saveRolePermissions(
+            savedRoleId,
+            permissionIds
+          );
+
+          await swalSuccess(
+            "บันทึกสำเร็จ",
+            "เพิ่ม Role และ Permission เรียบร้อยแล้ว"
+          );
+        } else {
+          savedRoleId =
+            selectedRecord?.id;
+
+          if (!savedRoleId) {
+            throw new Error(
+              "ไม่พบ Role ID"
+            );
+          }
+
+          await fetchJson(
+            API_URL,
+            {
+              method: "PATCH",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  id: savedRoleId,
+
+                  ...rolePayload,
+                }),
+            }
+          );
+
+          await saveRolePermissions(
+            savedRoleId,
+            permissionIds
+          );
+
+          await swalSuccess(
+            "บันทึกสำเร็จ",
+            "แก้ไข Role และ Permission เรียบร้อยแล้ว"
+          );
+        }
+
+        closeModal();
+
+        await loadData();
+      } catch (error) {
+        if (
+          error?.errorFields
+        ) {
+          return;
+        }
+
+        console.error(
+          "SAVE_ROLE_ERROR:",
+          error
+        );
+
+        await swalError(
+          "บันทึกไม่สำเร็จ",
+          error?.message ||
+            "ไม่สามารถบันทึก Role และ Permission ได้"
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      buildPayload,
+      closeModal,
+      fetchJson,
+      form,
+      loadData,
+      modalMode,
+      saveRolePermissions,
+      selectedRecord?.id,
+    ]
+  );
+
+  /* =======================================================
+     Delete
+
+     RoleTable ใช้ DeleteConfirm อยู่แล้ว
+     จึงไม่ต้อง Confirm ซ้ำใน page.jsx
+  ======================================================= */
+
+  const handleDelete =
+    useCallback(
+      async (record) => {
+        if (!canDelete) {
+          await swalError(
+            "ไม่มีสิทธิ์",
+            "คุณไม่มีสิทธิ์ลบ Role"
+          );
+
+          return;
+        }
+
+        if (record?.is_system) {
+          await swalError(
+            "ไม่สามารถลบได้",
+            "System Role ไม่สามารถลบได้"
+          );
+
+          return;
+        }
+
+        setDeletingId(record.id);
+
+        try {
+          const params =
+            new URLSearchParams();
+
+          params.set(
+            "id",
+            record.id
+          );
+
+          await fetchJson(
+            `${API_URL}?${params.toString()}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+          await swalSuccess(
+            "ลบสำเร็จ",
+            "ลบ Role และ Permission เรียบร้อยแล้ว"
+          );
+
+          if (
+            rows.length === 1 &&
+            page > 1
+          ) {
+            setPage(
+              (current) =>
+                Math.max(
+                  current - 1,
+                  1
+                )
+            );
+          } else {
+            await loadData();
+          }
+        } catch (error) {
+          console.error(
+            "DELETE_ROLE_ERROR:",
+            error
+          );
+
+          await swalError(
+            "ลบไม่สำเร็จ",
+            error?.message ||
+              "ไม่สามารถลบ Role ได้"
+          );
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      [
+        canDelete,
+        fetchJson,
+        loadData,
+        page,
+        rows.length,
+      ]
+    );
+
+  /* =======================================================
+     Table Change
+  ======================================================= */
+
+  const handleTableChange =
+    useCallback(
+      (pagination) => {
+        const nextPage =
+          pagination?.current || 1;
+
+        const nextPageSize =
+          pagination?.pageSize ||
+          DEFAULT_PAGE_SIZE;
+
+        if (
+          nextPageSize !==
+          pageSize
+        ) {
+          setPage(1);
+
+          setPageSize(
+            nextPageSize
+          );
+
+          return;
+        }
+
+        setPage(nextPage);
+      },
+      [pageSize]
+    );
+
+  /* =======================================================
+     Filters
+  ======================================================= */
+
+  const handleStatusChange = useCallback((value) => {
+      setStatusFilter(
+        value || ""
+      );
+
+      setPage(1);
+    }, []);
+
+  const handleRoleTypeChange = useCallback((value) => {
+    setRoleTypeFilter(
+      value || "all"
+    );
+
+    setPage(1);
+  }, []);
+
+  /* =======================================================
+     Summary
+  ======================================================= */
+
+  const summary = useMemo(() => {
+    const active = rows.filter((role) => role.is_active === true).length;
+    const system = rows.filter((role) => role.is_system === true).length;
+    const permissionCount = rows.reduce((currentTotal,role) => {
+      const count = Number(role?.permission_count);
+        if (Number.isFinite(count)) {
+          return (
+            currentTotal + count
+          );
+        }
+
+        if (Array.isArray(role?.permission_ids)) {
+          return (
+            currentTotal +
+            role.permission_ids
+              .length
+          );
+        }
+
+        if (Array.isArray(role?.permissions)) {
+          return (
+            currentTotal +
+            role.permissions
+              .length
+          );
+        }
+        return currentTotal;
+      },0
+    );
+
+    return {
+      active,
+      system,
+      permissions:
+        permissionCount,
+    };
+  }, [rows]);
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
-  if (!canView) return null;
+  if (!canView) {
+    return (
+      <MasterLayout>
+        <PageInfoAlert
+          type="error"
+          title="ไม่มีสิทธิ์เข้าใช้งาน"
+          description="คุณไม่มีสิทธิ์ดูหน้าบทบาทและสิทธิ์ผู้ใช้งาน"
+        />
+      </MasterLayout>
+    );
+  }
+
+  /* =======================================================
+     Render
+  ======================================================= */
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Roles</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              จัดการบทบาทผู้ใช้งานในระบบ
-            </p>
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบ Role ได้
-              </div>
-            ) : null}
-          </div>
+    <MasterLayout>
+      {/* ===================================================
+          Header
+      =================================================== */}
 
-          {canCreate && (
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              + เพิ่ม บทบาทผู้ใช้งานในระบบ
-            </button>
-          )}
-        </div>
-      </div>
+      <MasterPageHeader
+        icon={<SafetyOutlined />}
+        title="บทบาทและสิทธิ์ผู้ใช้งาน"
+        subtitle="จัดการ Role และกำหนด Permission สำหรับการเข้าถึงเมนูและ Action ภายในระบบ"
+        loading={loading}
+        canCreate={canCreate}
+        createText="เพิ่ม Role"
+        onCreate={handleCreate}
+        onRefresh={loadData}
+        onBack={() =>
+          router.back()
+        }
+      />
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      ) : null}
+      {/* ===================================================
+          Information
+      =================================================== */}
 
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-6 py-4 text-left">Role Code</th>
-                <th className="px-6 py-4 text-left">Role Name</th>
-                <th className="px-6 py-4 text-left">Description</th>
-                <th className="px-6 py-4 text-left">ประเภท</th>
-                <th className="px-6 py-4 text-left">Status</th>
-                <th className="px-6 py-4 text-right">จัดการ</th>
-              </tr>
-            </thead>
+      <PageInfoAlert
+        title="Role และ Permission"
+        description="Role คือชุดบทบาทของผู้ใช้งาน ส่วน Permission กำหนดว่า Role สามารถเข้าเมนูใดและทำ Action ใดได้ ขอบเขตบริษัทหรือสังกัดจะกำหนดแยกในหน้ากำหนดบทบาทผู้ใช้งาน"
+      />
 
-            <tbody>
-              {loading ? (
-                [...Array(5)].map((_, index) => (
-                  <tr key={index} className="border-t border-slate-200">
-                    <td className="px-6 py-4">
-                      <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-4 w-48 animate-pulse rounded bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="ml-auto h-8 w-24 animate-pulse rounded bg-slate-200" />
-                    </td>
-                  </tr>
-                ))
-              ) : roles.length > 0 ? (
-                roles.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-t border-slate-200 hover:bg-slate-50"
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {item.role_code}
-                    </td>
+      {/* ===================================================
+          Search
+      =================================================== */}
 
-                    <td className="px-6 py-4 text-slate-700">
-                      {item.role_name}
-                    </td>
+      <RoleSearch
+        search={search}
+        status={statusFilter}
+        roleType={
+          roleTypeFilter
+        }
+        loading={loading}
+        onSearchChange={
+          setSearch
+        }
+        onStatusChange={
+          handleStatusChange
+        }
+        onRoleTypeChange={
+          handleRoleTypeChange
+        }
+        onRefresh={loadData}
+      />
 
-                    <td className="px-6 py-4 text-slate-600">
-                      {item.description || "-"}
-                    </td>
+      {/* ===================================================
+          Summary
+      =================================================== */}
 
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.is_system
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {item.is_system ? "System" : "Custom"}
-                      </span>
-                    </td>
+      <RoleSummaryCards
+        total={total}
+        active={summary.active}
+        system={summary.system}
+        permissions={
+          summary.permissions
+        }
+      />
 
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.is_active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {item.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
+      {/* ===================================================
+          Table
+      =================================================== */}
 
-                    <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
-                        <div className="flex justify-end gap-2">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(item)}
-                              disabled={item.is_system}
-                              className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                item.is_system
-                                  ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
-                                  : "border-slate-300 text-slate-600 hover:bg-slate-100"
-                              }`}
-                            >
-                              {item.is_system ? "Protected" : "Edit"}
-                            </button>
-                          )}
+      <RoleTable
+        rows={rows}
+        loading={
+          loading ||
+          detailLoading
+        }
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        canEdit={canEditRole}
+        canDelete={canDelete}
+        deletingId={deletingId}
+        onView={handleView}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onTableChange={
+          handleTableChange
+        }
+      />
 
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item)}
-                              disabled={deletingId === item.id || item.is_system}
-                              className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === item.id || item.is_system
-                                  ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
-                                  : "border-red-200 text-red-600 hover:bg-red-50"
-                              }`}
-                            >
-                              {item.is_system
-                                ? "Protected"
-                                : deletingId === item.id
-                                  ? "Deleting..."
-                                  : "Delete"}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-right text-slate-400">-</div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-slate-400"
-                  >
-                    ไม่พบข้อมูล Role
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* ===================================================
+          Modal
+      =================================================== */}
 
-      {openModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">
-                {editingRole ? "แก้ไข Role" : "เพิ่ม Role"}
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Role Code
-                </label>
-                <input
-                  type="text"
-                  value={form.role_code}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      role_code: e.target.value.toUpperCase(),
-                    }))
-                  }
-                  placeholder="เช่น HR_ADMIN"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm uppercase outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Role Name
-                </label>
-                <input
-                  type="text"
-                  value={form.role_name}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      role_name: e.target.value,
-                    }))
-                  }
-                  placeholder="เช่น HR Admin"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Description
-                </label>
-                <textarea
-                  rows={4}
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="รายละเอียดบทบาทผู้ใช้งาน"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  สถานะการใช้งาน
-                </label>
-                <select
-                  value={form.is_active ? "true" : "false"}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      is_active: e.target.value === "true",
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                disabled={saving}
-                className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-
-              {((editingRole && canEdit) || (!editingRole && canCreate)) && (
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white ${
-                    saving
-                      ? "cursor-not-allowed bg-slate-400"
-                      : "bg-slate-900 hover:bg-slate-800"
-                  }`}
-                >
-                  {saving ? "Saving..." : editingRole ? "Update" : "Save"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <RoleModal
+        open={modalOpen}
+        mode={modalMode}
+        form={form}
+        saving={saving}
+        permissionLoading={
+          permissionLoading
+        }
+        permissions={
+          permissions
+        }
+        onCancel={closeModal}
+        onSubmit={handleSubmit}
+      />
+    </MasterLayout>
   );
 }

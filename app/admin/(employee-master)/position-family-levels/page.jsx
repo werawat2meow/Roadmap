@@ -255,7 +255,7 @@ export default function PositionFamilyLevelsPage() {
         )}
       />
 
-      <Row gutter={[16, 16]}>
+      <Row>
 
         <Col xs={24}>
 

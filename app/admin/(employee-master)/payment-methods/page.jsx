@@ -12,6 +12,7 @@ import PaymentMethodSearch from "./components/PaymentMethodSearch";
 import PaymentMethodSummaryCards from "./components/PaymentMethodSummaryCards";
 import PaymentMethodTable from "./components/PaymentMethodTable";
 import PaymentMethodModal from "./components/PaymentMethodModal";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
 
 import {
   swalConfirm,
@@ -309,14 +310,6 @@ export default function PaymentMethodsPage() {
   };
 
   const handleDelete = async (record) => {
-    const confirmed =
-      await swalConfirm(
-        "ยืนยันการลบ",
-        `ต้องการลบ "${record.payment_method_name}" ใช่หรือไม่`
-      );
-
-    if (!confirmed) return;
-
     try {
       const res = await fetch(
         `/api/admin/payment-methods/${record.id}`,
@@ -393,16 +386,20 @@ export default function PaymentMethodsPage() {
   return (
     <MasterLayout
       header={
-        <MasterPageHeader
-          title="วิธีการจ่ายเงิน"
-          subtitle="Payment Methods"
-          loading={loading}
-          canRefresh
-          canCreate={canCreate}
-          createText="เพิ่มวิธีการจ่ายเงิน"
-          onRefresh={fetchPaymentMethods}
-          onCreate={handleCreate}
-        />
+        <>
+        
+          <MasterPageHeader
+            title="วิธีการจ่ายเงิน"
+            subtitle="Payment Methods"
+            loading={loading}
+            canRefresh
+            canCreate={canCreate}
+            createText="เพิ่มวิธีการจ่ายเงิน"
+            onRefresh={fetchPaymentMethods}
+            onCreate={handleCreate}
+          />
+          <PageInfoAlert description="จัดการข้อมูลหลัก (Master Data) ของวิธีการจ่ายเงินที่ระบบรองรับ เช่น เงินสด, โอนเข้าบัญชี, PromptPay, เช็ค, Digital Wallet หรือ Crypto พร้อมกำหนดเงื่อนไขการใช้งาน เช่น ต้องระบุธนาคาร, ต้องมีชื่อ/เลขบัญชี หรือ PromptPay ID รวมถึงตั้งค่าว่าวิธีการจ่ายเงินนี้รองรับการใช้งานในโมดูลใดบ้าง (Payroll, Benefit, Expense, Vendor) และความสามารถเสริม เช่น การรองรับหลายบัญชี, QR Payment หรือ API Integration" />
+        </>
       }
       search={
         <PaymentMethodSearch

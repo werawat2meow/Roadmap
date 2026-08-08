@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import {Button,Card,Form,Typography,} from "antd";
-import {PlusOutlined,} from "@ant-design/icons";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
-import {swalConfirm,swalError,swalSuccess} from "../../../components/Swal";
+import {Card,Form,Typography,} from "antd";
+import {swalError,swalSuccess} from "../../../components/Swal";
 import { Modal } from "antd"; 
 import LoadingOrb from "../../../components/LoadingOrb";
+import usePermissions from "@/hooks/usePermissions";
 const { Title } = Typography;
 const CareerPathSearch = dynamic(() =>import("./components/CareerPathSearch"));
 const CareerPathTable = dynamic(() =>import("./components/CareerPathTable"));
@@ -19,12 +16,7 @@ const CareerPathViewDrawer = dynamic(() =>import("./components/CareerPathViewDra
 export default function CareerPathsPage() {
   // Permistion
   const [form] = Form.useForm();
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user,"ems.career_paths.view");
-  const canCreate = hasPermission(user,"ems.career_paths.create");
-  const canEdit = hasPermission(user,"ems.career_paths.edit");
-  const canDelete = hasPermission(user, "ems.career_paths.delete");
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("ems.career_paths");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -163,19 +155,6 @@ export default function CareerPathsPage() {
     loadCareerPaths(1, pageSize);
 
   }, [loadingUser, canView, statusFilter]);
-
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
 
   function handleCreate() {
     setEditingItem(null);

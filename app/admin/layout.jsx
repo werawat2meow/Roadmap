@@ -1,207 +1,298 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { Layout, Avatar, Tag, Button, Tooltip, Dropdown } from "antd";
 import {
-  UserOutlined,
-  LogoutOutlined,
-  LoadingOutlined,
-  HomeOutlined,
-  KeyOutlined,
-} from "@ant-design/icons";
-import { useAuth } from "@/contexts/AuthContext";
-import { swalSuccess, swalError, swalConfirm } from "../components/Swal";
-import { NO_HEADER_PREFIXES } from "./_config/noHeaderPrefixes";
+  useEffect,
+  useState,
+} from "react";
 
-const { Header, Content } = Layout;
+import {
+  useRouter,
+} from "next/navigation";
 
-export default function AdminLayout({ children }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, setUser } = useAuth();
+import {
+  useAuth,
+} from "@/contexts/AuthContext";
 
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [showHeader, setShowHeader] = useState(true);
-  const lastScrollY = useRef(0);
+import LoadingOrb from "@/app/components/LoadingOrb";
 
-  // เช็คว่า path ปัจจุบันอยู่ในระบบย่อยที่มี layout ของตัวเองอยู่แล้วหรือไม่
-  // ถ้าใช่ -> ไม่ต้องแสดง Header ตัวนี้ซ้อนทับ
-  const hideHeader = useMemo(
-    () => NO_HEADER_PREFIXES.some((p) => pathname.startsWith(p)),
-    [pathname]
-  );
+import {
+  swalConfirm,
+  swalError,
+  swalSuccess,
+} from "@/components/Swal";
+
+import PortalSidebar from "./components/portal/PortalSidebar";
+import PortalTopbar from "./components/portal/PortalTopbar";
+import PortalMobileHeader from "./components/portal/PortalMobileHeader";
+
+import {
+  PORTAL_SIDEBAR,
+} from "./components/portal/portalLayoutConfig";
+
+/* =========================================================
+   Component
+========================================================= */
+
+export default function AdminLayout({
+  children,
+}) {
+  const router =
+    useRouter();
+
+  const {
+    user,
+    setUser,
+    loadingUser,
+  } = useAuth();
+
+  const [
+    collapsed,
+    setCollapsed,
+  ] = useState(false);
+
+  const [
+    mobileOpen,
+    setMobileOpen,
+  ] = useState(false);
+
+  const [
+    loggingOut,
+    setLoggingOut,
+  ] = useState(false);
+
+  /* =======================================================
+     Auth Guard
+  ======================================================= */
 
   useEffect(() => {
-    if (hideHeader) return;
+    if (loadingUser) {
+      return;
+    }
 
-    let ticking = false;
-    const handleScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const currentScrollY = window.scrollY;
+    if (!user) {
+      router.replace(
+        "/login"
+      );
+    }
+  }, [
+    loadingUser,
+    router,
+    user,
+  ]);
 
-        if (currentScrollY < 80) {
-          setShowHeader(true);
-        } else if (currentScrollY > lastScrollY.current) {
-          setShowHeader(false);
-        } else {
-          setShowHeader(true);
-        }
+  /* =======================================================
+     Logout
+  ======================================================= */
 
-        lastScrollY.current = currentScrollY;
-        ticking = false;
-      });
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hideHeader]);
-
-  const handleLogout = async () => {
-    const result = await swalConfirm(
-      "ออกจากระบบ?",
-      "คุณต้องการออกจากระบบใช่หรือไม่"
-    );
-
-    if (!result.isConfirmed) return;
-    if (loggingOut) return;
-
-    setLoggingOut(true);
-
-    try {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Logout failed");
+  const handleLogout =
+    async () => {
+      if (loggingOut) {
+        return;
       }
 
-      localStorage.removeItem("employee_user");
-      setUser(null);
+      const result =
+        await swalConfirm(
+          "ออกจากระบบ?",
+          "คุณต้องการออกจากระบบใช่หรือไม่"
+        );
 
-      swalSuccess("Logout สำเร็จ");
-      router.push("/login");
-      // router.refresh();
-    } catch (error) {
-      console.error("LOGOUT_ERROR:", error);
-      swalError(error?.message || "Logout failed");
-    } finally {
-      setLoggingOut(false);
-    }
-  };
+      if (
+        !result?.isConfirmed
+      ) {
+        return;
+      }
 
-  const userMenuItems = [
-    {
-      key: "profile",
-      disabled: true,
-      label: (
-        <div className="min-w-[180px]">
-          <div className="font-semibold text-slate-800">
-            {user?.full_name || user?.username || "-"}
-          </div>
-          <div className="text-xs text-slate-400">
-            {user?.role_name || user?.role_code || "User"}
-          </div>
-        </div>
-      ),
-    },
-    {
-      type: "divider",
-    },
-    {
-      key: "change-password",
-      icon: <KeyOutlined />,
-      label: "เปลี่ยนรหัสผ่าน",
-      onClick: () => router.push("/admin/change-password"),
-    },
-  ];
+      setLoggingOut(true);
 
-  // 🔑 ระบบย่อย (Employee Master, Benefit, ...) มี sidebar/layout ของตัวเองอยู่แล้ว
-  // ไม่ต้องมี Header ตัวนี้ครอบซ้อนอีกชั้น
-  if (hideHeader) {
-    return <>{children}</>;
+      try {
+        const response =
+          await fetch(
+            "/api/auth/logout",
+            {
+              method: "POST",
+            }
+          );
+
+        const payload =
+          await response
+            .json()
+            .catch(
+              () => null
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.error ||
+              "ไม่สามารถออกจากระบบได้"
+          );
+        }
+
+        localStorage.removeItem(
+          "employee_user"
+        );
+
+        setUser?.(null);
+
+        await swalSuccess(
+          "ออกจากระบบสำเร็จ"
+        );
+
+        router.replace(
+          "/login"
+        );
+
+        router.refresh();
+      } catch (error) {
+        console.error(
+          "ADMIN_LOGOUT_ERROR:",
+          error
+        );
+
+        await swalError(
+          "ออกจากระบบไม่สำเร็จ",
+          error?.message ||
+            "ไม่สามารถออกจากระบบได้"
+        );
+      } finally {
+        setLoggingOut(
+          false
+        );
+      }
+    };
+
+  /* =======================================================
+     Loading
+  ======================================================= */
+
+  if (loadingUser) {
+    return (
+      <LoadingOrb />
+    );
   }
 
+  if (!user) {
+    return null;
+  }
+
+  /* =======================================================
+     Layout Variables
+
+     ใช้ CSS Variables เพื่อให้ Sidebar / Topbar / Content
+     อ้างอิงขนาดชุดเดียวกันจาก portalLayoutConfig.js
+  ======================================================= */
+
+  const layoutStyle = {
+    "--portal-sidebar-collapsed":
+      `${PORTAL_SIDEBAR.collapsed}px`,
+
+    "--portal-sidebar-lg":
+      `${PORTAL_SIDEBAR.lg}px`,
+
+    "--portal-sidebar-xl":
+      `${PORTAL_SIDEBAR.xl}px`,
+
+    "--portal-sidebar-xxl":
+      `${PORTAL_SIDEBAR.xxl}px`,
+
+    "--portal-sidebar-mobile":
+      `${PORTAL_SIDEBAR.mobile}px`,
+  };
+
+  /* =======================================================
+     Render
+  ======================================================= */
+
   return (
-    <Layout className="min-h-screen bg-slate-100">
-      <Header
-        className={`fixed top-0 left-0 right-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-[#06192c] px-3 transition-transform duration-300 ease-in-out sm:px-4 lg:px-8 ${
-          showHeader ? "translate-y-0" : "-translate-y-full"
-        }`}
+    <div
+      style={layoutStyle}
+      className="
+        min-h-screen
+        w-full
+        bg-slate-50
+      "
+    >
+      {/* ===================================================
+          Sidebar
+      =================================================== */}
+
+      <PortalSidebar
+        collapsed={
+          collapsed
+        }
+        setCollapsed={
+          setCollapsed
+        }
+        mobileOpen={
+          mobileOpen
+        }
+        setMobileOpen={
+          setMobileOpen
+        }
+      />
+
+      {/* ===================================================
+          Desktop Topbar
+      =================================================== */}
+
+      <PortalTopbar
+        user={user}
+        collapsed={
+          collapsed
+        }
+        loggingOut={
+          loggingOut
+        }
+        onLogout={
+          handleLogout
+        }
+      />
+
+      {/* ===================================================
+          Mobile Header
+      =================================================== */}
+
+      <PortalMobileHeader
+        onOpen={() =>
+          setMobileOpen(
+            true
+          )
+        }
+      />
+
+      {/* ===================================================
+          Main Content
+      =================================================== */}
+
+      <main
+        className={`
+          min-h-screen
+          min-w-0
+
+          pt-16
+
+          transition-[margin-left]
+          duration-300
+          ease-in-out
+
+          lg:pt-[76px]
+
+          ${
+            collapsed
+              ? `
+                lg:ml-[var(--portal-sidebar-collapsed)]
+              `
+              : `
+                lg:ml-[var(--portal-sidebar-lg)]
+
+                xl:ml-[var(--portal-sidebar-xl)]
+
+                2xl:ml-[var(--portal-sidebar-xxl)]
+              `
+          }
+        `}
       >
-        <button
-          type="button"
-          onClick={() => router.push("/admin")}
-          className="flex min-w-0 items-center gap-2 text-left sm:gap-3"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
-            HW
-          </div>
-
-          <div className="min-w-0">
-            <div className="truncate text-sm font-bold leading-tight text-white sm:text-base">
-              HR Portal
-            </div>
-            <div className="hidden truncate text-xs leading-tight text-slate-400 sm:block">
-              Central HR Platform
-            </div>
-          </div>
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <Tooltip title="กลับหน้า Portal">
-            <Button
-              type="text"
-              icon={<HomeOutlined />}
-              onClick={() => router.push("/admin")}
-              className="!h-9 !w-9 !text-slate-300 hover:!bg-white/10 hover:!text-white"
-            />
-          </Tooltip>
-
-          <Tag className="m-0 hidden max-w-[120px] truncate rounded-full border-0 bg-white px-3 py-1 text-xs font-medium text-slate-800 md:inline-flex">
-            {user?.role_name || user?.role_code || "User"}
-          </Tag>
-
-          <Dropdown
-            menu={{ items: userMenuItems }}
-            trigger={["hover", "click"]}
-            placement="bottomRight"
-          >
-            <button
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10"
-            >
-              <Avatar
-                src={user?.employee_photo_url || undefined}
-                icon={!user?.employee_photo_url ? <UserOutlined /> : null}
-                className="!bg-slate-950"
-              />
-            </button>
-          </Dropdown>
-
-          <Tooltip title="Logout" placement="bottom">
-            <Button
-              type="text"
-              danger
-              icon={loggingOut ? <LoadingOutlined spin /> : <LogoutOutlined />}
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="!h-9 !text-red-400 hover:!bg-red-500/10 hover:!text-red-500"
-            >
-              <span className="hidden lg:inline">
-                {loggingOut ? "Signing out..." : "Logout"}
-              </span>
-            </Button>
-          </Tooltip>
-        </div>
-      </Header>
-
-      <Content className="pt-16">{children}</Content>
-    </Layout>
+        {children}
+      </main>
+    </div>
   );
 }

@@ -51,7 +51,7 @@ export default function PayrollGroupForm({
     <Form
       form={form}
       layout="vertical"
-      onFinish={onFinish} 
+      onFinish={onFinish}
     >
       <Row gutter={16}>
         {/* =========================
@@ -94,6 +94,7 @@ export default function PayrollGroupForm({
             ]}
           >
             <Input
+              disabled={disabled}
               placeholder="พนักงานประจำ"
             />
           </Form.Item>
@@ -116,6 +117,7 @@ export default function PayrollGroupForm({
             ]}
           >
             <Select
+              disabled={disabled}
               showSearch
               placeholder="เลือกบริษัทเงินเดือน"
               optionFilterProp="label"
@@ -139,6 +141,7 @@ export default function PayrollGroupForm({
             name="payment_day"
           >
             <InputNumber
+              disabled={disabled}
               min={1}
               max={31}
               style={{
@@ -158,6 +161,7 @@ export default function PayrollGroupForm({
             name="cutoff_end_day"
           >
             <InputNumber
+              disabled={disabled}
               min={1}
               max={31}
               style={{
@@ -178,6 +182,7 @@ export default function PayrollGroupForm({
             initialValue="monthly"
           >
             <Select
+              disabled={disabled}
               options={frequencyOptions}
             />
           </Form.Item>
@@ -194,6 +199,7 @@ export default function PayrollGroupForm({
             initialValue={0}
           >
             <InputNumber
+              disabled={disabled}
               min={-12}
               max={12}
               style={{
@@ -214,6 +220,7 @@ export default function PayrollGroupForm({
             initialValue={0}
           >
             <InputNumber
+              disabled={disabled}
               min={0}
               style={{
                 width: "100%",
@@ -233,6 +240,7 @@ export default function PayrollGroupForm({
             initialValue="active"
           >
             <Select
+              disabled={disabled}
               options={statusOptions}
             />
           </Form.Item>
@@ -248,6 +256,7 @@ export default function PayrollGroupForm({
             name="description"
           >
             <TextArea
+              disabled={disabled}
               rows={4}
               placeholder="รายละเอียดเพิ่มเติม"
             />

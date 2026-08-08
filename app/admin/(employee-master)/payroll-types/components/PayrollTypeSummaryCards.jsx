@@ -12,7 +12,7 @@ export default function PayrollTypeSummaryCards({
   summary,
 }) {
   return (
-    <Row gutter={[16, 16]}>
+    <Row>
 
       <Col xs={24} md={8}>
         <Card>

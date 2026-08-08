@@ -1,223 +1,235 @@
 import { NextResponse } from "next/server";
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
 import { supabaseAdmin } from "@/lib/supabaseServer";
+
+import {
+  buildUserAccessContext,
+  loadUserAccountByUsername,
+} from "@/lib/auth/buildUserAccessContext";
+
+const TOKEN_COOKIE_NAME ="employee_token";
+const TOKEN_EXPIRES_IN = "10h";
+const TOKEN_MAX_AGE =60 * 60 * 10;
+
+/* =========================================================
+   POST /api/auth/login
+========================================================= */
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const username = body?.username?.trim();
-    const password = body?.password;
+
+    const username =
+      String(
+        body?.username || ""
+      ).trim();
+
+    const password =
+      body?.password;
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "กรุณากรอก username และ password" },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "กรุณากรอก username และ password",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    // =========================
-    // 1) หา user account จาก username
-    // =========================
-    const { data: userAccount, error: userError } = await supabaseAdmin
-      .from("user_accounts")
-      .select(`
-        id,
-        employee_id,
-        role_id,
-        username,
-        password_hash,
-        is_active,
-        roles (
-          id,
-          role_code,
-          role_name
-        )
-      `)
-      .eq("username", username)
-      .maybeSingle();
+    /* =====================================================
+       1. Load User Account
+    ===================================================== */
 
-    if (userError) {
-      console.error("USER_QUERY_ERROR:", userError);
-      return NextResponse.json(
-        { error: "เกิดข้อผิดพลาดในการค้นหาผู้ใช้งาน" },
-        { status: 500 }
+    const userAccount =
+      await loadUserAccountByUsername(
+        username
       );
-    }
 
     if (!userAccount) {
       return NextResponse.json(
-        { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" },
-        { status: 401 }
+        {
+          success: false,
+          error:
+            "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
     if (!userAccount.is_active) {
       return NextResponse.json(
-        { error: "บัญชีนี้ถูกปิดการใช้งาน" },
-        { status: 403 }
+        {
+          success: false,
+          error:
+            "บัญชีนี้ถูกปิดการใช้งาน",
+        },
+        {
+          status: 403,
+        }
       );
     }
 
     if (!userAccount.password_hash) {
       return NextResponse.json(
-        { error: "บัญชีนี้ยังไม่มีรหัสผ่านในระบบ" },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "บัญชีนี้ยังไม่มีรหัสผ่านในระบบ",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    // =========================
-    // 2) ตรวจสอบรหัสผ่าน
-    // =========================
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      userAccount.password_hash
-    );
+    /* =====================================================
+       2. Check Password
+    ===================================================== */
+
+    const isPasswordValid =
+      await bcrypt.compare(
+        password,
+        userAccount.password_hash
+      );
 
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" },
-        { status: 401 }
+        {
+          success: false,
+          error:
+            "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    // =========================
-    // 3) ดึงข้อมูล employee
-    // =========================
-    let employee = null;
+    /* =====================================================
+       3. Build User Context
 
-    if (userAccount.employee_id) {
-      const { data: employeeData, error: employeeError } = await supabaseAdmin
-        .from("employees")
-        .select(`
-          id,
-          employee_code,
-          first_name_th,
-          last_name_th,
-          first_name_en,
-          last_name_en
-        `)
-        .eq("id", userAccount.employee_id)
-        .maybeSingle();
+       JSON ส่วนนี้จะเหมือน /api/auth/me
+    ===================================================== */
 
-      if (employeeError) {
-        console.error("EMPLOYEE_QUERY_ERROR:", employeeError);
-        return NextResponse.json(
-          { error: "เกิดข้อผิดพลาดในการดึงข้อมูลพนักงาน" },
-          { status: 500 }
-        );
-      }
+    const user =
+      await buildUserAccessContext(
+        userAccount
+      );
 
-      employee = employeeData;
+    /* =====================================================
+       4. Update Last Login
+    ===================================================== */
+
+    const { error: lastLoginError } =
+      await supabaseAdmin
+        .from("user_accounts")
+        .update({
+          last_login_at:
+            new Date().toISOString(),
+        })
+        .eq("id", userAccount.id);
+
+    if (lastLoginError) {
+      console.error(
+        "LAST_LOGIN_UPDATE_ERROR:",
+        lastLoginError
+      );
     }
 
-    // =========================
-    // 4) ดึง permissions จาก role_permissions
-    // =========================
-    let permissions = [];
+    /* =====================================================
+       5. JWT
 
-    if (userAccount.role_id) {
-      const { data: permissionRows, error: permissionError } =
-        await supabaseAdmin
-          .from("role_permissions")
-          .select(`
-            permission_id,
-            permissions (
-              id,
-              permission_code,
-              permission_name,
-              module_code,
-              action_code,
-              is_active
-            )
-          `)
-          .eq("role_id", userAccount.role_id);
+       ไม่ใส่ Scope ทั้งหมดลง JWT
+       ใช้ user_id ไปตรวจ Database ใหม่
+    ===================================================== */
 
-      if (permissionError) {
-        console.error("PERMISSION_QUERY_ERROR:", permissionError);
-        return NextResponse.json(
-          { error: "เกิดข้อผิดพลาดในการดึงสิทธิ์ผู้ใช้งาน" },
-          { status: 500 }
-        );
-      }
-
-      permissions =
-        permissionRows
-          ?.map((row) => row.permissions)
-          ?.filter((perm) => perm && perm.is_active)
-          ?.map((perm) => perm.permission_code) || [];
-    }
-
-    const primaryRole = userAccount.roles?.role_code || null;
-    const primaryRoleName = userAccount.roles?.role_name || null;
-
-    const fullNameTh = employee
-      ? `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim()
-      : userAccount.username;
-
-    // =========================
-    // 5) update last login
-    // =========================
-    await supabaseAdmin
-      .from("user_accounts")
-      .update({
-        last_login_at: new Date().toISOString(),
-      })
-      .eq("id", userAccount.id);
-
-    // =========================
-    // 6) สร้าง JWT
-    // =========================
     const token = jwt.sign(
       {
-        user_id: userAccount.id,
-        employee_id: userAccount.employee_id,
-        role_id: userAccount.role_id,
-        username: userAccount.username,
-        role: primaryRole,
-        role_name: primaryRoleName,
-        // permissions,
-        employee_code: employee?.employee_code || null,
-        full_name: fullNameTh,
+        user_id: user.id,
+        employee_id:
+          user.employee_id,
+        username:
+          user.username,
+        role_id:
+          user.role_id,
+        role:
+          user.role,
+        employee_code:
+          user.employee_code,
+        full_name:
+          user.full_name,
       },
-      process.env.JWT_SECRET || "dev-secret-key",
-      { expiresIn: "10h" }
+      process.env.JWT_SECRET ||
+        "dev-secret-key",
+      {
+        expiresIn:
+          TOKEN_EXPIRES_IN,
+      }
     );
 
-    // =========================
-    // 7) ส่ง response + set cookie
-    // =========================
-    const response = NextResponse.json({
-      success: true,
-      message: "เข้าสู่ระบบสำเร็จ",
-      user: {
-        id: userAccount.id,
-        employee_id: userAccount.employee_id,
-        role_id: userAccount.role_id,
-        username: userAccount.username,
-        role: primaryRole,
-        role_name: primaryRoleName,
-        permissions,
-        employee_code: employee?.employee_code || null,
-        full_name: fullNameTh,
-      },
-    });
+    /* =====================================================
+       6. Response
+    ===================================================== */
 
-    response.cookies.set("employee_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 10, // 10 hours
-    });
+    const response =
+      NextResponse.json({
+        success: true,
+
+        message:
+          "เข้าสู่ระบบสำเร็จ",
+
+        user,
+      });
+
+    response.cookies.set(
+      TOKEN_COOKIE_NAME,
+      token,
+      {
+        httpOnly: true,
+
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+
+        sameSite: "lax",
+
+        path: "/",
+
+        maxAge:
+          TOKEN_MAX_AGE,
+      }
+    );
 
     return response;
   } catch (error) {
-    console.error("LOGIN_ERROR:", error);
+    console.error(
+      "LOGIN_ERROR:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดภายในระบบ" },
-      { status: 500 }
+      {
+        success: false,
+        error:
+          "เกิดข้อผิดพลาดภายในระบบ",
+        detail:
+          process.env.NODE_ENV ===
+          "development"
+            ? error?.message
+            : undefined,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

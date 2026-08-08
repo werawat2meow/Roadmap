@@ -488,7 +488,7 @@ export default function BusinessUnitsPage() {
         </div>
       </motion.div>
 
-      <Row gutter={[16, 16]}>
+      <Row >
         <Col xs={24} md={8}>
           <Card className="rounded-3xl shadow-sm">
             <p className="text-sm text-slate-500">ทั้งหมด</p>

@@ -1,10 +1,15 @@
+// components/LanguageHeader
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState, useMemo } from "react";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { readFilters, updateFilter } from "@/app/jobs/lib/filters";
+import { useBranches } from "@/app/jobs/contexts/BranchContext";
+import { uiText } from "@/app/jobs/components/translations";
+import { getUIText } from "@/app/jobs/lib/ui";
+
 
 interface Language {
   id: string;
@@ -12,102 +17,30 @@ interface Language {
   language_slug: string;
 }
 
-interface BranchItem {
-  id: string;
-  branch_name: string;
-  job_count: number;
-}
 
-const BRANCH_STORAGE_KEY = "selected_branch_id";
-const URGENT_STORAGE_KEY = "urgent_filter";
+export default function LanguageHeader() {
 
-function readSavedBranch() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(BRANCH_STORAGE_KEY) ?? "";
-}
-
-function readSavedUrgent() {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(URGENT_STORAGE_KEY) === "true";
-}
-
-export default function LanguageHeader( ) {
+  const { branches } = useBranches();
 
   const [languages, setLanguages] = useState<Language[]>([]);
-  const [branches, setBranches] = useState<BranchItem[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const [urgentFilter, setUrgentFilter] = useState( readSavedUrgent());
+  const [urgentFilter, setUrgentFilter] = useState(false);
 
   const { locale, setLocale } = useLanguage();
-
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [languageRes, branchRes, jobRes, descRes] = await Promise.all([
-          supabase.from("recruit_language").select("id, language_name, language_slug").order("id"),
-          supabase.from("branches").select("id, branch_name").order("branch_name"),
-          supabase.from("recruit_job_open").select(`branch_id, urgent, position_id`),
-          supabase.from("recruit_job_description").select(`branch_id,positions_id`),
-        ]);
-
-        const { data: languageData, error: languageError } = languageRes;
-        const { data: branchData, error: branchError } = branchRes;
-        const { data: jobRows } = jobRes;
-        const { data: descRows } = descRes;
-
-        /**
-        * สร้าง key จาก
-        * branch_id + position_id
-        *
-        * เพื่อเช็คว่ามี description จริง
-        */
-        const validDescriptions = new Set(
-          (descRows ?? []).map((d) =>
-            `${d.branch_id}_${d.positions_id}`
-          )
-        );
-
-        const counts = (jobRows ?? []).reduce<
-          Record<string, number>
-        >((acc, job) => {
-
-          const key =
-            `${job.branch_id}_${job.position_id}`;
-
-          /**
-           * นับเฉพาะ job_open
-           * ที่มี description คู่กัน
-           */
-          if (
-            job.branch_id &&
-            validDescriptions.has(key)
-          ) {
-            acc[job.branch_id] =
-              (acc[job.branch_id] ?? 0) + 1;
-          }
-
-          return acc;
-
-        }, {});
-
+        const languageRes = await fetch("/jobs/api/language").then((res) => res.json());
+        const { data: languageData } = languageRes;
         setLanguages(languageData ?? []);
-
-        setBranches(
-          (branchData ?? []).map((branch) => ({
-            id: branch.id,
-            branch_name: branch.branch_name,
-            job_count: counts[branch.id] ?? 0,
-          }))
-        );
 
         const savedLang = localStorage.getItem("language_slug");
         const defaultLang =
-          savedLang && (languageData ?? []).some((item) => item.language_slug === savedLang)
+          savedLang &&
+          (languageData ?? []).some((item: Language) => item.language_slug === savedLang)
             ? savedLang
             : languageData?.[0]?.language_slug ?? "";
 
@@ -125,86 +58,104 @@ export default function LanguageHeader( ) {
     loadData();
   }, [setLocale]);
 
+  useEffect(() => {
+    const syncFilters = () => {
+      const { branchId, urgent } = readFilters();
+      setSelectedBranchId(branchId);
+      setUrgentFilter(urgent);
+    };
+
+    syncFilters();
+
+    window.addEventListener("branch-change", syncFilters);
+    window.addEventListener("storage", syncFilters);
+
+    return () => {
+      window.removeEventListener("branch-change", syncFilters);
+      window.removeEventListener("storage", syncFilters);
+    };
+  }, []);
+
+  const totalJobCount = useMemo(
+    () => branches.reduce((sum, branch) => sum + (branch.job_count ?? 0), 0),
+    [branches]
+  );
+  const totalUrgentCount = useMemo(
+    () => branches.reduce((sum, branch) => sum + (branch.urgent_count ?? 0), 0),
+    [branches]
+  );
+
+  function handleUpdateFilter(branchId: string, urgent: boolean) {
+    setMenuOpen(false)
+    updateFilter(branchId, urgent);
+    setSelectedBranchId(branchId);
+    setUrgentFilter(urgent);
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setLocale(value);
     localStorage.setItem("language_slug", value);
   };
 
-  const selectBranch = (branchId: string) => {
-    localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
-
-    setMenuOpen(false);
-
-    if (pathname === "/jobs") {
-      // อยู่หน้า jobs แล้ว
-      window.dispatchEvent(new Event("branch-change"));
-    } else {
-      // ไปหน้า jobs แล้วให้ JobsPage อ่าน localStorage
-      router.push("/jobs");
-    }
-  };
-
-  const selectedBranchId = readSavedBranch();
-
   return (
-    <header 
-      className="
-      border-b 
-      border-gray-200 
-      bg-[#123a63]
-      sticky top-0 z-50
-      backdrop-blur-md
-      shadow-sm
-    " 
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-6">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 text-gray-50 md:hidden"
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
+    <header className="border-b border-gray-200 bg-[#123a63] sticky top-0 z-50 backdrop-blur-md shadow-sm">
+      <div className="mx-auto flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl lg:px-6">
+        {/* บรรทัดที่ 1 บน Mobile: โลโก้/ปุ่ม เมนู */}
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 text-gray-50 md:hidden"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
 
-          <div>
-            <div className="text-base font-semibold text-gray-50">
-              <Link href={`/jobs`}>
-                Recruitment System
-              </Link>
-              
+            <div>
+              <div className="text-base font-semibold text-gray-50">
+                <Link href="/jobs">Recruitment System</Link>
+              </div>
+              {loading ? (
+                <div className="text-xs text-gray-500">Loading...</div>
+              ) : null}
             </div>
-            {loading ? (
-              <div className="text-xs text-gray-500">Loading...</div>
-            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden text-sm text-gray-50 sm:block">Language</span>
-
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
-            value={locale}
-            onChange={handleChange}
-          >
-            {languages.length === 0 ? (
-              <option value="">No language</option>
-            ) : (
-              languages.map((lang) => (
-                <option key={lang.language_slug} value={lang.language_slug}>
-                  {lang.language_name.toUpperCase()}
-                </option>
-              ))
-            )}
-          </select>
+        {/* บรรทัดที่ 2 บน Mobile: ปุ่ม Action และ ตัวเลือกภาษา */}
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+          <div>
+            <Link 
+              href="/jobs/register/resume"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-5 py-2.5 text-sm font-bold text-gray-950 shadow-lg shadow-amber-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-amber-300 hover:to-amber-500 hover:shadow-amber-500/40 active:scale-95"
+            >
+              <span>{getUIText(uiText.btnResume, locale)}</span>
+            </Link>
+          </div>
+          <div>
+            <select
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
+              value={locale}
+              onChange={handleChange}
+            >
+              {languages.length === 0 ? (
+                <option value="">No language</option>
+              ) : (
+                languages.map((lang) => (
+                  <option key={lang.language_slug} value={lang.language_slug}>
+                    {lang.language_name.toUpperCase()}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
       </div>
 
       {menuOpen ? (
-        <div className="fixed inset-0 z-50 md:hidden ">
+        <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
@@ -218,7 +169,6 @@ export default function LanguageHeader( ) {
                 <div className="text-base font-semibold text-gray-900">สาขางาน</div>
                 <div className="text-xs text-gray-500">เลือก branch เพื่อกรองงาน</div>
               </div>
-
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
@@ -229,38 +179,54 @@ export default function LanguageHeader( ) {
             </div>
 
             <div className="max-h-[calc(100vh-64px)] overflow-y-auto p-4 bg-gray-900/70 border-b border-gray-200 backdrop-blur-md shadow-sm rounded-b-lg">
+              
               <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => selectBranch("")}
+                  onClick={() => handleUpdateFilter("", false)}
                   className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                    selectedBranchId === ""
+                    selectedBranchId === "" && !urgentFilter
                       ? "bg-blue-50 text-blue-700"
                       : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <span>ทั้งหมด</span>
-                  <span className="text-xs text-gray-500">
-                    {branches.reduce((sum, item) => sum + item.job_count, 0)}
-                  </span>
+                  <span className="text-xs text-gray-500">{totalJobCount}</span>
+                </button>
+
+                {/* ปุ่มงานด่วน */}
+                <button
+                  type="button"
+                  onClick={() => handleUpdateFilter("", !urgentFilter)}
+                  disabled={totalUrgentCount  === 0}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition 
+                  ${totalUrgentCount  === 0 
+                    ? "cursor-not-allowed bg-gray-100 text-gray-400" 
+                    : urgentFilter 
+                    ? "bg-blue-50 text-blue-700" 
+                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <span>🔥 งานด่วน</span>
+                  <span className="ml-3 shrink-0 text-xs">({totalUrgentCount })</span>
                 </button>
 
                 {branches.map((branch) => {
-                  const isActive = selectedBranchId === branch.id;
+                  const isActive = selectedBranchId === branch.branch_id;
                   const isDisabled = branch.job_count === 0;
 
                   return (
                     <button
-                      key={branch.id}
+                      key={branch.branch_id}
                       type="button"
                       disabled={isDisabled}
-                      onClick={() => selectBranch(branch.id)}
+                      onClick={() => handleUpdateFilter(branch.branch_id, urgentFilter)}
                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
                         isDisabled
                           ? "cursor-not-allowed bg-gray-100 text-gray-400"
                           : isActive
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                       }`}
                     >
                       <span className="truncate">{branch.branch_name}</span>

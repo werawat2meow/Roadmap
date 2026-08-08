@@ -1,48 +1,24 @@
+// jobs/components/JobSidebar.tsx
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-interface BranchItem {
-  branch_id: string;
-  branch_name: string;
-  job_count: number;
-  urgent_count: number;
-}
-
-const BRANCH_STORAGE_KEY = "selected_branch_id";
-const URGENT_STORAGE_KEY = "urgent_filter";
-
-function readFilters() {
-  if (typeof window === "undefined") {
-    return {
-      branchId: "",
-      urgent: false,
-    };
-  }
-
-  return {
-    branchId: localStorage.getItem(BRANCH_STORAGE_KEY) ?? "",
-    urgent: localStorage.getItem(URGENT_STORAGE_KEY) === "true",
-  };
-}
+import { readFilters, updateFilter } from "@/app/jobs/lib/filters";
+import { useBranches } from "@/app/jobs/contexts/BranchContext";
 
 export default function JobSidebar() {
-  const [branches, setBranches] = useState<BranchItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const { branches, loading } = useBranches();
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [urgentFilter, setUrgentFilter] = useState(false);
 
   useEffect(() => {
     const syncFilters = () => {
       const { branchId, urgent } = readFilters();
-
       setSelectedBranchId(branchId);
       setUrgentFilter(urgent);
     };
 
     syncFilters();
-    fetchBranches();
 
     window.addEventListener("branch-change", syncFilters);
     window.addEventListener("storage", syncFilters);
@@ -52,24 +28,6 @@ export default function JobSidebar() {
       window.removeEventListener("storage", syncFilters);
     };
   }, []);
-
-  async function fetchBranches() {
-    try {
-      setLoading(true);
-
-      const res = await fetch("/jobs/api/branches");
-
-      if (!res.ok) { throw new Error("Failed to fetch branches"); }
-
-      const data = await res.json();
-      
-      setBranches(data.openBranchJobs);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const totalJobCount = useMemo(
     () =>
@@ -88,24 +46,6 @@ export default function JobSidebar() {
       ),
     [branches]
   );
-
-  function updateFilter(branchId: string, urgent: boolean) {
-    localStorage.setItem(BRANCH_STORAGE_KEY, branchId);
-    localStorage.setItem("urgent_filter", String(urgent));
-
-    setSelectedBranchId(branchId);
-    setUrgentFilter(urgent);
-
-    window.dispatchEvent(new Event("branch-change"));
-  }
-
-  if (loading) {
-    return (
-      <aside className="w-full lg:w-72">
-        Loading...
-      </aside>
-    );
-  }
 
   return (
     <aside >

@@ -56,7 +56,7 @@ export async function GET(request, { params }) {
         `
         )
         .eq("position_id", positionId),
-    ]);   
+    ]);
 
     if (positionRes.error) {
       return NextResponse.json(

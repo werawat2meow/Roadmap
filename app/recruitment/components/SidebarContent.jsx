@@ -39,23 +39,29 @@ export default function SidebarContent({
   const menuItems = useMemo(
     () => [
       {
-        label: "Dashboard",
+        label: "Overview",
         href: "/recruitment",
         icon: LayoutDashboard,
       },
       {
         label: "Check Candidate Detail",
-        href: "/recruitment/candidate_detail",
+        href: "/recruitment/candidate",
         icon: LayoutList,
       },
+      // {
+      //   label: "Update interview appointment",
+      //   href: "/recruitment/update_interview_appointment",
+      //   icon: LayoutList,
+      // },
       {
         label: "Schedule interviews",
         href: "/recruitment/schedule_interviews",
         icon: LayoutList,
+        permission: "recruitment.schedule.interviews.view",
       },
       {
-        label: "Update interview appointment",
-        href: "/recruitment/update_interview_appointment",
+        label: "Approve Employees",
+        href: "/recruitment/approve_employees",
         icon: LayoutList,
       },
       {

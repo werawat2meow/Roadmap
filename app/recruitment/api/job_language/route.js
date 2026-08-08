@@ -10,7 +10,6 @@ function normalizeJobLanguageRows(rows, positions) {
       id: row.id,
       position_id: row.position_id,
       position_name: position?.position_name ?? "",
-      position_level: position?.position_level ?? "",
       job_to_language: row.job_to_language ?? {},
     };
   });
@@ -20,7 +19,7 @@ export async function GET() {
   const [positionsRes, languagesRes, mixRes] = await Promise.all([
     supabaseAdmin
       .from("positions")
-      .select("id, position_name, position_level")
+      .select("id, position_name")
       .order("id", { ascending: true }),
     supabaseAdmin
       .from("recruit_language")

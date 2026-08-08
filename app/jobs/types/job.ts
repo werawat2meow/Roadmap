@@ -26,7 +26,7 @@ export interface Job {
     | "junior"
     | "mid"
     | "senior";
-  workLocation: string;
+  workplace: string;
   salary_note?: string | null;
   salary_min?: number | null;
   salary_max?: number | null;

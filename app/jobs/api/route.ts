@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const branchId = searchParams.get("branch_id") ?? "";
     const urgent = searchParams.get("urgent");
     const departmentId = searchParams.get("department_id");
-
+    
     const today = new Date().toISOString().split("T")[0];
 
     let query = supabase
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .order("updated_at", { ascending: false });
 
     const { data: jobs, error } = await query;
-
+    
     if (error) throw error;
 
     // -------------------------------

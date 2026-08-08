@@ -26,7 +26,7 @@ interface JobDetail {
   benefits: MultiLang[];
   type_of_work?: string | null;
   type_name?: string | null;
-  workLocation?: string | null;
+  workplace?: string | null;
   salary_min?: number | string | null;
   salary_max?: number | string | null;
   opening_count?: number | string | null;
@@ -139,10 +139,10 @@ export default function JobDetailPage() {
                         </p>
                       )}
 
-                      {job.workLocation && (
+                      {job.workplace && (
                         <p>
-                          <span className="font-medium">📍 {getUIText(uiText.workLocation, locale)}:</span>{" "}
-                          {job.workLocation}
+                          <span className="font-medium">📍 {getUIText(uiText.workplace, locale)}:</span>{" "}
+                          {job.workplace}
                         </p>
                       )}
 

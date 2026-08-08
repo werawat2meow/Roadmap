@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 /**
- * GET /recruitment/api/candidate_detail
+ * GET /recruitment/api/candidate
  *
  * Query params (list mode - default):
  *   status      : ค่า status (number) - optional
@@ -21,6 +21,9 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
  * ด้านบนเป็นตัวนั้น)
  */
 export async function GET(request) {
+
+  const allowPositionIds = [];
+  
   try {
     const { searchParams } = new URL(request.url);
 
@@ -47,48 +50,75 @@ export async function GET(request) {
     const isAll = pageSizeParam === 'all';
     const pageSize = isAll ? null : parseInt(pageSizeParam, 10);
 
-    let query = supabaseAdmin
-      .from('recruit_job_applications')
-      .select(
-        'id, first_name, last_name, created_at, status, position_id, positions ( position_name )',
-        { count: 'exact' }
-      )
-      .order('created_at', { ascending: false });
-
-    if (status !== null && status !== '' && status !== undefined) {
-      query = query.eq('status', Number(status));
-    }
-
-    if (positionId) {
-      query = query.eq('position_id', positionId);
-    }
-
-    if (dateFrom) {
-      query = query.gte('created_at', dateFrom);
-    }
-
-    if (dateTo) {
-      query = query.lte('created_at', dateTo);
-    }
-
-    if (!isAll) {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-    }
-
-    const { data, error, count } = await query;
+    const { data, error } = await supabaseAdmin.rpc(
+      "search_recruit_job_applications",
+      {
+        p_status: status !== null && status !== "" ? Number(status) : null,
+        p_position_id: positionId || null,
+        p_date_from: dateFrom || null,
+        p_date_to: dateTo || null,
+        p_allow_position_ids: allowPositionIds.length ? allowPositionIds : null,
+        p_page: page,
+        p_page_size: isAll ? 999999 : pageSize,
+      }
+    );  
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ data: data ?? [], count: count ?? 0 });
+    const total = data?.length ? Number(data[0].total_count) : 0;
+
+    return NextResponse.json({
+      data: data ?? [],
+      count: total,
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json(
       { error: err?.message ?? 'Unexpected server error' },
       { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const { id, status } = await request.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Missing id" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabaseAdmin
+      .from("recruit_job_applications")
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+    });
+
+  } catch (err) {
+    return NextResponse.json(
+      { error: err.message, },
+      { status: 500, }
     );
   }
 }

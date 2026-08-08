@@ -54,13 +54,13 @@ const createEmptyForm = (languages = []) => ({
   salary_max: "",
   type_of_work: "",
   salary_note: "",
-  workLocation: "",
+  workplace: "",
   description: buildLocalizedRow(languages),
   requirements: [buildSectionRow(languages)],
   responsibilities: [buildSectionRow(languages)],
   benefits: [buildSectionRow(languages)],
-  workDay: "",
-  workOff: "",
+  workday: "",
+  dayoff: "",
   remark:"",
 });
 
@@ -88,13 +88,13 @@ const buildFormData = (initialData, languages) => ({
 
   type_of_work: initialData?.type_of_work || "monthly",
   salary_note: initialData?.salary_note || "",
-  workLocation: initialData?.workLocation || "",
+  workplace: initialData?.workplace || "",
   description: normalizeLocalizedObject(initialData?.description, languages, "description_text"),
   requirements: normalizeLocalizedRows(initialData?.requirements, languages, "requirement_text"),
   responsibilities: normalizeLocalizedRows(initialData?.responsibilities, languages, "responsibility_text"),
   benefits: normalizeLocalizedRows(initialData?.benefits, languages, "benefit_text"),
-  workDay:initialData?.workDay || "",
-  workOff:initialData?.workOff || "",
+  workday:initialData?.workday || "",
+  dayoff:initialData?.dayoff || "",
   remark: initialData?.remark || "",
 });
 
@@ -356,14 +356,14 @@ export default function JobDescriptionForm({
       salary_min: form.salary_min,
       salary_max: form.salary_max,
       salary_note: form.salary_note || null,
-      workLocation: form.workLocation,
+      workplace: form.workplace,
       type_of_work: form.type_of_work,
       description: form.description,
       requirements: form.requirements,
       responsibilities: form.responsibilities,
       benefits: form.benefits,
-      workDay: form.workDay,
-      workOff: form.workOff,
+      workday: form.workday,
+      dayoff: form.dayoff,
       remark: form.remark,
     };
     
@@ -499,7 +499,7 @@ export default function JobDescriptionForm({
                 <option value="">-- เลือก position --</option>
                 {filteredPositions.map((item) => (
                   <option key={item.id} value={item.id?.toString()}>
-                    {item.position_name} ( {item.position_level} )
+                    {item.position_name}
                   </option>
                 ))}
               </select>
@@ -527,8 +527,8 @@ export default function JobDescriptionForm({
               <label className="mb-2 block text-sm font-medium">วันที่ทำงาน</label>
               <input
                 type="text"
-                value={form.workDay}
-                onChange={(e) => updateField("workDay", e.target.value)}
+                value={form.workday}
+                onChange={(e) => updateField("workday", e.target.value)}
                 className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
                 placeholder="วันที่ทำงาน"
               />
@@ -539,8 +539,8 @@ export default function JobDescriptionForm({
               <label className="mb-2 block text-sm font-medium">วันหยุด</label>
               <input
                 type="text"
-                value={form.workOff}
-                onChange={(e) => updateField("workOff", e.target.value)}
+                value={form.dayoff}
+                onChange={(e) => updateField("dayoff", e.target.value)}
                 className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
                 placeholder="วันหยุด"
               />
@@ -552,8 +552,8 @@ export default function JobDescriptionForm({
               <label className="mb-2 block text-sm font-medium">สถานที่ปฎิบัติงาน</label>
               <input
                 type="text"
-                value={form.workLocation}
-                onChange={(e) => updateField("workLocation", e.target.value)}
+                value={form.workplace}
+                onChange={(e) => updateField("workplace", e.target.value)}
                 className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
                 placeholder="สถานที่ปฎิบัติงาน"
               />

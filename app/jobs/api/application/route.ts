@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         { success: false, message: "Missing application payload." },
         { status: 400 }
       );
-    } 
+    }   
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       dishonest: personal.dishonestyRecord ?? null,
       certify: agreement.certify ?? false,
       pdpa: agreement.pdpa ?? false,
+      from_social_media: agreement.from_social_media ?? null,
       updated_at: new Date().toISOString(),
       status: 1,
     };   

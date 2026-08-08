@@ -185,9 +185,7 @@ export default function RegisterPage() {
 
       message.success( getUIText(uiText.saveSuccess, locale) );
 
-      // router.push(
-      //   "/jobs/register/thankyou"
-      // );
+      // router.push("/jobs/register/thankyou");
     } catch (err: any) {
       console.error(err);
 

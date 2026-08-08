@@ -54,6 +54,7 @@ export default function EducationSection({
   return (
     <Card
       title={getUIText(uiText.educationSection, locale)}
+      style={{ marginBottom: 24 }}
     >
       <Button
         type="primary"

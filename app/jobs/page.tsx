@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import JobCard from "@/app/jobs/components/JobCard";
 import JobSidebar from "@/app/jobs/components/JobSidebar";
+import { readFilters } from "@/app/jobs/lib/filters";
 
 interface Job {
   id: string;
@@ -25,28 +26,6 @@ interface Job {
   status: boolean;
 }
 
-const BRANCH_STORAGE_KEY = "selected_branch_id";
-const URGENT_STORAGE_KEY = "urgent_filter";
-
-function readSavedBranch() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(BRANCH_STORAGE_KEY) ?? "";
-}
-
-function readFilters() {
-  if (typeof window === "undefined") {
-    return {
-      branchId: "",
-      urgent: false,
-    };
-  }
-
-  return {
-    branchId: localStorage.getItem(BRANCH_STORAGE_KEY) ?? "",
-    urgent: localStorage.getItem(URGENT_STORAGE_KEY) === "true",
-  };
-}
-
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -56,15 +35,12 @@ export default function JobsPage() {
 
 
   useEffect(() => {
-    // setSelectedBranchId(readSavedBranch());
     const filters = readFilters();
-
     setSelectedBranchId(filters.branchId);
     setUrgentFilter(filters.urgent);
 
     const syncBranch = () => {
       const filters = readFilters();
-
       setSelectedBranchId(filters.branchId);
       setUrgentFilter(filters.urgent);
     };
@@ -78,7 +54,7 @@ export default function JobsPage() {
     };
   }, []);
 
-  useEffect(() => {
+  useEffect(() => {    
     fetchJobs(selectedBranchId, urgentFilter);
   }, [selectedBranchId, urgentFilter]);
   
@@ -87,18 +63,29 @@ export default function JobsPage() {
     try {
       setLoadingJobs(true);
       const params = new URLSearchParams();
-      if (branchId) {
+
+      // กันทั้ง JS undefined และ string "undefined"
+      if (branchId && branchId !== "undefined") {
         params.set("branch_id", branchId);
       }
       if (urgent) {
         params.set("urgent", "true");
       }
-      const url = `/jobs/api${params.toString() ? `?${params}` : ""}`;
 
+      const url = `/jobs/api${params.toString() ? `?${params}` : ""}`;
       const res = await fetch(url);
       const data = await res.json();
 
+      if (!res.ok || !Array.isArray(data)) {
+        console.error("Jobs API error:", res.status, data);
+        setJobs([]);
+        return;
+      }
+
       setJobs(data);
+    } catch (error) {
+      console.error("Fetch jobs error:", error);
+      setJobs([]);
     } finally {
       setLoadingJobs(false);
     }
@@ -118,20 +105,11 @@ export default function JobsPage() {
         String(job.salary_max ?? "").includes(search);
 
       const matchesBranch = !selectedBranchId || job.branch_id === selectedBranchId;
-
       const matchesUrgent = !urgentFilter || job.urgent;
 
-      return (
-        matchesKeyword &&
-        matchesBranch &&
-        matchesUrgent
-      );
+      return matchesKeyword && matchesBranch && matchesUrgent;
     });
-  }, [
-    jobs,
-    keyword,
-    selectedBranchId,
-  ]);
+  }, [jobs, keyword, selectedBranchId, urgentFilter]); // ← เพิ่ม urgentFilter
 
   if (loadingJobs) {
     return (
@@ -151,7 +129,7 @@ export default function JobsPage() {
 
         <main className="min-w-0 flex-1">
           <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-            <h1 className="text-2xl font-bold text-gray-900">Find Your Next Career</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Find the perfect job for you.</h1>
             <p className="mt-1 text-sm text-gray-600">
               Discover opportunities from leading companies.
             </p>

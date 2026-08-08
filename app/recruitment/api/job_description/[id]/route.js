@@ -28,12 +28,13 @@ function cleanRows(rows = []) {
 }
 
 export async function GET(_request, { params }) {
-  
   const { id } = await params;
 
   const { data: description, error: descError } = await supabaseAdmin
     .from("recruit_job_description")
-    .select("id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at, description")
+    .select(
+      "id, branch_id, department_id, division_id, unit_id, positions_id, salary_min, salary_max, salary_note, type_of_work, status, updated_at, description",
+    )
     .eq("id", id)
     .single();
 
@@ -41,25 +42,27 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ message: descError.message }, { status: 500 });
   }
 
-  const [requirementsRes, responsibilitiesRes, benefitsRes] = await Promise.all([
-    supabaseAdmin
-      .from("recruit_job_description_requirements")
-      .select("id, requirement_text, sort_order , showpage")
-      .eq("job_description_id", id)
-      .order("sort_order", { ascending: true }),
+  const [requirementsRes, responsibilitiesRes, benefitsRes] = await Promise.all(
+    [
+      supabaseAdmin
+        .from("recruit_job_description_requirements")
+        .select("id, requirement_text, sort_order , showpage")
+        .eq("job_description_id", id)
+        .order("sort_order", { ascending: true }),
 
-    supabaseAdmin
-      .from("recruit_job_description_responsibilities")
-      .select("id, responsibility_text, sort_order")
-      .eq("job_description_id", id)
-      .order("sort_order", { ascending: true }),
+      supabaseAdmin
+        .from("recruit_job_description_responsibilities")
+        .select("id, responsibility_text, sort_order")
+        .eq("job_description_id", id)
+        .order("sort_order", { ascending: true }),
 
-    supabaseAdmin
-      .from("recruit_job_description_benefits")
-      .select("id, benefit_text, sort_order")
-      .eq("job_description_id", id)
-      .order("sort_order", { ascending: true }),
-  ]);
+      supabaseAdmin
+        .from("recruit_job_description_benefits")
+        .select("id, benefit_text, sort_order")
+        .eq("job_description_id", id)
+        .order("sort_order", { ascending: true }),
+    ],
+  );
 
   return NextResponse.json({
     ...description,
@@ -69,7 +72,7 @@ export async function GET(_request, { params }) {
   });
 }
 
-export async function PUT(request, { params }) {  
+export async function PUT(request, { params }) {
   try {
     const { id } = await params;
 
@@ -84,21 +87,24 @@ export async function PUT(request, { params }) {
       salary_max: toNumberOrNull(body.salary_max),
       salary_note: body.salary_note ?? null,
       type_of_work: body.type_of_work ?? "monthly",
-      workLocation: body.workLocation,
+      workplace: body.workplace,
       status: true,
       description: body.description ?? null,
-      workDay: body.workDay ?? null,
-      workOff: body.workOff ?? null,
-      remark: body.remark?? null,
+      workday: body.workday ?? null,
+      dayoff: body.dayoff ?? null,
+      remark: body.remark ?? null,
     };
-    
+
     const { error: updateError } = await supabaseAdmin
       .from("recruit_job_description")
       .update(descriptionPayload)
       .eq("id", id);
 
     if (updateError) {
-      return NextResponse.json({ message: updateError.message }, { status: 500 });
+      return NextResponse.json(
+        { message: updateError.message },
+        { status: 500 },
+      );
     }
 
     const { error: delBranchError } = await supabaseAdmin
@@ -107,7 +113,10 @@ export async function PUT(request, { params }) {
       .eq("job_description_id", id);
 
     if (delBranchError) {
-      return NextResponse.json({ message: delBranchError.message }, { status: 500 });
+      return NextResponse.json(
+        { message: delBranchError.message },
+        { status: 500 },
+      );
     }
 
     const branchRows = (body.branch_id || []).map((branchId) => ({
@@ -125,46 +134,60 @@ export async function PUT(request, { params }) {
       }
     }
 
-    const requirements = cleanRows(body.requirements, "requirement_text").map((item) => ({
-      job_description_id: id,
-      requirement_text: item.text,
-      sort_order: item.sort_order,
-      showpage: item.showpage,
-    }));
+    const requirements = cleanRows(body.requirements, "requirement_text").map(
+      (item) => ({
+        job_description_id: id,
+        requirement_text: item.text,
+        sort_order: item.sort_order,
+        showpage: item.showpage,
+      }),
+    );
 
     // delete + insert เป็นคู่ ไม่แยกลำดับ
     const { error: delReqError } = await supabaseAdmin
       .from("recruit_job_description_requirements")
       .delete()
       .eq("job_description_id", id);
-    if (delReqError) return NextResponse.json({ message: delReqError.message }, { status: 500 });
+    if (delReqError)
+      return NextResponse.json(
+        { message: delReqError.message },
+        { status: 500 },
+      );
 
     if (requirements.length) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_requirements")
         .insert(requirements);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
-    const responsibilities = cleanRows(body.responsibilities, "responsibility_text").map((item) => ({
+    const responsibilities = cleanRows(
+      body.responsibilities,
+      "responsibility_text",
+    ).map((item) => ({
       job_description_id: id,
       responsibility_text: item.text,
       sort_order: item.sort_order,
     }));
 
-    
     // delete + insert เป็นคู่ ไม่แยกลำดับ
     const { error: delRESError } = await supabaseAdmin
       .from("recruit_job_description_responsibilities")
       .delete()
       .eq("job_description_id", id);
-    if (delRESError) return NextResponse.json({ message: delRESError.message }, { status: 500 });
+    if (delRESError)
+      return NextResponse.json(
+        { message: delRESError.message },
+        { status: 500 },
+      );
 
     if (requirements.length) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_responsibilities")
         .insert(responsibilities);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     const benefits = cleanRows(body.benefits, "benefit_text").map((item) => ({
@@ -178,13 +201,18 @@ export async function PUT(request, { params }) {
       .from("recruit_job_description_benefits")
       .delete()
       .eq("job_description_id", id);
-    if (delBenError) return NextResponse.json({ message: delBenError.message }, { status: 500 });
+    if (delBenError)
+      return NextResponse.json(
+        { message: delBenError.message },
+        { status: 500 },
+      );
 
     if (requirements.length) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_benefits")
         .insert(benefits);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ message: "Updated successfully" });

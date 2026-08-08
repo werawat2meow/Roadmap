@@ -37,8 +37,7 @@ export async function GET(request) {
       updated_at,
       description,
       positions (
-        position_name,
-        position_level
+        position_name
       ),
       recruit_job_description_branches (
         branch_id,
@@ -47,7 +46,7 @@ export async function GET(request) {
         )
       )
     `,
-      { count: "exact" }
+      { count: "exact" },
     )
     .order("updated_at", { ascending: false })
     .range(from, to);
@@ -59,17 +58,13 @@ export async function GET(request) {
   const { data, error, count } = await query;
 
   if (error) {
-    return NextResponse.json(
-      { message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: error.message }, { status: 500 });
   }
 
   const rows = (data || []).map((row) => ({
     id: row.id,
     positions_id: row.positions_id,
     positions_name: row.positions?.position_name || "-",
-    position_level: row.positions?.position_level || "-",
     salary_min: row.salary_min,
     salary_max: row.salary_max,
     type_of_work: row.type_of_work,
@@ -100,7 +95,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    
+
     const descriptionPayload = {
       positions_id: body.positions_id,
       department_id: body.department_id,
@@ -110,12 +105,12 @@ export async function POST(request) {
       salary_max: toNumberOrNull(body.salary_max),
       salary_note: body.salary_note ?? null,
       type_of_work: body.type_of_work ?? "monthly",
-      workLocation: body.workLocation,
+      workplace: body.workplace,
       status: true,
-      updated_at:new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       description: body.description ?? null,
-      workDay: body.workDay ?? null,
-      workOff: body.workOff ?? null,
+      workday: body.workday ?? null,
+      dayoff: body.dayoff ?? null,
       remark: body.remark ?? null,
     };
 
@@ -126,12 +121,15 @@ export async function POST(request) {
       .single();
 
     if (insertError) {
-      return NextResponse.json({ message: insertError.message }, { status: 500 });
+      return NextResponse.json(
+        { message: insertError.message },
+        { status: 500 },
+      );
     }
 
     const descriptionId = inserted.id;
 
-    const branchRows = (body.branch_id || []).map((branchId) => ({      
+    const branchRows = (body.branch_id || []).map((branchId) => ({
       job_description_id: descriptionId,
       branch_id: branchId,
     }));
@@ -142,10 +140,7 @@ export async function POST(request) {
         .insert(branchRows);
 
       if (error) {
-        return NextResponse.json(
-          { message: error.message },
-          { status: 500 }
-        );
+        return NextResponse.json({ message: error.message }, { status: 500 });
       }
     }
 
@@ -172,26 +167,29 @@ export async function POST(request) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_requirements")
         .insert(requirements);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     if (responsibilities.length) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_responsibilities")
         .insert(responsibilities);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     if (benefits.length) {
       const { error } = await supabaseAdmin
         .from("recruit_job_description_benefits")
         .insert(benefits);
-      if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     return NextResponse.json(
       { message: "Created successfully", id: descriptionId },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 400 });

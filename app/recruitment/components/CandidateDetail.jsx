@@ -2,8 +2,6 @@
 
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import {
   Button,
@@ -15,39 +13,52 @@ import {
   Table,
   Tag,
   Typography,
-  Select,
-  message,
 } from "antd";
 
 const { Title } = Typography;
-const { Option } = Select;
 
 const statusColor = {
-  0: "default",
-  1: "processing",
-  2: "success",
-  3: "error",
+  1: "default",
+  2: "processing",
+  3: "success",
+  4: "processing",
+  5: "processing",
+  6: "processing",
+  7: "error",
+  8: "processing",
+  9: "processing",
+  10: "success",
+  11: "error",
+  12: "success",
+  13: "success",
+  14: "error",
+  15: "success",
+  16: "default",
+  99: "error",
+  0: "error",
+
 };
 
 const statusText = {
-  0: "รอพิจารณา",
-  1: "กำลังพิจารณา",
-  2: "ผ่าน",
-  3: "ไม่ผ่าน",
+  1: "รอพิจารณา",
+  2: "HRD ส่งต่อ HRM",
+  3: "ผ่านการคัดเลือกเข้าสัมภาษณ์",
+  4: "นัดสัมภาษณ์",
+  5: "ยืนยันการสัมภาษณ์",
+  6: "เลื่อนการสัมภาษณ์",
+  7: "ขาดการสัมภาษณ์",
+  8: "ส่งต่อการสัมภาษณ์",
+  9: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน",
+  10: "ผ่านการคัดเลือก",
+  11: "ไม่ผ่านการคัดเลือก",
+  12: "นัดวันเริ่มทำงาน",
+  13: "เลื่อนวันเริ่มทำงาน",
+  14: "ไม่มาทำงานตามนัด",
+  15: "อัพเดตเข้าฐานข้อมูลกลาง",
+  16: "ยื่น Resume",
+  99: "backlist",
+  0: "ยกเลิก",
 };
-
-const APPLICATION_STATUS = [
-  { value: 1, label: "รอพิจารณา" },
-  { value: 2, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
-  { value: 3, label: "นัดสัมภาษณ์" },
-  { value: 4, label: "ยืนยันการสัมภาษณ์" },
-  { value: 5, label: "เลื่อนการสัมภาษณ์" },
-  { value: 6, label: "ขาดการสัมภาษณ์" },
-  { value: 7, label: "ส่งต่อการสัมภาษณ์" },
-  { value: 8, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
-  { value: 99, label: "backlist" },
-  { value: 0, label: "ยกเลิก" },
-];
 
 const yesNo = (value) => {
   if (value === true) return "ใช่";
@@ -174,7 +185,6 @@ const getGenderText = (type) => {
   }
 };
 
-
 export default function CandidateDetail({
   application,
   education,
@@ -182,49 +192,11 @@ export default function CandidateDetail({
   languageSkills,
   systemProgramSkills,
   documents,
+  interviews,
 }) {
 
-  const router = useRouter();
-
-  const [status, setStatus] = useState(application.status);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [message, setMessage] = useState(null);
-
-  const handleSaveStatus = async () => {
-  try {
-    setLoading(true);
-    console.log("test" , application.id);
-    
-    const res = await fetch("/recruitment/api/candidate_detail/UpdateStatus", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: application.id,
-        status,
-      }),
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.message);
-    }
-
-    // router.push("/recruitment/candidate_detail");
-
-    setMessage("บันทึกข้อมูลเรียบร้อย");
-  } catch (err) {
-    setErrorMessage(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24 }} >
 
       {/* ====================================================== */}
       {/* Header */}
@@ -246,6 +218,22 @@ export default function CandidateDetail({
                 {application.positions?.position_name || "-"}
               </strong>
             </div>
+
+            { application.from_social_media &&(
+              <div style={{ marginTop: 8 }}>
+                ทราบข่าวการเปิดรับสมัครจาก : 
+                {/* <strong> {application.from_social_media} </strong> */}
+
+                <Tag
+                  color={"success"}
+                  style={{ fontSize: 16, padding: "6px 14px" }}
+                >
+                  {application.from_social_media}
+                </Tag>
+
+              </div>
+            )}
+            
           </Col>
 
           <Col>
@@ -387,6 +375,10 @@ export default function CandidateDetail({
 
           <Descriptions.Item label="เบอร์โทรศัพท์">
             {value(application.phone_number)}
+          </Descriptions.Item>
+
+          <Descriptions.Item label="E-mail">
+            {value(application.email)}
           </Descriptions.Item>
 
           <Descriptions.Item label="ลักษณะที่อยู่อาศัย">
@@ -703,7 +695,6 @@ export default function CandidateDetail({
 
       <Card
         title="เอกสารแนบ"
-        style={{ marginBottom: 24 }}
       >
         <Table
           rowKey="id"
@@ -748,66 +739,6 @@ export default function CandidateDetail({
           ]}
         />
       </Card>
-
-      <Card
-        title="สถานะการสมัคร"
-        style={{ marginBottom: 24 }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 16,
-            alignItems: "center",
-          }}
-        >
-          <Select
-            value={status}
-            onChange={setStatus}
-            style={{ width: 250 }}
-            options={APPLICATION_STATUS}
-          />
-
-          
-        </div>
-      </Card>
-
-      <div className="pb-5">
-        {errorMessage && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        {message ? (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {message}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <button
-            type="button"
-            onClick={() => router.push("/recruitment/candidate_detail")}
-            className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
-            style={{ backgroundColor: "orange" , color:"black" }}
-          >
-            ย้อนกลับ
-          </button>
-        </div>
-        <div>
-          <Button
-              type="primary"
-              loading={loading}
-              onClick={handleSaveStatus}
-            >
-              บันทึก
-            </Button>
-
-          
-        </div>
-      </div>
     </div>
   );
 }

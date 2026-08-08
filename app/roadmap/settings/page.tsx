@@ -27,7 +27,7 @@ type Category = {
 };
 
 const menuOptions = [
-  'Dashboard',
+  'Overview',
   'Employee',
   'Evaluate HR',
   'Evaluate MGR',

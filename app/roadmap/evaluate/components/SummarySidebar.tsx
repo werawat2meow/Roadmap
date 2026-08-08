@@ -21,10 +21,13 @@ interface SummarySidebarProps {
     managerComment?: string;
     currentSalary?: number;
     newSalary?: number;
+    evaluationPeriod?: string;
+    newDesignation?: string;
+    newLevel?: string;
+    specialCompensation?: number;
     examScore?: number;
     examMaxScore?: number;
     maxScore?: number;
-    lateData?: any;
     disciplineData?: any;
   };
   managers?: ManagerUser[];
@@ -35,9 +38,14 @@ interface SummarySidebarProps {
   onManagerCommentChange?: (value: string) => void;
   onCurrentSalaryChange?: (value: number) => void;
   onNewSalaryChange?: (value: number) => void;
+  onEvaluationPeriodChange?: (value: string) => void;
+  onNewDesignationChange?: (value: string) => void;
+  onNewLevelChange?: (value: string) => void;
+  onSpecialCompensationChange?: (value: number) => void;
   onExamScoreChange?: (value: number) => void;
   onExamMaxScoreChange?: (value: number) => void;
   onMaxScoreChange?: (value: number) => void;
+  evaluationType?: string;
   onSaveDraft?: () => void;
   onSubmit?: () => void;
   showSaveDraft?: boolean;
@@ -97,6 +105,7 @@ const getGrade = (percent: number) => {
 // 2. ปรับตัวฟังก์ชัน SummarySidebar ให้รับ props: allFormData เข้ามาใช้งาน
 export default function SummarySidebar({
   allFormData,
+  evaluationType,
   managers = [],
   selectedManagerIds = [],
   onManagerToggle,
@@ -126,9 +135,7 @@ export default function SummarySidebar({
   const summaryMaxScore = allFormData.maxScore ?? 100;
   const examMaxScore = allFormData.examMaxScore ?? 100;
   const percentage =
-    summaryMaxScore > 0
-      ? Math.round((totalScore / summaryMaxScore) * 100)
-      : 0;
+    summaryMaxScore > 0 ? Math.round((totalScore / summaryMaxScore) * 100) : 0;
 
   const computedGrade = getGrade(percentage);
 
@@ -286,7 +293,7 @@ export default function SummarySidebar({
           </button>
         )}
 
-        <button
+        {/* <button
           type="button"
           onClick={onSubmit}
           disabled={isSaving}
@@ -297,7 +304,21 @@ export default function SummarySidebar({
           }`}
         >
           {isSaving ? "Submitting..." : "Submit"}
-        </button>
+        </button> */}
+        {onSubmit && (
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isSaving}
+            className={`flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 select-none ${
+              isSaving
+                ? "cursor-not-allowed opacity-60"
+                : "hover:from-blue-700 hover:to-indigo-700 hover:shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+            }`}
+          >
+            {isSaving ? "Submitting..." : "Submit"}
+          </button>
+        )}
 
         <button
           onClick={() => setIsPreviewOpen(true)}
@@ -319,7 +340,9 @@ export default function SummarySidebar({
             </div>
             <div className="flex justify-between">
               <span>คะแนนเต็ม</span>
-              <span className="font-semibold text-slate-900">{summaryMaxScore}</span>
+              <span className="font-semibold text-slate-900">
+                {summaryMaxScore}
+              </span>
             </div>
             <div className="flex justify-between">
               <span>คิดเป็นเปอร์เซ็นต์</span>
@@ -361,7 +384,7 @@ export default function SummarySidebar({
       <ReportPreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        data={allFormData}
+        data={{ ...allFormData, evaluationType }}
       />
     </div>
   );

@@ -1,10 +1,19 @@
-import React from "react";
-
 interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: any; // รับข้อมูลจริงจากแบบฟอร์มหลักมาแสดงผล
 }
+
+const labelStyles: Record<string, string> = {
+  Probation:
+    "text-white bg-gradient-to-r from-sky-400 to-blue-700 shadow-sm font-bold",
+  Performance:
+    "text-amber-950 bg-gradient-to-r from-yellow-300 to-orange-500 shadow-sm font-bold",
+  Promote:
+    "text-white bg-gradient-to-r from-lime-400 to-emerald-700 shadow-sm font-bold",
+  Progression:
+    "text-white bg-gradient-to-r from-orange-400 to-rose-600 shadow-sm font-bold",
+};
 
 export default function ReportPreviewModal({
   isOpen,
@@ -12,6 +21,24 @@ export default function ReportPreviewModal({
   data,
 }: PreviewModalProps) {
   if (!isOpen) return null;
+
+  console.log("preview data", data);
+
+  const splitRange = (value?: string) => {
+    const [start = "", end = ""] = (value || "").split(" - ");
+    return { start, end };
+  };
+
+  const formatRange = (value?: string) => {
+    const [start = "", end = ""] = (value || "").split(" - ");
+    return [start, end].filter(Boolean).join(" - ") || "-";
+  };
+
+  const sumWeights = (items?: any[]) =>
+    (items ?? []).reduce((sum, item) => sum + Number(item.weight || 0), 0);
+
+  const evaluationPeriod = splitRange(data?.evaluationPeriod);
+  const evaluationPeriodContinued = splitRange(data?.evaluationPeriodContinued);
 
   // คอมโพเนนต์ย่อยสำหรับแสดงข้อมูลพนักงานส่วนหัว (แชร์ร่วมกันทั้งหน้า 1 และ 2)
 
@@ -58,18 +85,31 @@ export default function ReportPreviewModal({
                     การประเมินครั้งที่: <span className="underline">1</span>
                   </span>
                   <span>
-                    ประจำเดือน: <span className="underline">พฤษภาคม 2569</span>
+                    ประจำเดือน:{" "}
+                    <span className="underline">
+                      {data?.submittedMonth || "-"}
+                    </span>
                   </span>
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-x-4 gap-y-1.5">
                 <div>
-                  <span className="font-semibold text-slate-500">ID:</span>{" "}
-                  {data?.id || "-"}
+                  <span className="font-semibold text-slate-500">
+                    รหัสพนักงาน:
+                  </span>{" "}
+                  {data?.employeeCode || "-"}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-500">Name:</span>{" "}
                   {data?.employeeName || "-"}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-500">Type:</span>{" "}
+                  <span
+                    className={`inline-flex rounded-full px-2 py-1 text-[11px] uppercase tracking-[0.14em] ${labelStyles[data?.evaluationType || "Probation"] || "bg-slate-100 text-slate-700"}`}
+                  >
+                    {data?.evaluationType || "-"}
+                  </span>
                 </div>
                 <div>
                   <span className="font-semibold text-slate-500">
@@ -108,6 +148,57 @@ export default function ReportPreviewModal({
               </div>
             </div>
 
+            <div className="bg-white border border-slate-300 text-[11px] mt-4 grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto_1fr] items-center">
+              {/* แถวที่ 1 - 3 รายการแรก (ทำให้จบใน 8 คอลัมน์) */}
+              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
+                ระยะเวลาในการประเมินปกติ:
+              </div>
+              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
+                {formatRange(data?.evaluationPeriod)}
+              </div>
+              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
+                ตำแหน่งใหม่:
+              </div>
+              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
+                {data?.newDesignation || "ไม่ปรับ"}
+              </div>
+              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
+                ระดับใหม่:
+              </div>
+              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
+                {data?.newLevel || "ไม่ปรับ"}
+              </div>
+              {/* ช่องว่างเติมเต็มเพื่อให้เส้นขอบตรงกัน */}
+              <div className="h-full border-b border-slate-300 bg-slate-50/50"></div>
+              <div className="h-full border-b border-slate-300"></div>
+
+              {/* แถวที่ 2 - 4 รายการหลัง */}
+              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
+                ระยะเวลาในการประเมิน (ต่อ):
+              </div>
+              <div className="p-2 text-slate-600 whitespace-nowrap">
+                {formatRange(data?.evaluationPeriodContinued) || "-"}
+              </div>
+              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
+                ฐานเงินเดือนใหม่:
+              </div>
+              <div className="p-2 text-slate-600 whitespace-nowrap">
+                {data?.newSalary || "-"}
+              </div>
+              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
+                ตำแหน่ง:
+              </div>
+              <div className="p-2 text-slate-600 whitespace-nowrap">
+                {data?.position || "Staff"}
+              </div>
+              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
+                ค่าตอบแทนพิเศษ:
+              </div>
+              <div className="p-2 text-slate-600 whitespace-nowrap">
+                {data?.specialCompensation ?? 0}
+              </div>
+            </div>
+
             {/* ตารางส่วนที่ 1: Company Common Ground */}
             <div className="border border-slate-400 text-xs">
               <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-900 text-white font-bold p-2 text-center border-b border-slate-400">
@@ -129,16 +220,15 @@ export default function ReportPreviewModal({
                   <div className="font-semibold text-slate-800">
                     {item.score}
                   </div>
-                  <div></div>
+                  <div>{item.remark || ""}</div>
                 </div>
               ))}
               <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
                 <div className="text-left">รวมคะแนน</div>
-                <div>100</div>
+                <div>{sumWeights(data?.companyItems)}</div>
                 <div className="text-blue-600 text-sm">
                   {data?.companyScore}
                 </div>
-                <div></div>
               </div>
             </div>
 
@@ -157,12 +247,12 @@ export default function ReportPreviewModal({
                   <div className="font-semibold text-slate-800">
                     {item.score}
                   </div>
-                  <div></div>
+                  <div>{item.remark || ""}</div>
                 </div>
               ))}
               <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
                 <div className="text-left">รวมคะแนน</div>
-                <div>100</div>
+                <div>{sumWeights(data?.departmentItems)}</div>
                 <div className="text-blue-600 text-sm">
                   {data?.departmentScore}
                 </div>
@@ -181,16 +271,135 @@ export default function ReportPreviewModal({
                 >
                   <div className="text-left font-medium">{item.topic}</div>
                   <div>{item.weight}</div>
-                  <div className="font-semibold text-slate-800">{item.score}</div>
+                  <div className="font-semibold text-slate-800">
+                    {item.score}
+                  </div>
                   <div>{item.remark || ""}</div>
                 </div>
               ))}
               <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
                 <div className="text-left">รวมคะแนน</div>
-                <div>-</div>
-                <div className="text-blue-600 text-sm">{data?.expectationScore}</div>
+                <div>{sumWeights(data?.expectationItems)}</div>
+                <div className="text-blue-600 text-sm">
+                  {data?.expectationScore}
+                </div>
                 <div></div>
               </div>
+            </div>
+            <div className="text-xs mt-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-blue-200 bg-white p-4">
+                  <div className="bg-blue-600 px-3 py-2 text-white font-semibold text-sm">
+                    สรุปคะแนน
+                  </div>
+                  <div className="space-y-2 p-3 text-sm text-slate-600">
+                    <div className="flex justify-between">
+                      <span>คะแนนประเมินผลงาน</span>
+                      <span className="font-semibold text-blue-600">
+                        {data?.totalScore ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>คะแนนเต็ม</span>
+                      <span className="font-semibold text-blue-600">
+                        {data?.maxScore ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>คิดเป็นเปอร์เซ็นต์</span>
+                      <span className="font-semibold text-blue-600">
+                        {data?.maxScore
+                          ? `${Math.round(
+                              (Number(data?.totalScore ?? 0) /
+                                Number(data?.maxScore ?? 1)) *
+                                100,
+                            )}%`
+                          : "0%"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-blue-200 bg-white p-4">
+                  <div className="bg-blue-600 px-3 py-2 text-white font-semibold text-sm">
+                    ความคาดหวัง
+                  </div>
+                  <div className="divide-y divide-slate-100 text-sm">
+                    {[
+                      ["Probation", "B : 75 - 84 (ดี)", "text-blue-600"],
+                      [
+                        "Performance",
+                        "A : 85 - 100 (ดีมาก)",
+                        "text-emerald-600",
+                      ],
+                      ["Promotion", "B : 75 - 84 (ดี)", "text-blue-600"],
+                      ["Progression", "B : 75 - 84 (ดี)", "text-blue-600"],
+                    ].map(([label, value, color]) => (
+                      <div
+                        key={label}
+                        className="flex justify-between px-3 py-2"
+                      >
+                        <span className="font-medium text-slate-700">
+                          {label}
+                        </span>
+                        <span className={`font-semibold ${color}`}>
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ข้อคิดเห็นจากผู้ประเมิน */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm mt-4">
+              <div className="font-semibold text-slate-800 mb-3">
+                ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน
+              </div>
+
+              <div className="min-h-[140px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-800">
+                {data?.summaryData?.additionalComment ||
+                  data?.managerComment ||
+                  "-"}
+              </div>
+            </div>
+
+            {/* เซ็นชื่อผู้ประเมินและพนักงานรับทราบ */}
+            <div className="grid gap-4 md:grid-cols-2 mt-4">
+              {[
+                {
+                  title: "ลงชื่อผู้ประเมิน",
+                  value: data?.summaryData?.evaluatorSignature || "",
+                  date: data?.summaryData?.evaluatorSignDate || "",
+                },
+                {
+                  title: "พนักงานรับทราบ",
+                  value: data?.summaryData?.employeeSignature || "",
+                  date: data?.summaryData?.employeeSignDate || "",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm"
+                >
+                  <div className="text-sm font-semibold text-slate-900 mb-2">
+                    {item.title}
+                  </div>
+                  <div className="text-xs text-slate-500 mb-3">
+                    (ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น)
+                  </div>
+                  <div className="min-h-[42px] rounded-2xl border border-slate-200 bg-white px-3 py-3 text-slate-700">
+                    {item.value || "________________________"}
+                  </div>
+                  <div className="mt-4 text-xs text-slate-500 text-center">
+                    วันที่
+                  </div>
+                  <div className="mx-auto w-[120px] text-center text-sm text-slate-700">
+                    {item.date || "__________"}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -207,7 +416,10 @@ export default function ReportPreviewModal({
                     การประเมินครั้งที่: <span className="underline">1</span>
                   </span>
                   <span>
-                    ประจำเดือน: <span className="underline">พฤษภาคม 2569</span>
+                    ประจำเดือน:{" "}
+                    <span className="underline">
+                      {data?.submittedMonth || "-"}
+                    </span>
                   </span>
                 </div>
               </div>

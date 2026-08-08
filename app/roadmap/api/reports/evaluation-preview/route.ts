@@ -63,22 +63,27 @@ export async function GET(req: Request) {
     .from("rm_evaluations")
     .select(
       `
-      id,
-      employee_id,
-      status,
-      created_at,
-      totalScore,
-      companyScore,
-      departmentScore,
-      expectationScore,
-      examScore,
-      maxScore,
-      currentSalary,
-      newSalary,
-      managerComment,
-      extra_data,
-      rm_evaluation_types(name),
-      rm_evaluation_scores(category_item_id, score, remark, is_included)
+    id,
+    employee_id,
+    status,
+    created_at,
+    totalScore,
+    companyScore,
+    departmentScore,
+    expectationScore,
+    examScore,
+    maxScore,
+    currentSalary,
+    newSalary,
+    new_designation,
+    new_level,
+    evaluation_period,
+    evaluation_period_continued,
+    special_compensation,
+    managerComment,
+    extra_data,
+    rm_evaluation_types(name),
+    rm_evaluation_scores(category_item_id, score, remark, is_included)
     `,
     )
     .eq("id", evaluationId)
@@ -100,6 +105,7 @@ export async function GET(req: Request) {
     .select(
       `
       id,
+      employee_code,
       first_name_th,
       last_name_th,
       nick_name,
@@ -166,43 +172,67 @@ export async function GET(req: Request) {
     }
   }
 
-  const companyItems = companyRows.map((row: any, idx: number) => ({
-    id: row.itemId || `${row.topic}-${idx}` || `company-${idx}`,
-    topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-    weight: row.maxScore ?? "",
-    score: row.score ?? "",
-    remark: row.remark || "",
-  }));
+  const hasRowData = (row: any) =>
+    Boolean(
+      row.topic?.toString().trim() ||
+      row.maxScore?.toString().trim() ||
+      row.score?.toString().trim() ||
+      row.remark?.toString().trim(),
+    );
 
-  const departmentItems = departmentRows.map((row: any, idx: number) => ({
-    id: row.itemId || `${row.topic}-${idx}` || `department-${idx}`,
-    topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-    weight: row.maxScore ?? "",
-    score: row.score ?? "",
-    remark: row.remark || "",
-  }));
-
-  const expectationItems = expectationRows.map((row: any, idx: number) => ({
-    id: row.itemId || `${row.topic}-${idx}` || `expectation-${idx}`,
-    topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-    weight: row.maxScore ?? "",
-    score: row.score ?? "",
-    remark: row.remark || "",
-  }));
-
-  const scoreRows = (evaluation.rm_evaluation_scores || []).map((row: any) => {
-    const meta = categoryMap.get(row.category_item_id) || {
-      topic: "",
-      weight: "",
-    };
-    return {
-      topic: meta.topic || row.category_item_id || "",
-      weight: meta.weight ?? "",
+  const companyItems = companyRows
+    .filter(hasRowData)
+    .map((row: any, idx: number) => ({
+      id: row.itemId || `${row.topic}-${idx}` || `company-${idx}`,
+      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
+      weight: row.maxScore ?? "",
       score: row.score ?? "",
-      remark: row.remark ?? "",
-      isIncluded: row.is_included ?? false,
-    };
-  });
+      remark: row.remark || "",
+    }));
+
+  const departmentItems = departmentRows
+    .filter(hasRowData)
+    .map((row: any, idx: number) => ({
+      id: row.itemId || `${row.topic}-${idx}` || `department-${idx}`,
+      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
+      weight: row.maxScore ?? "",
+      score: row.score ?? "",
+      remark: row.remark || "",
+    }));
+
+  const expectationItems = expectationRows
+    .filter(hasRowData)
+    .map((row: any, idx: number) => ({
+      id: row.itemId || `${row.topic}-${idx}` || `expectation-${idx}`,
+      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
+      weight: row.maxScore ?? "",
+      score: row.score ?? "",
+      remark: row.remark || "",
+    }));
+
+  const formatMonthYear = (value?: string | null) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("th-TH", {
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  // const scoreRows = (evaluation.rm_evaluation_scores || []).map((row: any) => {
+  //   const meta = categoryMap.get(row.category_item_id) || {
+  //     topic: "",
+  //     weight: "",
+  //   };
+  //   return {
+  //     topic: meta.topic || row.category_item_id || "",
+  //     weight: meta.weight ?? "",
+  //     score: row.score ?? "",
+  //     remark: row.remark ?? "",
+  //     isIncluded: row.is_included ?? false,
+  //   };
+  // });
 
   const positionLevel =
     emp.positions?.position_level_mappings?.find((m: any) => m?.is_default)
@@ -212,9 +242,19 @@ export async function GET(req: Request) {
   const positionName = emp.positions?.position_name || "";
   const level = positionLevel?.level_code || positionLevel?.level_name || "";
 
+  const evalTypeRow = evaluation.rm_evaluation_types as
+    | { name?: string }
+    | Array<{ name?: string }>
+    | null
+    | undefined;
+
+  const evaluationType = Array.isArray(evalTypeRow)
+    ? (evalTypeRow[0]?.name ?? "")
+    : (evalTypeRow?.name ?? "");
   const payload = {
     id: emp.employee_code || evaluation.employee_id,
     employeeId: evaluation.employee_id,
+    employeeCode: emp.employee_code || "",
     employeeName:
       `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(),
     nickName: employee.nick_name || "",
@@ -225,30 +265,22 @@ export async function GET(req: Request) {
     unit: emp.units?.unit_name || "",
     company: emp.branches?.branch_name || "",
     startDate: formatDate(employee.hire_date),
-    evaluationType: evaluation.rm_evaluation_types?.[0]?.name || "",
+    evaluationType,
     status: evaluation.status || "",
-    evaluationPeriod: extraData.evaluationPeriod || "",
-    companyItems: companyRows.map((row: any) => ({
-      id: row.itemId || row.topic || "",
-      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-      weight: row.maxScore ?? "",
-      score: row.score ?? "",
-      remark: row.remark ?? "",
-    })),
-    departmentItems: departmentRows.map((row: any) => ({
-      id: row.itemId || row.topic || "",
-      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-      weight: row.maxScore ?? "",
-      score: row.score ?? "",
-      remark: row.remark ?? "",
-    })),
-    expectationItems: expectationRows.map((row: any) => ({
-      id: row.itemId || row.topic || "",
-      topic: row.topic || categoryMap.get(row.itemId || "")?.topic || "",
-      weight: row.maxScore ?? "",
-      score: row.score ?? "",
-      remark: row.remark ?? "",
-    })),
+    evaluationPeriod:
+      evaluation.evaluation_period ?? extraData.evaluationPeriod ?? "",
+    evaluationPeriodContinued:
+      evaluation.evaluation_period_continued ??
+      extraData.evaluationPeriodContinued ??
+      "",
+    newDesignation:
+      evaluation.new_designation ?? extraData.newDesignation ?? "",
+    newLevel: evaluation.new_level ?? extraData.newLevel ?? "",
+    specialCompensation:
+      evaluation.special_compensation ?? extraData.specialCompensation ?? "",
+    companyItems,
+    departmentItems,
+    expectationItems,
     summaryData: extraData.summaryData || {},
     disciplineData: extraData.disciplineData || {},
     companyScore: evaluation.companyScore ?? 0,
@@ -261,6 +293,7 @@ export async function GET(req: Request) {
     currentSalary: evaluation.currentSalary ?? "",
     newSalary: evaluation.newSalary ?? "",
     managerComment: evaluation.managerComment || "",
+    submittedMonth: formatMonthYear(evaluation.created_at),
   };
   return NextResponse.json({ success: true, data: payload });
 }

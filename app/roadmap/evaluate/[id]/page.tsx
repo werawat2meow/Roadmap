@@ -113,8 +113,14 @@ export default function EvaluateEmployeePage() {
     examScore: 0,
     examMaxScore: 100,
     maxScore: 100,
+    evaluationType: activeTab,
     summaryData: defaultSummaryData,
     disciplineData: defaultDisciplineData,
+    evaluationPeriod: "",
+    evaluationPeriodContinued: "",
+    newDesignation: "",
+    newLevel: "",
+    specialCompensation: 0,
   });
 
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
@@ -651,6 +657,7 @@ export default function EvaluateEmployeePage() {
         <div>
           <SummarySidebar
             allFormData={formData}
+            evaluationType={activeTab}
             managers={managers}
             selectedManagerIds={selectedManagerIds}
             isEditing={Boolean(editingEvaluationId)}

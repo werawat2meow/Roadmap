@@ -8,7 +8,7 @@ import RoadmapHelpWidget from "./components/RoadmapHelpWidget";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 const routePermissionMap: { [key: string]: string } = {
-  "/roadmap": "Dashboard",
+  "/roadmap": "Overview",
   "/roadmap/employee": "Employee",
   "/roadmap/evaluate": "Evaluate HR",
   "/roadmap/evaluatemgr": "Evaluate MGR",

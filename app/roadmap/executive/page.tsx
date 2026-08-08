@@ -129,6 +129,40 @@ export default function ExecutivePage() {
     },
   ];
 
+  const handleStatusUpdate = async (action: "approve" | "reject") => {
+    if (!selectedEmployee) return;
+
+    const confirmMsg = action === "approve" ? "ยืนยันการอนุมัติผลการประเมินนี้?" : "ยืนยันการไม่อนุมัติผลการประเมินนี้?";
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch("/roadmap/api/executive/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          evaluationId: selectedEmployee.id,
+          action: action 
+        }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        alert(action === "approve" ? "อนุมัติเรียบร้อยแล้ว" : "ปฏิเสธการประเมินเรียบร้อยแล้ว");
+        setSelectedEmployee(null); // ปิด SlideOver
+        
+        // อัปเดตข้อมูลหน้าจอใหม่ (ดึงข้อมูลใหม่จาก API)
+        // หรือใช้วิธีง่ายๆ คือรีโหลดหน้าจอ
+        window.location.reload(); 
+      } else {
+        alert("เกิดข้อผิดพลาด: " + result.error);
+      }
+    } catch (err) {
+      console.error("Update failed:", err);
+      alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+    }
+  };
+
   return (
     <div className="space-y-8 p-4 md:p-8">
       {/* ส่วนหัวข้อ */}
@@ -190,9 +224,10 @@ export default function ExecutivePage() {
 
         {/* รายการพนักงาน (แสดงตามข้อมูลจริงจาก API) */}
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredEmployees.map((employee) => (
+          {filteredEmployees.map((employee, index) => (
             <ExecutiveEmployeeCard
               key={employee.id}
+              index={index}
               {...employee}
               onViewDetail={() => setSelectedEmployee(employee)}
             />
@@ -204,9 +239,10 @@ export default function ExecutivePage() {
       <ExecutiveSlideOver
         open={Boolean(selectedEmployee)}
         employee={selectedEmployee}
+        evaluationId={selectedEmployee?.id}
         onClose={() => setSelectedEmployee(null)}
-        onApprove={() => setSelectedEmployee(null)}
-        onReject={() => setSelectedEmployee(null)}
+        onApprove={() => handleStatusUpdate("approve")}
+        onReject={() => handleStatusUpdate("reject")}
       />
     </div>
   );

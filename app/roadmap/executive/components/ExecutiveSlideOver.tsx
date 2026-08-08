@@ -5,9 +5,10 @@ import {
   Award,
   Users,
   ClipboardList,
+  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 
-// 1. เพิ่มฟิลด์ evaluatorName และ completedDate ใน Type
 type Employee = {
   initials: string;
   name: string;
@@ -17,13 +18,14 @@ type Employee = {
   quarter: string;
   score: number;
   scoreClass: string;
-  evaluatorName?: string; // เพิ่มมาใหม่
-  completedDate?: string; // เพิ่มมาใหม่
+  evaluatorName?: string;
+  completedDate?: string;
 };
 
 type ExecutiveSlideOverProps = {
   open: boolean;
   employee: Employee | null;
+  evaluationId?: string;
   onClose: () => void;
   onApprove?: () => void;
   onReject?: () => void;
@@ -32,6 +34,7 @@ type ExecutiveSlideOverProps = {
 export default function ExecutiveSlideOver({
   open,
   employee,
+  evaluationId,
   onClose,
   onApprove,
   onReject,
@@ -54,120 +57,146 @@ export default function ExecutiveSlideOver({
 
   const scoreBgClass = colorMap[scoreClass] ?? "bg-slate-500";
   const tags = employee?.tags ?? [];
-
-  // แก้ไข: ดึงแผนกจาก tag ตัวแรก และประเภทจาก tag ตัวที่สอง (ตามโครงสร้าง API ที่เราทำไว้)
   const department = tags[0]?.label || "ไม่ระบุแผนก";
   const typeValue = tags[1]?.label || "ทั่วไป";
 
   return (
-    <div
-      className={`fixed inset-0 z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
-    >
+    <div className={`fixed inset-0 z-50 ${open ? "visible" : "invisible"}`}>
+      {/* Overlay */}
       <div
-        className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
       />
 
+      {/* Slide Panel */}
       <div
-        className={`absolute right-0 top-0 h-full w-full max-w-[420px] bg-white shadow-2xl transition-all duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
+        className={`absolute right-0 top-0 h-full w-full max-w-[440px] bg-slate-50 shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-white px-6 py-5 border-b border-slate-100">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
               รายละเอียดพนักงาน
             </p>
-            <h2 className="text-xl font-semibold text-slate-900">{name}</h2>
+            <h2 className="text-xl font-bold text-slate-800 leading-none">
+              {name}
+            </h2>
           </div>
           <button
-            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700"
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-6 px-6 py-5">
-          <div className="rounded-3xl bg-slate-50 p-5">
-            <div className="flex items-center justify-between">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          {/* Score Summary Card */}
+          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
+            <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-sm text-gray-500">คะแนนรวม</p>
-                <p className={`mt-2 text-4xl font-semibold ${scoreClass}`}>
-                  {score}%
-                </p>
+                <p className="text-sm font-medium text-slate-500">คะแนนประเมินรวม</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className={`text-4xl font-black ${scoreClass}`}>
+                    {score}%
+                  </span>
+                </div>
               </div>
-
-              {/* วงกลมเกรด (ปรับ font-bold และ text-2xl เพื่อให้ตัว A เด่นๆ) */}
               <div
-                className={`flex h-16 w-16 items-center justify-center rounded-full border-2 ${scoreClass} border-current text-2xl font-black bg-white shadow-sm`}
+                className={`flex h-16 w-16 items-center justify-center rounded-full border-2 ${scoreClass} border-current bg-white shadow-lg shadow-current/5 text-2xl font-black`}
               >
                 {grade}
               </div>
             </div>
 
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
-              <div
-                className={`h-full rounded-full ${scoreBgClass}`}
-                style={{ width: `${score}%` }}
-              />
+            <div className="space-y-3">
+              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${scoreBgClass}`}
+                  style={{ width: `${score}%` }}
+                />
+              </div>
+              <div className="flex justify-between items-center px-1">
+                <span className="text-xs font-bold text-slate-400">
+                  {score} / 100 คะแนน
+                </span>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-bold">
+                    {score >= 80 ? "ผ่านเกณฑ์" : "รอพิจารณา"}
+                  </span>
+                </div>
+              </div>
             </div>
+          </div>
 
-            {/* 2. แก้จาก 75 / 100 เป็นค่าคะแนนจริง */}
-            <p className="mt-3 text-sm text-slate-500">{score} / 100 คะแนน</p>
+          {/* Details Section - Grid Layout */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-2">
+              ข้อมูลทั่วไป
+            </h3>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <CompactDetailRow icon={Award} label="แผนก" value={department} />
+              <CompactDetailRow icon={ClipboardList} label="ตำแหน่ง" value={title} />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <CompactDetailRow icon={CalendarDays} label="รอบประเมิน" value={quarter} />
+                <CompactDetailRow icon={ClipboardList} label="ประเภท" value={typeValue} />
+              </div>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
-              <CheckCircle className="h-4 w-4" />
-              {score >= 80 ? "ผ่านเกณฑ์" : "รอพิจารณา"}
+              <CompactDetailRow icon={Users} label="ผู้ประเมิน" value={employee?.evaluatorName || "ไม่ระบุ"} />
+              <CompactDetailRow icon={CalendarDays} label="วันที่ประเมิน" value={employee?.completedDate || "-"} />
             </div>
           </div>
 
-          <div className="space-y-4">
-            <DetailRow icon={Award} label="แผนก" value={department} />
-            <DetailRow icon={ClipboardList} label="ตำแหน่ง" value={title} />
-            <DetailRow
-              icon={CalendarDays}
-              label="รอบการประเมิน"
-              value={quarter}
-            />
-            <DetailRow icon={ClipboardList} label="ประเภท" value={typeValue} />
-
-            {/* 3. ใช้ค่าจริงจาก employee object */}
-            <DetailRow
-              icon={Users}
-              label="ผู้ประเมิน"
-              value={employee?.evaluatorName || "ไม่ระบุ"}
-            />
-            <DetailRow
-              icon={CalendarDays}
-              label="วันที่ประเมิน"
-              value={employee?.completedDate || "-"}
-            />
-          </div>
-
-          <div className="mt-6 flex gap-3">
-            <button
-              type="button"
-              onClick={onApprove}
-              className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-sm font-semibold shadow-xl shadow-emerald-500/25 transition-all duration-200 hover:from-emerald-500 hover:to-teal-600 active:scale-[0.98]"
+          {/* Link to Full Details Card */}
+          {evaluationId && (
+            <Link
+              href={`/roadmap/evaluatemgr?evaluationId=${evaluationId}&readonly=true`}
+              onClick={onClose}
+              className="flex items-center justify-between w-full p-4 rounded-2xl bg-white border border-slate-100 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group shadow-sm"
             >
-              อนุมัติ
-            </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors text-slate-400">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold">View Details..</span>
+              </div>
+              <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            </Link>
+          )}
+        </div>
 
-            <button
-              type="button"
-              onClick={onReject}
-              className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-red-400 to-rose-500 text-white text-sm font-semibold shadow-xl shadow-red-500/25 transition-all duration-200 hover:from-red-400 hover:to-rose-600 active:scale-[0.98]"
-            >
-              ไม่อนุมัติ
-            </button>
-          </div>
+        {/* Sticky Footer - Colors restored as requested */}
+        <div className="p-6 bg-white border-t border-slate-100 flex gap-4">
+          <button
+            type="button"
+            onClick={onApprove}
+            className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-sm font-bold shadow-xl shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-600 active:scale-95 transition-all"
+          >
+            อนุมัติ
+          </button>
+
+          <button
+            type="button"
+            onClick={onReject}
+            className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-red-400 to-rose-500 text-white text-sm font-bold shadow-xl shadow-red-500/20 hover:from-red-500 hover:to-rose-600 active:scale-95 transition-all"
+          >
+            ไม่อนุมัติ
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function DetailRow({
+function CompactDetailRow({
   icon: Icon,
   label,
   value,
@@ -177,13 +206,17 @@ function DetailRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-3xl border border-gray-200 bg-white px-4 py-3">
-      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600">
+    <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-slate-200">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
         <Icon className="h-5 w-5" />
-      </span>
-      <div>
-        <p className="text-xs uppercase text-gray-500">{label}</p>
-        <p className="text-sm font-medium text-slate-900">{value}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
+          {label}
+        </p>
+        <p className="text-[13px] font-semibold text-slate-700 truncate">
+          {value}
+        </p>
       </div>
     </div>
   );

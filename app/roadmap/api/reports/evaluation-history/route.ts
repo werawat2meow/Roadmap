@@ -34,6 +34,7 @@ export async function GET(req: Request) {
       "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id",
     )
     .eq("evaluation_type_id", typeRow.id)
+    .eq("status", "Completed")
     .order("created_at", { ascending: false });
 
   if (evalError) {

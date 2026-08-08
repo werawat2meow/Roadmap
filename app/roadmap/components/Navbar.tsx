@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { name: "Dashboard", href: "/roadmap", icon: LayoutDashboard },
+  { name: "Overview", href: "/roadmap", icon: LayoutDashboard },
   { name: "Employee", href: "/roadmap/employee", icon: Users },
   { name: "Evaluate HR", href: "/roadmap/evaluate", icon: GanttChartSquare },
   { name: "Evaluate MGR", href: "/roadmap/evaluatemgr", icon: ClipboardCheck },

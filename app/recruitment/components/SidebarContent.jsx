@@ -2,9 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { Layout, Menu, Drawer, Grid, Button, ConfigProvider } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, CloseOutlined } from "@ant-design/icons";
-import { LayoutDashboard, Users , Summary , Settings , LayoutList } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import AntIcon from '@/components/AntIcon';
 
 const { Sider } = Layout;
 const { useBreakpoint } = Grid;
@@ -41,12 +40,12 @@ export default function SidebarContent({
       {
         label: "Overview",
         href: "/recruitment",
-        icon: LayoutDashboard,
+        icon: "AppstoreOutlined",
       },
       {
         label: "Check Candidate Detail",
         href: "/recruitment/candidate",
-        icon: LayoutList,
+        icon: "BookOutlined",
       },
       // {
       //   label: "Update interview appointment",
@@ -56,35 +55,36 @@ export default function SidebarContent({
       {
         label: "Schedule interviews",
         href: "/recruitment/schedule_interviews",
-        icon: LayoutList,
+        icon: "BookOutlined",
         permission: "recruitment.schedule.interviews.view",
       },
       {
         label: "Approve Employees",
         href: "/recruitment/approve_employees",
-        icon: LayoutList,
+        icon: "BookOutlined",
       },
       {
         label: "Report",
-        icon: Summary,
+        icon: "SnippetsOutlined",
         defaultOpen: false,
         children: [
           {
             label: "Summary recruitment",
+            icon: "SnippetsOutlined",
             href: "/recruitment/report_summary_recruit",
           },
         ],
       },
       {
         label: "Settings",
-        icon: Settings,
+        icon: "SettingOutlined",
         defaultOpen: false,
         children: [
-          { label: "Language",                     href: "/recruitment/setting/language" },
-          { label: "Job Language",                 href: "/recruitment/setting/job_language" },
-          { label: "Job Description",              href: "/recruitment/setting/job_description" },
-          { label: "Job Openings",                 href: "/recruitment/setting/job_openings" },
-          // { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" },
+          { label: "Language",  icon: "ApartmentOutlined", href: "/recruitment/setting/language" },
+          { label: "Job Language", icon: "ApartmentOutlined", href: "/recruitment/setting/job_language" },
+          { label: "Job Description", icon: "ApartmentOutlined", href: "/recruitment/setting/job_description" },
+          { label: "Job Openings", icon: "ApartmentOutlined", href: "/recruitment/setting/job_openings" },
+          // { label: "Evaluation Form",              href: "/recruitment/setting/evaluation" }, 
         ],
       },
     ],
@@ -147,13 +147,17 @@ export default function SidebarContent({
   const buildMenuItems = (menus) =>
     menus.map((item) => {
       const Icon = item.icon;
+      
       return {
         key: item.href || item.label,
-        icon: Icon ? <Icon size={18} /> : null,
+        // icon: Icon ? <Icon size={18} /> : null,
+        icon: Icon ? <AntIcon name={Icon} style={{fontSize: 18, }}/> : null,
+        // 
         label: item.label,
         children: item.children?.map((child) => ({
           key: child.href,
           label: child.label,
+          icon: child.icon ? <AntIcon name={child.icon} style={{fontSize: 18, }}/> : null,
         })),
       };
     });
@@ -204,14 +208,14 @@ export default function SidebarContent({
               e.currentTarget.style.color = SIDEBAR_TEXT_MUTED;
             }}
           >
-            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            {collapsed ?  <AntIcon name="MenuUnfoldOutlined" /> : <AntIcon name="MenuFoldOutlined" />}
           </button>
         )}
 
         {isMobile && (
           <Button
             type="text"
-            icon={<CloseOutlined style={{ color: SIDEBAR_TEXT }} />}
+            icon={ <AntIcon name="CloseOutlined" style={{ color: SIDEBAR_TEXT }} />}
             onClick={() => setMobileOpen(false)}
             className="flex h-8 w-8 items-center justify-center rounded-lg transition"
           />

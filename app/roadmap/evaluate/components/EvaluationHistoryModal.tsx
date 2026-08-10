@@ -15,6 +15,7 @@ type HistoryRecord = {
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
+  employeeName?: string;
 };
 
 type EvaluationHistoryModalProps = {
@@ -72,6 +73,11 @@ export default function EvaluationHistoryModal({
                 >
                   {/* แถวบน: แสดงสถานะ และ วันที่/เวลา */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-50 pb-3">
+                    {record.employeeName && (
+                      <p className="text-sm font-semibold text-slate-800">
+                        {record.employeeName}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-slate-400">
                         สถานะ:

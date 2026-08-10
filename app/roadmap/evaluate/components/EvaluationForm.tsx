@@ -1,4 +1,4 @@
-import { Building, Users, Target } from "lucide-react";
+import { Building, Users, Target, ClipboardList } from "lucide-react";
 import EvaluationSection from "./EvaluationSection";
 import EvaluationSummaryPanel, {
   SummaryPanelData,
@@ -58,8 +58,14 @@ export type EvaluationFormData = {
   examScore: number;
   examMaxScore: number;
   maxScore: number;
+  evaluationType: string;
   summaryData: SummaryPanelData;
   disciplineData: DisciplinePanelData;
+  evaluationPeriod: string;
+  evaluationPeriodContinued: string;
+  newDesignation: string;
+  newLevel: string;
+  specialCompensation: number;
 };
 
 type EvaluationFormProps = {
@@ -224,6 +230,142 @@ export default function EvaluationForm({
 
   return (
     <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+        <div className="flex justify-between items-center bg-blue-600 text-white -m-4 mb-0 p-3 rounded-t-lg">
+          <div className="flex items-center gap-2">
+            <ClipboardList size={20} />
+            <h3 className="font-bold">Data</h3>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-gray-500">
+              ระยะเวลาในการประเมินปกติ
+            </span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="date"
+                value={(formData?.evaluationPeriod ?? "").split(" - ")[0] ?? ""}
+                onChange={(event) => {
+                  const end =
+                    (formData?.evaluationPeriod ?? "").split(" - ")[1] ?? "";
+                  onFormChange?.({
+                    evaluationPeriod: `${event.target.value}${
+                      end ? ` - ${end}` : ""
+                    }`,
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+              />
+              <input
+                type="date"
+                value={(formData?.evaluationPeriod ?? "").split(" - ")[1] ?? ""}
+                onChange={(event) => {
+                  const start =
+                    (formData?.evaluationPeriod ?? "").split(" - ")[0] ?? "";
+                  onFormChange?.({
+                    evaluationPeriod: `${start ? `${start} - ` : ""}${
+                      event.target.value
+                    }`,
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+              />
+            </div>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-gray-500">
+              ตำแหน่งใหม่
+            </span>
+            <input
+              type="text"
+              value={formData?.newDesignation ?? ""}
+              onChange={(event) =>
+                onFormChange?.({ newDesignation: event.target.value })
+              }
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-gray-500">
+              ระดับใหม่
+            </span>
+            <input
+              type="text"
+              value={formData?.newLevel ?? ""}
+              onChange={(event) =>
+                onFormChange?.({ newLevel: event.target.value })
+              }
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-gray-500">
+              ระยะเวลาในการประเมิน ( ต่อ )
+            </span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="date"
+                value={
+                  (formData?.evaluationPeriodContinued ?? "").split(" - ")[0] ??
+                  ""
+                }
+                onChange={(event) => {
+                  const end =
+                    (formData?.evaluationPeriodContinued ?? "").split(
+                      " - ",
+                    )[1] ?? "";
+                  onFormChange?.({
+                    evaluationPeriodContinued: `${event.target.value}${
+                      end ? ` - ${end}` : ""
+                    }`,
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+              />
+              <input
+                type="date"
+                value={
+                  (formData?.evaluationPeriodContinued ?? "").split(" - ")[1] ??
+                  ""
+                }
+                onChange={(event) => {
+                  const start =
+                    (formData?.evaluationPeriodContinued ?? "").split(
+                      " - ",
+                    )[0] ?? "";
+                  onFormChange?.({
+                    evaluationPeriodContinued: `${start ? `${start} - ` : ""}${
+                      event.target.value
+                    }`,
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+              />
+            </div>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-gray-500">
+              ค่าตอบแทนพิเศษ
+            </span>
+            <input
+              type="number"
+              value={formData?.specialCompensation ?? 0}
+              onChange={(event) =>
+                onFormChange?.({
+                  specialCompensation: Number(event.target.value),
+                })
+              }
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-500 placeholder-slate-400"
+            />
+          </label>
+        </div>
+      </div>
       <EvaluationSection
         title="Company Common Ground"
         icon={<Building size={20} />}

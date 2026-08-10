@@ -15,6 +15,8 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
 
 const { Search } = Input;
 
@@ -74,15 +76,17 @@ interface Filters {
 }
 
 export default function WaitingApprovalPage() {
-
   const router = useRouter();
+
+  const { isChecking, canView, canEdit } = usePageGuard({
+    module: "recruitment.approve.emp",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   const [loading, setLoading] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
-
   const [data, setData] = useState<Applicant[]>([]);
   const [total, setTotal] = useState(0);
-
   const [filters, setFilters] = useState<Filters>({
     keyword: '',
     status: undefined,
@@ -91,24 +95,14 @@ export default function WaitingApprovalPage() {
     pageSize: 20,
   });
 
-  useEffect(() => {
-    fetchPositions();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [filters]);
-
+  // ⬇️ ย้ายฟังก์ชันเหล่านี้มาไว้ตรงนี้ ก่อน useEffect และก่อน early return
   const fetchPositions = async () => {
     try {
       const res = await fetch('/recruitment/api/approve_employees/positions', {
         cache: 'no-store',
       });
-
       if (!res.ok) return;
-
       const json = await res.json();
-
       setPositions(json.data || []);
     } catch (err) {
       console.error(err);
@@ -118,23 +112,12 @@ export default function WaitingApprovalPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-
       const params = new URLSearchParams();
-
       params.append('page', String(filters.page));
       params.append('pageSize', String(filters.pageSize));
-
-      if (filters.keyword) {
-        params.append('keyword', filters.keyword);
-      }
-
-      if (filters.status) {
-        params.append('status', String(filters.status));
-      }
-
-      if (filters.position_id) {
-        params.append('position_id', filters.position_id);
-      }
+      if (filters.keyword) params.append('keyword', filters.keyword);
+      if (filters.status) params.append('status', String(filters.status));
+      if (filters.position_id) params.append('position_id', filters.position_id);
 
       const res = await fetch(
         `/recruitment/api/approve_employees?${params.toString()}`,
@@ -147,7 +130,6 @@ export default function WaitingApprovalPage() {
       }
 
       const json = await res.json();
-
       if (json.success) {
         setData(json.data);
         setTotal(json.total);
@@ -224,6 +206,25 @@ export default function WaitingApprovalPage() {
       ),
     },
   ];
+
+  // ⬇️ useEffect ยังอยู่ตำแหน่งเดิม แต่ตอนนี้ fetchPositions/fetchData ถูก initialize แล้ว
+  useEffect(() => {
+    fetchPositions();
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [filters]);
+
+  useEffect(() => {
+    if (!isChecking && !canEdit) {
+      router.replace("/recruitment/approve_employees");
+    }
+  }, [isChecking, canEdit, router]);
+
+  // ⬇️ early return มาอยู่หลังสุด หลังจาก hooks ทั้งหมดถูกเรียกแล้ว
+  if (isChecking || loading) return <LoadingOrb />;
+  if (!canEdit) return null;
 
   return (
     <div className="h-full w-full">

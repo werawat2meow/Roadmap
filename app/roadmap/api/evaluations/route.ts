@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,examMaxScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
+      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
     )
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });
@@ -138,9 +138,13 @@ export async function POST(req: Request) {
     newSalary: body.newSalary ?? null,
     managerComment: body.managerComment ?? null,
     examScore: body.examScore ?? null,
-    examMaxScore: body.examMaxScore ?? null,
     maxScore: body.maxScore ?? null,
     extra_data: body.extra_data ?? null,
+    evaluation_period: body.evaluationPeriod ?? null,
+    evaluation_period_continued: body.evaluationPeriodContinued ?? null,
+    special_compensation: body.specialCompensation ?? null,
+    new_designation: body.newDesignation ?? null,
+    new_level: body.newLevel ?? null,
   };
 
   const evaluationId = body.evaluationId?.trim();
@@ -261,16 +265,31 @@ export async function DELETE(req: Request) {
   const evaluationId = url.searchParams.get("id");
 
   if (!evaluationId) {
-    return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Missing id" },
+      { status: 400 },
+    );
   }
 
-await supabaseAdmin.from("rm_evaluation_reviewers").delete().eq("evaluation_id", evaluationId);
-  await supabaseAdmin.from("rm_evaluation_scores").delete().eq("evaluation_id", evaluationId);
+  await supabaseAdmin
+    .from("rm_evaluation_reviewers")
+    .delete()
+    .eq("evaluation_id", evaluationId);
+  await supabaseAdmin
+    .from("rm_evaluation_scores")
+    .delete()
+    .eq("evaluation_id", evaluationId);
 
-  const { error } = await supabaseAdmin.from("rm_evaluations").delete().eq("id", evaluationId);
+  const { error } = await supabaseAdmin
+    .from("rm_evaluations")
+    .delete()
+    .eq("id", evaluationId);
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
   return NextResponse.json({ success: true });
 }

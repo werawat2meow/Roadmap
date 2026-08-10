@@ -24,6 +24,9 @@ export default function ReportsPage() {
         scope={scope}
         onQuarterChange={setQuarter}
         onScopeChange={setScope}
+        onExport={() => {
+          console.log("Export reports");
+        }}
       />
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">

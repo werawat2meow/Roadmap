@@ -30,8 +30,11 @@ export async function GET(req: Request) {
 
   const { data: evalRows, error: evalError } = await supabaseAdmin
     .from("rm_evaluations")
-    .select("id,employee_id,status,created_at,totalScore,evaluation_type_id")
+    .select(
+      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id",
+    )
     .eq("evaluation_type_id", typeRow.id)
+    .eq("status", "Completed")
     .order("created_at", { ascending: false });
 
   if (evalError) {
@@ -53,15 +56,24 @@ export async function GET(req: Request) {
     .from("employees")
     .select(
       `
-      id,
-      first_name_th,
-      last_name_th,
-      email,
-      departments(department_name),
-      divisions(division_name),
-      units(unit_name),
-      positions(position_level)
-    `,
+    id,
+    first_name_th,
+    last_name_th,
+    email,
+    departments(department_name),
+    divisions(division_name),
+    units(unit_name),
+    positions(
+      position_name,
+      position_level_mappings(
+        position_levels(
+          level_code,
+          level_name
+        ),
+        is_default
+      )
+    )
+  `,
     )
     .in("id", employeeIds);
 
@@ -81,9 +93,13 @@ export async function GET(req: Request) {
     const employee = employeeMap.get(item.employee_id) || {};
     const totalScore = item.totalScore ?? 0;
     const maxScore = item.maxScore ?? 100;
-    const scorePercent = maxScore > 0 
-    ? `${Math.round((totalScore / maxScore) * 100)}%`
-      : "0%";
+    const scorePercent =
+      maxScore > 0 ? `${Math.round((totalScore / maxScore) * 100)}%` : "0%";
+    const positionLevel =
+      employee.positions?.position_level_mappings?.find(
+        (m: any) => m?.is_default,
+      )?.position_levels ||
+      employee.positions?.position_level_mappings?.[0]?.position_levels;
 
     return {
       id: item.id,
@@ -93,7 +109,7 @@ export async function GET(req: Request) {
       department: employee.departments?.department_name || "",
       division: employee.divisions?.division_name || "",
       unit: employee.units?.unit_name || "",
-      level: employee.positions?.position_level || "",
+      level: positionLevel?.level_code || positionLevel?.level_name || "",
       evaluationType,
       latestDate: item.created_at,
       score: totalScore,

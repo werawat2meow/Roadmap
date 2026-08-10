@@ -11,6 +11,8 @@ import EvaluationForm, {
 import SummarySidebar from "@/app/roadmap/evaluate/components/SummarySidebar";
 import SelectionModal from "@/app/roadmap/evaluatemgr/components/SelectionModal";
 import { Employee } from "@/app/roadmap/types";
+import { useSearchParams } from "next/navigation";
+import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
 
 type SettingsCategory = {
   id: string;
@@ -45,6 +47,12 @@ type EvaluatemgrRecord = {
     is_included: boolean;
   }>;
   rm_evaluation_reviewers?: { manager_id: string }[];
+  employee?: {
+    id: string;
+    first_name_th: string;
+    last_name_th: string;
+    employee_code?: string;
+  };
 };
 
 const initialFormData: EvaluationFormData = {
@@ -90,7 +98,20 @@ const initialFormData: EvaluationFormData = {
   maxScore: 100,
   summaryData: defaultSummaryData,
   disciplineData: defaultDisciplineData,
+  evaluationType: "Probation",
+  evaluationPeriod: "",
+  evaluationPeriodContinued: "",
+  newDesignation: "",
+  newLevel: "",
+  specialCompensation: 0,
 };
+
+const normalizeEvaluationType = (
+  value?: string | null,
+): "Probation" | "Performance" | "Promote" | "Progression" =>
+  value === "Performance" || value === "Promote" || value === "Progression"
+    ? value
+    : "Probation";
 
 export default function EvaluateMgrPage() {
   const { user } = useAuth();
@@ -153,14 +174,21 @@ export default function EvaluateMgrPage() {
         departmentScore: record.departmentScore ?? 0,
         expectationScore: record.expectationScore ?? 0,
         totalScore: record.totalScore ?? 0,
-        currentSalary: extra.currentSalary ?? 0,
-        newSalary: extra.newSalary ?? 0,
+        currentSalary: (record as any).currentSalary ?? 0,
+        newSalary: (record as any).newSalary ?? 0,
         managerComment: record.managerComment ?? "",
         examScore: record.examScore ?? 0,
         examMaxScore: record.examMaxScore ?? 100,
         maxScore: record.maxScore ?? 100,
         summaryData: extra.summaryData ?? defaultSummaryData,
         disciplineData: extra.disciplineData ?? defaultDisciplineData,
+        evaluationType: normalizeEvaluationType(record.evaluationType),
+        evaluationPeriod: (record as any).evaluation_period ?? "",
+        evaluationPeriodContinued:
+          (record as any).evaluation_period_continued ?? "",
+        newDesignation: (record as any).new_designation ?? "",
+        newLevel: (record as any).new_level ?? "",
+        specialCompensation: (record as any).special_compensation ?? 0,
       };
     },
     [],
@@ -243,11 +271,6 @@ export default function EvaluateMgrPage() {
     setFormData((prev) => ({ ...prev, ...next }));
   }, []);
 
-  const normalizeEvaluationType = (value?: string) =>
-    value === "Performance" || value === "Promote" || value === "Progression"
-      ? value
-      : "Probation";
-
   const selectedFormType = normalizeEvaluationType(
     selectedEvaluation?.evaluationType,
   );
@@ -286,6 +309,13 @@ export default function EvaluateMgrPage() {
         expectationRows: formData.expectationRows,
         summaryData: formData.summaryData,
         disciplineData: formData.disciplineData,
+        evaluationPeriod: formData.evaluationPeriod,
+        evaluationPeriodContinued: formData.evaluationPeriodContinued,
+        newDesignation: formData.newDesignation,
+        newLevel: formData.newLevel,
+        specialCompensation: formData.specialCompensation,
+        currentSalary: formData.currentSalary,
+        newSalary: formData.newSalary,
       },
     };
 
@@ -312,6 +342,120 @@ export default function EvaluateMgrPage() {
 
   const handleSaveDraft = async () => sendEvaluationPayload("Draft");
   const handleSubmit = async () => sendEvaluationPayload("Submitted");
+
+  const searchParams = useSearchParams();
+  const urlEvaluationId = searchParams.get("evaluationId");
+  const isReadOnly = searchParams.get("readonly") === "true";
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<EvaluatemgrRecord[]>([]);
+
+  const fetchHistory = useCallback(async () => {
+    if (!reviewerId) return;
+    const res = await fetch(
+      `/roadmap/api/evaluatemgr?reviewerId=${encodeURIComponent(reviewerId)}`,
+    );
+    const data = await res.json();
+    if (res.ok && data?.success) setHistoryRecords(data.data || []);
+  }, [reviewerId]);
+
+  const handleDeleteEvaluation = useCallback(
+    async (record: EvaluatemgrRecord) => {
+      if (!window.confirm("ต้องการลบบันทึกนี้?")) return;
+      await fetch(`/roadmap/api/evaluations?id=${record.id}`, {
+        method: "DELETE",
+      });
+      await fetchHistory();
+    },
+    [fetchHistory],
+  );
+
+  useEffect(() => {
+    if (!urlEvaluationId) return;
+
+    async function loadPreview() {
+      const res = await fetch(
+        `/roadmap/api/reports/evaluation-preview?id=${encodeURIComponent(urlEvaluationId!)}`,
+      );
+      const json = await res.json();
+      if (!res.ok || !json.success) return;
+
+      const d = json.data;
+
+      // map companyItems → RowState[]
+      const toRows = (items: any[], prefix: string) =>
+        (items ?? [])
+          .filter((item: any) => item.topic || item.id)
+          .map((item: any, i: number) => ({
+            rowId: `${prefix}-${i}`,
+            itemId: item.id || "",
+            topic: item.topic || "",
+            maxScore: Number(item.weight) || 0,
+            score: Number(item.score) || 0,
+            note: item.remark || "",
+          }));
+
+      const mapped: EvaluationFormData = {
+        companyRows: toRows(d.companyItems, "company"),
+        departmentRows: toRows(d.departmentItems, "department"),
+        expectationRows: toRows(d.expectationItems, "expectation"),
+        companyScore: d.companyScore ?? 0,
+        departmentScore: d.departmentScore ?? 0,
+        expectationScore: d.expectationScore ?? 0,
+        totalScore: d.totalScore ?? 0,
+        currentSalary: Number(d.currentSalary) || 0,
+        newSalary: Number(d.newSalary) || 0,
+        managerComment: d.managerComment || "",
+        examScore: d.examScore ?? 0,
+        examMaxScore: 100,
+        maxScore: d.maxScore ?? 100,
+        summaryData: d.summaryData || defaultSummaryData,
+        disciplineData: d.disciplineData || defaultDisciplineData,
+        evaluationType: normalizeEvaluationType(d.evaluationType),
+        evaluationPeriod: d.evaluationPeriod || "",
+        evaluationPeriodContinued: d.evaluationPeriodContinued || "",
+        newDesignation: d.newDesignation || "",
+        newLevel: d.newLevel || "",
+        specialCompensation: Number(d.specialCompensation) || 0,
+      };
+
+      setFormData(mapped);
+      setEditingEvaluationId(urlEvaluationId);
+
+      setSelectedEvaluation({
+        id: urlEvaluationId!,
+        employee_id: d.employeeId,
+        status: d.status,
+        created_at: "",
+        totalScore: d.totalScore,
+        companyScore: d.companyScore,
+        departmentScore: d.departmentScore,
+        expectationScore: d.expectationScore,
+        examScore: d.examScore,
+        examMaxScore: null,
+        maxScore: d.maxScore,
+        managerComment: d.managerComment,
+        evaluationType: d.evaluationType,
+      });
+
+      setEmployee({
+        id: d.employeeId,
+        employeeCode: d.employeeCode || "",
+        name: d.employeeName || "",
+        department: d.department || "",
+        branch: d.company || "",
+        division: d.division || "",
+        unit: d.unit || "",
+        role: d.position || "",
+        level: d.level || "",
+        hireDate: d.startDate || "",
+        avatar: "",
+        status: "Active",
+      });
+    }
+
+    loadPreview();
+  }, [urlEvaluationId]);
 
   const renderForm = () => (
     <EvaluationForm
@@ -341,12 +485,27 @@ export default function EvaluateMgrPage() {
             เลือกพนักงานที่มี Draft จาก HR แล้วทำการประเมินต่อ
           </p>
         </div>
-        <button
-          onClick={() => setIsSelectOpen(true)}
-          className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-150 active:scale-95 cursor-pointer"
-        >
-          เลือกพนักงาน
-        </button>
+        <div className="flex gap-3">
+          {!isReadOnly && (
+            <button
+              onClick={async () => {
+                await fetchHistory();
+                setIsHistoryOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-bold text-slate-800 shadow-md hover:from-amber-500 hover:to-yellow-600 transition-all duration-150 active:scale-95 cursor-pointer"
+            >
+              ประวัติ
+            </button>
+          )}
+          {!isReadOnly && (
+            <button
+              onClick={() => setIsSelectOpen(true)}
+              className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-150 active:scale-95 cursor-pointer"
+            >
+              เลือกพนักงาน
+            </button>
+          )}
+        </div>
       </div>
 
       {isSelectOpen && (
@@ -411,7 +570,7 @@ export default function EvaluateMgrPage() {
                 onMaxScoreChange={(value) =>
                   handleFormChange({ maxScore: value })
                 }
-                onSubmit={handleSubmit}
+                onSubmit={isReadOnly ? undefined : handleSubmit}
                 showSaveDraft={false}
               />
             </div>
@@ -429,6 +588,23 @@ export default function EvaluateMgrPage() {
           {error}
         </div>
       )}
+      <EvaluationHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        records={historyRecords.map((record) => ({
+          ...record,
+          employeeName: record.employee
+            ? `${record.employee.first_name_th} ${record.employee.last_name_th}`.trim()
+            : "",
+        }))}
+        onEdit={(record) => {
+          setIsHistoryOpen(false);
+          handleSelectEvaluation(record as EvaluatemgrRecord);
+        }}
+        onDelete={(record) =>
+          handleDeleteEvaluation(record as EvaluatemgrRecord)
+        }
+      />
     </div>
   );
 }

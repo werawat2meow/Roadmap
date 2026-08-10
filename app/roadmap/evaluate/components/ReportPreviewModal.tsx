@@ -24,10 +24,10 @@ export default function ReportPreviewModal({
 
   console.log("preview data", data);
 
-  const splitRange = (value?: string) => {
-    const [start = "", end = ""] = (value || "").split(" - ");
-    return { start, end };
-  };
+  // const splitRange = (value?: string) => {
+  //   const [start = "", end = ""] = (value || "").split(" - ");
+  //   return { start, end };
+  // };
 
   const formatRange = (value?: string) => {
     const [start = "", end = ""] = (value || "").split(" - ");
@@ -37,8 +37,10 @@ export default function ReportPreviewModal({
   const sumWeights = (items?: any[]) =>
     (items ?? []).reduce((sum, item) => sum + Number(item.weight || 0), 0);
 
-  const evaluationPeriod = splitRange(data?.evaluationPeriod);
-  const evaluationPeriodContinued = splitRange(data?.evaluationPeriodContinued);
+  const evaluationRound = data?.evaluationRound ?? "-";
+
+  // const evaluationPeriod = splitRange(data?.evaluationPeriod);
+  // const evaluationPeriodContinued = splitRange(data?.evaluationPeriodContinued);
 
   // คอมโพเนนต์ย่อยสำหรับแสดงข้อมูลพนักงานส่วนหัว (แชร์ร่วมกันทั้งหน้า 1 และ 2)
 
@@ -82,7 +84,8 @@ export default function ReportPreviewModal({
                 </span>
                 <div className="flex gap-4 font-medium text-[11px]">
                   <span>
-                    การประเมินครั้งที่: <span className="underline">1</span>
+                    การประเมินครั้งที่:{" "}
+                    <span className="underline">{evaluationRound}</span>
                   </span>
                   <span>
                     ประจำเดือน:{" "}
@@ -413,7 +416,8 @@ export default function ReportPreviewModal({
                 </span>
                 <div className="flex gap-4 font-medium text-[11px]">
                   <span>
-                    การประเมินครั้งที่: <span className="underline">1</span>
+                    การประเมินครั้งที่:{" "}
+                    <span className="underline">{evaluationRound}</span>
                   </span>
                   <span>
                     ประจำเดือน:{" "}

@@ -67,6 +67,7 @@ export async function GET(req: Request) {
     employee_id,
     status,
     created_at,
+    evaluation_type_id,
     totalScore,
     companyScore,
     departmentScore,
@@ -98,6 +99,22 @@ export async function GET(req: Request) {
       },
       { status: 500 },
     );
+  }
+
+  const { data: roundRows, error: roundError } = await supabaseAdmin
+    .from("rm_evaluations")
+    .select("id")
+    .eq("employee_id", evaluation.employee_id)
+    .eq("evaluation_type_id", evaluation.evaluation_type_id)
+    .lte("created_at", evaluation.created_at);
+
+  const evaluationRound =
+    Array.isArray(roundRows) && roundRows.length > 0
+      ? roundRows.length
+      : 1;
+
+  if (roundError) {
+    console.error("Failed to count evaluation round", roundError);
   }
 
   const { data: employee, error: employeeError } = await supabaseAdmin
@@ -293,6 +310,7 @@ export async function GET(req: Request) {
     currentSalary: evaluation.currentSalary ?? "",
     newSalary: evaluation.newSalary ?? "",
     managerComment: evaluation.managerComment || "",
+    evaluationRound,
     submittedMonth: formatMonthYear(evaluation.created_at),
   };
   return NextResponse.json({ success: true, data: payload });

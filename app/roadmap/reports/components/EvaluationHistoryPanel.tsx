@@ -17,6 +17,7 @@ type EvaluationRecord = {
   employeeId: string;
   name: string;
   email: string;
+  branch: string;
   department: string;
   division: string;
   unit: string;
@@ -28,15 +29,6 @@ type EvaluationRecord = {
   evaluationCount: number;
   scorePercent: string;
 };
-
-const departments = [
-  "Restaurant Operation",
-  "Marketing",
-  "Engineering",
-  "Finance",
-  "HR",
-  "Operations",
-];
 
 function downloadCsvFile(
   filename: string,
@@ -78,6 +70,42 @@ export default function EvaluationHistoryPanel({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
+  const branches = useMemo(
+    () => [...new Set(rows.map((row) => row.branch).filter(Boolean))],
+    [rows],
+  );
+  const departments = useMemo(
+    () => [...new Set(rows.map((row) => row.department).filter(Boolean))],
+    [rows],
+  );
+
+  const divisions = useMemo(
+    () => [...new Set(rows.map((row) => row.division).filter(Boolean))],
+    [rows],
+  );
+
+  const units = useMemo(
+    () => [...new Set(rows.map((row) => row.unit).filter(Boolean))],
+    [rows],
+  );
+
+  const levels = useMemo(
+    () => [...new Set(rows.map((row) => row.level).filter(Boolean))],
+    [rows],
+  );
+
+  const items = useMemo(
+    () =>
+      rows.map((row) => ({
+        branch: row.branch || "",
+        department: row.department || "",
+        division: row.division || "",
+        unit: row.unit || "",
+        level: row.level || "",
+      })),
+    [rows],
+  );
+
   useEffect(() => {
     async function load() {
       const res = await fetch(
@@ -116,8 +144,9 @@ export default function EvaluationHistoryPanel({
     align: "left" | "center" | "right";
   }[] = [
     { header: "พนักงาน", key: "name", align: "center" },
-    { header: "สังกัด", key: "department", align: "center" },
-    { header: "แผนก", key: "division", align: "center" },
+    { header: "สังกัด", key: "branch", align: "center" },
+    { header: "แผนก", key: "department", align: "center" },
+    { header: "ฝ่าย", key: "division", align: "center" },
     { header: "หน่วย", key: "unit", align: "center" },
     { header: "Level", key: "level", align: "center" },
     { header: "คะแนน", key: "scorePercent", align: "center" },
@@ -172,9 +201,7 @@ export default function EvaluationHistoryPanel({
           <h2 className="text-2xl font-semibold text-slate-900">
             ประวัติการประเมิน {evaluationType}
           </h2>
-          <p className="text-sm text-slate-500">
-            แสดงพนักงานที่ถูกประเมินแล้ว
-          </p>
+          <p className="text-sm text-slate-500">แสดงพนักงานที่ถูกประเมินแล้ว</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -191,8 +218,13 @@ export default function EvaluationHistoryPanel({
             onSearch={setSearchTerm}
             onFilter={setFilters}
             filterOptions={{
-              departments,
+              branches,
+              departments: departments,
+              divisions: divisions,
+              units: units,
+              levels: levels,
               statuses: ["Active", "On Leave"],
+              items,
             }}
           />
         </div>

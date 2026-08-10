@@ -21,3 +21,7 @@ export default function usePermissions(module, { redirectTo = "/admin" } = {}) {
 
   return { user, loadingUser, canView, canCreate: can("create"), canEdit: can("edit"), canDelete: can("delete") };
 }
+
+
+
+

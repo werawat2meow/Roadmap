@@ -128,16 +128,6 @@ export default function ManpowerPage() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
-                  {canViewDashboard && (
-                    <button
-                      type="button"
-                      onClick={() => router.push("/admin/dashboard")}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
-                    >
-                      <ArrowLeftOutlined />
-                      กลับหน้า Dashboard
-                    </button>
-                  )}
                   {canExportDashboard && (
                     <a
                       href="/api/admin/dashboard/export"

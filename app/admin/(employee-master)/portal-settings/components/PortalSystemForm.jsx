@@ -20,6 +20,7 @@ const {
 export function getInitialPortalSystemValues() {
   return {
     system_code: "",
+    module_code: "",
     system_name: "",
     system_subtitle: "",
     description: "",
@@ -120,12 +121,47 @@ export default function PortalSystemForm({
         </Col>
 
         {/* ===============================================
+            Module Code
+        =============================================== */}
+
+        <Col
+          xs={24}
+          md={8}
+        >
+          <Form.Item
+            label="Module Code"
+            name="module_code"
+            extra="เช่น ems, payroll, benefit, access"
+          >
+            <Input
+              maxLength={100}
+              placeholder="ems"
+              onChange={(event) => {
+                const value =
+                  event.target.value
+                    .trim()
+                    .toLowerCase()
+                    .replace(
+                      /[^a-z0-9_]/g,
+                      ""
+                    );
+
+                form.setFieldValue(
+                  "module_code",
+                  value
+                );
+              }}
+            />
+          </Form.Item>
+        </Col>
+
+        {/* ===============================================
             System Name
         =============================================== */}
 
         <Col
           xs={24}
-          md={16}
+          md={8}
         >
           <Form.Item
             label="ชื่อระบบ"

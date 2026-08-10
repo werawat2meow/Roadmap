@@ -88,6 +88,24 @@ export default function PortalSystemTable({
     },
 
     {
+      title: "Module",
+
+      dataIndex:
+        "module_code",
+
+      key:
+        "module_code",
+
+      width: 120,
+
+      render: (value) => (
+        <code className="text-xs text-indigo-700">
+          {value || "-"}
+        </code>
+      ),
+    },
+
+    {
       title: "ระบบ",
 
       key: "system",

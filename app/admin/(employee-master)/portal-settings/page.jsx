@@ -1003,6 +1003,15 @@ export default function PortalSettingsPage() {
               .trim()
               .toUpperCase(),
 
+          module_code:
+            String(
+              values.module_code ||
+                ""
+            )
+              .trim()
+              .toLowerCase() ||
+            null,
+
           system_name:
             String(
               values.system_name ||

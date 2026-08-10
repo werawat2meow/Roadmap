@@ -1,100 +1,53 @@
+import { NextResponse } from "next/server";
+
+import { supabaseAdmin } from "@/lib/supabaseServer";
+import { requirePermission } from "@/lib/auth/requirePortalAccess";
+import { PORTAL_PERMISSION } from "@/lib/portal/portalConstants";
 import {
-  NextResponse,
-} from "next/server";
+  cleanCode,
+  cleanText,
+  normalizePositiveInteger,
+  isPostgresUniqueViolation,
+} from "@/lib/portal/portalHelpers";
 
-import {
-  supabaseAdmin,
-} from "@/lib/supabaseServer";
-
-/* =========================================================
-   Helpers
-========================================================= */
-
-function normalizeText(
-  value
-) {
-  return String(
-    value ?? ""
-  ).trim();
+function fail(error, status = 400) {
+  return NextResponse.json({ success: false, error }, { status });
 }
 
-function normalizeNullableText(
-  value
-) {
-  const text =
-    normalizeText(value);
-
-  return text || null;
+function buildPayload(body = {}) {
+  return {
+    system_code: cleanCode(body.system_code, { upper: true }),
+    module_code: cleanCode(body.module_code),
+    system_name: cleanText(body.system_name),
+    system_subtitle: cleanText(body.system_subtitle),
+    description: cleanText(body.description),
+    base_path: cleanText(body.base_path),
+    permission_code: cleanText(body.permission_code),
+    icon_code: cleanCode(body.icon_code),
+    sort_order: normalizePositiveInteger(body.sort_order),
+    status: body.status === "inactive" ? "inactive" : "active",
+  };
 }
 
-function normalizeStatus(
-  value
-) {
-  return value ===
-    "inactive"
-    ? "inactive"
-    : "active";
-}
+export async function GET(req) {
+  const auth = await requirePermission(PORTAL_PERMISSION.VIEW);
+  if (!auth.ok) return auth.response;
 
-/* =========================================================
-   GET
-========================================================= */
-
-export async function GET(
-  req
-) {
   try {
-    const {
-      searchParams,
-    } = new URL(req.url);
+    const { searchParams } = new URL(req.url);
+    const all = searchParams.get("all") === "true";
+    const search = searchParams.get("search")?.trim() || "";
+    const status = searchParams.get("status")?.trim() || "";
+    const page = Math.max(1, Number(searchParams.get("page") || 1));
+    const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 20)));
 
-    const search =
-      searchParams
-        .get("search")
-        ?.trim() || "";
-
-    const status =
-      searchParams
-        .get("status")
-        ?.trim() || "";
-
-    const all =
-      searchParams.get(
-        "all"
-      ) === "true";
-
-    const page =
-      Math.max(
-        Number(
-          searchParams.get(
-            "page"
-          ) || 1
-        ),
-        1
-      );
-
-    const pageSize =
-      Math.min(
-        Math.max(
-          Number(
-            searchParams.get(
-              "pageSize"
-            ) || 20
-          ),
-          1
-        ),
-        200
-      );
-
-    let query =
-      supabaseAdmin
-        .from(
-          "portal_systems"
-        )
-        .select(
-          `
+    let query = supabaseAdmin
+      .from("portal_systems")
+      .select(
+        `
           id,
           system_code,
+          module_code,
           system_name,
           system_subtitle,
           description,
@@ -106,642 +59,129 @@ export async function GET(
           created_at,
           updated_at
         `,
-          {
-            count: "exact",
-          }
-        );
+        { count: "exact" }
+      )
+      .order("sort_order", { ascending: true })
+      .order("system_code", { ascending: true });
 
-    if (status) {
-      query =
-        query.eq(
-          "status",
-          status
-        );
-    }
+    if (status) query = query.eq("status", status);
 
     if (search) {
-      query =
-        query.or(
-          [
-            `system_code.ilike.%${search}%`,
-            `system_name.ilike.%${search}%`,
-            `system_subtitle.ilike.%${search}%`,
-            `description.ilike.%${search}%`,
-          ].join(",")
+      const safe = search.replace(/[%_,()]/g, " ").trim();
+      if (safe) {
+        query = query.or(
+          `system_code.ilike.%${safe}%,system_name.ilike.%${safe}%,module_code.ilike.%${safe}%`
         );
+      }
     }
-
-    query =
-      query
-        .order(
-          "sort_order",
-          {
-            ascending: true,
-          }
-        )
-        .order(
-          "system_name",
-          {
-            ascending: true,
-          }
-        );
 
     if (!all) {
-      const from =
-        (page - 1) *
-        pageSize;
-
-      const to =
-        from +
-        pageSize -
-        1;
-
-      query =
-        query.range(
-          from,
-          to
-        );
+      const from = (page - 1) * pageSize;
+      query = query.range(from, from + pageSize - 1);
     }
 
-    const {
-      data,
-      error,
-      count,
-    } = await query;
+    const { data, error, count } = await query;
+    if (error) throw error;
 
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: data || [],
-        total:
-          all
-            ? (
-                data?.length ||
-                0
-              )
-            : (
-                count || 0
-              ),
-        page,
-        pageSize,
-      }
-    );
+    return NextResponse.json({
+      success: true,
+      data: data || [],
+      total: count || 0,
+      page: all ? 1 : page,
+      pageSize: all ? data?.length || 0 : pageSize,
+    });
   } catch (error) {
-    console.error(
-      "PORTAL_SYSTEMS_GET_ERROR:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถโหลดระบบ Portal ได้",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("GET_PORTAL_SYSTEMS_ERROR:", error);
+    return fail(error?.message || "ไม่สามารถโหลด Portal Systems ได้", 500);
   }
 }
 
-/* =========================================================
-   POST
-========================================================= */
+export async function POST(req) {
+  const auth = await requirePermission(PORTAL_PERMISSION.CREATE);
+  if (!auth.ok) return auth.response;
 
-export async function POST(
-  req
-) {
   try {
-    const body =
-      await req.json();
+    const body = await req.json();
+    const payload = buildPayload(body);
 
-    const systemCode =
-      normalizeText(
-        body?.system_code
-      ).toUpperCase();
+    if (!payload.system_code) return fail("กรุณาระบุ system_code");
+    if (!payload.system_name) return fail("กรุณาระบุ system_name");
 
-    const systemName =
-      normalizeText(
-        body?.system_name
-      );
-
-    if (!systemCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "กรุณาระบุรหัสระบบ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!systemName) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "กรุณาระบุชื่อระบบ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const {
-      data: duplicate,
-      error:
-        duplicateError,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
-      .select("id")
-      .eq(
-        "system_code",
-        systemCode
-      )
-      .maybeSingle();
-
-    if (duplicateError) {
-      throw duplicateError;
-    }
-
-    if (duplicate) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "รหัสระบบนี้มีอยู่แล้ว",
-        },
-        {
-          status: 409,
-        }
-      );
-    }
-
-    const payload = {
-      system_code:
-        systemCode,
-
-      system_name:
-        systemName,
-
-      system_subtitle:
-        normalizeNullableText(
-          body?.system_subtitle
-        ),
-
-      description:
-        normalizeNullableText(
-          body?.description
-        ),
-
-      base_path:
-        normalizeNullableText(
-          body?.base_path
-        ),
-
-      permission_code:
-        normalizeNullableText(
-          body?.permission_code
-        ),
-
-      icon_code:
-        normalizeNullableText(
-          body?.icon_code
-        ),
-
-      sort_order:
-        Number(
-          body?.sort_order ??
-            0
-        ),
-
-      status:
-        normalizeStatus(
-          body?.status
-        ),
-    };
-
-    const {
-      data,
-      error,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
+    const { data, error } = await supabaseAdmin
+      .from("portal_systems")
       .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        data,
-        message:
-          "เพิ่มระบบ Portal เรียบร้อยแล้ว",
-      },
-      {
-        status: 201,
-      }
-    );
-  } catch (error) {
-    console.error(
-      "PORTAL_SYSTEMS_POST_ERROR:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถเพิ่มระบบ Portal ได้",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}
-
-/* =========================================================
-   PATCH
-========================================================= */
-
-export async function PATCH(
-  req
-) {
-  try {
-    const body =
-      await req.json();
-
-    const id =
-      normalizeText(
-        body?.id
-      );
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ไม่พบรหัสรายการ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const {
-      data: current,
-      error:
-        currentError,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
       .select("*")
-      .eq(
-        "id",
-        id
-      )
-      .maybeSingle();
-
-    if (currentError) {
-      throw currentError;
-    }
-
-    if (!current) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ไม่พบระบบ Portal",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    const systemCode =
-      body?.system_code !==
-      undefined
-        ? normalizeText(
-            body.system_code
-          ).toUpperCase()
-        : current.system_code;
-
-    const systemName =
-      body?.system_name !==
-      undefined
-        ? normalizeText(
-            body.system_name
-          )
-        : current.system_name;
-
-    if (!systemCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "กรุณาระบุรหัสระบบ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!systemName) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "กรุณาระบุชื่อระบบ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const {
-      data: duplicate,
-      error:
-        duplicateError,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
-      .select("id")
-      .eq(
-        "system_code",
-        systemCode
-      )
-      .neq(
-        "id",
-        id
-      )
-      .maybeSingle();
-
-    if (duplicateError) {
-      throw duplicateError;
-    }
-
-    if (duplicate) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "รหัสระบบนี้มีอยู่แล้ว",
-        },
-        {
-          status: 409,
-        }
-      );
-    }
-
-    const payload = {
-      system_code:
-        systemCode,
-
-      system_name:
-        systemName,
-
-      system_subtitle:
-        body?.system_subtitle !==
-        undefined
-          ? normalizeNullableText(
-              body.system_subtitle
-            )
-          : current
-              .system_subtitle,
-
-      description:
-        body?.description !==
-        undefined
-          ? normalizeNullableText(
-              body.description
-            )
-          : current.description,
-
-      base_path:
-        body?.base_path !==
-        undefined
-          ? normalizeNullableText(
-              body.base_path
-            )
-          : current.base_path,
-
-      permission_code:
-        body?.permission_code !==
-        undefined
-          ? normalizeNullableText(
-              body.permission_code
-            )
-          : current
-              .permission_code,
-
-      icon_code:
-        body?.icon_code !==
-        undefined
-          ? normalizeNullableText(
-              body.icon_code
-            )
-          : current.icon_code,
-
-      sort_order:
-        body?.sort_order !==
-        undefined
-          ? Number(
-              body.sort_order
-            )
-          : current.sort_order,
-
-      status:
-        body?.status !==
-        undefined
-          ? normalizeStatus(
-              body.status
-            )
-          : current.status,
-
-      updated_at:
-        new Date()
-          .toISOString(),
-    };
-
-    const {
-      data,
-      error,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
-      .update(payload)
-      .eq(
-        "id",
-        id
-      )
-      .select()
       .single();
 
     if (error) {
+      if (isPostgresUniqueViolation(error)) {
+        return fail("รหัสระบบนี้มีอยู่แล้ว", 409);
+      }
       throw error;
     }
 
-    return NextResponse.json({
-      success: true,
-      data,
-      message:
-        "แก้ไขระบบ Portal เรียบร้อยแล้ว",
-    });
+    return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
-    console.error(
-      "PORTAL_SYSTEMS_PATCH_ERROR:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถแก้ไขระบบ Portal ได้",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("CREATE_PORTAL_SYSTEM_ERROR:", error);
+    return fail(error?.message || "เพิ่ม Portal System ไม่สำเร็จ", 500);
   }
 }
 
-/* =========================================================
-   DELETE
-========================================================= */
+export async function PATCH(req) {
+  const auth = await requirePermission(PORTAL_PERMISSION.EDIT);
+  if (!auth.ok) return auth.response;
 
-export async function DELETE(
-  req
-) {
   try {
-    const {
-      searchParams,
-    } = new URL(req.url);
+    const body = await req.json();
+    const id = cleanText(body.id);
+    if (!id) return fail("กรุณาระบุ id");
 
-    const body =
-      await req
-        .json()
-        .catch(() => null);
+    const payload = buildPayload(body);
+    if (!payload.system_code) return fail("กรุณาระบุ system_code");
+    if (!payload.system_name) return fail("กรุณาระบุ system_name");
 
-    const id =
-      normalizeText(
-        body?.id ||
-          searchParams.get(
-            "id"
-          )
-      );
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ไม่พบรหัสรายการ",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const {
-      data: current,
-      error:
-        currentError,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
-      .select(
-        "id, system_name"
-      )
-      .eq(
-        "id",
-        id
-      )
+    const { data, error } = await supabaseAdmin
+      .from("portal_systems")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
       .maybeSingle();
 
-    if (currentError) {
-      throw currentError;
-    }
-
-    if (!current) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ไม่พบระบบ Portal",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    const {
-      error,
-    } = await supabaseAdmin
-      .from(
-        "portal_systems"
-      )
-      .delete()
-      .eq(
-        "id",
-        id
-      );
-
     if (error) {
+      if (isPostgresUniqueViolation(error)) {
+        return fail("รหัสระบบนี้มีอยู่แล้ว", 409);
+      }
       throw error;
     }
 
-    return NextResponse.json({
-      success: true,
-      message:
-        "ลบระบบ Portal เรียบร้อยแล้ว",
-    });
-  } catch (error) {
-    console.error(
-      "PORTAL_SYSTEMS_DELETE_ERROR:",
-      error
-    );
+    if (!data) return fail("ไม่พบ Portal System", 404);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถลบระบบ Portal ได้",
-      },
-      {
-        status: 500,
-      }
-    );
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error("UPDATE_PORTAL_SYSTEM_ERROR:", error);
+    return fail(error?.message || "แก้ไข Portal System ไม่สำเร็จ", 500);
+  }
+}
+
+export async function DELETE(req) {
+  const auth = await requirePermission(PORTAL_PERMISSION.DELETE);
+  if (!auth.ok) return auth.response;
+
+  try {
+    const body = await req.json();
+    const id = cleanText(body.id);
+    if (!id) return fail("กรุณาระบุ id");
+
+    const { error } = await supabaseAdmin
+      .from("portal_systems")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE_PORTAL_SYSTEM_ERROR:", error);
+    return fail(error?.message || "ลบ Portal System ไม่สำเร็จ", 500);
   }
 }

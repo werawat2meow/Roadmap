@@ -131,23 +131,27 @@ export default function CareerPathTable({
             />
           </Tooltip>
 
-          <Tooltip title="Edit">
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() =>
-                onEdit(record)
-              }
-            />
-          </Tooltip>
+          {onEdit && (
+            <Tooltip title="Edit">
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() =>
+                  onEdit(record)
+                }
+              />
+            </Tooltip>
+          )}
 
-          <Tooltip title="Delete">
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onDelete(record)}
-            />
-          </Tooltip>
+          {onDelete && (
+            <Tooltip title="Delete">
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => onDelete(record)}
+              />
+            </Tooltip>
+          )}
 
         </Space>
       ),

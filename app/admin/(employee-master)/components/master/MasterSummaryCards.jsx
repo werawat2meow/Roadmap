@@ -4,10 +4,10 @@ import { Card, Col, Row } from "antd";
 
 export default function MasterSummaryCards({
   items = [],
-  gutter = [16, 16],
+  gutter = [10, 10],
 }) {
   return (
-    <Row gutter={gutter}>
+    <Row >
       {items.map((item, index) => (
         <Col
           key={index}

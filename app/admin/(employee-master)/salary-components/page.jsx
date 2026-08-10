@@ -34,6 +34,7 @@ export default function SalaryComponentsPage() {
   const [data, setData] = useState([]);
   const [selected, setSelected] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
   const [summary, setSummary] =
     useState({
       total: 0,
@@ -140,6 +141,7 @@ export default function SalaryComponentsPage() {
 
   function handleAdd() {
     setSelected(null);
+    setModalMode("create");
 
     form.resetFields();
 
@@ -168,19 +170,18 @@ export default function SalaryComponentsPage() {
         throw new Error(json.error);
       }
 
+      form.resetFields();
       form.setFieldsValue(json.data);
 
       setSelected(json.data);
-
+      setModalMode("view");
       setModalOpen(true);
 
     } catch (err) {
-
       swalError(
         "เกิดข้อผิดพลาด",
         err.message
       );
-
     }
   }
 
@@ -196,34 +197,38 @@ export default function SalaryComponentsPage() {
         throw new Error(json.error);
       }
 
+      form.resetFields();
       form.setFieldsValue(json.data);
 
       setSelected(json.data);
-
+      setModalMode("edit");
       setModalOpen(true);
 
     } catch (err) {
-
       swalError(
         "เกิดข้อผิดพลาด",
         err.message
       );
-
     }
   }
 
   async function handleSave(values) {
+    if (modalMode === "view") {
+      return;
+    }
     try {
 
       setSaving(true);
 
-      const method = selected
-        ? "PATCH"
-        : "POST";
+      const method =
+        modalMode === "edit"
+          ? "PATCH"
+          : "POST";
 
-      const url = selected
-        ? `/api/admin/salary-components/${selected.id}`
-        : "/api/admin/salary-components";
+      const url =
+        modalMode === "edit"
+          ? `/api/admin/salary-components/${selected.id}`
+          : "/api/admin/salary-components";
 
       const res = await fetch(url, {
         method,
@@ -377,21 +382,28 @@ export default function SalaryComponentsPage() {
 
       <SalaryComponentModal
         open={modalOpen}
+        disabled={modalMode === "view"}
         title={
-          selected
-            ? "แก้ไขรายการเงินเดือน"
-            : "เพิ่มรายการเงินเดือน"
+          modalMode === "view"
+            ? "รายละเอียดรายการเงินเดือน"
+            : modalMode === "edit"
+              ? "แก้ไขรายการเงินเดือน"
+              : "เพิ่มรายการเงินเดือน"
         }
         form={form}
         saving={saving}
         onCancel={() => {
           setModalOpen(false);
-
           setSelected(null);
+          setModalMode("create");
 
           form.resetFields();
         }}
         onSubmit={() => {
+          if (modalMode === "view") {
+            return;
+          }
+
           form.submit();
         }}
       />

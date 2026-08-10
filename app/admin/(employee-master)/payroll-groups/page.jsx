@@ -40,6 +40,7 @@ export default function PayrollGroupsPage() {
   const [payrollCompanies,setPayrollCompanies] =useState([]);
   const [selected,setSelected] =useState(null);
   const [modalOpen,setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
   const [page,setPage] =useState(1);
   const [pageSize,setPageSize] =useState(20);
   const [total,setTotal] =useState(0);
@@ -149,7 +150,10 @@ export default function PayrollGroupsPage() {
 
   function handleAdd() {
     setSelected(null);
+    setModalMode("create");
+
     form.resetFields();
+
     form.setFieldsValue({
       payment_frequency: "monthly",
       payment_offset_month: 0,
@@ -165,12 +169,18 @@ export default function PayrollGroupsPage() {
       const res = await fetch(
         `/api/admin/payroll-groups/${record.id}`
       );
+
       const json = await res.json();
+
       if (!json.success) {
         throw new Error(json.error);
       }
+
+      form.resetFields();
       form.setFieldsValue(json.data);
+
       setSelected(json.data);
+      setModalMode("view");
       setModalOpen(true);
     } catch (err) {
       swalError(err.message);
@@ -182,12 +192,18 @@ export default function PayrollGroupsPage() {
       const res = await fetch(
         `/api/admin/payroll-groups/${record.id}`
       );
+
       const json = await res.json();
+
       if (!json.success) {
         throw new Error(json.error);
       }
+
+      form.resetFields();
       form.setFieldsValue(json.data);
+
       setSelected(json.data);
+      setModalMode("edit");
       setModalOpen(true);
     } catch (err) {
       swalError(err.message);
@@ -195,33 +211,45 @@ export default function PayrollGroupsPage() {
   }
 
   async function handleSave(values) {
+    if (modalMode === "view") {
+      return;
+    }
+
     try {
       setSaving(true);
 
-      const method = selected
-        ? "PATCH"
-        : "POST";
+      const method =
+        modalMode === "edit"
+          ? "PATCH"
+          : "POST";
 
-      const url = selected
-        ? `/api/admin/payroll-groups/${selected.id}`
-        : "/api/admin/payroll-groups";
+      const url =
+        modalMode === "edit"
+          ? `/api/admin/payroll-groups/${selected.id}`
+          : "/api/admin/payroll-groups";
 
       const res = await fetch(url, {
         method,
         headers: {
-          "Content-Type":
-            "application/json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(values),
       });
+
       const json = await res.json();
+
       if (!json.success) {
         throw new Error(json.error);
       }
+
       swalSuccess(json.message);
+
       setModalOpen(false);
-      form.resetFields();
       setSelected(null);
+      setModalMode("create");
+
+      form.resetFields();
+
       loadData();
     } catch (err) {
       swalError(err.message);
@@ -341,21 +369,28 @@ export default function PayrollGroupsPage() {
         open={modalOpen}
         form={form}
         saving={saving}
+        disabled={modalMode === "view"}
         payrollCompanies={payrollCompanies}
         onFinish={handleSave}
         title={
-          selected
-            ? "แก้ไขกลุ่มเงินเดือน"
-            : "เพิ่มกลุ่มเงินเดือน"
+          modalMode === "view"
+            ? "รายละเอียดกลุ่มเงินเดือน"
+            : modalMode === "edit"
+              ? "แก้ไขกลุ่มเงินเดือน"
+              : "เพิ่มกลุ่มเงินเดือน"
         }
         onCancel={() => {
           setModalOpen(false);
-
           setSelected(null);
+          setModalMode("create");
 
           form.resetFields();
         }}
         onSubmit={() => {
+          if (modalMode === "view") {
+            return;
+          }
+
           form.submit();
         }}
       />

@@ -1,14 +1,14 @@
-//   7/10/2569  12:01
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {TaxIdField,EmailField,PhoneField,WebsiteField,AddressField,StatusSelect,SortOrderField,} from "@/app/components/forms";
 import {isValidEmail,isValidThaiPhone,isValidThaiTaxId,isValidWebsite,normalizeThaiPhone,} from "@/lib/validators";
+
+import useScopedPermissions from "@/hooks/useScopedPermissions";
+
 
 const initialForm = {
   company_code: "",
@@ -65,14 +65,7 @@ function mapCompany(company) {
 
 export default function CompaniesPage() {
   const router = useRouter();
-  const { user, loadingUser } = useAuth();
-
-  // #region Permission
-  const canView = hasPermission(user, "ems.companies.view");
-  const canCreate = hasPermission(user, "ems.companies.create");
-  const canEdit = hasPermission(user, "ems.companies.edit");
-  const canDelete = hasPermission(user, "ems.companies.delete");
-  // #endregion 
+  const {user,loadingUser,canView,canCreate,canEditRecord,canDeleteRecord,hasAllScope,accessibleIds,} = useScopedPermissions("ems.companies",{scopeType:"company"});
   
   const [search, setSearch] = useState("");
   const [companies, setCompanies] = useState([]);
@@ -178,8 +171,10 @@ export default function CompaniesPage() {
   };
 
   const handleOpenEdit = (company) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขบริษัท");
+    if (!canEditRecord(company)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขบริษัทนี้"
+      );
       return;
     }
 
@@ -271,10 +266,13 @@ export default function CompaniesPage() {
   const handleSave = async () => {
     const isEdit = !!editingCompany;
 
-    if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขบริษัท");
+    if (isEdit && !canEditRecord(editingCompany)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขบริษัทนี้"
+      );
       return;
     }
+    //  
 
     if (!isEdit && !canCreate) {
       swalError("คุณไม่มีสิทธิ์เพิ่มบริษัท");
@@ -331,8 +329,10 @@ export default function CompaniesPage() {
   };
 
   const handleDelete = async (company) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบบริษัท");
+    if (!canDeleteRecord(company)) {
+      swalError(
+        "คุณไม่มีสิทธิ์ลบบริษัทนี้"
+      );
       return;
     }
 
@@ -432,7 +432,9 @@ export default function CompaniesPage() {
       ) : null}
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto"> 
+
+
           <table className="min-w-full text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
@@ -556,39 +558,58 @@ export default function CompaniesPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {canEdit || canDelete ? (
+                      {canEditRecord(company) ||
+                      canDeleteRecord(company) ? (
                         <div className="flex justify-end gap-2">
-                          {canEdit && (
+
+                          {canEditRecord(company) && (
                             <button
                               type="button"
-                              onClick={() => handleOpenEdit(company)}
+                              onClick={() =>
+                                handleOpenEdit(
+                                  company
+                                )
+                              }
                               className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                             >
                               Edit
                             </button>
                           )}
 
-                          {canDelete && (
+                          {canDeleteRecord(company) && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(company)}
-                              disabled={deletingId === company.id}
+                              onClick={() =>
+                                handleDelete(
+                                  company
+                                )
+                              }
+                              disabled={
+                                deletingId ===
+                                company.id
+                              }
                               className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === company.id
+                                deletingId ===
+                                company.id
                                   ? "cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-red-200 text-red-600 hover:bg-red-50"
                               }`}
                             >
-                              {deletingId === company.id
+                              {deletingId ===
+                              company.id
                                 ? "Deleting..."
                                 : "Delete"}
                             </button>
                           )}
+
                         </div>
                       ) : (
-                        <div className="text-right text-slate-400">-</div>
+                        <div className="text-right text-slate-400">
+                          -
+                        </div>
                       )}
                     </td>
+
                   </tr>
                 ))
               ) : (
@@ -603,6 +624,7 @@ export default function CompaniesPage() {
               )}
             </tbody>
           </table>
+
         </div>
       </div>
 
@@ -778,8 +800,8 @@ export default function CompaniesPage() {
                 Cancel
               </button>
 
-              {((editingCompany && canEdit) ||
-                (!editingCompany && canCreate)) && (
+              {((editingCompany && canEditRecord(editingCompany)) || (!editingCompany && canCreate)) && 
+                (
                 <button
                   type="button"
                   onClick={handleSave}
@@ -790,9 +812,14 @@ export default function CompaniesPage() {
                       : "bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
-                  {saving ? "Saving..." : editingCompany ? "Update" : "Save"}
+                  {saving
+                    ? "Saving..."
+                    : editingCompany
+                      ? "Update"
+                      : "Save"}
                 </button>
-              )}
+                )
+              }
             </div>
           </div>
         </div>

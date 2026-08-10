@@ -13,6 +13,7 @@ import TaxProfileSearch from "./components/TaxProfileSearch";
 import TaxProfileSummaryCards from "./components/TaxProfileSummaryCards";
 import TaxProfileTable from "./components/TaxProfileTable";
 import TaxProfileModal from "./components/TaxProfileModal";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
 
 export default function TaxProfilesPage() {
   const router = useRouter();
@@ -255,14 +256,6 @@ export default function TaxProfilesPage() {
   }
 
   async function handleDelete(id) {
-    const ok = await swalConfirm({
-      title: "ยืนยันการลบ",
-
-      text: "คุณต้องการลบข้อมูลนี้ใช่หรือไม่",
-    });
-
-    if (!ok) return;
-
     try {
       const res = await fetch(
         `/api/admin/tax-profiles/${id}`,
@@ -336,16 +329,20 @@ export default function TaxProfilesPage() {
     <>
       <MasterLayout
         header={
-          <MasterPageHeader
-            title="โปรไฟล์ภาษี"
-            subtitle="Tax Profiles Management"
-            loading={loading}
-            canRefresh
-            canCreate={canCreate}
-            createText="เพิ่มโปรไฟล์ภาษี"
-            onRefresh={handleRefresh}
-            onCreate={handleAdd}
-          />
+          <>
+            <MasterPageHeader
+              title="โปรไฟล์ภาษี"
+              subtitle="Tax Profiles Management"
+              loading={loading}
+              canRefresh
+              canCreate={canCreate}
+              createText="เพิ่มโปรไฟล์ภาษี"
+              onRefresh={handleRefresh}
+              onCreate={handleAdd}
+            />
+            <PageInfoAlert description="กำหนดข้อมูลภาษีเงินได้ของพนักงานแต่ละคน เช่น สถานะโสด/สมรส, ค่าลดหย่อนส่วนตัว, ค่าลดหย่อนบุตร และเอกสารประกอบการลดหย่อนภาษี ข้อมูลนี้จะถูกใช้คำนวณภาษีหัก ณ ที่จ่ายในระบบเงินเดือน" />
+          
+          </>
         }
         search={
           <TaxProfileSearch

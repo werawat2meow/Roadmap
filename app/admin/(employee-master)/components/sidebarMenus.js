@@ -37,6 +37,8 @@ import {
   FunctionOutlined,
   CodeOutlined,
   CalendarOutlined,
+  SettingOutlined,
+  NumberOutlined,
 } from "@ant-design/icons";
 
 export const sidebarMenus = [
@@ -58,6 +60,52 @@ export const sidebarMenus = [
         href: "/admin/manpower",
         icon: <WarningOutlined />,
         permission: "ems.manpower.view",
+      },
+    ],
+  },
+
+  /* =========================================================
+  *  ข้อมูลทั่วไป
+  * ========================================================= */
+  {
+    title: "ข้อมูลทั่วไป",
+    icon: <IdcardOutlined />,
+    items: [
+      {
+        label: "ประเทศ",
+        href: "/admin/countries",
+        icon: <EnvironmentOutlined />,
+        permission: "ems.countries.view",
+      },
+      {
+        label: "สัญชาติ",
+        href: "/admin/nationalities",
+        icon: <GlobalOutlined />,
+        permission: "ems.nationalities.view",
+      },
+      {
+        label: "คำนำหน้า",
+        href: "/admin/titles",
+        icon: <UserOutlined />,
+        permission: "ems.titles.view",
+      },
+      {
+        label: "ศาสนา",
+        href: "/admin/religions",
+        icon: <SafetyOutlined />,
+        permission: "ems.religions.view",
+      },
+      {
+        label: "สถานภาพสมรส",
+        href: "/admin/marital-statuses",
+        icon: <TeamOutlined />,
+        permission: "ems.marital_statuses.view",
+      },
+      {
+        label: "เพศ",
+        href: "/admin/genders",
+        icon: <UsergroupAddOutlined />,
+        permission: "ems.genders.view",
       },
     ],
   },
@@ -424,52 +472,6 @@ export const sidebarMenus = [
   },
 
   /* =========================================================
-  * HR MASTER  ข้อมูลทั่วไป
-  * ========================================================= */
-  {
-    title: "ข้อมูลทั่วไป",
-    icon: <IdcardOutlined />,
-    items: [
-      {
-        label: "ประเทศ",
-        href: "/admin/countries",
-        icon: <EnvironmentOutlined />,
-        permission: "ems.countries.view",
-      },
-      {
-        label: "สัญชาติ",
-        href: "/admin/nationalities",
-        icon: <GlobalOutlined />,
-        permission: "ems.nationalities.view",
-      },
-      {
-        label: "คำนำหน้า",
-        href: "/admin/titles",
-        icon: <UserOutlined />,
-        permission: "ems.titles.view",
-      },
-      {
-        label: "ศาสนา",
-        href: "/admin/religions",
-        icon: <SafetyOutlined />,
-        permission: "ems.religions.view",
-      },
-      {
-        label: "สถานภาพสมรส",
-        href: "/admin/marital-statuses",
-        icon: <TeamOutlined />,
-        permission: "ems.marital_statuses.view",
-      },
-      {
-        label: "เพศ",
-        href: "/admin/genders",
-        icon: <UsergroupAddOutlined />,
-        permission: "ems.genders.view",
-      },
-    ],
-  },
-
-  /* =========================================================
    * COST STRUCTURE
    * ========================================================= */
   {
@@ -535,6 +537,19 @@ export const sidebarMenus = [
         permission: "ems.employee_statuses.view",
       },
       {
+        label: "ตั้งค่ารหัสพนักงาน",
+        href: "/admin/employee-code-settings",
+        icon: <SettingOutlined />,
+        permission: "ems.employee_code_settings.view",
+      },
+      {
+        label: "เลขรันรหัสพนักงาน",
+        href: "/admin/employee-running",
+        icon: <NumberOutlined />,
+        permission: "ems.employee_running.view",
+      },
+      
+      {
         label: "รายงานพนักงาน",
         href: "/admin/employee-reports",
         icon: <BarChartOutlined />,
@@ -543,7 +558,7 @@ export const sidebarMenus = [
     ],
   },
 
-  /* =========================================================
+   /* =========================================================
    * USER ACCESS
    * ========================================================= */
   {
@@ -557,7 +572,7 @@ export const sidebarMenus = [
         permission: "access.user_accounts.view",
       },
       {
-        label: "บทบาทผู้ใช้งานในระบบ",
+        label: "บทบาทและสิทธิ์",
         href: "/admin/roles",
         icon: <SafetyOutlined />,
         permission: "access.roles.view",
@@ -568,12 +583,29 @@ export const sidebarMenus = [
         icon: <KeyOutlined />,
         permission: "access.permissions.view",
       },
+      
+      /* =====================================================
+       USER ACCESS ASSIGNMENT 
+        ผู้ใช้งาน + Role
+      ===================================================== */
       {
-        label: "กำหนดสิทธิ์การใช้งานให้แต่ละบทบาทหน้าที่",
-        href: "/admin/role-permissions",
-        icon: <LockOutlined />,
-        permission: "access.role_permissions.view",
+        label: "กำหนดบทบาทผู้ใช้งาน",
+        href: "/admin/user-access-assignments",
+        icon: <SafetyCertificateOutlined />,
+        permission: "access.user_access_assignments.view",
       },
+
+      /* =====================================================
+        USER ACCESS SCOPES
+        ขอบเขตสังกัดที่แต่ละบทบาทเข้าถึงได้     
+      ===================================================== */
+      {
+        label: "กำหนดขอบเขตสังกัด",
+        href: "/admin/user-access-assignment-scopes",
+        icon: <PartitionOutlined />,
+        permission: "access.user_access_assignment_scopes.view",
+      },
+      
       {
         label: "Activity Logs",
         href: "/admin/activity-logs",
@@ -614,7 +646,6 @@ export const sidebarMenus = [
 ];
 
 
-
 /***
  * 
  * 
@@ -626,7 +657,7 @@ export const sidebarMenus = [
   ✅ Salary Components   รายการเงินเดือนนน   
   ✅ Tax Profiles     โปรไฟล์ภาษี เริ่ม 
   ✅ Banks      เสร็จแล้ววว 
-  ✅ Payment Methods   เริ่ม 
+  ✅ Payment Methods   เสร็จแล้ววว
 
 
   แล้วไปที่ HR Master เสร็จ แล้ว ไป Employee Master ได้เลยย
@@ -634,7 +665,7 @@ export const sidebarMenus = [
 
   /* =========================================================
    * PAYROLL SETUP
-
+    
   {
     title: "PAYROLL SETUP",
     icon: <WalletOutlined />,
@@ -718,5 +749,18 @@ export const sidebarMenus = [
     ],
   },
 
+
+
+
+
+
+// ==== อัตราภาษี /admin/tax-rates ====
+description: "ตั้งค่าโครงสร้างอัตราภาษีเงินได้บุคคลธรรมดาแบบขั้นบันได (Progressive Tax) ตามประกาศกรมสรรพากร ใช้เป็นฐานในการคำนวณภาษีหัก ณ ที่จ่ายของพนักงานทั้งหมด ควรอัปเดตทุกครั้งที่มีการเปลี่ยนแปลงอัตราภาษีจากทางราชการ"
+
+// ==== ประกันสังคม /admin/social-security ====
+description: "จัดการอัตราเงินสมทบประกันสังคมของนายจ้างและลูกจ้าง เพดานเงินเดือนที่ใช้คำนวณ และเลขที่บัญชีนายจ้างที่ขึ้นทะเบียนกับสำนักงานประกันสังคม ข้อมูลนี้จะถูกใช้คำนวณยอดหักประกันสังคมในสลิปเงินเดือนของพนักงาน"
+
+// ==== กองทุนสำรองเลี้ยงชีพ /admin/provident-funds ====
+description: "จัดการแผนกองทุนสำรองเลี้ยงชีพ (Provident Fund) รวมถึงอัตราเงินสะสมของพนักงานและเงินสมทบของบริษัท สามารถกำหนดได้หลายแผนตามกลุ่มพนักงาน และดูประวัติการนำส่งเงินเข้ากองทุนของแต่ละคนได้"
  * 
  */

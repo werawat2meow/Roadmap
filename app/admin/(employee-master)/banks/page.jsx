@@ -13,6 +13,7 @@ import BankModal from "./components/BankModal";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {swalSuccess,swalError,swalConfirm,} from "@/components/Swal";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
 
 export default function BanksPage() {
   const [form] = Form.useForm();
@@ -309,6 +310,8 @@ export default function BanksPage() {
         onRefresh={handleRefresh}
         canCreate={canCreate}
       />
+
+      <PageInfoAlert description="จัดการข้อมูลหลัก (Master Data) ของธนาคารที่ใช้ในระบบ เช่น รหัสธนาคาร, ชื่อย่อ, SWIFT Code, ชื่อธนาคารภาษาไทย/อังกฤษ รวมถึงตั้งค่ารูปแบบไฟล์นำส่งเงินเดือน (Payroll File Format), ประเภทการโอน (Transfer Type), จำนวนหลักเลขบัญชี และการรองรับฟีเจอร์ต่างๆ เช่น Bulk Transfer, PromptPay, PromptPay QR หรือการเชื่อมต่อผ่าน API สำหรับใช้อ้างอิงตอนตั้งค่าบัญชีธนาคารของพนักงาน" />
 
       <BankSearch
         search={search}

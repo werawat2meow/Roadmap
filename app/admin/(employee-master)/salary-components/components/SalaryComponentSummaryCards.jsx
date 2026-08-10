@@ -17,7 +17,7 @@ export default function SalaryComponentSummaryCards({
   summary = {},
 }) {
   return (
-    <Row gutter={16}>
+    <Row>
       <Col xs={24} md={8}>
         <Card>
           <Statistic

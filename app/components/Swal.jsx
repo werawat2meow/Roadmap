@@ -29,8 +29,8 @@ export const swalError = (title, text = "") => {
 /**
  * ⚠️ confirm ก่อนทำ action สำคัญ
  */
-export const swalConfirm = (title, text = "") => {
-  return Swal.fire({
+export const swalConfirm = async (title, text = "") => {
+ const result = await Swal.fire({
     icon: "warning",
     title,
     text,
@@ -40,4 +40,5 @@ export const swalConfirm = (title, text = "") => {
     confirmButtonText: "Confirm",
     cancelButtonText: "Cancel",
   });
+  return result.isConfirmed;
 };

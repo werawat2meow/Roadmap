@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  Card,
-  Checkbox,
-  Form,
-  Typography,
-} from "antd";
+import { useState } from "react";
 
-import {
-  Agreement,
-  AgreementSectionProps,
-} from "@/app/jobs/types/types";
+import { Card, Checkbox, Form, Input, Radio, Space, Typography, } from "antd";
+
+import { Agreement, AgreementSectionProps, } from "@/app/jobs/types/types";
 
 import { uiText } from "@/app/jobs/components/translations";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
@@ -26,6 +20,59 @@ export default function AgreementSection({
 
   const { locale } = useLanguage();
 
+  const SOCIAL_OPTIONS = [
+    {
+      value: "facebook",
+      label: getUIText(uiText.facebook, locale),
+    },
+    {
+      value: "instagram",
+      label: getUIText(uiText.instagram, locale),
+    },
+    {
+      value: "jobthai",
+      label: getUIText(uiText.jobthai, locale),
+    },
+    {
+      value: "jobbkk",
+      label: getUIText(uiText.jobbkk, locale),
+    },
+    {
+      value: "linkedin",
+      label: getUIText(uiText.linkedin, locale),
+    },
+    {
+      value: "other",
+      label: getUIText(uiText.other, locale),
+    },
+  ];
+
+  const predefinedSocials = [
+    "facebook",
+    "instagram",
+    "jobthai",
+    "jobbkk",
+    "linkedin",
+  ];
+
+  const initialSocial = predefinedSocials.includes(
+    value.from_social_media
+  )
+    ? value.from_social_media
+    : value.from_social_media
+    ? "other"
+    : "";
+
+  const initialOther =
+    predefinedSocials.includes(
+      value.from_social_media
+    )
+      ? ""
+      : value.from_social_media || "";
+
+  const [social, setSocial] = useState(initialSocial);
+  const [otherText, setOtherText] = useState(initialOther);
+
   /* -------------------------------------------------------------------------- */
   /*                                  Handlers                                  */
   /* -------------------------------------------------------------------------- */
@@ -40,6 +87,21 @@ export default function AgreementSection({
     });
   };
 
+  const updateSocial = (
+    selected: string,
+    other = otherText
+  ) => {
+    setSocial(selected);
+
+    onChange({
+      ...value,
+      from_social_media:
+        selected === "other"
+          ? other
+          : selected,
+    });
+  };
+
   /* -------------------------------------------------------------------------- */
 
   return (
@@ -51,6 +113,44 @@ export default function AgreementSection({
       }
       style={{ marginTop: 24 }}
     >
+
+      <Form.Item
+        label={
+          language === "TH"
+            ? "ทราบข่าวการเปิดรับสมัครจาก"
+            : "How did you hear about this job?"
+        }
+      >
+        <Radio.Group
+          value={social}
+          onChange={(e) => updateSocial(e.target.value) }
+        >
+          <Space orientation="vertical">
+            {SOCIAL_OPTIONS.map((item) => (
+              <Radio
+                key={item.value}
+                value={item.value}
+              >
+                {item.label}
+              </Radio>
+            ))}
+          </Space>
+        </Radio.Group>
+
+        {social === "other" && (
+          <Input
+            value={otherText}
+            onChange={(e) => {
+              const text = e.target.value;
+
+              setOtherText(text);
+
+              updateSocial("other", text);
+            }}
+          />
+        )}
+      </Form.Item>
+
       {/* ---------------------------------------------------------------------- */}
       {/* Certification                                                          */}
       {/* ---------------------------------------------------------------------- */}
@@ -70,12 +170,7 @@ export default function AgreementSection({
         <Checkbox
           name="certify"
           checked={value.certify}
-          onChange={(e) =>
-            updateField(
-              "certify",
-              e.target.checked
-            )
-          }
+          onChange={(e) => updateField( "certify", e.target.checked ) }
         >
           <Text strong>
             { getUIText(uiText.consentTerms, locale) }

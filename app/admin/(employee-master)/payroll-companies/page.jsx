@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,} from "antd";
-import {BankOutlined,DeleteOutlined,EditOutlined,PlusOutlined,ReloadOutlined,SearchOutlined,} from "@ant-design/icons";
+import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,Alert } from "antd";
+import {BankOutlined,DeleteOutlined,EditOutlined,PlusOutlined,ReloadOutlined,SearchOutlined,InfoCircleOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
@@ -460,8 +460,16 @@ export default function PayrollCompaniesPage() {
           </Space>
         </div>
       </motion.div>
-
-      <Row gutter={[16, 16]}>
+      <Alert
+        className="mt-4 rounded-2xl"
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        closable
+        title="เกี่ยวกับหน้านี้"
+        description="หน้านี้น่าจะใช้ตั้งค่าข้อมูลบริษัท (นิติบุคคล) ที่เกี่ยวกับการจ่ายเงินเดือน เช่น ถ้า Hanuman World มีหลายบริษัทในเครือ (นิติบุคคลต่างกัน) แต่ละบริษัทอาจมีนโยบายจ่ายเงิน, บัญชีธนาคารที่ใช้โอน, เลขผู้เสียภาษี ฯลฯ ต่างกัน หน้านี้จึงเป็นการ map ว่าพนักงาน/ตำแหน่งไหนสังกัดบริษัทไหนสำหรับการจ่ายเงินเดือน"
+      />    
+      <Row >
         <Col xs={24} md={8}>
           <Card>
             <div className="text-sm text-slate-500">ทั้งหมด</div>

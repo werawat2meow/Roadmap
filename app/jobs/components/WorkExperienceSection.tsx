@@ -101,6 +101,7 @@ export default function WorkExperienceSection({
   return (
     <Card
       title={getUIText(uiText.workExperienceSection, locale)}
+      style={{ marginBottom: 24 }}
     >
       <Button
         type="primary"

@@ -254,6 +254,7 @@ export default function PositionCompetencySearch({
         <Col span={24}>
           <Form.Item
             label=" "
+            colon={false}
             className="mb-0"
           >
             <div className="flex flex-wrap justify-end gap-2">

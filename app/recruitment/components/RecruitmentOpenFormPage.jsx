@@ -518,9 +518,7 @@ export default function RecruitmentOpenFormPage({
 
   if (pageLoading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
         <LoadingOrb />
-      </div>
     );
   }
 

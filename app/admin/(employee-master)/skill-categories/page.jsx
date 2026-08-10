@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, Button, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Card, Button, message, Alert , Typography } from "antd";
+import { PlusOutlined , InfoCircleOutlined } from "@ant-design/icons";
 import LoadingOrb from "../../../components/LoadingOrb";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
@@ -16,7 +16,8 @@ import {
 
 export default function SkillCategoriesPage() {
   const { user, loadingUser } = useAuth();
-   const router = useRouter();
+  const router = useRouter();
+  const { Text } = Typography;
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({
@@ -47,10 +48,10 @@ export default function SkillCategoriesPage() {
    * =========================================== */
 
   const loadData = async (
-    page = pagination.page,
-    pageSize = pagination.pageSize,
-    search = filters.search,
-    status = filters.status
+    page,
+    pageSize,
+    search,
+    status
   ) => {
     try {
       setLoading(true);
@@ -96,6 +97,31 @@ export default function SkillCategoriesPage() {
 
   useEffect(() => {
     if (loadingUser) return;
+    if (!user) return;
+    if (!canView) return;
+
+    const timer = setTimeout(() => {
+      loadData(
+        pagination.page,
+        pagination.pageSize,
+        filters.search,
+        filters.status
+      );
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    filters.search,
+    filters.status,
+    pagination.page,
+    pagination.pageSize,
+    loadingUser,
+    user,
+    canView,
+  ]);
+
+  useEffect(() => {
+    if (loadingUser) return;
 
     if (!user) {
       router.replace("/login");
@@ -105,30 +131,30 @@ export default function SkillCategoriesPage() {
     if (!canView) {
       router.replace("/admin");
     }
-    loadData();
   }, [loadingUser, user, canView, router]);
+
   /* ===========================================
    * Search
    * =========================================== */
 
   const handleSearch = ({ search, status }) => {
-    const nextFilters = {
+    setPagination((prev) => ({
+      ...prev,
+      page: 1,
+    }));
+
+    setFilters({
       search,
       status,
-    };
-
-    setFilters(nextFilters);
-
-    loadData(1, pagination.pageSize, search, status);
+    });
   };
 
   const handlePageChange = (page, pageSize) => {
-    loadData(
+    setPagination((prev) => ({
+      ...prev,
       page,
       pageSize,
-      filters.search,
-      filters.status
-    );
+    }));
   };
 
   /* ===========================================
@@ -196,6 +222,22 @@ export default function SkillCategoriesPage() {
         )
       }
     >
+      <Alert
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        closable
+        title="เกี่ยวกับ Skill Categories"
+        description={
+          <Text type="secondary">
+            Skill Categories คือหมวดหมู่ที่ใช้จัดกลุ่มทักษะ (Skills) ของพนักงาน
+            เช่น ทักษะด้านเทคนิค ทักษะด้านการบริหาร หรือทักษะด้านภาษา
+            เพื่อให้ง่ายต่อการจัดระเบียบและค้นหาทักษะเมื่อนำไปใช้ประเมินหรือกำหนดคุณสมบัติของพนักงานในแต่ละตำแหน่ง
+          </Text>
+        }
+        style={{ marginBottom: 16 }}
+      />
+
       <SkillCategorySearch
         loading={loading}
         filters={filters}

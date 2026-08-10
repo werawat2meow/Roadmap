@@ -45,7 +45,7 @@ export const uiText = {
     TH: "ประเภทงาน",
   },
 
-  workLocation: {
+  workplace: {
     EN: "Work Location",
     TH: "สถานที่ปฏิบัติงาน",
   },
@@ -569,6 +569,36 @@ export const uiText = {
     TH: "หลักฐานประกอบการสมัครงาน",
   },
 
+  facebook :{
+    EN:"Facebook",
+    TH:"Facebook",
+  },
+
+  instagram :{
+    EN:"Instagram",
+    TH:"Instagram",
+  },
+
+  jobthai :{
+    EN:"JobThai",
+    TH:"JobThai",
+  },
+
+  jobbkk :{
+    EN:"JobBKK",
+    TH:"JobBKK",
+  },
+
+  linkedin :{
+    EN:"LinkedIn",
+    TH:"LinkedIn",
+  },
+
+  other :{
+    EN:"Other",
+    TH:"อื่น ๆ",
+  },
+
   docPhoto: {
     EN: "1-inch Photograph",
     TH: "รูปถ่ายหน้าตรง 1 นิ้ว",
@@ -627,6 +657,11 @@ export const uiText = {
   save: {
     EN: "Save Application",
     TH: "บันทึกใบสมัคร",
+  },
+
+  cancel:{
+    EN:"Cancel",
+    TH:"ยกเลิก",
   },
 
   saving: {
@@ -697,7 +732,14 @@ export const uiText = {
   backToJobs:{
     EN:"Back to Job Listings",
     TH:"กลับไปที่รายการประกาศรับสมัครงาน",
-  }
+  },
+
+  btnResume:{
+    EN:"Submit your resume.",
+    TH:"ฝาก Resume",
+  },
+
+
 
 } as const;
 

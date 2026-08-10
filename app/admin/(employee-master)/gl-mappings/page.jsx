@@ -470,7 +470,7 @@ export default function GlMappingsPage() {
         </div>
       </motion.div>
 
-      <Row gutter={16}>
+      <Row>
         <Col xs={24} md={8}>
           <Card>
             <div className="text-sm text-slate-500">ทั้งหมด</div>

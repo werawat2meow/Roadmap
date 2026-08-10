@@ -69,8 +69,8 @@ export default function JobCard({ job }: Props) {
       {/* Info strip */}
       <div className="mx-6 mb-5 grid grid-cols-1 gap-3 rounded-xl bg-[#F5F3EE] px-4 py-4 text-sm ring-1 ring-[#D9D2C0] md:grid-cols-3">
         <InfoItem
-          label={getUIText(uiText.workLocation, locale)}
-          value={job.workLocation}
+          label={getUIText(uiText.workplace, locale)}
+          value={job.workplace}
           icon={
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a1 1 0 011-1h4a1 1 0 011 1v4" />
           }

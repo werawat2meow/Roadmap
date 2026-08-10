@@ -283,6 +283,7 @@ export function createAgreement(): Agreement {
   return {
     certify: false,
     pdpa: false,
+    from_social_media:"",
   };
 }
 

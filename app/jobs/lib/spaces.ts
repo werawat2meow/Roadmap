@@ -16,12 +16,11 @@ export const spacesClient = new S3Client({
   },
 });
 
-const BUCKET =
-  process.env.DO_SPACES_BUCKET!;
+const BUCKET = process.env.DO_SPACES_BUCKET!;
 
 export async function uploadFileToSpaces(
   file: File,
-  folder = "job-applications"
+  folder = "job-recruitment"
 ) {
   
   const bytes = await file.arrayBuffer();

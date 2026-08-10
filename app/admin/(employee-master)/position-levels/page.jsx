@@ -2,22 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import useAuth from "@/hooks/useAuth";
+import { Modal } from "antd";
 import { hasPermission } from "@/lib/permissions";
-
-import {
-  swalConfirm,
-  swalError,
-  swalSuccess,
-} from "../../../components/Swal";
-
+import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
 import LoadingOrb from "../../../components/LoadingOrb";
-
 import PositionLevelSearch from "./components/PositionLevelSearch";
 import PositionLevelTable from "./components/PositionLevelTable";
 import PositionLevelPagination from "./components/PositionLevelPagination";
 import PositionLevelModal from "./components/PositionLevelModal";
+
 
 const initialForm = {
   level_code: "",
@@ -226,54 +220,57 @@ export default function PositionLevelsPage() {
     }
   };
       
-  const handleDelete = async (level) => {
+  const handleDelete = (level) => {
     if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบข้อมูล");
       return;
     }
 
-    const confirmed = await swalConfirm(
-      `ต้องการลบ Position Level "${level.level_name}" ใช่หรือไม่?`
-    );
+    Modal.confirm({
+      title: "ยืนยันการลบข้อมูล",
+      content: `ต้องการลบ Position Level "${level.level_name}" ใช่หรือไม่?`,
+      okText: "ลบ",
+      okType: "danger",
+      cancelText: "ยกเลิก",
+      onOk: async () => {
+        try {
+          setDeletingId(level.id);
 
-    if (!confirmed) return;
+          const res = await fetch(
+            `/api/admin/position-levels/${level.id}`,
+            {
+              method: "DELETE",
+            }
+          );
 
-    try {
-      setDeletingId(level.id);
+          const json = await res.json();
 
-      const res = await fetch(
-        `/api/admin/position-levels/${level.id}`,
-        {
-          method: "DELETE",
+          if (!res.ok) {
+            throw new Error(
+              json.error || "Delete Failed"
+            );
+          }
+
+          swalSuccess("ลบข้อมูลเรียบร้อย");
+
+          const nextPage =
+            levels.length === 1 && page > 1
+              ? page - 1
+              : page;
+
+          await loadLevels(
+            search,
+            nextPage
+          );
+        } catch (err) {
+          console.error(err);
+
+          swalError(err.message);
+        } finally {
+          setDeletingId("");
         }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          json.error || "Delete Failed"
-        );
-      }
-
-      swalSuccess("ลบข้อมูลเรียบร้อย");
-
-      const nextPage =
-        levels.length === 1 && page > 1
-          ? page - 1
-          : page;
-
-      await loadLevels(
-        search,
-        nextPage
-      );
-    } catch (err) {
-      console.error(err);
-
-      swalError(err.message);
-    } finally {
-      setDeletingId("");
-    }
+      },
+    });
   };
 
   if (loadingUser) return <LoadingOrb />;

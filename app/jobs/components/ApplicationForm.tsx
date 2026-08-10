@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Form, message, Space } from "antd";
+import { useRouter } from "next/navigation";
 
 import { getTranslation, uiText } from "@/app/jobs/components/translations";
 import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
@@ -45,6 +46,7 @@ export default function ApplicationForm({
 }: ApplicationFormProps) {
 
   const { locale } = useLanguage();
+  const router = useRouter();
 
   /* -------------------------------------------------------------------------- */
   /*                                  Antd Form                                */
@@ -154,6 +156,10 @@ export default function ApplicationForm({
     }
   };
 
+  const handleBack = async () => {
+    router.push("/jobs");
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                                  JSX                                       */
   /* -------------------------------------------------------------------------- */
@@ -238,16 +244,25 @@ export default function ApplicationForm({
         {/* ---------------------------------------------------------------------- */}
 
         <Form.Item style={{ marginTop: 32 }}>
-            <Space style={{ width: "100%" }}>
-                <Button
-                type="primary"
-                size="large"
-                loading={saving}
-                onClick={handleSubmit}
-                >
-                {getUIText(uiText.save, locale)}
-                </Button>
-        </Space>
+          <Space style={{ width: "100%" }}>
+            <Button
+              color="danger" 
+              variant="solid"
+              size="large"
+              onClick={handleBack}
+            >
+              {getUIText(uiText.cancel, locale)}
+            </Button>
+            
+            <Button
+              type="primary"
+              size="large"
+              loading={saving}
+              onClick={handleSubmit}
+            >
+              {getUIText(uiText.save, locale)}
+            </Button>
+          </Space>
         </Form.Item>
 
     </Form>

@@ -180,6 +180,7 @@ export interface ApplicationDocument {
 export interface Agreement {
   certify: boolean;
   pdpa: boolean;
+  from_social_media: string;
 }
 
 /* -------------------------------------------------------------------------- */

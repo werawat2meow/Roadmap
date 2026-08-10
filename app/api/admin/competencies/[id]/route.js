@@ -9,30 +9,14 @@ import { writeActivityLog } from "@/lib/activityLogger";
 function mapCompetency(item) {
   return {
     id: item.id,
-
-    competency_code:
-      item.competency_code,
-
-    competency_name:
-      item.competency_name,
-
-    competency_type:
-      item.competency_type || "",
-
-    description:
-      item.description || "",
-
-    status:
-      item.status,
-
-    sort_order:
-      item.sort_order,
-
-    created_at:
-      item.created_at,
-
-    updated_at:
-      item.updated_at,
+    competency_code:item.competency_code,
+    competency_name:item.competency_name,
+    competency_type_id: item.competency_type_id,
+    description:item.description || "",
+    status:item.status,
+    sort_order:item.sort_order,
+    created_at:item.created_at,
+    updated_at:item.updated_at,
   };
 }
 
@@ -45,7 +29,7 @@ export async function PATCH(
   { params }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const body = await req.json();
 
@@ -53,24 +37,11 @@ export async function PATCH(
       body?.competency_code
         ?.trim()
         ?.toUpperCase();
-
-    const competency_name =
-      body?.competency_name?.trim();
-
-    const competency_type =
-      body?.competency_type?.trim() ||
-      null;
-
-    const description =
-      body?.description?.trim() ||
-      null;
-
-    const status =
-      body?.status || "active";
-
-    const sort_order = Number(
-      body?.sort_order || 0
-    );
+    const competency_name = body?.competency_name?.trim();
+    const competency_type_id = body?.competency_type_id || null;
+    const description = body?.description?.trim() ||null;
+    const status =body?.status || "active";
+    const sort_order = Number(body?.sort_order || 0);
 
     /* =========================
        Validate
@@ -109,7 +80,14 @@ export async function PATCH(
     const {
       data: duplicate,
     } = await supabaseAdmin
-      .from("competencies")
+      .from(` 
+        *,
+        competency_types (
+          id,
+          type_code,
+          type_name
+        )`
+      )
       .select("id")
       .or(
         `competency_code.eq.${competency_code},competency_name.eq.${competency_name}`
@@ -142,7 +120,7 @@ export async function PATCH(
       .update({
         competency_code,
         competency_name,
-        competency_type,
+        competency_type_id,
         description,
         status,
         sort_order,
@@ -187,6 +165,8 @@ export async function PATCH(
     );
   }
 }
+
+
 /* =========================
    DELETE
 ========================= */
@@ -196,7 +176,7 @@ export async function DELETE(
   { params }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     /* =========================
        Load Old Data

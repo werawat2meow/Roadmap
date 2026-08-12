@@ -131,8 +131,8 @@ export function createPersonalInformation(): PersonalInformationData {
     gender: "male",
     pregnancyAge: "",
     militaryStatus: "",
-    height: "",
-    weight: "",
+    height: null,
+    weight: null,
     nationality: "",
     religion: "",
     idCardNo: "",
@@ -196,7 +196,7 @@ export function createWorkRow(): WorkExperience {
     period: "",
     companyName: "",
     position: "",
-    latestSalary: "",
+    latestSalary: null,
     reasonForLeaving: "",
   };
 }

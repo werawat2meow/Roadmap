@@ -6,6 +6,9 @@ import Link from "next/link";
 import { Table, Tag, Button, Space, Select, Typography } from "antd";
 import DeleteModal from "@/app/recruitment/components/DeleteModal";
 
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
+
 const pageSizeOptions = [10, 20, 50, 100];
 const { Text } = Typography;
 
@@ -23,6 +26,11 @@ export default function JobDescriptionPage({ initialData }) {
 
   const [positions, setPositions] = useState([]);
   const [positionId, setPositionId] = useState();
+
+  const { isChecking, canView, canCreate, canEdit, canDelete } = usePageGuard({
+    module: "recruitment.job.description",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   // ดึงข้อมูล position สำหรับ filter (โหลดครั้งเดียว)
   useEffect(() => {
@@ -183,17 +191,21 @@ export default function JobDescriptionPage({ initialData }) {
       width: 220,
       render: (_, row) => (
         <Space>
-          <Link href={`/recruitment/setting/job_description/${row.id}/edit`}>
-            <Button type="primary">แก้ไขข้อมูล</Button>
-          </Link>
-
-          <Button danger onClick={() => handleDelete(row)}>
-            ลบ
-          </Button>
+          { canEdit && (
+            <Link href={`/recruitment/setting/job_description/${row.id}/edit`}>
+              <Button type="primary">แก้ไขข้อมูล</Button>
+            </Link>
+          )}
+          { canDelete && (
+            <Button danger onClick={() => handleDelete(row)}> ลบ </Button>
+          )}
         </Space>
       ),
     },
   ];
+
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
 
   return (
     <div className="h-full w-full">
@@ -203,17 +215,19 @@ export default function JobDescriptionPage({ initialData }) {
             <h1 className="text-2xl font-bold text-slate-800"> Job Description </h1>
             <p className="mt-2 text-slate-500"> หน้าจัดการ Job Description </p>
           </div>
-          <div className="justify-self-center md:justify-self-end">
-            <button
-              type="button"
-              onClick={() => router.push("/recruitment/setting/job_description/create")}
-              className="rounded-lg px-4 py-2 text-white font-medium shadow-sm transition-colors cursor-pointer"
-              style={{ backgroundColor: "green" }}
-            >
-              <span>+</span>
-              <span>เพิ่มรายการ Job Description</span>
-            </button>
-          </div>
+          { canCreate && (
+            <div className="justify-self-center md:justify-self-end">
+              <button
+                type="button"
+                onClick={() => router.push("/recruitment/setting/job_description/create")}
+                className="rounded-lg px-4 py-2 text-white font-medium shadow-sm transition-colors cursor-pointer"
+                style={{ backgroundColor: "green" }}
+              >
+                <span>+</span>
+                <span>เพิ่มรายการ Job Description</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

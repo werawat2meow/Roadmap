@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         { success: false, message: "Missing application payload." },
         { status: 400 }
       );
-    }   
+    }
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       from_social_media: agreement.from_social_media ?? null,
       updated_at: new Date().toISOString(),
       status: 1,
-    };   
+    };
     
     const {
       data: application,
@@ -311,7 +311,6 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: "Application submitted successfully.",
-        applicationId,
       },
       { status: 201 }
     );

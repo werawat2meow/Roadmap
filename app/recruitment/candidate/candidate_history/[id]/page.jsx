@@ -20,6 +20,8 @@ const { Title, Text } = Typography;
 
 export default function CandidateHistoryPage({ params }) {
 
+  const user = JSON.parse(localStorage.getItem("employee_user") || "{}");
+
   const { isChecking, canView, canEdit } = usePageGuard({
     module: "recruitment.candidate.history",
     unauthorizedRedirect: "/recruitment",

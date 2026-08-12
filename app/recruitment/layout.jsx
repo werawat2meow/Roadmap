@@ -1,5 +1,4 @@
-import { App, ConfigProvider } from "antd";
-import RecruitmentClientLayout from "@/app/recruitment/components/RecruitmentClientLayout";
+import RecruitmentClientLayout from "@/app/recruitment/RecruitmentClientLayout";
 import "./recruitment.css";
 
 export const metadata = {
@@ -10,11 +9,9 @@ export const metadata = {
 export default function RecruitmentLayout({ children }) {
   return (
     <RecruitmentClientLayout>
-      <ConfigProvider>
-        <App>
-          {children}
-        </App>
-      </ConfigProvider>
+      <div className="p-4">
+        {children}
+      </div>
     </RecruitmentClientLayout>
   );
 }

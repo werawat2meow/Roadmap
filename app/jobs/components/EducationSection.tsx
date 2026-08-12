@@ -11,7 +11,7 @@ import {
 import { createEducationRow } from "@/app/jobs/types/utils";
 
 import { uiText } from "@/app/jobs/components/translations";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getUIText } from "@/app/jobs/lib/ui";
 
 const { Title } = Typography;

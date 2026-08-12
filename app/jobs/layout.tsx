@@ -1,7 +1,7 @@
 
 import type { ReactNode } from "react";
 import LanguageHeader from "@/app/jobs/components/LanguageHeader";
-import { LanguageProvider } from "@/app/jobs/contexts/LanguageContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { BranchProvider } from "@/app/jobs/contexts/BranchContext";
 import "./job.css";
 

@@ -16,7 +16,7 @@ import {
 import ApplicationForm from "@/app/jobs/components/ApplicationForm";
 
 import { supabase } from "@/lib/supabaseClient";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/app/jobs/components/translations";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
@@ -30,7 +30,7 @@ const { Title, Text } = Typography;
 
 export interface PositionInfo {
   jobId: string;
-  positionId: string;
+  positionId: string | number;
   positionName: string;
   department?: string;
   companyName?: string;
@@ -185,7 +185,7 @@ export default function RegisterPage() {
 
       message.success( getUIText(uiText.saveSuccess, locale) );
 
-      // router.push("/jobs/register/thankyou");
+      router.push("/jobs/register/thankyou");
     } catch (err: any) {
       console.error(err);
 

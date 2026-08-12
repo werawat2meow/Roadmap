@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, Divider, Skeleton, Alert } from "antd";
 import { useParams } from "next/navigation";
 import { getText } from "@/app/jobs/lib/i18n";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 import { useRouter } from "next/navigation";

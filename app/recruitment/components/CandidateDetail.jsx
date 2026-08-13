@@ -739,6 +739,25 @@ export default function CandidateDetail({
           ]}
         />
       </Card>
+
+      <Card title="Presentation">
+        <div style={{ marginTop: 8 }}>
+          Presentation URL :{" "}
+
+          {application.self_presentation_url ? (
+            <Button
+              type="primary"
+              href={application.self_presentation_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              เปิด Presentation
+            </Button>
+          ) : (
+            <strong>-</strong>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

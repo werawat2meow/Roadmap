@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { FileText, Download, User, Briefcase, AlertCircle } from "lucide-react";
+import { Button, } from "antd";
 
 // ---------- Types ----------
 
@@ -19,6 +20,7 @@ interface Applicant {
   first_name: string;
   last_name: string;
   positions: { position_name: string; };
+  self_presentation_url: string;
 }
 
 interface JobDocument {
@@ -65,6 +67,8 @@ export default function ApplicantDetailPage() {
         if (!res.ok) { throw new Error("โหลดข้อมูลไม่สำเร็จ"); }
 
         const json: ApplicantResponse = await res.json();
+
+        console.log(json);        
         
         if (!cancelled) setData(json);
         
@@ -154,6 +158,30 @@ export default function ApplicantDetailPage() {
                 </ul>
               )}
             </div>
+            { data.applicant.self_presentation_url && (
+              <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div>
+                  <ul className="divide-y divide-slate-100">
+                    <li className="flex items-center justify-between px-5 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                        <span className="truncate text-sm text-slate-700">
+                          {"Presentation"}
+                        </span>
+                      </div>
+                      <Button
+                        className="ml-4 flex flex-shrink-0 items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                        href={data.applicant.self_presentation_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        เปิด Presentation
+                      </Button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

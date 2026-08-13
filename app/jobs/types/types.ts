@@ -190,6 +190,7 @@ export interface Agreement {
 export interface JobApplicationPayload {
   jobId: string;
   positionId: string | number;
+  self_presentation_url?: string;
   personal: PersonalInformationData;
   education: EducationHistory[];
   workExperience: WorkExperience[];

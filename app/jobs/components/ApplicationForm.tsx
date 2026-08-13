@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Form, message, Space } from "antd";
+import { Button, Form, message, Space, Col, Input, Card } from "antd";
 import { useRouter } from "next/navigation";
 
 import { getTranslation, uiText } from "@/app/jobs/components/translations";
@@ -50,6 +50,7 @@ export default function ApplicationForm({
   const { locale } = useLanguage();
   const router = useRouter();
 
+  const [selfPresentationUrl, setSelfPresentationUrl] = useState<string>("");
   /* -------------------------------------------------------------------------- */
   /*                                  Antd Form                                */
   /* -------------------------------------------------------------------------- */
@@ -117,6 +118,7 @@ export default function ApplicationForm({
     const payload: JobApplicationPayload = {
       jobId: position.jobId,
       positionId: position.positionId,
+      self_presentation_url: selfPresentationUrl || undefined,
       personal,
       education,
       workExperience,
@@ -243,6 +245,45 @@ export default function ApplicationForm({
             value={documents}
             onChange={setDocuments}
         />
+
+        <Card
+          style={{ marginTop: 24 }}
+          title={language === "TH"
+                    ? "URL สำหรับพรีเซ้นตัวเอง"
+                    : "Self Presentation URL"}
+        >
+          <Col xs={24}>
+            <Form.Item
+              name="self_presentation_url"
+              label={
+                language === "TH"
+                  ? "URL สำหรับพรีเซ้นตัวเอง"
+                  : "Self Presentation URL"
+              }
+              rules={[
+                {
+                  type: "url",
+                  message:
+                    language === "TH"
+                      ? "กรุณากรอก URL ให้ถูกต้อง"
+                      : "Please enter a valid URL.",
+                },
+              ]}
+            >
+              <Input
+                value={selfPresentationUrl}
+                onChange={(e) => setSelfPresentationUrl(e.target.value)}
+                placeholder={
+                  language === "TH"
+                    ? "เช่น https://www.linkedin.com/in/yourname"
+                    : "Example: https://www.linkedin.com/in/yourname"
+                }
+                maxLength={500}
+                allowClear
+              />
+            </Form.Item>
+          </Col>
+        </Card>
 
         {/* ---------------------------------------------------------------------- */}
         {/* Agreement / PDPA                                                       */}

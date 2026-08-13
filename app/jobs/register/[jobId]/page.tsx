@@ -322,6 +322,7 @@ export default function RegisterPage() {
             position={position}
             onSubmit={handleSubmit}
           />
+          
         </Flex>
       </div>
     </>

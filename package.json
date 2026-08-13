@@ -22,6 +22,8 @@
     "antd": "^6.3.5",
     "bcryptjs": "^3.0.3",
     "d3-org-chart": "^3.1.1",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.42.2",
     "geothai": "^3.0.1",
     "html-to-image": "^1.11.13",

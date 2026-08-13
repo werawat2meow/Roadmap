@@ -161,9 +161,9 @@ export default function ReportPreviewModal({
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.print()}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
+              className="px-5 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-sm font-bold rounded-xl shadow-md shadow-red-100 hover:shadow-lg transition-all duration-200 active:scale-95 flex items-center gap-2 cursor-pointer"
             >
-              <Printer className="w-4 h-4" /> พิมพ์รายงาน / Save PDF
+              <Printer className="w-4 h-4" /> Print PDF
             </button>
             <button
               onClick={onClose}

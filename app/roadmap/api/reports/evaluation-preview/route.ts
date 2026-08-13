@@ -12,6 +12,28 @@ const formatDate = (value: string | null | undefined) => {
   });
 };
 
+const formatEmployeeAge = (hireDate?: string | null) => {
+  if (!hireDate) return "";
+  const start = new Date(hireDate);
+  const now = new Date();
+
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  let days = now.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  return `${years} ปี ${months} เดือน ${days} วัน`;
+};
+
 const calculateGrade = (totalScore: number | null, maxScore: number | null) => {
   const percent =
     maxScore && maxScore > 0
@@ -67,6 +89,7 @@ export async function GET(req: Request) {
     employee_id,
     status,
     created_at,
+    evaluation_type_id,
     totalScore,
     companyScore,
     departmentScore,
@@ -98,6 +121,22 @@ export async function GET(req: Request) {
       },
       { status: 500 },
     );
+  }
+
+  const { data: roundRows, error: roundError } = await supabaseAdmin
+    .from("rm_evaluations")
+    .select("id")
+    .eq("employee_id", evaluation.employee_id)
+    .eq("evaluation_type_id", evaluation.evaluation_type_id)
+    .lte("created_at", evaluation.created_at);
+
+  const evaluationRound =
+    Array.isArray(roundRows) && roundRows.length > 0
+      ? roundRows.length
+      : 1;
+
+  if (roundError) {
+    console.error("Failed to count evaluation round", roundError);
   }
 
   const { data: employee, error: employeeError } = await supabaseAdmin
@@ -262,6 +301,7 @@ export async function GET(req: Request) {
     level,
     department: emp.departments?.department_name || "",
     division: emp.divisions?.division_name || "",
+    employeeAge: formatEmployeeAge(employee.hire_date),
     unit: emp.units?.unit_name || "",
     company: emp.branches?.branch_name || "",
     startDate: formatDate(employee.hire_date),
@@ -293,6 +333,7 @@ export async function GET(req: Request) {
     currentSalary: evaluation.currentSalary ?? "",
     newSalary: evaluation.newSalary ?? "",
     managerComment: evaluation.managerComment || "",
+    evaluationRound,
     submittedMonth: formatMonthYear(evaluation.created_at),
   };
   return NextResponse.json({ success: true, data: payload });

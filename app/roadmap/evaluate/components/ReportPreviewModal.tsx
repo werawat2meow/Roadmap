@@ -1,9 +1,12 @@
+import { Printer, X, ClipboardCheck } from "lucide-react";
+
 interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  data: any; // รับข้อมูลจริงจากแบบฟอร์มหลักมาแสดงผล
+  data: any;
 }
 
+// ใช้สี Gradient ตามที่คุณส่งมาต้นฉบับ
 const labelStyles: Record<string, string> = {
   Probation:
     "text-white bg-gradient-to-r from-sky-400 to-blue-700 shadow-sm font-bold",
@@ -22,13 +25,6 @@ export default function ReportPreviewModal({
 }: PreviewModalProps) {
   if (!isOpen) return null;
 
-  console.log("preview data", data);
-
-  const splitRange = (value?: string) => {
-    const [start = "", end = ""] = (value || "").split(" - ");
-    return { start, end };
-  };
-
   const formatRange = (value?: string) => {
     const [start = "", end = ""] = (value || "").split(" - ");
     return [start, end].filter(Boolean).join(" - ") || "-";
@@ -37,500 +33,827 @@ export default function ReportPreviewModal({
   const sumWeights = (items?: any[]) =>
     (items ?? []).reduce((sum, item) => sum + Number(item.weight || 0), 0);
 
-  const evaluationPeriod = splitRange(data?.evaluationPeriod);
-  const evaluationPeriodContinued = splitRange(data?.evaluationPeriodContinued);
-
-  // คอมโพเนนต์ย่อยสำหรับแสดงข้อมูลพนักงานส่วนหัว (แชร์ร่วมกันทั้งหน้า 1 และ 2)
+  const evaluationRound = data?.evaluationRound ?? "-";
+  const disciplineData = data?.disciplineData;
+  const totalDisciplineScore = (disciplineData?.disciplineItems ?? []).reduce(
+    (sum, item) =>
+      sum + Number(item.count || 0) * Number(item.penaltyScore || 0),
+    0,
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      {/* กล่อง Pop-up ใหญ่คลุมห้อง Preview */}
-      <div className="bg-slate-100 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200">
-        {/* แถบเมนูด้านบน */}
-        <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200 rounded-t-2xl">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <h3 className="font-bold text-slate-800 text-base">
-              รายงานจำลองก่อนพิมพ์ (Report Preview)
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto print:p-0 print:bg-white print:block">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+@media print {
+  /* 1. ล้างสไตล์พื้นฐาน เงา ขอบมน */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  nav, aside, footer, .no-print, button {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area, .print-area * {
+    visibility: visible !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0; 
+  }
+
+  /* 2. จัดการ Container ให้ราบไปกับหน้ากระดาษ */
+  .fixed.inset-0 {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .bg-slate-100.rounded-2xl, 
+  .flex-1.overflow-y-auto {
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+    overflow: visible !important;
+    background: white !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 3. ตั้งค่า Print Area และแก้ปัญหา "ช่องว่างไม่เท่ากัน" */
+  .print-area {
+    width: 100% !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 8mm !important; /* ระยะขอบกระดาษขาว */
+    page-break-after: always !important;
+    box-sizing: border-box !important;
+    display: block !important; /* เปลี่ยนจาก flex เป็น block เพื่อให้คุม Margin ง่ายขึ้น */
+    background: white !important;
+  }
+
+  .print-area:last-child {
+    page-break-after: auto !important;
+  }
+
+  /* 4. จุดตาย: บังคับระยะห่างระหว่าง Section ให้เท่ากันทั้งหมด (แก้ปัญหาเว้นห่างเกิน) */
+  /* บังคับให้ Margin ล่างของทุกส่วนในหน้า 2 เท่ากับ 15px */
+  .print-area section, 
+  .print-area .border, 
+  .print-area .grid, 
+  .print-area > div {
+    margin-bottom: 12px !important; 
+    margin-top: 0 !important;
+  }
+
+  /* ปิด mt-auto ที่ทำให้ลายเซ็นกระโดดไปล่างสุด */
+  .print-area .mt-auto {
+    margin-top: 20px !important; 
+  }
+
+  /* ปรับแต่งช่องลายเซ็นให้เล็กลงตอนปริ้น */
+  .print-area .h-16 {
+    height: 40px !important;
+  }
+
+  /* ป้องกันไม่ให้ตารางโดนตัดแบ่งครึ่งหน้า (ถ้าเป็นไปได้) */
+  table, section {
+    page-break-inside: avoid !important;
+  }
+}
+    `,
+        }}
+      />
+
+      <div className="bg-slate-100 rounded-2xl w-full max-w-5xl h-full max-h-[95vh] flex flex-col shadow-2xl">
+        {/* Toolbar */}
+        <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200 rounded-t-2xl no-print">
+          <div className="flex items-center gap-3">
+            <ClipboardCheck className="w-6 h-6 text-indigo-600" />
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg">
+                Report Preview
+              </h3>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                Preview ก่อนพิมพ์รายงานจริง
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.print()}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition-colors"
+              className="px-5 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-sm font-bold rounded-xl shadow-md shadow-red-100 hover:shadow-lg transition-all duration-200 active:scale-95 flex items-center gap-2 cursor-pointer"
             >
-              Print / Save PDF
+              <Printer className="w-4 h-4" /> Print PDF
             </button>
             <button
               onClick={onClose}
-              className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
-              ปิดหน้าต่าง
+              <X className="w-6 h-6 text-slate-400" />
             </button>
           </div>
         </div>
 
-        {/* พื้นที่แสดงแผ่นเอกสารจำลองกระดาษ A4 */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-500/20 shadow-inner">
-          {/* ==================== แผ่นกระดาษหน้าที่ 1 ==================== */}
-          <div className="bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 shadow-md border border-slate-300/60 space-y-5 print:shadow-none print:border-none">
-            {/* 🌟 จุดที่แก้ไข: วางแผงข้อมูลพนักงานของหน้าที่ 1 แทนที่ <EmployeeHeader /> เดิม */}
-            <div className="border border-slate-400 text-xs p-3 space-y-2 bg-white text-slate-800">
-              <div className="flex justify-between items-center border-b border-slate-300 pb-1.5 mb-1.5">
-                <span className="font-bold text-sm tracking-wide">
-                  แบบประเมิน ROAD MAP (หน้าที่ 1)
-                </span>
-                <div className="flex gap-4 font-medium text-[11px]">
-                  <span>
-                    การประเมินครั้งที่: <span className="underline">1</span>
+        {/* Paper Space */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-500/20 space-y-10 custom-scrollbar">
+          {/* ==================== หน้าที่ 1 ==================== */}
+          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-800">
+            <header className="flex justify-between items-end border-b-2 border-slate-900 pb-3 mb-4">
+              <h1 className="text-xl font-black text-slate-900">
+                แบบประเมิน ROAD MAP (หน้าที่ 1)
+              </h1>
+              <div className="text-right flex items-center gap-4 text-[11px] font-bold">
+                <p>
+                  การประเมินครั้งที่:{" "}
+                  <span className="underline">{evaluationRound}</span>
+                </p>
+                <p>
+                  ประจำเดือน:{" "}
+                  <span className="underline">
+                    {data?.submittedMonth || "-"}
                   </span>
-                  <span>
-                    ประจำเดือน:{" "}
-                    <span className="underline">
-                      {data?.submittedMonth || "-"}
-                    </span>
-                  </span>
-                </div>
+                </p>
               </div>
-              <div className="grid grid-cols-4 gap-x-4 gap-y-1.5">
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    รหัสพนักงาน:
-                  </span>{" "}
-                  {data?.employeeCode || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Name:</span>{" "}
-                  {data?.employeeName || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Type:</span>{" "}
+            </header>
+
+            {/* ส่วนหัวข้อมูลพนักงาน (กลับมาครบทุกฟิลด์ 100%) */}
+            <div className="border border-slate-400 p-3 bg-white mb-4">
+              <div className="grid grid-cols-4 gap-y-2 gap-x-6 text-[10px]">
+                <InfoCell label="รหัสพนักงาน" value={data?.employeeCode} />
+                <InfoCell label="Name" value={data?.employeeName} />
+                <div className="flex flex-col">
+                  <span className="font-semibold text-slate-500 mb-0.5">
+                    Type:
+                  </span>
                   <span
-                    className={`inline-flex rounded-full px-2 py-1 text-[11px] uppercase tracking-[0.14em] ${labelStyles[data?.evaluationType || "Probation"] || "bg-slate-100 text-slate-700"}`}
+                    className={`inline-flex self-start rounded-full px-2.5 py-0.5 text-[9px] uppercase tracking-wider ${labelStyles[data?.evaluationType || "Probation"] || "bg-slate-100 text-slate-700"}`}
                   >
                     {data?.evaluationType || "-"}
                   </span>
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Nickname:
-                  </span>{" "}
-                  {data?.nickname || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Position:
-                  </span>{" "}
-                  {data?.position || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Department:
-                  </span>{" "}
-                  {data?.department || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Division:
-                  </span>{" "}
-                  {data?.division || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Level:</span>{" "}
-                  {data?.level || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Start Date:
-                  </span>{" "}
-                  {data?.startDate || "-"}
-                </div>
+                <InfoCell label="Nickname" value={data?.nickname} />
+                <InfoCell label="Position" value={data?.position} />
+                <InfoCell label="Company / สังกัด" value={data?.company} />
+                <InfoCell label="Department" value={data?.department} />
+                <InfoCell label="Division" value={data?.division} />
+                <InfoCell label="Unit" value={data?.unit} />
+                <InfoCell label="Level" value={data?.level} />
+                <InfoCell label="Start Date" value={data?.startDate} />
+                <InfoCell label="Employee age" value={data?.employeeAge} />
               </div>
             </div>
 
-            <div className="bg-white border border-slate-300 text-[11px] mt-4 grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto_1fr] items-center">
-              {/* แถวที่ 1 - 3 รายการแรก (ทำให้จบใน 8 คอลัมน์) */}
-              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
-                ระยะเวลาในการประเมินปกติ:
-              </div>
-              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
-                {formatRange(data?.evaluationPeriod)}
-              </div>
-              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
-                ตำแหน่งใหม่:
-              </div>
-              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
-                {data?.newDesignation || "ไม่ปรับ"}
-              </div>
-              <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
-                ระดับใหม่:
-              </div>
-              <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap">
-                {data?.newLevel || "ไม่ปรับ"}
-              </div>
-              {/* ช่องว่างเติมเต็มเพื่อให้เส้นขอบตรงกัน */}
+            {/* ตารางข้อมูลการประเมินเบื้องต้น (ครบถ้วน) */}
+            <div className="bg-white border border-slate-300 text-[10px] mb-6 grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto_1fr] items-center rounded overflow-hidden">
+              <GridCell
+                label="ระยะเวลาในการประเมินปกติ"
+                value={formatRange(data?.evaluationPeriod)}
+              />
+              <GridCell
+                label="ตำแหน่งใหม่"
+                value={data?.newDesignation || "ไม่ปรับ"}
+              />
+              <GridCell label="ระดับใหม่" value={data?.newLevel || "ไม่ปรับ"} />
               <div className="h-full border-b border-slate-300 bg-slate-50/50"></div>
               <div className="h-full border-b border-slate-300"></div>
 
-              {/* แถวที่ 2 - 4 รายการหลัง */}
-              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
-                ระยะเวลาในการประเมิน (ต่อ):
-              </div>
-              <div className="p-2 text-slate-600 whitespace-nowrap">
-                {formatRange(data?.evaluationPeriodContinued) || "-"}
-              </div>
-              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
-                ฐานเงินเดือนใหม่:
-              </div>
-              <div className="p-2 text-slate-600 whitespace-nowrap">
-                {data?.newSalary || "-"}
-              </div>
-              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
-                ตำแหน่ง:
-              </div>
-              <div className="p-2 text-slate-600 whitespace-nowrap">
-                {data?.position || "Staff"}
-              </div>
-              <div className="p-2 font-bold text-slate-700 bg-slate-50/50 whitespace-nowrap">
-                ค่าตอบแทนพิเศษ:
-              </div>
-              <div className="p-2 text-slate-600 whitespace-nowrap">
-                {data?.specialCompensation ?? 0}
-              </div>
+              <GridCell
+                label="ระยะเวลาในการประเมิน (ต่อ)"
+                value={formatRange(data?.evaluationPeriodContinued)}
+              />
+              <GridCell label="ฐานเงินเดือนใหม่" value={data?.newSalary} />
+              <GridCell label="ตำแหน่ง" value={data?.position || "Staff"} />
+              <GridCell
+                label="ค่าตอบแทนพิเศษ"
+                value={data?.specialCompensation ?? 0}
+              />
             </div>
 
-            {/* ตารางส่วนที่ 1: Company Common Ground */}
-            <div className="border border-slate-400 text-xs">
-              <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-900 text-white font-bold p-2 text-center border-b border-slate-400">
-                <div className="text-left">หัวข้อการประเมิน</div>
-                <div>น้ำหนัก</div>
-                <div>ผลการประเมิน</div>
-                <div>หมายเหตุ</div>
-              </div>
-              <div className="p-2 bg-slate-100 font-bold border-b border-slate-400 text-slate-700">
-                Company Common Ground
-              </div>
-              {data?.companyItems?.map((item: any, idx: number) => (
-                <div
-                  key={item.id || `company-${idx}`}
-                  className="grid grid-cols-[1fr_80px_100px_150px] p-2 border-b border-slate-300 text-center items-center text-slate-600"
-                >
-                  <div className="text-left font-medium">{item.topic}</div>
-                  <div>{item.weight}</div>
-                  <div className="font-semibold text-slate-800">
-                    {item.score}
-                  </div>
-                  <div>{item.remark || ""}</div>
-                </div>
-              ))}
-              <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
-                <div className="text-left">รวมคะแนน</div>
-                <div>{sumWeights(data?.companyItems)}</div>
-                <div className="text-blue-600 text-sm">
-                  {data?.companyScore}
-                </div>
-              </div>
+            {/* ตารางประเมินผลงาน 3 ส่วน */}
+            <div className="space-y-4 flex-1">
+              <EvaluationTable
+                title="Company Common Ground"
+                items={data?.companyItems}
+                total={data?.companyScore}
+              />
+              <EvaluationTable
+                title="Department Common Ground"
+                items={data?.departmentItems}
+                total={data?.departmentScore}
+              />
+              <EvaluationTable
+                title="Expectation"
+                items={data?.expectationItems}
+                total={data?.expectationScore}
+                isEmerald
+              />
             </div>
 
-            {/* ตารางส่วนที่ 2: Department Common Ground */}
-            <div className="border border-slate-400 text-xs mt-4">
-              <div className="p-2 bg-slate-100 font-bold border-b border-slate-400 text-slate-700">
-                Department Common Ground
-              </div>
-              {data?.departmentItems?.map((item: any, idx: number) => (
-                <div
-                  key={item.id || `department-${idx}`}
-                  className="grid grid-cols-[1fr_80px_100px_150px] p-2 border-b border-slate-300 text-center items-center text-slate-600"
-                >
-                  <div className="text-left font-medium">{item.topic}</div>
-                  <div>{item.weight}</div>
-                  <div className="font-semibold text-slate-800">
-                    {item.score}
+            {/* การ์ดสรุปคะแนน (UI สีน้ำเงินตามรูปต้นฉบับ) */}
+            <div className="grid grid-cols-2 gap-3 mt-4 print:mt-2">
+              {/* การ์ดฝั่งซ้าย: สรุปคะแนน */}
+              <div className="rounded-lg border border-blue-200 bg-white overflow-hidden shadow-sm h-fit">
+                <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide">
+                  สรุปคะแนน
+                </div>
+                <div className="p-2 space-y-1 text-[10px] text-slate-600">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-0.5">
+                    <span>คะแนนประเมินผลงาน</span>
+                    <span className="font-bold text-blue-700">
+                      {data?.totalScore ?? 0}
+                    </span>
                   </div>
-                  <div>{item.remark || ""}</div>
-                </div>
-              ))}
-              <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
-                <div className="text-left">รวมคะแนน</div>
-                <div>{sumWeights(data?.departmentItems)}</div>
-                <div className="text-blue-600 text-sm">
-                  {data?.departmentScore}
-                </div>
-                <div></div>
-              </div>
-            </div>
-            {/* ตารางส่วนที่ 3: Expectation */}
-            <div className="border border-slate-400 text-xs mt-4">
-              <div className="p-2 bg-emerald-700 text-white font-bold border-b border-slate-400 text-center">
-                Expectation
-              </div>
-              {data?.expectationItems?.map((item: any, idx: number) => (
-                <div
-                  key={item.id || `expectation-${idx}`}
-                  className="grid grid-cols-[1fr_80px_100px_150px] p-2 border-b border-slate-300 text-center items-center text-slate-600"
-                >
-                  <div className="text-left font-medium">{item.topic}</div>
-                  <div>{item.weight}</div>
-                  <div className="font-semibold text-slate-800">
-                    {item.score}
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-0.5">
+                    <span>คะแนนเต็ม</span>
+                    <span className="font-bold text-slate-800">
+                      {data?.maxScore ?? 0}
+                    </span>
                   </div>
-                  <div>{item.remark || ""}</div>
-                </div>
-              ))}
-              <div className="grid grid-cols-[1fr_80px_100px_150px] bg-slate-50 font-bold p-2 text-center border-t border-slate-400 text-slate-800">
-                <div className="text-left">รวมคะแนน</div>
-                <div>{sumWeights(data?.expectationItems)}</div>
-                <div className="text-blue-600 text-sm">
-                  {data?.expectationScore}
-                </div>
-                <div></div>
-              </div>
-            </div>
-            <div className="text-xs mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-blue-200 bg-white p-4">
-                  <div className="bg-blue-600 px-3 py-2 text-white font-semibold text-sm">
-                    สรุปคะแนน
-                  </div>
-                  <div className="space-y-2 p-3 text-sm text-slate-600">
-                    <div className="flex justify-between">
-                      <span>คะแนนประเมินผลงาน</span>
-                      <span className="font-semibold text-blue-600">
-                        {data?.totalScore ?? 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>คะแนนเต็ม</span>
-                      <span className="font-semibold text-blue-600">
-                        {data?.maxScore ?? 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>คิดเป็นเปอร์เซ็นต์</span>
-                      <span className="font-semibold text-blue-600">
-                        {data?.maxScore
-                          ? `${Math.round(
-                              (Number(data?.totalScore ?? 0) /
-                                Number(data?.maxScore ?? 1)) *
-                                100,
-                            )}%`
-                          : "0%"}
-                      </span>
-                    </div>
+                  <div className="flex justify-between items-center pt-0.5">
+                    <span className="font-bold text-slate-800 uppercase text-[9px]">
+                      คิดเป็นเปอร์เซ็นต์
+                    </span>
+                    <span className="font-black text-blue-700 leading-none">
+                      {data?.maxScore
+                        ? Math.round(
+                            (Number(data?.totalScore) /
+                              Number(data?.maxScore)) *
+                              100,
+                          )
+                        : 0}
+                      %
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-xl border border-blue-200 bg-white p-4">
-                  <div className="bg-blue-600 px-3 py-2 text-white font-semibold text-sm">
-                    ความคาดหวัง
-                  </div>
-                  <div className="divide-y divide-slate-100 text-sm">
-                    {[
-                      ["Probation", "B : 75 - 84 (ดี)", "text-blue-600"],
-                      [
-                        "Performance",
-                        "A : 85 - 100 (ดีมาก)",
-                        "text-emerald-600",
-                      ],
-                      ["Promotion", "B : 75 - 84 (ดี)", "text-blue-600"],
-                      ["Progression", "B : 75 - 84 (ดี)", "text-blue-600"],
-                    ].map(([label, value, color]) => (
-                      <div
-                        key={label}
-                        className="flex justify-between px-3 py-2"
-                      >
-                        <span className="font-medium text-slate-700">
-                          {label}
-                        </span>
-                        <span className={`font-semibold ${color}`}>
-                          {value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {/* การ์ดฝั่งขวา: ความคาดหวัง (บีบแถวให้เตี้ยลง) */}
+              <div className="rounded-lg border border-blue-200 bg-white overflow-hidden shadow-sm h-fit">
+                <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide text-center">
+                  เกณฑ์ความคาดหวัง
+                </div>
+                <div className="p-1 px-1.5 space-y-0">
+                  {/* ใช้ MiniGradeRow แต่ลดขนาดและระยะห่าง */}
+                  <MiniGradeRow
+                    label="Probation"
+                    value="B : 75-84 (ดี)"
+                    color="text-blue-600"
+                  />
+                  <MiniGradeRow
+                    label="Performance"
+                    value="A : 85-100 (ดีมาก)"
+                    color="text-emerald-600"
+                  />
+                  <MiniGradeRow
+                    label="Promotion"
+                    value="A : 75-84 (ดี)"
+                    color="text-blue-600"
+                  />
+                  <MiniGradeRow
+                    label="Progression"
+                    value="A : 75-84 (ดี)"
+                    color="text-blue-600"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* ข้อคิดเห็นจากผู้ประเมิน */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm mt-4">
-              <div className="font-semibold text-slate-800 mb-3">
-                ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน
-              </div>
-
-              <div className="min-h-[140px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-800">
+            {/* ข้อคิดเห็น */}
+            <div className="mt-5 border border-slate-300 rounded-xl p-3 bg-slate-50/20">
+              <p className="text-[10px] font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1">
+                ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน:
+              </p>
+              <div className="min-h-[50px] text-[11px] text-slate-600 leading-relaxed italic">
                 {data?.summaryData?.additionalComment ||
                   data?.managerComment ||
                   "-"}
               </div>
             </div>
 
-            {/* เซ็นชื่อผู้ประเมินและพนักงานรับทราบ */}
-            <div className="grid gap-4 md:grid-cols-2 mt-4">
-              {[
-                {
-                  title: "ลงชื่อผู้ประเมิน",
-                  value: data?.summaryData?.evaluatorSignature || "",
-                  date: data?.summaryData?.evaluatorSignDate || "",
-                },
-                {
-                  title: "พนักงานรับทราบ",
-                  value: data?.summaryData?.employeeSignature || "",
-                  date: data?.summaryData?.employeeSignDate || "",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm"
-                >
-                  <div className="text-sm font-semibold text-slate-900 mb-2">
-                    {item.title}
-                  </div>
-                  <div className="text-xs text-slate-500 mb-3">
-                    (ชื่อ-นามสกุล หรือเว้นว่างเพื่อเซ็น)
-                  </div>
-                  <div className="min-h-[42px] rounded-2xl border border-slate-200 bg-white px-3 py-3 text-slate-700">
-                    {item.value || "________________________"}
-                  </div>
-                  <div className="mt-4 text-xs text-slate-500 text-center">
-                    วันที่
-                  </div>
-                  <div className="mx-auto w-[120px] text-center text-sm text-slate-700">
-                    {item.date || "__________"}
-                  </div>
+            <div className="mt-auto grid grid-cols-2 gap-10">
+              <div className="text-center">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                  {data?.summaryData?.evaluatorSignature ||
+                    "......................................................................"}
                 </div>
-              ))}
+                <p className="text-xs font-bold text-slate-800">
+                  ลงชื่อผู้ประเมิน
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                  วันที่ {data?.summaryData?.evaluatorSignDate}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                  {data?.summaryData?.employeeSignature ||
+                    "......................................................................"}
+                </div>
+                <p className="text-xs font-bold text-slate-800">
+                  พนักงานรับทราบ
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                  วันที่ {data?.summaryData?.employeeSignDate}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* ==================== แผ่นกระดาษหน้าที่ 2 ==================== */}
-          <div className="bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 shadow-md border border-slate-300/60 space-y-5 print:shadow-none print:border-none print:break-before-page">
-            {/* 🌟 จุดที่แก้ไข: วางแผงข้อมูลพนักงานของหน้าที่ 2 แทนที่ <EmployeeHeader /> เดิม */}
-            <div className="border border-slate-400 text-xs p-3 space-y-2 bg-white text-slate-800">
-              <div className="flex justify-between items-center border-b border-slate-300 pb-1.5 mb-1.5">
-                <span className="font-bold text-sm tracking-wide">
-                  แบบประเมิน ROAD MAP (หน้าที่ 2)
-                </span>
-                <div className="flex gap-4 font-medium text-[11px]">
-                  <span>
-                    การประเมินครั้งที่: <span className="underline">1</span>
-                  </span>
-                  <span>
-                    ประจำเดือน:{" "}
-                    <span className="underline">
-                      {data?.submittedMonth || "-"}
-                    </span>
-                  </span>
+          {/* ==================== หน้าที่ 2 ==================== */}
+          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-800">
+            <header className="flex justify-between items-end border-b-2 border-slate-900 pb-3 mb-4">
+              <h1 className="text-xl font-black text-slate-900">
+                แบบประเมิน ROAD MAP (หน้าที่ 2)
+              </h1>
+            </header>
+            <div className="border border-slate-300 rounded overflow-hidden mb-3 shadow-sm print:mb-2">
+              {/* ส่วนหัวตาราง บีบให้เตี้ยลง */}
+              <div className="bg-emerald-700 text-white text-[9px] font-bold py-1 px-3 uppercase tracking-widest">
+                ข้อมูลสาย / Late Data (รายเดือน)
+              </div>
+
+              {/* ส่วนเนื้อหา บีบ Padding และระยะห่างบรรทัด */}
+              <div className="p-2 px-3 bg-white space-y-0.5 text-[10px] text-slate-700">
+                {/* ข้อมูลสายปกติ */}
+                {(disciplineData?.lateNormal ?? []).map(
+                  (m: any, index: number) => (
+                    <div
+                      key={`lateNormal-${index}`}
+                      className="flex items-center justify-between border-b border-slate-50 pb-0.5 last:border-0 leading-tight"
+                    >
+                      <span className="font-bold text-emerald-800 w-20">
+                        เดือนที่ {index + 1} :
+                      </span>
+                      <div className="flex-1 text-right">
+                        <span className="font-semibold text-slate-900">
+                          {m.count || 0}
+                        </span>{" "}
+                        ครั้ง
+                        <span className="mx-2 text-slate-300">|</span>
+                        รวม{" "}
+                        <span className="font-semibold text-slate-900">
+                          {m.minutes || 0}
+                        </span>{" "}
+                        นาที
+                      </div>
+                    </div>
+                  ),
+                )}
+
+                {/* ระยะห่างระหว่างช่วง บีบจาก h-2 เหลือ h-1 */}
+                {(disciplineData?.lateExtended ?? []).length > 0 && (
+                  <div className="h-1" />
+                )}
+
+                {/* ข้อมูลสายช่วงต่อโปร */}
+                {(disciplineData?.lateExtended ?? []).map(
+                  (m: any, index: number) => (
+                    <div
+                      key={`lateExtended-${index}`}
+                      className="flex items-center justify-between border-b border-emerald-50 pb-0.5 last:border-0 bg-emerald-50/20 -mx-3 px-3 leading-tight"
+                    >
+                      <span className="font-bold text-emerald-900 w-32">
+                        ช่วงต่อโปร เดือนที่ {index + 1} :
+                      </span>
+                      <div className="flex-1 text-right text-[9.5px]">
+                        <span className="font-semibold text-slate-900">
+                          {m.count || 0}
+                        </span>{" "}
+                        ครั้ง
+                        <span className="mx-2 text-slate-300">|</span>
+                        รวม{" "}
+                        <span className="font-semibold text-slate-900">
+                          {m.minutes || 0}
+                        </span>{" "}
+                        นาที
+                      </div>
+                    </div>
+                  ),
+                )}
+
+                {/* กรณีไม่มีข้อมูล */}
+                {!disciplineData?.lateNormal?.length &&
+                  !disciplineData?.lateExtended?.length && (
+                    <div className="text-center py-1 italic text-slate-400 text-[9px]">
+                      ไม่มีประวัติการมาสายในช่วงเวลานี้
+                    </div>
+                  )}
+              </div>
+            </div>
+
+            {/* ตารางระเบียบวินัย */}
+            <section className="flex-1">
+              <table className="w-full text-[9px] border-collapse border border-slate-300">
+                {/* ลดฟอนต์ตารางเหลือ 9px */}
+                <thead>
+                  <tr className="bg-emerald-700 text-white font-bold uppercase text-[8.5px]">
+                    {/* หัวตารางเล็กลง */}
+                    <th className="py-1 px-2 text-left w-[60%] border border-emerald-800">
+                      การลงโทษ / Discipline
+                    </th>
+                    <th className="p-1 border border-emerald-800 text-center w-[12%]">
+                      จำนวน
+                    </th>
+                    <th className="p-1 border border-emerald-800 text-center w-[12%]">
+                      หัก
+                    </th>
+                    <th className="p-1 border border-emerald-800 text-center w-[16%]">
+                      รวมหัก
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(disciplineData?.disciplineItems ?? []).map(
+                    (item: any, i: number) => {
+                      const standardLabels = [
+                        { name: "ว.91", unit: "ครั้ง" },
+                        { name: "ว.92", unit: "ครั้ง" },
+                        { name: "ว.93", unit: "ครั้ง" },
+                        { name: "ว.94", unit: "ครั้ง" },
+                        { name: "Warning 1", unit: "ฉบับ" },
+                        { name: "Warning 2", unit: "ฉบับ" },
+                        { name: "Last Warning", unit: "ฉบับ" },
+                        { name: "ลาป่วย / ลากิจ", unit: "วัน" },
+                      ];
+
+                      const label = standardLabels[i] || {
+                        name: "ระเบียบวินัย",
+                        unit: "",
+                      };
+                      const count = item.count || 0;
+                      const penalty = item.penaltyScore || 0;
+                      const totalDeducted = Number(count) * Number(penalty);
+
+                      return (
+                        <tr key={i} className="hover:bg-slate-50 leading-tight">
+                          {/* บีบบรรทัดให้ชิดขึ้น */}
+                          <td className="py-1 px-2 border-x border-slate-200">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-bold text-slate-800 min-w-[70px]">
+                                {label.name}
+                              </span>
+                              <span className="text-slate-400 text-[8px]">
+                                {count} {label.unit}
+                              </span>
+                              <span className="text-slate-400 font-normal text-[8px] truncate max-w-[150px]">
+                                หัวข้อ: {item.detail || "-"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-1 text-center border-r border-slate-200 font-medium text-slate-700">
+                            {count}
+                          </td>
+                          <td className="p-1 text-center text-rose-500 font-bold border-r border-slate-200">
+                            {penalty !== 0 ? `-${penalty}` : 0}
+                          </td>
+                          <td className="p-1 text-center font-black border-r border-slate-200 bg-slate-50/30 text-slate-900">
+                            {totalDeducted !== 0 ? totalDeducted : 0}
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
+                </tbody>
+                <tfoot className="bg-slate-50 font-bold border border-slate-300">
+                  <tr className="leading-none">
+                    <td
+                      colSpan={3}
+                      className="py-1 px-3 text-left uppercase text-[8px] text-slate-500 tracking-wider"
+                    >
+                      รวมคะแนนระเบียบวินัยที่ถูกหักสุทธิ
+                    </td>
+                    <td className="py-1 text-center text-rose-600 text-[11px] bg-white border-l border-slate-300 font-black">
+                      {totalDisciplineScore}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              {/* คะแนนระเบียบวินัย Card */}
+              <div className="grid grid-cols-2 gap-3 mt-3 print:mt-2">
+                {/* การ์ดฝั่งซ้าย: สรุปคะแนนระเบียบวินัย */}
+                <div className="rounded-lg border border-blue-200 bg-white shadow-sm overflow-hidden h-full flex flex-col">
+                  <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide">
+                    สรุปคะแนนวินัย
+                  </div>
+                  <div className="p-2 px-3 flex-1 flex flex-col justify-between text-[10px] text-slate-600">
+                    <div className="space-y-1">
+                      <div className="flex justify-between border-b border-slate-50 pb-0.5">
+                        <span>คะแนนเต็มพื้นฐาน</span>
+                        <span className="font-bold text-slate-800">100</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-0.5">
+                        <span>คะแนนที่ถูกหัก</span>
+                        <span className="font-bold text-rose-600">
+                          {totalDisciplineScore}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 mt-auto">
+                      <span className="font-bold text-slate-800 uppercase text-[9px]">
+                        คงเหลือสุทธิ
+                      </span>
+                      <span className="font-black text-blue-700 leading-none">
+                        {100 + totalDisciplineScore}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* การ์ดฝั่งขวา: เกณฑ์การวัดผล / เกรด */}
+                <div className="rounded-lg border border-blue-200 bg-white shadow-sm overflow-hidden h-full">
+                  <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide text-center">
+                    เกณฑ์การวัดผล / เกรด
+                  </div>
+                  <div className="p-1 space-y-0">
+                    <MiniGradeRow
+                      label="Performance"
+                      value="A : 51 - 100 (ดีมาก)"
+                      color="text-emerald-600"
+                    />
+                    <MiniGradeRow
+                      label="Promotion | Progression"
+                      value="B : 21 - 50 (ดี)"
+                      color="text-blue-600"
+                    />
+                    <MiniGradeRow
+                      label="Probation"
+                      value="C : 1 - 20 (พอใช้)"
+                      color="text-amber-600"
+                    />
+                    <MiniGradeRow
+                      label="ไม่ผ่านเกณฑ์"
+                      value="D : 0 (ต่ำมาตรฐาน)"
+                      color="text-rose-600"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-x-4 gap-y-1.5">
-                <div>
-                  <span className="font-semibold text-slate-500">ID:</span>{" "}
-                  {data?.id || "-"}
+            </section>
+
+            {/* ข้อคิดเห็น */}
+            <div className="mt-5 border border-slate-300 rounded-xl p-3 bg-slate-50/20">
+              <p className="text-[10px] font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1">
+                ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน:
+              </p>
+              <div className="min-h-[50px] text-[11px] text-slate-600 leading-relaxed italic">
+                {data?.disciplineData?.comment || "-"}
+              </div>
+            </div>
+
+            {/* ลายเซ็น หน้า 2 */}
+            <div className="mt-auto grid grid-cols-2 gap-10">
+              <div className="text-center">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                  {data?.disciplineData?.evaluatorSignature ||
+                    "......................................................................"}
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Name:</span>{" "}
-                  {data?.employeeName || "-"}
+                <p className="text-xs font-bold text-slate-800">
+                  ลงชื่อผู้ประเมิน
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                  วันที่{" "}
+                  {data?.disciplineData?.evaluatorSignDate ||
+                    "........../........../..........."}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                  {data?.disciplineData?.employeeSignature ||
+                    "......................................................................"}
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Position:
-                  </span>{" "}
-                  {data?.position || "-"}
+                <p className="text-xs font-bold text-slate-800">
+                  พนักงานรับทราบ
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                  วันที่{" "}
+                  {data?.disciplineData?.employeeSignDate ||
+                    "........../........../..........."}
+                </p>
+              </div>
+            </div>
+            {/* 🌟 ตารางหลักเกณฑ์การคิดคะแนน (ต่อท้ายลายเซ็น หน้า 2) 🌟 */}
+            <div className="mt-8">
+              <div className="mb-2">
+                <p className="text-[10px] font-bold text-slate-800">
+                  หลักเกณฑ์ในการคิดคะแนนสำหรับข้อมูลระเบียบวินัย
+                </p>
+                <p className="text-[9px] text-slate-500">
+                  คะแนนเต็มด้านวินัยในการทำงานมี 100 คะแนน
+                  พนักงานจะถูกหักคะแนนตามบทลงโทษที่ได้รับตามรายละเอียด ดังนี้
+                </p>
+              </div>
+
+              <div className="border border-slate-300 rounded overflow-hidden shadow-sm">
+                {/* Header แถบสีเขียวเข้ม */}
+                <div className="grid grid-cols-[1.2fr_1fr_1fr] bg-emerald-700 text-white font-bold text-[9px] uppercase tracking-tighter">
+                  <div className="p-2 border-r border-emerald-800">
+                    1. การประเมินข้อมูลสาย ดังนี้
+                  </div>
+                  <div className="p-2 col-span-2 text-center uppercase tracking-widest">
+                    การลงโทษ / Discipline มีเงื่อนไขในการหักคะแนนดังนี้
+                  </div>
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Department:
-                  </span>{" "}
-                  {data?.department || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Division:
-                  </span>{" "}
-                  {data?.division || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Level:</span>{" "}
-                  {data?.level || "-"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">
-                    Start Date:
-                  </span>{" "}
-                  {data?.startDate || "-"}
+
+                {/* Body ตาราง */}
+                <div className="text-[9px] text-slate-600 bg-white leading-tight">
+                  {/* Row 1 */}
+                  <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-slate-200">
+                    <div className="p-1.5 px-3 border-r border-slate-200 bg-slate-50/30">
+                      1.1 สาย 31 - 60 นาที ได้รับบทลงโทษ ว.91
+                    </div>
+                    <div className="p-1.5 px-3 border-r border-slate-200">
+                      <span className="font-bold text-slate-800">ว.91</span> :
+                      หัก ครั้งละ 5 คะแนน
+                    </div>
+                    <div className="p-1.5 px-3">
+                      <span className="font-bold text-slate-800">
+                        Warning 1
+                      </span>{" "}
+                      : หัก ฉบับละ 25 คะแนน
+                    </div>
+                  </div>
+                  {/* Row 2 */}
+                  <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-slate-200">
+                    <div className="p-1.5 px-3 border-r border-slate-200 bg-slate-50/30">
+                      1.2 สาย 61 - 90 นาที ได้รับบทลงโทษ ว.92
+                    </div>
+                    <div className="p-1.5 px-3 border-r border-slate-200">
+                      <span className="font-bold text-slate-800">ว.92</span> :
+                      หัก ครั้งละ 10 คะแนน
+                    </div>
+                    <div className="p-1.5 px-3">
+                      <span className="font-bold text-slate-800">
+                        Warning 2
+                      </span>{" "}
+                      : หัก ฉบับละ 50 คะแนน
+                    </div>
+                  </div>
+                  {/* Row 3 */}
+                  <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-slate-200">
+                    <div className="p-1.5 px-3 border-r border-slate-200 bg-slate-50/30">
+                      1.3 สาย 91 - 100 นาที ได้รับบทลงโทษ ว.93
+                    </div>
+                    <div className="p-1.5 px-3 border-r border-slate-200">
+                      <span className="font-bold text-slate-800">ว.93</span> :
+                      หัก ครั้งละ 15 คะแนน
+                    </div>
+                    <div className="p-1.5 px-3">
+                      <span className="font-bold text-slate-800">
+                        Last Warning
+                      </span>{" "}
+                      : หัก ฉบับละ 100 คะแนน
+                    </div>
+                  </div>
+                  {/* Row 4 */}
+                  <div className="grid grid-cols-[1.2fr_1fr_1fr]">
+                    <div className="p-1.5 px-3 border-r border-slate-200 bg-slate-50/30">
+                      1.4 สาย 101 นาทีขึ้นไป ได้รับบทลงโทษ Warning 1
+                    </div>
+                    <div className="p-1.5 px-3 border-r border-slate-200">
+                      <span className="font-bold text-slate-800">ว.94</span> :
+                      หัก ครั้งละ 100 คะแนน
+                    </div>
+                    <div className="p-1.5 px-3">
+                      <span className="font-bold text-slate-800">
+                        ลาป่วย / ลากิจ
+                      </span>{" "}
+                      : หัก วันละ 1 คะแนน
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-900 text-white text-xs font-bold p-1.5 px-3">
-              ข้อมูลระเบียบวินัยในการทำงาน
-            </div>
-
-            {/* ส่วนข้อมูล Late Data */}
-            <div className="border border-slate-300 bg-emerald-50/20 text-xs rounded p-3 space-y-1 text-slate-600">
-              <div className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mb-1">
-                ข้อมูลสาย / Late Data
-              </div>
-              <div>เดือนที่ 1 : - ครั้ง รวม - นาที</div>
-              <div>เดือนที่ 2 : - ครั้ง รวม - นาที</div>
-              <div>เดือนที่ 3 : - ครั้ง รวม - นาที</div>
-              <div className="text-amber-700">
-                ช่วงต่อโปร เดือนที่ 1 : - ครั้ง รวม - นาที
-              </div>
-              <div className="text-amber-700">
-                ช่วงต่อโปร เดือนที่ 2 : - ครั้ง รวม - นาที
-              </div>
-            </div>
-
-            {/* ตารางระเบียบวินัย Discipline */}
-            <div className="border border-slate-400 text-xs mt-4">
-              <div className="grid grid-cols-[1fr_100px_90px_100px] bg-emerald-700 text-white font-bold p-2 text-center">
-                <div className="text-left">การลงโทษ / Discipline</div>
-                <div>จำนวนครั้ง</div>
-                <div>หักคะแนน</div>
-                <div>คะแนนที่หัก</div>
-              </div>
-              {[
-                { title: "ว.91 : - ครั้ง หัวข้อ : -", score: "-5" },
-                { title: "ว.92 : - ครั้ง หัวข้อ : -", score: "-10" },
-                { title: "Warning 1 : 1 ฉบับ หัวข้อ : -", score: "-25" },
-                { title: "Last Warning : 1 ฉบับ หัวข้อ : -", score: "-100" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-[1fr_100px_90px_100px] p-2 border-b border-slate-300 text-center text-slate-600 items-center"
-                >
-                  <div className="text-left font-light">{item.title}</div>
-                  <div>-</div>
-                  <div className="text-rose-500 font-medium">{item.score}</div>
-                  <div className="font-semibold">0</div>
-                </div>
-              ))}
-              <div className="grid grid-cols-[1fr_100px_90px_100px] bg-emerald-50 font-bold p-2 text-center text-emerald-900 border-t border-slate-400">
-                <div className="text-center">รวมคะแนนระเบียบวินัย</div>
-                <div className="text-right pr-4 text-emerald-700">0</div>
-              </div>
-            </div>
-
-            {/* ส่วนท้ายช่องเซ็นลายเซ็น */}
-            <div className="grid grid-cols-2 gap-6 pt-10 text-xs text-slate-500">
-              <div className="border border-slate-300 p-4 rounded text-center space-y-6 pt-8 bg-slate-50/50">
-                <div>
-                  ลงชื่อผู้ประเมิน......................................................
-                </div>
-                <div>วันที่........../........../..........</div>
-              </div>
-              <div className="border border-slate-300 p-4 rounded text-center space-y-6 pt-8 bg-slate-50/50">
-                <div>
-                  พนักงานรับทราบ......................................................
-                </div>
-                <div>วันที่........../........../..........</div>
-              </div>
-            </div>
+            <footer className="mt-4 border-t border-slate-100 pt-3 text-[8px] text-slate-400 text-center uppercase tracking-widest">
+              Road Map Evaluation System
+            </footer>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* --- Sub-Components --- */
+
+function InfoCell({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex flex-col">
+      <span className="font-semibold text-slate-500 mb-0.5 whitespace-nowrap">
+        {label}:
+      </span>
+      <span className="text-slate-800 font-bold leading-tight">
+        {value || "-"}
+      </span>
+    </div>
+  );
+}
+
+function GridCell({ label, value }: any) {
+  return (
+    <>
+      <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
+        {label}:
+      </div>
+      <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap font-medium text-center">
+        {value || "-"}
+      </div>
+    </>
+  );
+}
+
+function EvaluationTable({ title, items, total, isEmerald = false }: any) {
+  return (
+    <section className="mb-2 last:mb-0">
+      {/* ส่วนหัวตารางที่รวมหัวข้อคอลัมน์ไว้ในแถวเดียว (สีขาวทั้งหมด) */}
+      <div
+        className={`border-x border-t border-slate-300 flex items-center rounded-t text-white overflow-hidden ${
+          isEmerald ? "bg-emerald-700" : "bg-slate-800"
+        }`}
+      >
+        {/* หัวข้อหลักฝั่งซ้าย (65%) */}
+        <div className="w-[65%] px-3 py-1.5">
+          <h4 className="text-[9px] font-bold uppercase tracking-widest">
+            {title}
+          </h4>
+        </div>
+
+        {/* หัวข้อคอลัมน์ฝั่งขวา (แบ่งตามสัดส่วนตาราง) */}
+        <div className="w-[10%] text-center text-[8px] font-bold border-l border-white/20 py-1.5 uppercase">
+          น้ำหนัก
+        </div>
+        <div className="w-[10%] text-center text-[8px] font-bold border-l border-white/20 py-1.5 uppercase">
+          ผลประเมิน
+        </div>
+        <div className="w-[15%] text-center text-[8px] font-bold border-l border-white/20 py-1.5 uppercase">
+          หมายเหตุ
+        </div>
+      </div>
+
+      <table className="w-full text-[9px] border-collapse border border-slate-300">
+        {/* เอา thead ออกแล้ว เพราะย้ายขึ้นไปข้างบน */}
+        <tbody className="divide-y divide-slate-200">
+          {items?.map((item: any, i: number) => (
+            <tr key={i} className="hover:bg-slate-50 leading-tight">
+              <td className="p-1.5 px-2 w-[65%] font-medium text-slate-700 border-r border-slate-100">
+                {item.topic}
+              </td>
+              <td className="p-1 w-[10%] text-center text-slate-400 border-r border-slate-100">
+                {item.weight}
+              </td>
+              <td className="p-1 w-[10%] text-center font-bold text-slate-900 border-r border-slate-100">
+                {item.score}
+              </td>
+              <td className="p-1 w-[15%] text-[8px] text-slate-400 italic leading-none px-2">
+                {item.remark || "-"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="bg-slate-50/80 font-bold border-t border-slate-300">
+          <tr className="leading-none">
+            <td
+              colSpan={2}
+              className="py-1 px-2 text-right uppercase text-[8px] text-slate-500 tracking-tighter"
+            >
+              Total Score
+            </td>
+            <td className="py-1 text-center text-blue-700 font-black text-[11px]">
+              {total}
+            </td>
+            <td className="w-[15%]"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  );
+}
+
+function MiniGradeRow({ label, value, color }: any) {
+  return (
+    <div className="flex justify-between px-2 py-1 text-[10px] border-b border-slate-50 last:border-0">
+      <span className="font-medium text-slate-500">{label}</span>
+      <span className={`font-bold ${color}`}>{value}</span>
     </div>
   );
 }

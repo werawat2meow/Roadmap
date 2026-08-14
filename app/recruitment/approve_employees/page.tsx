@@ -28,6 +28,7 @@ const STATUS = {
   WAIT_HR: 12,
   WAIT_DELAY: 13,
   APPROVED: 15,
+  PENDING_START_WORK: 17,
 } as const;
 
 const STATUS_COLOR: Record<number, string> = {
@@ -42,6 +43,7 @@ const STATUS_TEXT: Record<number, string> = {
   [STATUS.WAIT_HR]: 'นัดวันเริ่มทำงาน',
   [STATUS.WAIT_DELAY]: 'เลื่อนวันเริ่มทำงาน',
   [STATUS.APPROVED]: 'อัพเดตเข้าฐานข้อมูลกลาง',
+  [STATUS.PENDING_START_WORK]: 'รอเริ่มงาน',
 };
 
 // สร้าง options ของ Select สถานะจาก STATUS_TEXT โดยอัตโนมัติ
@@ -194,7 +196,7 @@ export default function WaitingApprovalPage() {
             ดูรายละเอียด
           </Button>
 
-          {([STATUS.WAIT_HR, STATUS.WAIT_DELAY] as number[]).includes(row.status) && (
+          {([STATUS.WAIT_HR, STATUS.WAIT_DELAY, STATUS.PENDING_START_WORK] as number[]).includes(row.status) && (
             <Button
               type="primary"
               onClick={() => router.push(`/recruitment/approve_employees/${row.application_id}/edit`)}

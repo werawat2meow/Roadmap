@@ -162,37 +162,59 @@ export async function GET(request) {
     // Position Levels
     // =========================================================
     else if (type === "position_levels") {
-        if (!positionId) {
-            return NextResponse.json(
-                { message: "position_id is required" },
-                { status: 400 }
-            );
-        }
+      if (!positionId) {
+        return NextResponse.json(
+          { message: "position_id is required" },
+          { status: 400 }
+        );
+      }
 
-        const result = await supabaseAdmin
-            .from("position_level_mappings")
-            .select(`
+      const get_family = await supabaseAdmin
+        .from("positions")
+        .select("position_family_id, job_id")
+        .eq("id", positionId)
+        .single();
+
+      if (get_family.error) {
+        return NextResponse.json(
+          { message: get_family.error.message },
+          { status: 500 }
+        );
+      }    
+
+      const result = await supabaseAdmin
+        .from("position_family_levels")
+        .select(`
             position_level_id,
             position_levels (
                 id,
                 level_code,
                 sort_order
             )
-            `)
-            .eq("position_id", positionId);
-        
-        if (result.error) {
-            error = result.error;
-        } else {
-            data = (result.data || [])
-            .map((item) => item.position_levels)
-            .filter(Boolean)
-            .sort(
-                (a, b) =>
-                Number(a.sort_order || 0) -
-                Number(b.sort_order || 0)
-            );
-        }
+        `)
+        .eq(
+            "position_family_id",
+            get_family.data.position_family_id
+        );
+
+      if (result.error) {
+        error = result.error;
+      } else {
+        const position_levels = (result.data || [])
+          .map((item) => item.position_levels)
+          .filter(Boolean)
+          .sort(
+            (a, b) =>
+              Number(a.sort_order || 0) -
+              Number(b.sort_order || 0)
+          );
+
+        data = {
+          position_family_id: get_family.data.position_family_id || null,
+          job_id: get_family.data.job_id || null,
+          position_levels,
+        };
+      }
     }
 
     // =========================================================
@@ -204,6 +226,19 @@ export async function GET(request) {
         .select("id, type_name")
         .eq("status", "active")
         .order("type_name", { ascending: true });
+
+      data = result.data || [];
+      error = result.error;
+    }
+
+    // =========================================================
+    // Payroll Types
+    // =========================================================
+    else if (type === "payroll_types") {
+      const result = await supabaseAdmin
+        .from("payroll_types")
+        .select("id, payroll_type_name")
+        .order("sort_order", { ascending: true });
 
       data = result.data || [];
       error = result.error;

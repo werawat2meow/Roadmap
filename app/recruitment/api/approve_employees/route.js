@@ -39,7 +39,7 @@ export async function GET(request) {
           count: "exact",
         }
       )
-      .in("status", [12, 13]);
+      .in("status", [12, 13, 17]);
 
     // Status Filter
     if (status) {

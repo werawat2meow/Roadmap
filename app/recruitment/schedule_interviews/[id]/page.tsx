@@ -66,9 +66,7 @@ export default function ApplicantDetailPage() {
 
         if (!res.ok) { throw new Error("โหลดข้อมูลไม่สำเร็จ"); }
 
-        const json: ApplicantResponse = await res.json();
-
-        console.log(json);        
+        const json: ApplicantResponse = await res.json();     
         
         if (!cancelled) setData(json);
         

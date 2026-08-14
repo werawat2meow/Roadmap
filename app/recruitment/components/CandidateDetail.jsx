@@ -34,6 +34,7 @@ const statusColor = {
   14: "error",
   15: "success",
   16: "default",
+  17: "success",
   99: "error",
   0: "error",
 
@@ -56,6 +57,7 @@ const statusText = {
   14: "ไม่มาทำงานตามนัด",
   15: "อัพเดตเข้าฐานข้อมูลกลาง",
   16: "ยื่น Resume",
+  17: "รอเริ่มงาน",
   99: "backlist",
   0: "ยกเลิก",
 };
@@ -739,25 +741,27 @@ export default function CandidateDetail({
           ]}
         />
       </Card>
+      
+      {application.self_presentation_url && (
+        <Card title="Presentation" style={{ marginTop: 24 }}>
+          <div >
+            Presentation URL :{" "}
 
-      <Card title="Presentation">
-        <div style={{ marginTop: 8 }}>
-          Presentation URL :{" "}
-
-          {application.self_presentation_url ? (
-            <Button
-              type="primary"
-              href={application.self_presentation_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              เปิด Presentation
-            </Button>
-          ) : (
-            <strong>-</strong>
-          )}
-        </div>
-      </Card>
+            {application.self_presentation_url ? (
+              <Button
+                type="primary"
+                href={application.self_presentation_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                เปิด Presentation
+              </Button>
+            ) : (
+              <strong>-</strong>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

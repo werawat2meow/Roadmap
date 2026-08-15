@@ -1,27 +1,21 @@
 import { NextResponse } from "next/server";
-
 import { supabaseAdmin } from "@/lib/supabaseServer";
-
 import {
   normalizeEmployeePayload,
   normalizeAccountPayload,
   normalizeEmployeeCodeRequest,
   cleanText,
 } from "@/lib/employee/employeePayload";
-
 import {
   validateEmployeeCreatePayload,
 } from "@/lib/employee/employeeValidation";
-
 import {
   createEmployeeTransaction,
   EMPLOYEE_DETAIL_SELECT,
   mapEmployeeDatabaseError,
 } from "@/lib/employee/employeeTransaction";
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
-/* =========================================================
-   CONSTANTS
-========================================================= */
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -56,10 +50,6 @@ const ALLOWED_SORT_DIRECTIONS = [
   "asc",
   "desc",
 ];
-
-/* =========================================================
-   RESPONSE HELPERS
-========================================================= */
 
 function successResponse(
   data,
@@ -128,10 +118,6 @@ function errorResponse(
     }
   );
 }
-
-/* =========================================================
-   BASIC HELPERS
-========================================================= */
 
 function cleanNullableText(
   value
@@ -592,213 +578,224 @@ function validateEmployeeStatusFilter(
   return null;
 }
 
+
 /* =========================================================
    EMPLOYEE SUMMARY
 ========================================================= */
 
 async function getEmployeeSummary({
+  guard = null,
+  currentEmployeeId = null,
+
   companyId = null,
-
   branchGroupId = null,
-
   branchId = null,
-
   departmentId = null,
-
   divisionId = null,
-
   unitId = null,
 
   positionFamilyId = null,
-
   positionLevelId = null,
-
   positionId = null,
-
   jobId = null,
-} = {}) {
-  try {
-    let query = supabaseAdmin
-      .from("employees")
-      .select(
-        `
-          id,
-          status,
-          start_work_date,
-          resignation_date,
-          probation_status
-        `
-      );
 
+  employeeStatusId = null,
+  employmentTypeId = null,
+
+  status = null,
+} = {}) {
+  const SUMMARY_SELECT = `
+    id,
+    employee_status_id,
+    employment_type_id,
+    start_work_date,
+    resignation_date,
+    status,
+    employee_statuses:employee_status_id (
+      id,
+      status_code,
+      status_name,
+      is_working,
+      is_payroll,
+      is_benefit,
+      is_headcount
+    )
+  `;
+
+  const applySummaryFilters = (query) => {
     if (companyId) {
-      query = query.eq(
-        "company_id",
-        companyId
-      );
+      query = query.eq("company_id", companyId);
     }
 
     if (branchGroupId) {
-      query = query.eq(
-        "branch_group_id",
-        branchGroupId
-      );
+      query = query.eq("branch_group_id", branchGroupId);
     }
 
     if (branchId) {
-      query = query.eq(
-        "branch_id",
-        branchId
-      );
+      query = query.eq("branch_id", branchId);
     }
 
     if (departmentId) {
-      query = query.eq(
-        "department_id",
-        departmentId
-      );
+      query = query.eq("department_id", departmentId);
     }
 
     if (divisionId) {
-      query = query.eq(
-        "division_id",
-        divisionId
-      );
+      query = query.eq("division_id", divisionId);
     }
 
     if (unitId) {
-      query = query.eq(
-        "unit_id",
-        unitId
-      );
+      query = query.eq("unit_id", unitId);
     }
 
     if (positionFamilyId) {
-      query = query.eq(
-        "position_family_id",
-        positionFamilyId
-      );
+      query = query.eq("position_family_id", positionFamilyId);
     }
 
     if (positionLevelId) {
-      query = query.eq(
-        "position_level_id",
-        positionLevelId
-      );
+      query = query.eq("position_level_id", positionLevelId);
     }
 
     if (positionId) {
-      query = query.eq(
-        "position_id",
-        positionId
-      );
+      query = query.eq("position_id", positionId);
     }
 
     if (jobId) {
-      query = query.eq(
-        "job_id",
-        jobId
-      );
+      query = query.eq("job_id", jobId);
     }
 
+    if (employeeStatusId) {
+      query = query.eq("employee_status_id", employeeStatusId);
+    }
+
+    if (employmentTypeId) {
+      query = query.eq("employment_type_id", employmentTypeId);
+    }
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    return query;
+  };
+
+  try {
+    /* =====================================================
+       SCOPE ROWS
+
+       ตัวเองถูกแยกออกจาก Scoped Query แล้วเติมกลับ 1 ครั้ง
+       เพื่อให้กฎเป็น:
+
+       SELF + EMPLOYEES IN SCOPE
+    ===================================================== */
+
+    let scopedQuery = supabaseAdmin
+      .from("employees")
+      .select(SUMMARY_SELECT);
+
+    if (guard) {
+      scopedQuery = guard.applyEmployeeScope(scopedQuery);
+    }
+
+    if (currentEmployeeId) {
+      scopedQuery = scopedQuery.neq("id", currentEmployeeId);
+    }
+
+    scopedQuery = applySummaryFilters(scopedQuery);
+
     const {
-      data,
-      error,
-    } = await query;
+      data: scopedData,
+      error: scopedError,
+    } = await scopedQuery;
 
-    if (error) {
-      console.error(
-        "getEmployeeSummary error:",
-        error
-      );
-
+    if (scopedError) {
+      console.error("getEmployeeSummary scoped error:", scopedError);
       return null;
     }
 
-    const rows =
-      Array.isArray(data)
-        ? data
-        : [];
+    let rows = Array.isArray(scopedData)
+      ? scopedData
+      : [];
+
+    /* =====================================================
+       SELF ROW
+
+       Self View bypass เฉพาะ Scope เท่านั้น
+       Permission ems.employees.view ยังถูกตรวจโดย guard ก่อนแล้ว
+       และ Filter ที่ผู้ใช้เลือกยังทำงานตามปกติ
+    ===================================================== */
+
+    if (currentEmployeeId) {
+      let selfQuery = supabaseAdmin
+        .from("employees")
+        .select(SUMMARY_SELECT)
+        .eq("id", currentEmployeeId);
+
+      selfQuery = applySummaryFilters(selfQuery);
+
+      const {
+        data: selfData,
+        error: selfError,
+      } = await selfQuery.maybeSingle();
+
+      if (selfError) {
+        console.error("getEmployeeSummary self error:", selfError);
+      } else if (selfData) {
+        rows = [selfData, ...rows];
+      }
+    }
 
     const now = new Date();
-
-    const currentYear =
-      now.getFullYear();
-
-    const currentMonth =
-      now.getMonth();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
     const summary = {
       total: rows.length,
-
       active: 0,
-
       inactive: 0,
-
-      resigned: 0,
-
       probation: 0,
-
+      resigned: 0,
       newThisMonth: 0,
-
       newThisYear: 0,
-
       resignedThisMonth: 0,
-
       resignedThisYear: 0,
     };
 
     for (const employee of rows) {
-      if (
-        employee.status ===
-        "active"
-      ) {
+      const employeeStatus = employee.employee_statuses || null;
+
+      const statusCode = String(
+        employeeStatus?.status_code || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (employeeStatus?.is_working === true) {
         summary.active += 1;
       }
 
-      if (
-        employee.status ===
-        "inactive"
-      ) {
-        summary.inactive += 1;
+      if (statusCode === "PROBATION") {
+        summary.probation += 1;
       }
 
-      if (
-        employee.status ===
-        "resigned"
-      ) {
+      if (statusCode === "RESIGNED") {
         summary.resigned += 1;
       }
 
       if (
-        employee.probation_status ===
-        "probation"
+        employeeStatus?.is_working === false &&
+        statusCode !== "RESIGNED"
       ) {
-        summary.probation += 1;
+        summary.inactive += 1;
       }
 
-      if (
-        employee.start_work_date
-      ) {
-        const startDate =
-          new Date(
-            employee.start_work_date
-          );
+      if (employee.start_work_date) {
+        const startDate = new Date(employee.start_work_date);
 
-        if (
-          !Number.isNaN(
-            startDate.getTime()
-          )
-        ) {
-          if (
-            startDate.getFullYear() ===
-            currentYear
-          ) {
+        if (!Number.isNaN(startDate.getTime())) {
+          if (startDate.getFullYear() === currentYear) {
             summary.newThisYear += 1;
 
-            if (
-              startDate.getMonth() ===
-              currentMonth
-            ) {
+            if (startDate.getMonth() === currentMonth) {
               summary.newThisMonth += 1;
             }
           }
@@ -806,28 +803,18 @@ async function getEmployeeSummary({
       }
 
       if (
+        statusCode === "RESIGNED" &&
         employee.resignation_date
       ) {
-        const resignationDate =
-          new Date(
-            employee.resignation_date
-          );
+        const resignationDate = new Date(
+          employee.resignation_date
+        );
 
-        if (
-          !Number.isNaN(
-            resignationDate.getTime()
-          )
-        ) {
-          if (
-            resignationDate.getFullYear() ===
-            currentYear
-          ) {
+        if (!Number.isNaN(resignationDate.getTime())) {
+          if (resignationDate.getFullYear() === currentYear) {
             summary.resignedThisYear += 1;
 
-            if (
-              resignationDate.getMonth() ===
-              currentMonth
-            ) {
+            if (resignationDate.getMonth() === currentMonth) {
               summary.resignedThisMonth += 1;
             }
           }
@@ -837,23 +824,12 @@ async function getEmployeeSummary({
 
     return summary;
   } catch (error) {
-    console.error(
-      "getEmployeeSummary exception:",
-      error
-    );
-
+    console.error("getEmployeeSummary exception:", error);
     return null;
   }
 }
 
-/* =========================================================
-   DUPLICATE CHECK HELPERS
-========================================================= */
-
-async function findDuplicateEmployee({
-  field,
-  value,
-}) {
+async function findDuplicateEmployee({field,value,}) {
   if (!field || !value) {
     return {
       success: true,
@@ -915,13 +891,7 @@ async function findDuplicateEmployee({
   }
 }
 
-/* =========================================================
-   DUPLICATE CHECKS
-========================================================= */
-
-async function checkEmployeeDuplicates(
-  employee
-) {
+async function checkEmployeeDuplicates(employee) {
   try {
     const duplicateRules = [
       {
@@ -1043,19 +1013,7 @@ async function checkEmployeeDuplicates(
   }
 }
 
-/* =========================================================
-   POSITION ARCHITECTURE VALIDATION
-========================================================= */
-
-async function validatePositionArchitecture({
-  positionFamilyId,
-
-  positionLevelId,
-
-  positionId,
-
-  jobId = null,
-}) {
+async function validatePositionArchitecture({positionFamilyId,positionLevelId,positionId,jobId = null,}) {
   try {
     if (!positionFamilyId) {
       return {
@@ -1507,597 +1465,277 @@ async function validatePositionArchitecture({
     };
   }
 }
-/* =========================================================
-   GET /api/admin/employees
-========================================================= */
 
 export async function GET(req) {
   try {
-    const { searchParams } =
-      new URL(req.url);
+    /* =======================================================
+       Permission + Scope
+
+       Enterprise Rule:
+       - ต้องมี ems.employees.view
+       - ตัวเองเห็นได้เสมอเมื่อมี Permission นี้
+       - คนอื่นต้องอยู่ใน Scope ของ Login User
+       - Search / Filter ยังจำกัดทั้ง Self และ Scoped Rows
+    ========================================================= */
+
+    const guard = await requireScopedAccess(
+      "ems.employees",
+      "view"
+    );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    const currentEmployeeId =
+      guard?.access?.employee_id ||
+      guard?.access?.user?.employee_id ||
+      guard?.user?.employee_id ||
+      guard?.employee_id ||
+      null;
+
+    const { searchParams } = new URL(req.url);
 
     /* -----------------------------------------------------
        GENERAL PARAMETERS
     ----------------------------------------------------- */
 
-    const search =
-      sanitizeSearch(
-        searchParams.get("search")
-      );
+    const search = sanitizeSearch(
+      searchParams.get("search")
+    );
 
-    const all =
-      parseBoolean(
-        searchParams.get("all"),
-        false
-      );
+    const all = parseBoolean(
+      searchParams.get("all"),
+      false
+    );
 
-    const includeSummary =
-      parseBoolean(
-        searchParams.get(
-          "include_summary"
-        ),
-        false
-      );
+    const includeSummary = parseBoolean(
+      searchParams.get("include_summary"),
+      false
+    );
 
-    const page =
-      parsePositiveInteger(
-        searchParams.get("page"),
-        DEFAULT_PAGE
-      );
+    const page = parsePositiveInteger(
+      searchParams.get("page"),
+      DEFAULT_PAGE
+    );
 
-    const pageSize =
-      parsePositiveInteger(
-        searchParams.get(
-          "pageSize"
-        ),
-        DEFAULT_PAGE_SIZE,
-        MAX_PAGE_SIZE
-      );
+    const pageSize = parsePositiveInteger(
+      searchParams.get("pageSize"),
+      DEFAULT_PAGE_SIZE,
+      MAX_PAGE_SIZE
+    );
 
-    const sortField =
-      normalizeSortField(
-        searchParams.get(
-          "sort_field"
-        )
-      );
+    const sortField = normalizeSortField(
+      searchParams.get("sort_field")
+    );
 
-    const sortDirection =
-      normalizeSortDirection(
-        searchParams.get(
-          "sort_direction"
-        )
-      );
+    const sortDirection = normalizeSortDirection(
+      searchParams.get("sort_direction")
+    );
 
     /* -----------------------------------------------------
        ORGANIZATION FILTERS
     ----------------------------------------------------- */
 
-    const companyId =
-      getFilterValue(
-        searchParams,
-        "company_id"
-      );
+    const companyId = getFilterValue(
+      searchParams,
+      "company_id"
+    );
 
-    const branchGroupId =
-      getFilterValue(
-        searchParams,
-        "branch_group_id"
-      );
+    const branchGroupId = getFilterValue(
+      searchParams,
+      "branch_group_id"
+    );
 
-    const branchId =
-      getFilterValue(
-        searchParams,
-        "branch_id"
-      );
+    const branchId = getFilterValue(
+      searchParams,
+      "branch_id"
+    );
 
-    const departmentId =
-      getFilterValue(
-        searchParams,
-        "department_id"
-      );
+    const departmentId = getFilterValue(
+      searchParams,
+      "department_id"
+    );
 
-    const divisionId =
-      getFilterValue(
-        searchParams,
-        "division_id"
-      );
+    const divisionId = getFilterValue(
+      searchParams,
+      "division_id"
+    );
 
-    const unitId =
-      getFilterValue(
-        searchParams,
-        "unit_id"
-      );
+    const unitId = getFilterValue(
+      searchParams,
+      "unit_id"
+    );
 
     /* -----------------------------------------------------
        JOB ARCHITECTURE FILTERS
     ----------------------------------------------------- */
 
-    const positionFamilyId =
-      getFilterValue(
-        searchParams,
-        "position_family_id"
-      );
+    const positionFamilyId = getFilterValue(
+      searchParams,
+      "position_family_id"
+    );
 
-    const positionLevelId =
-      getFilterValue(
-        searchParams,
-        "position_level_id"
-      );
+    const positionLevelId = getFilterValue(
+      searchParams,
+      "position_level_id"
+    );
 
-    const positionId =
-      getFilterValue(
-        searchParams,
-        "position_id"
-      );
+    const positionId = getFilterValue(
+      searchParams,
+      "position_id"
+    );
 
-    const jobId =
-      getFilterValue(
-        searchParams,
-        "job_id"
-      );
+    const jobId = getFilterValue(
+      searchParams,
+      "job_id"
+    );
 
     /* -----------------------------------------------------
        COST STRUCTURE FILTERS
     ----------------------------------------------------- */
 
-    const businessUnitId =
-      getFilterValue(
-        searchParams,
-        "business_unit_id"
-      );
+    const businessUnitId = getFilterValue(
+      searchParams,
+      "business_unit_id"
+    );
 
-    const costCenterId =
-      getFilterValue(
-        searchParams,
-        "cost_center_id"
-      );
+    const costCenterId = getFilterValue(
+      searchParams,
+      "cost_center_id"
+    );
 
-    const profitCenterId =
-      getFilterValue(
-        searchParams,
-        "profit_center_id"
-      );
+    const profitCenterId = getFilterValue(
+      searchParams,
+      "profit_center_id"
+    );
 
     /* -----------------------------------------------------
        EMPLOYEE FILTERS
     ----------------------------------------------------- */
 
-    const status =
-      getFilterValue(
-        searchParams,
-        "status"
-      );
+    const status = getFilterValue(
+      searchParams,
+      "status"
+    );
 
-    const employeeStatusId =
-      getFilterValue(
-        searchParams,
-        "employee_status_id"
-      );
+    const employeeStatusId = getFilterValue(
+      searchParams,
+      "employee_status_id"
+    );
 
-    const employmentTypeId =
-      getFilterValue(
-        searchParams,
-        "employment_type_id"
-      );
+    const employmentTypeId = getFilterValue(
+      searchParams,
+      "employment_type_id"
+    );
 
-    const genderId =
-      getFilterValue(
-        searchParams,
-        "gender_id"
-      );
+    const genderId = getFilterValue(
+      searchParams,
+      "gender_id"
+    );
 
-    const nationalityId =
-      getFilterValue(
-        searchParams,
-        "nationality_id"
-      );
+    const nationalityId = getFilterValue(
+      searchParams,
+      "nationality_id"
+    );
 
-    const countryId =
-      getFilterValue(
-        searchParams,
-        "country_id"
-      );
+    const countryId = getFilterValue(
+      searchParams,
+      "country_id"
+    );
 
     /* -----------------------------------------------------
        PAYROLL FILTERS
     ----------------------------------------------------- */
 
-    const payrollCompanyId =
-      getFilterValue(
-        searchParams,
-        "payroll_company_id"
-      );
+    const payrollCompanyId = getFilterValue(
+      searchParams,
+      "payroll_company_id"
+    );
 
-    const payrollTypeId =
-      getFilterValue(
-        searchParams,
-        "payroll_type_id"
-      );
+    const payrollTypeId = getFilterValue(
+      searchParams,
+      "payroll_type_id"
+    );
 
-    const payrollGroupId =
-      getFilterValue(
-        searchParams,
-        "payroll_group_id"
-      );
+    const payrollGroupId = getFilterValue(
+      searchParams,
+      "payroll_group_id"
+    );
 
-    const positionLevelBandId =
-      getFilterValue(
-        searchParams,
-        "position_level_band_id"
-      );
+    const positionLevelBandId = getFilterValue(
+      searchParams,
+      "position_level_band_id"
+    );
 
     /* -----------------------------------------------------
        ACCOUNT FILTERS
     ----------------------------------------------------- */
 
-    const hasUserAccount =
-      getFilterValue(
-        searchParams,
-        "has_user_account"
-      );
+    const hasUserAccount = getFilterValue(
+      searchParams,
+      "has_user_account"
+    );
 
     /* -----------------------------------------------------
-       VALIDATE FILTERS
+       VALIDATION
     ----------------------------------------------------- */
 
-    const filterValidationError =
-      validateEmployeeFilters({
-        companyId,
-
-        branchGroupId,
-
-        branchId,
-
-        departmentId,
-
-        divisionId,
-
-        unitId,
-
-        positionFamilyId,
-
-        positionLevelId,
-
-        positionId,
-
-        jobId,
-
-        businessUnitId,
-
-        costCenterId,
-
-        profitCenterId,
-
-        employeeStatusId,
-
-        employmentTypeId,
-
-        genderId,
-
-        nationalityId,
-
-        payrollCompanyId,
-
-        payrollTypeId,
-
-        payrollGroupId,
-
-        positionLevelBandId,
-      });
+    const filterValidationError = validateEmployeeFilters({
+      companyId,
+      branchGroupId,
+      branchId,
+      departmentId,
+      divisionId,
+      unitId,
+      positionFamilyId,
+      positionLevelId,
+      positionId,
+      jobId,
+      businessUnitId,
+      costCenterId,
+      profitCenterId,
+      employeeStatusId,
+      employmentTypeId,
+      genderId,
+      nationalityId,
+      payrollCompanyId,
+      payrollTypeId,
+      payrollGroupId,
+      positionLevelBandId,
+    });
 
     if (filterValidationError) {
       return errorResponse(
         filterValidationError,
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     const statusValidationError =
-      validateEmployeeStatusFilter(
-        status
-      );
+      validateEmployeeStatusFilter(status);
 
     if (statusValidationError) {
       return errorResponse(
         statusValidationError,
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* -----------------------------------------------------
-       BUILD QUERY
-    ----------------------------------------------------- */
+    /* =====================================================
+       ACCOUNT IDS FOR has_user_account=false
+    ===================================================== */
 
-    let query = supabaseAdmin
-      .from("employees")
-      .select(
-        EMPLOYEE_DETAIL_SELECT,
-        {
-          count: all
-            ? undefined
-            : "exact",
-        }
-      );
+    let employeeIdsWithAccount = [];
 
-    /* -----------------------------------------------------
-       SEARCH
-    ----------------------------------------------------- */
-
-    if (search) {
-      query = query.or(
-        [
-          `employee_code.ilike.%${search}%`,
-
-          `first_name_th.ilike.%${search}%`,
-
-          `middle_name_th.ilike.%${search}%`,
-
-          `last_name_th.ilike.%${search}%`,
-
-          `first_name_en.ilike.%${search}%`,
-
-          `middle_name_en.ilike.%${search}%`,
-
-          `last_name_en.ilike.%${search}%`,
-
-          `nickname_th.ilike.%${search}%`,
-
-          `nickname_en.ilike.%${search}%`,
-
-          `nick_name.ilike.%${search}%`,
-
-          `citizen_id.ilike.%${search}%`,
-
-          `passport_no.ilike.%${search}%`,
-
-          `tax_id.ilike.%${search}%`,
-
-          `social_security_no.ilike.%${search}%`,
-
-          `mobile_phone.ilike.%${search}%`,
-
-          `home_phone.ilike.%${search}%`,
-
-          `work_phone.ilike.%${search}%`,
-
-          `phone.ilike.%${search}%`,
-
-          `personal_email.ilike.%${search}%`,
-
-          `work_email.ilike.%${search}%`,
-
-          `email.ilike.%${search}%`,
-
-          `line_id.ilike.%${search}%`,
-
-          `birth_place.ilike.%${search}%`,
-
-          `birth_postcode.ilike.%${search}%`,
-        ].join(",")
-      );
-    }
-
-    /* -----------------------------------------------------
-       ORGANIZATION FILTERS
-    ----------------------------------------------------- */
-
-    if (companyId) {
-      query = query.eq(
-        "company_id",
-        companyId
-      );
-    }
-
-    if (branchGroupId) {
-      query = query.eq(
-        "branch_group_id",
-        branchGroupId
-      );
-    }
-
-    if (branchId) {
-      query = query.eq(
-        "branch_id",
-        branchId
-      );
-    }
-
-    if (departmentId) {
-      query = query.eq(
-        "department_id",
-        departmentId
-      );
-    }
-
-    if (divisionId) {
-      query = query.eq(
-        "division_id",
-        divisionId
-      );
-    }
-
-    if (unitId) {
-      query = query.eq(
-        "unit_id",
-        unitId
-      );
-    }
-
-    /* -----------------------------------------------------
-       JOB ARCHITECTURE FILTERS
-    ----------------------------------------------------- */
-
-    if (positionFamilyId) {
-      query = query.eq(
-        "position_family_id",
-        positionFamilyId
-      );
-    }
-
-    if (positionLevelId) {
-      query = query.eq(
-        "position_level_id",
-        positionLevelId
-      );
-    }
-
-    if (positionId) {
-      query = query.eq(
-        "position_id",
-        positionId
-      );
-    }
-
-    if (jobId) {
-      query = query.eq(
-        "job_id",
-        jobId
-      );
-    }
-
-    /* -----------------------------------------------------
-       COST STRUCTURE FILTERS
-    ----------------------------------------------------- */
-
-    if (businessUnitId) {
-      query = query.eq(
-        "business_unit_id",
-        businessUnitId
-      );
-    }
-
-    if (costCenterId) {
-      query = query.eq(
-        "cost_center_id",
-        costCenterId
-      );
-    }
-
-    if (profitCenterId) {
-      query = query.eq(
-        "profit_center_id",
-        profitCenterId
-      );
-    }
-
-    /* -----------------------------------------------------
-       EMPLOYEE FILTERS
-    ----------------------------------------------------- */
-
-    if (status) {
-      query = query.eq(
-        "status",
-        status
-      );
-    }
-
-    if (employeeStatusId) {
-      query = query.eq(
-        "employee_status_id",
-        employeeStatusId
-      );
-    }
-
-    if (employmentTypeId) {
-      query = query.eq(
-        "employment_type_id",
-        employmentTypeId
-      );
-    }
-
-    if (genderId) {
-      query = query.eq(
-        "gender_id",
-        genderId
-      );
-    }
-
-    if (nationalityId) {
-      query = query.eq(
-        "nationality_id",
-        nationalityId
-      );
-    }
-
-    if (countryId) {
-      query = query.eq(
-        "country_id",
-        countryId
-      );
-    }
-
-    /* -----------------------------------------------------
-       PAYROLL FILTERS
-    ----------------------------------------------------- */
-
-    if (payrollCompanyId) {
-      query = query.eq(
-        "payroll_company_id",
-        payrollCompanyId
-      );
-    }
-
-    if (payrollTypeId) {
-      query = query.eq(
-        "payroll_type_id",
-        payrollTypeId
-      );
-    }
-
-    if (payrollGroupId) {
-      query = query.eq(
-        "payroll_group_id",
-        payrollGroupId
-      );
-    }
-
-    if (positionLevelBandId) {
-      query = query.eq(
-        "position_level_band_id",
-        positionLevelBandId
-      );
-    }
-
-    /* -----------------------------------------------------
-       USER ACCOUNT FILTER
-    ----------------------------------------------------- */
-
-    if (
-      hasUserAccount === "true"
-    ) {
-      query = query.not(
-        "user_accounts",
-        "is",
-        null
-      );
-    }
-
-    if (
-      hasUserAccount === "false"
-    ) {
-      /*
-        PostgREST embedded relation filtering
-        กรณีไม่มี user_accounts โดยตรงอาจไม่ทำงาน
-        เหมือน scalar column
-
-        จึงต้องดึง employee_id ที่มีบัญชีออกก่อน
-      */
-
+    if (hasUserAccount === "false") {
       const {
         data: accountRows,
         error: accountError,
       } = await supabaseAdmin
         .from("user_accounts")
         .select("employee_id")
-        .not(
-          "employee_id",
-          "is",
-          null
-        );
+        .not("employee_id", "is", null);
 
       if (accountError) {
         console.error(
@@ -2108,95 +1746,294 @@ export async function GET(req) {
         return errorResponse(
           "ไม่สามารถกรองพนักงานที่ไม่มีบัญชีผู้ใช้งานได้",
           {
-            status:
-              getErrorStatus(
-                accountError
-              ),
-
-            error:
-              mapEmployeeDatabaseError(
-                accountError
-              ),
-
-            details:
-              getDatabaseErrorDetails(
-                accountError
-              ),
+            status: getErrorStatus(accountError),
+            error: mapEmployeeDatabaseError(accountError),
+            details: getDatabaseErrorDetails(accountError),
           }
         );
       }
 
-      const employeeIdsWithAccount =
-        (accountRows || [])
-          .map(
-            (item) =>
-              item.employee_id
-          )
-          .filter(Boolean);
+      employeeIdsWithAccount = (accountRows || [])
+        .map((item) => item.employee_id)
+        .filter(Boolean);
+    }
+
+    /* =====================================================
+       SHARED FILTER BUILDER
+
+       ใช้ตัวเดียวกันทั้ง Self Query และ Scoped Query
+       เพื่อไม่ให้ Self ฝืน Search/Filter ที่ผู้ใช้เลือก
+    ===================================================== */
+
+    const applyListFilters = (inputQuery) => {
+      let query = inputQuery;
+
+      if (search) {
+        query = query.or(
+          [
+            `employee_code.ilike.%${search}%`,
+            `first_name_th.ilike.%${search}%`,
+            `middle_name_th.ilike.%${search}%`,
+            `last_name_th.ilike.%${search}%`,
+            `first_name_en.ilike.%${search}%`,
+            `middle_name_en.ilike.%${search}%`,
+            `last_name_en.ilike.%${search}%`,
+            `nickname_th.ilike.%${search}%`,
+            `nickname_en.ilike.%${search}%`,
+            `nick_name.ilike.%${search}%`,
+            `citizen_id.ilike.%${search}%`,
+            `passport_no.ilike.%${search}%`,
+            `tax_id.ilike.%${search}%`,
+            `social_security_no.ilike.%${search}%`,
+            `mobile_phone.ilike.%${search}%`,
+            `home_phone.ilike.%${search}%`,
+            `work_phone.ilike.%${search}%`,
+            `phone.ilike.%${search}%`,
+            `personal_email.ilike.%${search}%`,
+            `work_email.ilike.%${search}%`,
+            `email.ilike.%${search}%`,
+            `line_id.ilike.%${search}%`,
+            `birth_place.ilike.%${search}%`,
+            `birth_postcode.ilike.%${search}%`,
+          ].join(",")
+        );
+      }
+
+      if (companyId) {
+        query = query.eq("company_id", companyId);
+      }
+
+      if (branchGroupId) {
+        query = query.eq("branch_group_id", branchGroupId);
+      }
+
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
+
+      if (departmentId) {
+        query = query.eq("department_id", departmentId);
+      }
+
+      if (divisionId) {
+        query = query.eq("division_id", divisionId);
+      }
+
+      if (unitId) {
+        query = query.eq("unit_id", unitId);
+      }
+
+      if (positionFamilyId) {
+        query = query.eq("position_family_id", positionFamilyId);
+      }
+
+      if (positionLevelId) {
+        query = query.eq("position_level_id", positionLevelId);
+      }
+
+      if (positionId) {
+        query = query.eq("position_id", positionId);
+      }
+
+      if (jobId) {
+        query = query.eq("job_id", jobId);
+      }
+
+      if (businessUnitId) {
+        query = query.eq("business_unit_id", businessUnitId);
+      }
+
+      if (costCenterId) {
+        query = query.eq("cost_center_id", costCenterId);
+      }
+
+      if (profitCenterId) {
+        query = query.eq("profit_center_id", profitCenterId);
+      }
+
+      if (status) {
+        query = query.eq("status", status);
+      }
+
+      if (employeeStatusId) {
+        query = query.eq("employee_status_id", employeeStatusId);
+      }
+
+      if (employmentTypeId) {
+        query = query.eq("employment_type_id", employmentTypeId);
+      }
+
+      if (genderId) {
+        query = query.eq("gender_id", genderId);
+      }
+
+      if (nationalityId) {
+        query = query.eq("nationality_id", nationalityId);
+      }
+
+      if (countryId) {
+        query = query.eq("country_id", countryId);
+      }
+
+      if (payrollCompanyId) {
+        query = query.eq("payroll_company_id", payrollCompanyId);
+      }
+
+      if (payrollTypeId) {
+        query = query.eq("payroll_type_id", payrollTypeId);
+      }
+
+      if (payrollGroupId) {
+        query = query.eq("payroll_group_id", payrollGroupId);
+      }
+
+      if (positionLevelBandId) {
+        query = query.eq(
+          "position_level_band_id",
+          positionLevelBandId
+        );
+      }
+
+      if (hasUserAccount === "true") {
+        query = query.not("user_accounts", "is", null);
+      }
 
       if (
-        employeeIdsWithAccount.length >
-        0
+        hasUserAccount === "false" &&
+        employeeIdsWithAccount.length > 0
       ) {
         query = query.not(
           "id",
           "in",
-          `(${employeeIdsWithAccount.join(
-            ","
-          )})`
+          `(${employeeIdsWithAccount.join(",")})`
         );
+      }
+
+      return query;
+    };
+
+    /* =====================================================
+       1. LOAD SELF
+
+       สำคัญ:
+       - ไม่ apply Scope กับ Query นี้
+       - แต่ Permission ผ่าน guard แล้ว
+       - Filter/Search ยังบังคับตามปกติ
+    ===================================================== */
+
+    let selfEmployee = null;
+
+    if (currentEmployeeId) {
+      let selfQuery = supabaseAdmin
+        .from("employees")
+        .select(EMPLOYEE_DETAIL_SELECT)
+        .eq("id", currentEmployeeId);
+
+      selfQuery = applyListFilters(selfQuery);
+
+      const {
+        data: selfData,
+        error: selfError,
+      } = await selfQuery.maybeSingle();
+
+      if (selfError) {
+        console.error(
+          "GET /api/admin/employees self query error:",
+          selfError
+        );
+      } else {
+        selfEmployee = selfData || null;
       }
     }
 
-    /* -----------------------------------------------------
-       SORTING
-    ----------------------------------------------------- */
+    const includeSelf = Boolean(selfEmployee);
 
-    query = query
-      .order(
-        sortField,
-        {
-          ascending:
-            sortDirection ===
-            "asc",
+    /* =====================================================
+       2. SCOPED EMPLOYEES
 
-          nullsFirst: false,
-        }
-      )
-      .order(
-        "employee_code",
+       ตัวเองถูก exclude จาก Scoped Query เสมอ
+       เพื่อไม่ให้ซ้ำ และทำ Pagination ได้ถูกต้อง
+    ===================================================== */
+
+    let query = supabaseAdmin
+      .from("employees")
+      .select(
+        EMPLOYEE_DETAIL_SELECT,
         {
-          ascending: true,
+          count: all ? undefined : "exact",
         }
       );
 
-    /* -----------------------------------------------------
-       PAGINATION
-    ----------------------------------------------------- */
+    query = guard.applyEmployeeScope(query);
 
-    if (all) {
-      query = query.limit(
-        ALL_LIMIT
-      );
-    } else {
-      const from =
-        (page - 1) *
-        pageSize;
-
-      const to =
-        from +
-        pageSize -
-        1;
-
-      query = query.range(
-        from,
-        to
-      );
+    if (currentEmployeeId) {
+      query = query.neq("id", currentEmployeeId);
     }
 
-    /* -----------------------------------------------------
-       EXECUTE QUERY
-    ----------------------------------------------------- */
+    query = applyListFilters(query);
+
+    query = query
+      .order(sortField, {
+        ascending: sortDirection === "asc",
+        nullsFirst: false,
+      })
+      .order("employee_code", {
+        ascending: true,
+      });
+
+    /* =====================================================
+       3. PAGINATION
+
+       ถ้า Self ผ่าน Search/Filter:
+       - Self เป็น Row แรกของหน้า 1
+       - Scoped rows เลื่อน Offset ไป 1
+       - หน้า 2/3/... ไม่ข้ามหรือซ้ำ
+    ===================================================== */
+
+    let discardFetchedRows = false;
+
+    if (all) {
+      const scopedLimit = Math.max(
+        ALL_LIMIT - (includeSelf ? 1 : 0),
+        0
+      );
+
+      query = query.limit(scopedLimit);
+    } else {
+      const globalFrom =
+        (page - 1) * pageSize;
+
+      const rowsForThisPage =
+        includeSelf && page === 1
+          ? Math.max(pageSize - 1, 0)
+          : pageSize;
+
+      const scopedFrom = includeSelf
+        ? Math.max(globalFrom - 1, 0)
+        : globalFrom;
+
+      if (rowsForThisPage === 0) {
+        /*
+         * ยังต้อง execute เพื่อให้ count ถูกต้อง
+         * แต่จะ discard data row ที่ fetch มา
+         */
+        discardFetchedRows = true;
+        query = query.range(
+          scopedFrom,
+          scopedFrom
+        );
+      } else {
+        const scopedTo =
+          scopedFrom +
+          rowsForThisPage -
+          1;
+
+        query = query.range(
+          scopedFrom,
+          scopedTo
+        );
+      }
+    }
 
     const {
       data,
@@ -2213,26 +2050,25 @@ export async function GET(req) {
       return errorResponse(
         "ไม่สามารถโหลดข้อมูลพนักงานได้",
         {
-          status:
-            getErrorStatus(error),
-
-          error:
-            mapEmployeeDatabaseError(
-              error
-            ),
-
-          details:
-            getDatabaseErrorDetails(
-              error
-            ),
+          status: getErrorStatus(error),
+          error: mapEmployeeDatabaseError(error),
+          details: getDatabaseErrorDetails(error),
         }
       );
     }
 
+    let scopedRows = Array.isArray(data)
+      ? data
+      : [];
+
+    if (discardFetchedRows) {
+      scopedRows = [];
+    }
+
     const rows =
-      Array.isArray(data)
-        ? data
-        : [];
+      includeSelf && (all || page === 1)
+        ? [selfEmployee, ...scopedRows]
+        : scopedRows;
 
     /* -----------------------------------------------------
        ALL RESPONSE
@@ -2243,13 +2079,11 @@ export async function GET(req) {
         rows,
         {
           meta: {
-            total:
-              rows.length,
-
-            limit:
-              ALL_LIMIT,
-
+            total: rows.length,
+            limit: ALL_LIMIT,
             all: true,
+            selfIncluded: includeSelf,
+            currentEmployeeId,
           },
         }
       );
@@ -2259,46 +2093,41 @@ export async function GET(req) {
        PAGINATION RESPONSE
     ----------------------------------------------------- */
 
-    const total =
-      Number(count || 0);
+    const scopedTotal = Number(count || 0);
 
-    const totalPages =
-      Math.max(
-        Math.ceil(
-          total / pageSize
-        ),
-        1
-      );
+    const total =
+      scopedTotal +
+      (includeSelf ? 1 : 0);
+
+    const totalPages = Math.max(
+      Math.ceil(total / pageSize),
+      1
+    );
 
     /* -----------------------------------------------------
-       SUMMARY
+       SUMMARY = SELF + SCOPE
     ----------------------------------------------------- */
 
     let summary = null;
 
     if (includeSummary) {
-      summary =
-        await getEmployeeSummary({
-          companyId,
-
-          branchGroupId,
-
-          branchId,
-
-          departmentId,
-
-          divisionId,
-
-          unitId,
-
-          positionFamilyId,
-
-          positionLevelId,
-
-          positionId,
-
-          jobId,
-        });
+      summary = await getEmployeeSummary({
+        guard,
+        currentEmployeeId,
+        companyId,
+        branchGroupId,
+        branchId,
+        departmentId,
+        divisionId,
+        unitId,
+        positionFamilyId,
+        positionLevelId,
+        positionId,
+        jobId,
+        employeeStatusId,
+        employmentTypeId,
+        status,
+      });
     }
 
     return successResponse(
@@ -2306,75 +2135,48 @@ export async function GET(req) {
       {
         pagination: {
           page,
-
           pageSize,
-
           total,
-
           totalPages,
-
-          hasNextPage:
-            page < totalPages,
-
-          hasPreviousPage:
-            page > 1,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
         },
 
         meta: {
           sortField,
-
           sortDirection,
+          search: search || null,
 
-          search:
-            search || null,
+          access: {
+            currentEmployeeId,
+            selfIncluded: includeSelf,
+            rule: "SELF_PLUS_SCOPE",
+          },
 
           filters: {
             companyId,
-
             branchGroupId,
-
             branchId,
-
             departmentId,
-
             divisionId,
-
             unitId,
-
             positionFamilyId,
-
             positionLevelId,
-
             positionId,
-
             jobId,
-
             businessUnitId,
-
             costCenterId,
-
             profitCenterId,
-
             employeeStatusId,
-
             employmentTypeId,
-
             genderId,
-
             nationalityId,
-
             countryId,
-
             payrollCompanyId,
-
             payrollTypeId,
-
             payrollGroupId,
-
             positionLevelBandId,
-
             status,
-
             hasUserAccount,
           },
 
@@ -2392,22 +2194,12 @@ export async function GET(req) {
       "เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน",
       {
         status: 500,
-
-        error:
-          error?.message ||
-          "Unknown error",
-
-        details:
-          getDatabaseErrorDetails(
-            error
-          ),
+        error: error?.message || "Unknown error",
+        details: getDatabaseErrorDetails(error),
       }
     );
   }
 }
-/* =========================================================
-   POST /api/admin/employees
-========================================================= */
 
 export async function POST(req) {
   try {
@@ -2454,6 +2246,132 @@ export async function POST(req) {
         body
       );
 
+    const guard = await requireScopedAccess("ems.employees","create");
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+
+    /* -----------------------------------------------------
+   RESOLVE EMPLOYMENT TYPE DEFAULTS
+
+   employment_types
+     → default_employee_status_id
+     → employee_statuses
+----------------------------------------------------- */
+
+if (
+  employee.employment_type_id
+) {
+  if (
+    !isUuid(
+      employee.employment_type_id
+    )
+  ) {
+    return errorResponse(
+      "ประเภทการจ้างไม่ถูกต้อง",
+      {
+        status: 400,
+      }
+    );
+  }
+
+  const {
+    data: employmentType,
+    error: employmentTypeError,
+  } = await supabaseAdmin
+    .from("employment_types")
+    .select(`
+      id,
+      type_code,
+      type_name,
+      status,
+      probation_required,
+      probation_days,
+      auto_confirm_after_probation,
+      default_employee_status_id
+    `)
+    .eq(
+      "id",
+      employee.employment_type_id
+    )
+    .maybeSingle();
+
+  if (employmentTypeError) {
+    return errorResponse(
+      "ไม่สามารถตรวจสอบประเภทการจ้างได้",
+      {
+        status:
+          getErrorStatus(
+            employmentTypeError
+          ),
+
+        error:
+          employmentTypeError.message,
+
+        details:
+          getDatabaseErrorDetails(
+            employmentTypeError
+          ),
+      }
+    );
+  }
+
+  if (!employmentType) {
+    return errorResponse(
+      "ไม่พบประเภทการจ้างที่เลือก",
+      {
+        status: 404,
+      }
+    );
+  }
+
+  if (
+    employmentType.status !==
+    "active"
+  ) {
+    return errorResponse(
+      "ประเภทการจ้างที่เลือกไม่ได้เปิดใช้งาน",
+      {
+        status: 400,
+      }
+    );
+  }
+
+  /* =====================================================
+     Default Employee Status
+
+     เป็น DEFAULT
+     ถ้า Frontend ยังไม่ได้ส่ง employee_status_id
+     ให้ใช้ค่าจาก employment_types
+  ===================================================== */
+
+  if (
+    !employee.employee_status_id &&
+    employmentType
+      .default_employee_status_id
+  ) {
+    employee.employee_status_id =
+      employmentType
+        .default_employee_status_id;
+  }
+
+  /* =====================================================
+     Default Probation Days
+  ===================================================== */
+
+  if (
+    employmentType
+      .probation_required
+  ) {
+    employee.probation_days =
+      Number(
+        employmentType
+          .probation_days || 0
+      );
+  }
+}
+
     const account =
       normalizeAccountPayload(
         body
@@ -2480,6 +2398,23 @@ export async function POST(req) {
         validationError,
         {
           status: 400,
+        }
+      );
+    }
+
+    /* -----------------------------------------------------
+       CURRENT USER SCOPE
+
+       ใช้ Scope ของรหัสพนักงานที่ Login อยู่เท่านั้น
+       หลาย ID ในระดับเดียวกัน = OR
+       คนละระดับที่มี Scope = AND
+    ----------------------------------------------------- */
+
+    if (!guard.canAccessEmployee(employee)) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์เพิ่มพนักงานใน Scope องค์กรที่เลือก",
+        {
+          status: 403,
         }
       );
     }

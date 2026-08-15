@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
 export async function PATCH(req, { params }) {
   try {
+
+    /* =====================================================
+        1. Permission + Scope
+    ===================================================== */
+    const guard = await requireScopedAccess("ems.units","edit",{scopeType: "unit",});
+    if (!guard.ok) {
+      return guard.response;
+    }
+
     const { id } = await params;
     const body = await req.json();
 
@@ -151,6 +161,15 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+
+    /* =====================================================
+        1. Permission + Scope
+    ===================================================== */
+    const guard = await requireScopedAccess("ems.units","delete",{scopeType: "unit",});
+    if (!guard.ok) {
+      return guard.response;
+    }
+    
     const { id } = await params;
 
     const { data: oldUnit, error: oldUnitError } = await supabaseAdmin
@@ -173,6 +192,18 @@ export async function DELETE(req, { params }) {
       .single();
 
     if (oldUnitError) throw oldUnitError;
+
+    if (!guard.canAccessId(id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:"คุณไม่มีสิทธิ์ลบฝ่ายนี้",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
 
     const { error } = await supabaseAdmin
       .from("units")

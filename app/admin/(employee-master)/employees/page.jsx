@@ -1,17 +1,9 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import {useCallback,useEffect,useMemo,useState,} from "react";
 import {Form,message,Modal,} from "antd";
 import {TeamOutlined,} from "@ant-design/icons";
-import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import { useAuth } from "@/contexts/AuthContext";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
 import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
@@ -21,24 +13,11 @@ import EmployeeSummaryCards from "./components/EmployeeSummaryCards";
 import EmployeeTable from "./components/EmployeeTable";
 import EmployeeWizardModal from "./components/EmployeeWizardModal";
 import {EMPLOYEE_STEP_FIELDS, EMPLOYEE_WIZARD_STEPS} from "./components/EmployeeWizardForm";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
+
 const DEFAULT_PAGE_SIZE = 20;
 const LAST_WIZARD_STEP = EMPLOYEE_WIZARD_STEPS.length - 1;
 
-const DATE_FIELDS = [
-  "birth_date",
-  "passport_expire_date",
-  "start_work_date",
-  "probation_end_date",
-  "confirmation_date",
-  "termination_date",
-  "resignation_date",
-  "retirement_date",
-  "running_date",
-];
-
-/*
-     Default form
-*/
 const DEFAULT_FORM_VALUES = {
   /* -------------------------------------------------------
      Personal
@@ -184,25 +163,25 @@ const DEFAULT_FORM_VALUES = {
 
 const MASTER_ENDPOINTS = {
   companies:
-    "/api/admin/companies?all=true&status=active",
+    "/api/admin/companies?all=true&status=active&scope_context=ems.employees",
   branchGroups:
-    "/api/admin/branch-groups?all=true&status=active",
+    "/api/admin/branch-groups?all=true&status=active&scope_context=ems.employees",
   branches:
-    "/api/admin/branches?all=true&status=active",
+    "/api/admin/branches?all=true&status=active&scope_context=ems.employees",
   departments:
-    "/api/admin/departments?all=true&status=active",
+    "/api/admin/departments?all=true&status=active&scope_context=ems.employees",
   branchDepartments:
-    "/api/admin/branch-departments?all=true&status=active",
+    "/api/admin/branch-departments?all=true&status=active&scope_context=ems.employees",
   divisions:
-    "/api/admin/divisions?all=true&status=active",
+    "/api/admin/divisions?all=true&status=active&scope_context=ems.employees",
   units:
-    "/api/admin/units?all=true&status=active",
+    "/api/admin/units?all=true&status=active&scope_context=ems.employees",
   positions:
-    "/api/admin/positions?all=true&status=active",
+    "/api/admin/positions?all=true&status=active&scope_context=ems.employees",
   positionFamilies:
-  "/api/admin/position-families?all=true&status=active",
+  "/api/admin/position-families?all=true&status=active&scope_context=ems.employees",
   positionLevels:
-    "/api/admin/position-levels?all=true&status=active",
+    "/api/admin/position-levels?all=true&status=active&scope_context=ems.employees",
   positionFamilyLevels:
     "/api/admin/position-family-levels?all=true",
   unitPositions:
@@ -223,6 +202,8 @@ const MASTER_ENDPOINTS = {
     "/api/admin/marital-statuses?all=true&status=active",
   religions:
     "/api/admin/religions?all=true&status=active",
+  nationalities:
+    "/api/admin/nationalities?all=true&status=active",
   countries:
     "/api/admin/countries?all=true&status=active",
   employmentTypes:
@@ -477,6 +458,30 @@ function createEmployeeFormValues(record) {
 
     birth_date:
       toDayjs(record.birth_date),
+
+    birth_province_code:
+      record.birth_province_code
+        ? String(
+            record.birth_province_code
+          )
+        : undefined,
+
+    birth_district_code:
+      record.birth_district_code
+        ? String(
+            record.birth_district_code
+          )
+        : undefined,
+
+    birth_subdistrict_code:
+      record.birth_subdistrict_code
+        ? String(
+            record.birth_subdistrict_code
+          )
+        : undefined,
+
+    birth_postcode:
+      record.birth_postcode || "",
 
     birth_place:
       record.birth_place || "",
@@ -1145,25 +1150,50 @@ function buildEmployeePayload(values,{
 }
 
 export default function EmployeesPage() {
-  const router = useRouter();
-  const {user,loadingUser: authLoading,} = useAuth();
-  const [form] = Form.useForm();
 
-  const canView = useMemo(() =>hasPermission(user,"ems.employees.view"),[user]);
-  const canCreate = useMemo(() => hasPermission(user,"ems.employees.create"),[user]);
-  const canEdit = useMemo(() => hasPermission(user,"ems.employees.edit"),[user]);
-  const canDelete = useMemo(() =>hasPermission(user,"ems.employees.delete"),[user]);
+  /* =========================================================
+     Permission + Employee Scope
+  ========================================================= */
+  const {user, loadingUser:authLoading,
+
+    /* Permission */
+    canView,
+    canCreate,
+    canEdit,
+    canDelete,
+
+    /* Scope */
+    hasAllScope,
+
+    accessibleCompanyIds,
+    accessibleBranchGroupIds,
+    accessibleBranchIds,
+    accessibleDepartmentIds,
+    accessibleDivisionIds,
+    accessibleUnitIds,
+  } =
+    useScopedPermissions(
+      "ems.employees",
+      {
+        scopeType:
+          "employee",
+      }
+    );
+  
+  /* ========================================================
+    End Scope
+  ========================================================== */  
+  const [form] = Form.useForm();
 
   const [employees,setEmployees,] = useState([]);
 
-  const [summary, setSummary] =
-    useState({
-      total: 0,
-      active: 0,
-      inactive: 0,
-      resigned: 0,
-      probation: 0,
-    });
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    resigned: 0,
+    probation: 0,
+  });
 
   const [page, setPage] =useState(1);
   const [pageSize, setPageSize] =useState(DEFAULT_PAGE_SIZE);
@@ -1173,10 +1203,7 @@ export default function EmployeesPage() {
      MASTER DATA
   ======================================================= */
 
-  const [
-    masterData,
-    setMasterData,
-  ] = useState({
+  const [ masterData,setMasterData,] = useState({
     companies: [],
     branchGroups: [],
     branches: [],
@@ -1212,6 +1239,21 @@ export default function EmployeesPage() {
     positionLevels: [],
     positionFamilyLevels: [],
   });
+
+  /* =======================================================
+     CURRENT USER SCOPED MASTER DATA
+
+     Frontend ใช้เพื่อ UX เท่านั้น
+     Backend /api/admin/employees ยังเป็นตัว enforce จริง
+  ======================================================= */
+
+  /*
+   * Master APIs ถูกกรองด้วย Current User + ems.employees.view
+   * ที่ Backend แล้ว จึงไม่ filter Scope ซ้ำฝั่ง Frontend
+   * เพื่อไม่ให้ Company/Group/Branch ที่เป็น parent ซ้ำซ้อน
+   * มาบีบข้อมูลจนกลายเป็น 0 อีกครั้ง
+   */
+  const scopedMasterData = masterData;
 
   /* =======================================================
      FILTERS
@@ -1263,28 +1305,7 @@ export default function EmployeesPage() {
     };
   }, [search]);
 
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [
-    authLoading,
-    user,
-    canView,
-    router,
-  ]);
-
-  const fetchMasterEndpoint =
-    useCallback(
+  const fetchMasterEndpoint = useCallback(
       async (
         key,
         endpoint
@@ -1304,7 +1325,11 @@ export default function EmployeesPage() {
           if (!response.ok) {
             console.error(
               `fetchMasterEndpoint ${key} error:`,
-              result
+              {
+                status: response.status,
+                endpoint,
+                result,
+              }
             );
 
             return {
@@ -1713,69 +1738,46 @@ export default function EmployeesPage() {
       form,
     ]);
 
-  const handleView =
-    useCallback(
-      (record) => {
-        setSelectedRecord(record);
-        setModalMode("view");
-        setCurrentStep(0);
+  const handleView = useCallback( (record) => {
+    if (!canView) {
+      message.warning("คุณไม่มีสิทธิ์ดูข้อมูลพนักงานรายนี้");
+      return;
+    }
+      setSelectedRecord(record);
+      setModalMode("view");
+      setCurrentStep(0);
+      form.resetFields();
+      form.setFieldsValue(createEmployeeFormValues(record)
+      );
+      setModalOpen(true);
+    },
+    [canView,form,]
+  );
 
-        form.resetFields();
-
-        form.setFieldsValue(
-          createEmployeeFormValues(
-            record
-          )
-        );
-
-        setModalOpen(true);
-      },
-      [form]
-    );
-
-  const handleEdit =
-    useCallback(
-      (record) => {
-        if (!canEdit) {
-          message.warning(
-            "คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน"
-          );
-
-          return;
-        }
-
-        setSelectedRecord(record);
-        setModalMode("edit");
-        setCurrentStep(0);
-
-        form.resetFields();
-
-        form.setFieldsValue(
-          createEmployeeFormValues(
-            record
-          )
-        );
-
-        setModalOpen(true);
-      },
-      [
-        canEdit,
-        form,
-      ]
-    );
-
-  const handleEditFromView =
-    useCallback(() => {
-      if (!canEdit) {
-        message.warning(
-          "คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน"
-        );
-
-        return;
-      }
-
+  const handleEdit = useCallback((record) => {
+    if (!canEdit) {
+      message.warning(
+        "คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงานรายนี้"
+      );
+      return;
+    }
+      setSelectedRecord(record);
       setModalMode("edit");
-    }, [canEdit]);
+      setCurrentStep(0);
+      form.resetFields();
+      form.setFieldsValue(createEmployeeFormValues(record));
+      setModalOpen(true);
+    },
+    [canEdit,form,]
+  );
+
+  const handleEditFromView = useCallback(() => {
+    if (!selectedRecord || !canEdit) {
+      message.warning("คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงานรายนี้");
+      return;
+    }
+    setModalMode("edit");
+  }, [selectedRecord,canEdit,]);
 
   const handleCloseModal =
     useCallback(() => {
@@ -1805,8 +1807,7 @@ export default function EmployeesPage() {
       );
     }, []);
 
-  const handleNextStep =
-    useCallback(async () => {
+  const handleNextStep = useCallback(async () => {
       try {
         const fields =
           EMPLOYEE_STEP_FIELDS[
@@ -1864,12 +1865,7 @@ export default function EmployeesPage() {
           }
         }
 
-        /*
-          Step Account:
-          ตรวจบัญชีผู้ใช้และ Role
-        */
-
-        if (currentStep === 5) {
+        if (currentStep === 6) {
           const values =
             form.getFieldsValue([
               "create_user_account",
@@ -1878,36 +1874,17 @@ export default function EmployeesPage() {
               "auth_email",
             ]);
 
-          const accountEnabled =
-            modalMode === "create"
-              ? Boolean(
-                  values.create_user_account
-                )
-              : Boolean(
-                  values.update_user_account
-                );
+          const accountEnabled = modalMode === "create"? Boolean(values.create_user_account): Boolean(values.update_user_account);
 
-          if (
-            accountEnabled &&
-            !values.role_id
-          ) {
-            message.warning(
-              "กรุณาเลือก Role"
-            );
-
+          if (accountEnabled &&!values.role_id) {
+            message.warning("กรุณาเลือก Role");
             return;
           }
 
-          if (
-            accountEnabled &&
-            !cleanText(
-              values.auth_email
-            )
-          ) {
+          if (accountEnabled && !cleanText(values.auth_email)) {
             message.warning(
               "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ"
             );
-
             return;
           }
         }
@@ -1926,14 +1903,10 @@ export default function EmployeesPage() {
 
         console.error(
           "handleNextStep error:",
-          error
-        );
-      }
-    }, [
-      currentStep,
-      form,
-      modalMode,
-    ]);
+        error
+      );
+    }
+  }, [currentStep,form,modalMode,]);
 
   const handleStepChange = useCallback(
     async (nextStep) => {
@@ -2057,392 +2030,414 @@ export default function EmployeesPage() {
       [form]
     );
 
-  const handleSubmit =
-    useCallback(async () => {
-      if (modalMode === "view") {
-        handleCloseModal();
+  const handleSubmit = useCallback(async () => {
+
+    if (modalMode === "view") {
+      handleCloseModal();
+      return;
+    }
+
+    if (modalMode === "create" && !canCreate) {
+      message.warning(
+        "คุณไม่มีสิทธิ์เพิ่มพนักงาน"
+      );
+      return;
+    }
+
+    if (modalMode === "edit" && (!selectedRecord || !canEdit)) {
+      message.warning(
+        "คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงานรายนี้"
+      );
+      return;
+    }
+
+    const isEdit = modalMode === "edit";
+
+    if (isEdit && !selectedRecord?.id) {
+      message.error("ไม่พบรหัสพนักงานที่ต้องการแก้ไข");
+      return;
+    }
+
+    try {
+      await form.validateFields();
+
+      const values = form.getFieldsValue(true);
+      const payload =
+        buildEmployeePayload(
+          values,
+          {
+            mode:
+              modalMode,
+
+            selectedRecord,
+          }
+        );
+
+      if (!payload.company_id) {
+        message.warning(
+          "กรุณาเลือกบริษัท"
+        );
+
+        setCurrentStep(2);
+
         return;
       }
 
       if (
-        modalMode === "create" &&
-        !canCreate
+        !payload.branch_id
       ) {
         message.warning(
-          "คุณไม่มีสิทธิ์เพิ่มพนักงาน"
+          "กรุณาเลือกสังกัด"
         );
+
+        setCurrentStep(2);
 
         return;
       }
 
       if (
-        modalMode === "edit" &&
-        !canEdit
+        !payload.department_id
       ) {
         message.warning(
-          "คุณไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน"
+          "กรุณาเลือกแผนก"
         );
+
+        setCurrentStep(2);
 
         return;
       }
-
-      const isEdit =
-        modalMode === "edit";
 
       if (
-        isEdit &&
-        !selectedRecord?.id
+        !payload.position_id
       ) {
-        message.error(
-          "ไม่พบรหัสพนักงานที่ต้องการแก้ไข"
+        message.warning(
+          "กรุณาเลือกตำแหน่ง"
         );
+
+        setCurrentStep(2);
 
         return;
       }
 
-      try {
-        /*
-          Validate ทุก Field
-        */
 
-        const values =
-          await form.validateFields();
+      if (
+        !payload
+          .employment_type_id
+      ) {
+        message.warning(
+          "กรุณาเลือกประเภทการจ้าง"
+        );
 
-        const payload =
-          buildEmployeePayload(
-            values,
-            {
-              mode: modalMode,
-              selectedRecord,
-            }
-          );
+        setCurrentStep(3);
 
-        /* -------------------------------------------------
-           Validate required employee data
-        ------------------------------------------------- */
+        return;
+      }
 
-        if (!payload.company_id) {
+      if (
+        !payload
+          .employee_status_id
+      ) {
+        message.warning(
+          "กรุณาเลือกสถานะพนักงาน"
+        );
+
+        setCurrentStep(3);
+
+        return;
+      }
+
+      if (
+        !payload.start_work_date
+      ) {
+        message.warning(
+          "กรุณาเลือกวันที่เริ่มงาน"
+        );
+
+        setCurrentStep(3);
+
+        return;
+      }
+
+      if (
+        payload.status ===
+          "resigned" &&
+        !payload.resignation_date
+      ) {
+        message.warning(
+          "พนักงานลาออกต้องระบุวันที่ลาออก"
+        );
+
+        setCurrentStep(3);
+
+        return;
+      }
+
+      if (!isEdit) {
+        if (
+          !payload
+            .employee_code_setting_id
+        ) {
           message.warning(
-            "กรุณาเลือกบริษัท"
+            "กรุณาเลือกรูปแบบรหัสพนักงาน"
           );
 
-          setCurrentStep(2);
-          return;
-        }
+          setCurrentStep(6);
 
-        if (!payload.branch_id) {
-          message.warning(
-            "กรุณาเลือกสังกัด"
-          );
-
-          setCurrentStep(2);
-          return;
-        }
-
-        if (!payload.department_id) {
-          message.warning(
-            "กรุณาเลือกแผนก"
-          );
-
-          setCurrentStep(2);
-          return;
-        }
-
-        if (!payload.position_id) {
-          message.warning(
-            "กรุณาเลือกตำแหน่ง"
-          );
-
-          setCurrentStep(2);
           return;
         }
 
         if (
-          !payload.employment_type_id
+          !payload.employee_type
         ) {
           message.warning(
-            "กรุณาเลือกประเภทการจ้าง"
+            "กรุณาเลือกประเภทสำหรับสร้างรหัสพนักงาน"
           );
 
-          setCurrentStep(3);
+          setCurrentStep(6);
+
           return;
         }
 
         if (
-          !payload.employee_status_id
+          !payload.running_date
         ) {
           message.warning(
-            "กรุณาเลือกสถานะพนักงาน"
+            "กรุณาเลือกวันที่ Running"
           );
 
-          setCurrentStep(3);
+          setCurrentStep(6);
+
           return;
         }
+      }
 
-        if (
-          !payload.start_work_date
-        ) {
-          message.warning(
-            "กรุณาเลือกวันที่เริ่มงาน"
-          );
-
-          setCurrentStep(3);
-          return;
-        }
-
-        if (
-          payload.status ===
-            "resigned" &&
-          !payload.resignation_date
-        ) {
-          message.warning(
-            "พนักงานลาออกต้องระบุวันที่ลาออก"
-          );
-
-          setCurrentStep(3);
-          return;
-        }
-
-        /* -------------------------------------------------
-           Validate employee code on create
-        ------------------------------------------------- */
-
-        if (!isEdit) {
-          if (
-            !payload.employee_code_setting_id
-          ) {
-            message.warning(
-              "กรุณาเลือกรูปแบบรหัสพนักงาน"
+      const accountEnabled =
+        isEdit
+          ? Boolean(
+              payload
+                .update_user_account
+            )
+          : Boolean(
+              payload
+                .create_user_account
             );
 
-            setCurrentStep(5);
-            return;
-          }
+      if (
+        accountEnabled &&
+        !payload.role_id
+      ) {
+        message.warning(
+          "กรุณาเลือก Role"
+        );
 
-          if (
-            !payload.employee_type
-          ) {
-            message.warning(
-              "กรุณาเลือกประเภทสำหรับสร้างรหัสพนักงาน"
-            );
+        setCurrentStep(6);
 
-            setCurrentStep(5);
-            return;
-          }
+        return;
+      }
 
-          if (
-            !payload.running_date
-          ) {
-            message.warning(
-              "กรุณาเลือกวันที่ Running"
-            );
+      if (
+        accountEnabled &&
+        !payload.auth_email
+      ) {
+        message.warning(
+          "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ"
+        );
 
-            setCurrentStep(5);
-            return;
-          }
-        }
+        setCurrentStep(6);
 
-        /* -------------------------------------------------
-           Validate account
-        ------------------------------------------------- */
+        return;
+      }
 
-        const accountEnabled =
-          isEdit
-            ? payload.update_user_account
-            : payload.create_user_account;
+      setSaving(true);
 
-        if (
-          accountEnabled &&
-          !payload.role_id
-        ) {
-          message.warning(
-            "กรุณาเลือก Role"
-          );
-
-          setCurrentStep(5);
-          return;
-        }
-
-        if (
-          accountEnabled &&
-          !payload.auth_email
-        ) {
-          message.warning(
-            "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ"
-          );
-
-          setCurrentStep(5);
-          return;
-        }
-
-        setSaving(true);
-
-        const url = isEdit
+      const url =
+        isEdit
           ? `/api/admin/employees/${selectedRecord.id}`
           : "/api/admin/employees";
 
-        const response = await fetch(
+      const response =
+        await fetch(
           url,
           {
-            method: isEdit
-              ? "PATCH"
-              : "POST",
+            method:
+              isEdit
+                ? "PATCH"
+                : "POST",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify(
-              payload
-            ),
+            body:
+              JSON.stringify(
+                payload
+              ),
           }
         );
 
-        let result = null;
+      let result = null;
 
-        try {
-          result =
-            await response.json();
-        } catch {
-          result = null;
-        }
+      try {
+        result =
+          await response.json();
+      } catch {
+        result = null;
+      }
 
-        if (!response.ok) {
-          message.error(
-            getApiMessage(
-              result,
-              isEdit
-                ? "ไม่สามารถแก้ไขข้อมูลพนักงานได้"
-                : "ไม่สามารถเพิ่มพนักงานได้"
-            )
-          );
+      if (!response.ok) {
+        message.error(
+          getApiMessage(
+            result,
 
-          return;
-        }
+            isEdit
+              ? "ไม่สามารถแก้ไขข้อมูลพนักงานได้"
+              : "ไม่สามารถเพิ่มพนักงานได้"
+          )
+        );
 
-        const initialLogin =
-          result?.data
-            ?.initial_login ||
-          null;
+        return;
+      }
 
-        setModalOpen(false);
-        setSelectedRecord(null);
-        setModalMode("create");
-        setCurrentStep(0);
+      const initialLogin =
+        result?.data
+          ?.initial_login ||
+        null;
 
-        form.resetFields();
+      setModalOpen(false);
 
-        if (
-          !isEdit &&
-          initialLogin
-        ) {
-          Modal.success({
-            title:
-              "สร้างพนักงานและบัญชีผู้ใช้งานสำเร็จ",
+      setSelectedRecord(
+        null
+      );
 
-            centered: true,
+      setModalMode(
+        "create"
+      );
 
-            width: 520,
+      setCurrentStep(0);
 
-            content: (
-              <div className="space-y-3">
-                <p>
-                  {
-                    result?.message ||
-                    "เพิ่มพนักงานเรียบร้อยแล้ว"
-                  }
-                </p>
+      form.resetFields();
 
-                <div className="rounded-lg bg-slate-50 p-4">
-                  <div>
-                    Username:{" "}
-                    <strong>
-                      {
-                        initialLogin.username
-                      }
-                    </strong>
-                  </div>
+      if (
+        !isEdit &&
+        initialLogin
+      ) {
+        Modal.success({
+          title:
+            "สร้างพนักงานและบัญชีผู้ใช้งานสำเร็จ",
 
-                  <div className="mt-2">
-                    รหัสผ่านชั่วคราว:{" "}
-                    <strong>
-                      {
-                        initialLogin.temporary_password
-                      }
-                    </strong>
-                  </div>
+          centered: true,
+
+          width: 520,
+
+          content: (
+            <div className="space-y-3">
+              <p>
+                {result?.message ||
+                  "เพิ่มพนักงานเรียบร้อยแล้ว"}
+              </p>
+
+              <div className="rounded-lg bg-slate-50 p-4">
+                <div>
+                  Username:{" "}
+                  <strong>
+                    {
+                      initialLogin
+                        .username
+                    }
+                  </strong>
                 </div>
 
-                <p className="text-sm text-orange-600">
-                  กรุณาแจ้งพนักงานให้เปลี่ยนรหัสผ่านหลังเข้าสู่ระบบครั้งแรก
-                </p>
+                <div className="mt-2">
+                  รหัสผ่านชั่วคราว:{" "}
+                  <strong>
+                    {
+                      initialLogin
+                        .temporary_password
+                    }
+                  </strong>
+                </div>
               </div>
-            ),
-          });
-        } else {
-          message.success(
-            result?.message ||
-              (isEdit
+
+              <p className="text-sm text-orange-600">
+                กรุณาแจ้งพนักงานให้เปลี่ยนรหัสผ่านหลังเข้าสู่ระบบครั้งแรก
+              </p>
+            </div>
+          ),
+        });
+      } else {
+        message.success(
+          result?.message ||
+            (
+              isEdit
                 ? "แก้ไขข้อมูลพนักงานเรียบร้อยแล้ว"
-                : "เพิ่มพนักงานเรียบร้อยแล้ว")
-          );
-        }
+                : "เพิ่มพนักงานเรียบร้อยแล้ว"
+            )
+        );
+      }
 
-        if (!isEdit && page !== 1) {
-          setPage(1);
-          return;
-        }
+      if (
+        !isEdit &&
+        page !== 1
+      ) {
+        setPage(1);
 
-        await fetchEmployees();
-      } catch (error) {
-        if (error?.errorFields) {
-          const firstField =
-            error.errorFields?.[0]
-              ?.name?.[0];
+        return;
+      }
 
-          const stepEntry =
-            Object.entries(
-              EMPLOYEE_STEP_FIELDS
-            ).find(([, fields]) =>
+      await fetchEmployees();
+    } catch (error) {
+      if (
+        error?.errorFields
+      ) {
+        const firstField =
+          error
+            .errorFields?.[0]
+            ?.name?.[0];
+
+        const stepEntry =
+          Object.entries(
+            EMPLOYEE_STEP_FIELDS
+          ).find(
+            ([, fields]) =>
               fields.includes(
                 firstField
               )
-            );
+          );
 
-          if (stepEntry) {
-            setCurrentStep(
-              Number(
-                stepEntry[0]
-              )
-            );
-          }
-
-          return;
+        if (stepEntry) {
+          setCurrentStep(
+            Number(
+              stepEntry[0]
+            )
+          );
         }
 
-        console.error(
-          "handleSubmit unexpected error:",
-          error
-        );
-
-        message.error(
-          error?.message ||
-            "เกิดข้อผิดพลาดในการบันทึกข้อมูลพนักงาน"
-        );
-      } finally {
-        setSaving(false);
+        return;
       }
-    }, [
-      modalMode,
-      canCreate,
-      canEdit,
-      handleCloseModal,
-      form,
-      selectedRecord,
-      page,
-      fetchEmployees,
-    ]);
+
+      console.error(
+        "handleSubmit unexpected error:",
+        error
+      );
+
+      message.error(
+        error?.message ||
+          "เกิดข้อผิดพลาดในการบันทึกข้อมูลพนักงาน"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    modalMode,
+    canCreate,
+    canEdit,
+    handleCloseModal,
+    form,
+    selectedRecord,
+    page,
+    fetchEmployees,
+  ]);
 
   const executeDelete =
     useCallback(
@@ -2519,142 +2514,113 @@ export default function EmployeesPage() {
       ]
     );
 
-  const handleDelete =
-    useCallback(
-      (record) => {
-        if (!canDelete) {
-          message.warning(
-            "คุณไม่มีสิทธิ์ลบข้อมูลพนักงาน"
+  const handleDelete = useCallback((record) => {
+      if (!canDelete) {
+        message.warning(
+          "คุณไม่มีสิทธิ์ลบข้อมูลพนักงาน"
+        );
+        return;
+      }
+      const account = getUserAccount(record);
+      if (account?.roles ?.is_system === true) {
+        message.warning(
+          "ไม่สามารถลบพนักงานที่เชื่อมกับบัญชีระบบได้"
+        );
+        return;
+      }
+
+      Modal.confirm({
+        title:"ยืนยันการลบพนักงาน",
+        centered: true,
+        width: 520,
+        content: (
+          <div>
+            <p>
+              ต้องการลบพนักงาน{" "}
+              <strong>
+                {record.employee_code}
+              </strong>{" "}
+              ใช่หรือไม่
+            </p>
+
+            <p className="mt-2 text-orange-600">
+              หากพนักงานมีข้อมูลเงินเดือน สวัสดิการ
+              ทักษะ หรือสายบังคับบัญชา
+              ระบบจะไม่อนุญาตให้ลบ
+            </p>
+          </div>
+        ),
+        okText: "ลบ",
+        cancelText: "ยกเลิก",
+        okButtonProps: {
+          danger: true,
+        },
+        onOk: async () => {
+          await executeDelete(
+            record
           );
+        },
+      });
+    },
+    [canDelete,executeDelete,]
+  );
 
-          return;
-        }
+  const handleSearchChange = useCallback((value) => {
+      setSearch(value);
+  }, []);
 
-        const account =
-          getUserAccount(record);
+  const handleCompanyChange = useCallback((value) => {
+    setCompanyId(value || "");
 
-        if (
-          account?.roles
-            ?.is_system === true
-        ) {
-          message.warning(
-            "ไม่สามารถลบพนักงานที่เชื่อมกับบัญชีระบบได้"
-          );
+    setBranchId("");
+    setDepartmentId("");
 
-          return;
-        }
+    setPage(1);
+  }, []);
 
-        Modal.confirm({
-          title:
-            "ยืนยันการลบพนักงาน",
-
-          centered: true,
-
-          width: 520,
-
-          content: (
-            <div>
-              <p>
-                ต้องการลบพนักงาน{" "}
-                <strong>
-                  {record.employee_code}
-                </strong>{" "}
-                ใช่หรือไม่
-              </p>
-
-              <p className="mt-2 text-orange-600">
-                หากพนักงานมีข้อมูลเงินเดือน สวัสดิการ
-                ทักษะ หรือสายบังคับบัญชา
-                ระบบจะไม่อนุญาตให้ลบ
-              </p>
-            </div>
-          ),
-
-          okText: "ลบ",
-
-          cancelText: "ยกเลิก",
-
-          okButtonProps: {
-            danger: true,
-          },
-
-          onOk: async () => {
-            await executeDelete(
-              record
-            );
-          },
-        });
-      },
-      [
-        canDelete,
-        executeDelete,
-      ]
+  const handleBranchGroupChange = useCallback((value) => {
+    setBranchGroupId(
+      value || ""
     );
 
-  const handleSearchChange =
-    useCallback((value) => {
-      setSearch(value);
-    }, []);
+    setPage(1);
+  }, []);
 
-  const handleCompanyChange =
-    useCallback((value) => {
-      setCompanyId(value || "");
+  const handleBranchChange  = useCallback((value) => {
+    setBranchId(value || "");
+    setDepartmentId("");
 
-      setBranchId("");
-      setDepartmentId("");
+    setPage(1);
+  }, []);
 
-      setPage(1);
-    }, []);
+  const handleDepartmentChange = useCallback((value) => {
+    setDepartmentId(
+      value || ""
+    );
 
-  const handleBranchGroupChange =
-    useCallback((value) => {
-      setBranchGroupId(
-        value || ""
-      );
+    setPage(1);
+  }, []);
 
-      setPage(1);
-    }, []);
+  const handleEmployeeStatusChange = useCallback((value) => {
+    setEmployeeStatusId(
+      value || ""
+    );
 
-  const handleBranchChange =
-    useCallback((value) => {
-      setBranchId(value || "");
-      setDepartmentId("");
+    setPage(1);
+  }, []);
 
-      setPage(1);
-    }, []);
+  const handleEmploymentTypeChange = useCallback((value) => {
+    setEmploymentTypeId(
+      value || ""
+    );
 
-  const handleDepartmentChange =
-    useCallback((value) => {
-      setDepartmentId(
-        value || ""
-      );
+    setPage(1);
+  }, []);
 
-      setPage(1);
-    }, []);
-
-  const handleEmployeeStatusChange =
-    useCallback((value) => {
-      setEmployeeStatusId(
-        value || ""
-      );
-
-      setPage(1);
-    }, []);
-
-  const handleEmploymentTypeChange =
-    useCallback((value) => {
-      setEmploymentTypeId(
-        value || ""
-      );
-
-      setPage(1);
-    }, []);
-
-  const handleStatusChange =
-    useCallback((value) => {
-      setStatus(value || "");
-      setPage(1);
-    }, []);
+  const handleStatusChange = useCallback((value) => {
+    setStatus(value || "");
+    setPage(1);
+  }, []);
 
   const handleHasUserAccountChange = useCallback((value) => {
     setHasUserAccount(
@@ -2721,6 +2687,10 @@ export default function EmployeesPage() {
     fetchEmployees,
   ]);
 
+  const canEditSelectedRecord = useMemo(() => {
+    return Boolean(selectedRecord && canEdit);
+  }, [selectedRecord,canEdit,]);
+
   if (authLoading) return <LoadingOrb />;
   if (!user || !canView) {
     return <LoadingOrb />;
@@ -2772,16 +2742,16 @@ export default function EmployeesPage() {
             hasUserAccount
           }
           companies={
-            masterData.companies
+            scopedMasterData.companies
           }
           branchGroups={
-            masterData.branchGroups
+            scopedMasterData.branchGroups
           }
           branches={
-            masterData.branches
+            scopedMasterData.branches
           }
           departments={
-            masterData.departments
+            scopedMasterData.departments
           }
           employeeStatuses={
             masterData.employeeStatuses
@@ -2840,27 +2810,23 @@ export default function EmployeesPage() {
         <>
           <div className="mt-6">
             <EmployeeTable
-              dataSource={
-                employees
-              }
+              dataSource={employees}
               loading={loading}
-              deletingId={
-                deletingId
-              }
+              deletingId={deletingId}
+
               page={page}
               pageSize={pageSize}
               total={total}
+
               canView={canView}
               canEdit={canEdit}
               canDelete={canDelete}
+
               onView={handleView}
               onEdit={handleEdit}
-              onDelete={
-                handleDelete
-              }
-              onChange={
-                handleTableChange
-              }
+              onDelete={handleDelete}
+
+              onChange={handleTableChange}
             />
           </div>
         </>
@@ -2879,12 +2845,14 @@ export default function EmployeesPage() {
           disabled={
             modalDisabled
           }
-          canEdit={canEdit}
+          canEdit={
+            canEditSelectedRecord
+          }
           selectedRecord={
             selectedRecord
           }
           masterData={
-            masterData
+            scopedMasterData
           }
           masterLoading={
             masterLoading

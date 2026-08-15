@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback,useEffect, useState } from "react";
 import { swalSuccess , swalError , swalConfirm} from "../../../components/Swal";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { PhoneOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import ImageCropModal from "../components/ImageCropModal";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
   code: "",
@@ -42,32 +40,13 @@ export default function BranchesPage() {
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState("");
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.branches.view");
-  const canCreate = hasPermission(user, "ems.branches.create");
-  const canEdit = hasPermission(user, "ems.branches.edit");
-  const canDelete = hasPermission(user, "ems.branches.delete");
-
-  
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
-
+  /* =========================================================
+    Permission + Access Scope
+  ========================================================= */
+  const {user,loadingUser,canView,canCreate,canEdit,canDelete,canEditRecord,canDeleteRecord,hasAllScope,accessibleIds,accessibleCompanyIds,accessibleBranchGroupIds,} = useScopedPermissions("ems.branches",{scopeType: "branch",});
 
   const loadBranchGroups = async () => {
-    const res = await fetch("/api/admin/branch-groups");
+    const res = await fetch("/api/admin/branch-groups?scope_context=ems.branches");
 
     const data = await res.json();
 
@@ -78,7 +57,7 @@ export default function BranchesPage() {
 
   const loadCompanies = async () => {
     try {
-      const res = await fetch("/api/admin/companies", {
+      const res = await fetch("/api/admin/companies?scope_context=ems.branches", {
         method: "GET",
         cache: "no-store",
       });
@@ -95,58 +74,136 @@ export default function BranchesPage() {
     }
   };
 
-  const loadBranches = async (keyword = "") => {
-    try {
-      setLoading(true);
-      setError("");
-      const url = keyword ? `/api/admin/branches?search=${encodeURIComponent(keyword)}` : "/api/admin/branches";
-      const res = await fetch(url, {
-        method: "GET",
-        cache: "no-store",
-      });
+  const loadBranches = useCallback(async (keyword = "") => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const data = await res.json();
+        const url =
+          keyword
+            ? `/api/admin/branches?search=${encodeURIComponent(
+                keyword
+              )}`
+            : "/api/admin/branches";
 
-      if (!res.ok) {
-        throw new Error(data?.error || "Load branches failed");
+        const res =
+          await fetch(
+            url,
+            {
+              method: "GET",
+              cache:
+                "no-store",
+            }
+          );
+
+        const data =
+          await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            data?.error ||
+              "Load branches failed"
+          );
+        }
+
+        const mapped =
+          (
+            data.data || []
+          ).map(
+            (branch) => ({
+              id:
+                branch.id,
+
+              code:
+                branch.branch_code,
+
+              name:
+                branch.branch_name,
+
+              company_id:
+                branch.company_id ||
+                "",
+
+              company:
+                branch.company_name ||
+                "",
+
+              phone:
+                branch.phone ||
+                "",
+
+              status:
+                branch.status,
+
+              branch_image_url:
+                branch.branch_image_url ||
+                "",
+
+              branch_image_path:
+                branch.branch_image_path ||
+                "",
+
+              group_id:
+                branch.group_id ||
+                "",
+
+              group_name:
+                branch.group_name ||
+                "",
+
+              group_color:
+                branch.group_color ||
+                "#E2E8F0",
+            })
+          );
+
+        setBranches(
+          mapped
+        );
+      } catch (err) {
+        setError(
+          err.message ||
+            "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+        );
+      } finally {
+        setLoading(false);
       }
-
-      const mapped = (data.data || []).map((branch) => ({
-        id: branch.id,
-        code: branch.branch_code,
-        name: branch.branch_name,
-        company_id: branch.company_id || "",
-        company: branch.company_name || "",
-        phone: branch.phone || "",
-        status: branch.status,
-        branch_image_url: branch.branch_image_url || "",
-        branch_image_path: branch.branch_image_path || "",
-        group_id: branch.group_id || "",
-        group_name: branch.group_name || "",
-        group_color: branch.group_color || "#E2E8F0",
-      }));
-
-      setBranches(mapped);
-    } catch (err) {
-      setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    []
+  );
 
   useEffect(() => {
-    loadBranches();
-    loadCompanies();
     loadBranchGroups();
-  }, []);
+    loadCompanies();
+    if (loadingUser) {
+      return;
+    }
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadBranches(search);
-    }, 300);
+    if (
+      !user ||
+      !canView
+    ) {
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [search]);
+    const timer =
+      setTimeout(() => {
+        loadBranches(
+          search
+        );
+      }, 300);
+
+    return () =>
+      clearTimeout(
+        timer
+      );
+  }, [
+    search,
+    loadingUser,
+    user,
+    canView,
+    loadBranches,
+  ]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -164,8 +221,10 @@ export default function BranchesPage() {
   };
 
   const handleOpenEdit = (branch) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัด");
+    if (!canEditRecord(branch)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขสังกัดนี้"
+      );
       return;
     }
     setEditingBranch(branch);
@@ -189,8 +248,9 @@ export default function BranchesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingBranch;
-    if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัด");
+
+    if (isEdit && !canEditRecord(editingBranch)) {
+      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัดนี้");
       return;
     }
 
@@ -279,7 +339,7 @@ export default function BranchesPage() {
   };
 
   const handleDelete = async (branch) => {
-    if (!canDelete) {
+    if (!canDeleteRecord(branch)) {
       swalError("คุณไม่มีสิทธิ์ลบสังกัด");
       return;
     }
@@ -396,11 +456,6 @@ export default function BranchesPage() {
             <p className="text-sm text-slate-500 mt-1">
               จัดการข้อมูลแบรนด์ของบริษัท
             </p>
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบแบรนด์ได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -523,34 +578,56 @@ export default function BranchesPage() {
                         </p>
                       </div>
 
-                      {(canEdit || canDelete) ? (
+                      {canEditRecord(branch) ||
+                      canDeleteRecord(branch) ? (
                         <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
-                          {canEdit && (
+
+                          {canEditRecord(
+                            branch
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleOpenEdit(branch)}
+                              onClick={() =>
+                                handleOpenEdit(
+                                  branch
+                                )
+                              }
                               className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                             >
                               Edit
                             </button>
                           )}
 
-                          {canDelete && (
+                          {canDeleteRecord(
+                            branch
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(branch)}
-                              disabled={deletingId === branch.id}
+                              onClick={() =>
+                                handleDelete(
+                                  branch
+                                )
+                              }
+                              disabled={
+                                deletingId ===
+                                branch.id
+                              }
                               className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === branch.id
+                                deletingId ===
+                                branch.id
                                   ? "cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-red-200 text-red-600 hover:bg-red-50"
                               }`}
                             >
-                              {deletingId === branch.id ? "Deleting..." : "Delete"}
+                              {deletingId ===
+                              branch.id
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                           )}
+
                         </div>
-                      ) : null}
+                      ) : null}  
                     </div>
                   </div>
                 ))}
@@ -800,18 +877,33 @@ export default function BranchesPage() {
                 Cancel
               </button>
 
-              {((editingBranch && canEdit) || (!editingBranch && canCreate)) && (
+              {(
+                (
+                  editingBranch &&
+                  canEditRecord(
+                    editingBranch
+                  )
+                ) ||
+                (
+                  !editingBranch &&
+                  canCreate
+                )
+              ) && (
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
                   className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white ${
                     saving
-                      ? "bg-slate-400 cursor-not-allowed"
+                      ? "cursor-not-allowed bg-slate-400"
                       : "bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
-                  {saving ? "Saving..." : editingBranch ? "Update" : "Save"}
+                  {saving
+                    ? "Saving..."
+                    : editingBranch
+                      ? "Update"
+                      : "Save"}
                 </button>
               )}
             </div>

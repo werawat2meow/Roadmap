@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "antd";
 
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
 import {

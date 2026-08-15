@@ -13,8 +13,62 @@ import PositionSelector from "./PositionSelector";
 
 export default function UnitPositionForm({
   form,
+
+  editingRow = null,
+
   disabled = false,
 }) {
+  /* =========================================================
+     Edit Initial Unit
+
+     สำคัญ:
+     UUID + Label ต้องมาคู่กัน
+  ========================================================= */
+
+  const initialUnitOption =
+    editingRow?.unit_id
+      ? {
+          id:
+            editingRow.unit_id,
+
+          unit_name:
+            editingRow.unit_name ||
+            "",
+
+          division_name:
+            editingRow.division_name ||
+            "",
+
+          department_name:
+            editingRow.department_name ||
+            "",
+        }
+      : null;
+
+  /* =========================================================
+     Edit Initial Position
+  ========================================================= */
+
+  const initialPositionOption =
+    editingRow?.position_id
+      ? {
+          id:
+            editingRow.position_id,
+
+          position_name:
+            editingRow.position_name ||
+            "",
+
+          position_code:
+            editingRow.position_code ||
+            "",
+
+          position_level:
+            editingRow.position_level ||
+            "",
+        }
+      : null;
+
   return (
     <Form
       form={form}
@@ -33,12 +87,17 @@ export default function UnitPositionForm({
             rules={[
               {
                 required: true,
-                message: "กรุณาเลือกหน่วยงาน",
+                message:
+                  "กรุณาเลือกหน่วยงาน",
               },
             ]}
           >
             <UnitSelector
               disabled={disabled}
+
+              initialOption={
+                initialUnitOption
+              }
             />
           </Form.Item>
         </Col>
@@ -54,12 +113,17 @@ export default function UnitPositionForm({
             rules={[
               {
                 required: true,
-                message: "กรุณาเลือกตำแหน่ง",
+                message:
+                  "กรุณาเลือกตำแหน่ง",
               },
             ]}
           >
             <PositionSelector
               disabled={disabled}
+
+              initialOption={
+                initialPositionOption
+              }
             />
           </Form.Item>
         </Col>
@@ -68,7 +132,10 @@ export default function UnitPositionForm({
             Headcount
         ========================= */}
 
-        <Col xs={24} md={12}>
+        <Col
+          xs={24}
+          md={12}
+        >
           <Form.Item
             label="จำนวนอัตรา"
             name="headcount_target"
@@ -76,15 +143,21 @@ export default function UnitPositionForm({
             rules={[
               {
                 required: true,
-                message: "กรุณาระบุจำนวนอัตรา",
+                message:
+                  "กรุณาระบุจำนวนอัตรา",
               },
             ]}
           >
             <InputNumber
               min={0}
               precision={0}
-              style={{ width: "100%" }}
-              disabled={disabled}
+              style={{
+                width:
+                  "100%",
+              }}
+              disabled={
+                disabled
+              }
               placeholder="0"
             />
           </Form.Item>
@@ -94,14 +167,19 @@ export default function UnitPositionForm({
             Status
         ========================= */}
 
-        <Col xs={24} md={12}>
+        <Col
+          xs={24}
+          md={12}
+        >
           <Form.Item
             label="สถานะ"
             name="status"
             initialValue="active"
           >
             <Select
-              disabled={disabled}
+              disabled={
+                disabled
+              }
             >
               <Select.Option value="active">
                 Active

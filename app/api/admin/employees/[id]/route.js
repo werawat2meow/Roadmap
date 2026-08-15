@@ -28,6 +28,8 @@ import {
   mapEmployeeDatabaseError,
 } from "@/lib/employee/employeeTransaction";
 
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
+
 /* =========================================================
    CONSTANTS
 ========================================================= */
@@ -98,16 +100,6 @@ function errorResponse(
       status,
     }
   );
-}
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function cleanNullableText(value) {
-  const cleaned = cleanText(value);
-
-  return cleaned || null;
 }
 
 function cleanBoolean(
@@ -635,11 +627,25 @@ function buildEmployeeUpdatePayload(
    GET /api/admin/employees/[id]
 ========================================================= */
 
-export async function GET(
-  req,
-  { params }
-) {
+export async function GET(req,{ params }) {
   try {
+    const guard =
+      await requireScopedAccess(
+        "ems.employees",
+        "view"
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    const currentEmployeeId =
+      guard?.access?.employee_id ||
+      guard?.access?.user?.employee_id ||
+      guard?.user?.employee_id ||
+      guard?.employee_id ||
+      null;
+
     const { id } = await params;
 
     if (!id) {
@@ -665,13 +671,8 @@ export async function GET(
       return errorResponse(
         "ไม่สามารถโหลดรายละเอียดพนักงานได้",
         {
-          status:
-            getErrorStatus(error),
-
-          error:
-            mapEmployeeDatabaseError(
-              error
-            ),
+          status: getErrorStatus(error),
+          error: mapEmployeeDatabaseError(error),
         }
       );
     }
@@ -685,7 +686,41 @@ export async function GET(
       );
     }
 
-    return successResponse(data);
+    /* =====================================================
+       SELF + SCOPE
+
+       - Self: ดูรายละเอียดตัวเองได้เมื่อมี ems.employees.view
+       - Other employee: ต้องผ่าน Employee Scope
+       - ไม่ขยายสิทธิ์ PATCH / DELETE
+    ===================================================== */
+
+    const isSelf =
+      Boolean(currentEmployeeId) &&
+      String(data.id) ===
+        String(currentEmployeeId);
+
+    if (
+      !isSelf &&
+      !guard.canAccessEmployee(data)
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์ดูข้อมูลพนักงานรายนี้",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    return successResponse(data, {
+      meta: {
+        access: {
+          isSelf,
+          rule: isSelf
+            ? "SELF"
+            : "SCOPE",
+        },
+      },
+    });
   } catch (error) {
     console.error(
       "GET employee/[id] exception:",
@@ -696,7 +731,6 @@ export async function GET(
       "เกิดข้อผิดพลาดในการโหลดรายละเอียดพนักงาน",
       {
         status: 500,
-
         error:
           error?.message ||
           "Unknown error",
@@ -707,14 +741,40 @@ export async function GET(
 
 /* =========================================================
    PATCH /api/admin/employees/[id]
+
+   Permission:
+   ems.employees.edit
+
+   Scope:
+   Employee Organization Scope
+
+   ตรวจ 2 รอบ:
+   1. พนักงานเดิม ต้องอยู่ใน Scope
+   2. Organization ใหม่หลังแก้ ต้องอยู่ใน Scope
 ========================================================= */
 
-export async function PATCH(
-  req,
-  { params }
-) {
+export async function PATCH(req,{ params }) {
   try {
-    const { id } = await params;
+    /* =====================================================
+       1. Permission + Employee Scope
+    ===================================================== */
+
+    const guard =
+      await requireScopedAccess(
+        "ems.employees",
+        "edit"
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    /* =====================================================
+       2. Params
+    ===================================================== */
+
+    const { id } =
+      await params;
 
     if (!id) {
       return errorResponse(
@@ -725,10 +785,15 @@ export async function PATCH(
       );
     }
 
+    /* =====================================================
+       3. Request Body
+    ===================================================== */
+
     let body = null;
 
     try {
-      body = await req.json();
+      body =
+        await req.json();
     } catch (error) {
       return errorResponse(
         "รูปแบบ Request Body ไม่ถูกต้อง",
@@ -744,7 +809,8 @@ export async function PATCH(
 
     if (
       !body ||
-      typeof body !== "object" ||
+      typeof body !==
+        "object" ||
       Array.isArray(body)
     ) {
       return errorResponse(
@@ -755,14 +821,17 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       Load current employee
-    ----------------------------------------------------- */
+    /* =====================================================
+       4. Load Current Employee
+    ===================================================== */
 
     const {
       data: current,
       error: currentError,
-    } = await getEmployeeById(id);
+    } =
+      await getEmployeeById(
+        id
+      );
 
     if (currentError) {
       return errorResponse(
@@ -790,20 +859,51 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       Merge current with request
+    /* =====================================================
+       5. Check Current Employee Scope
 
-       เพื่อรองรับ PATCH บางฟิลด์
-    ----------------------------------------------------- */
+       User ต้องมี:
+       ems.employees.edit
+
+       และพนักงานเดิมต้องอยู่ใน Scope เช่น
+       - company
+       - branch_group
+       - branch
+       - department
+       - division
+       - unit
+
+       SUPER_ADMIN / has_all_scope
+       จะผ่านอัตโนมัติ
+    ===================================================== */
+
+    if (
+      !guard.canAccessEmployee(
+        current
+      )
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์แก้ไขพนักงานรายนี้",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    /* =====================================================
+       6. Merge Current + Request
+
+       รองรับ PATCH บาง Field
+    ===================================================== */
 
     const mergedBody = {
       ...current,
       ...body,
 
       /*
-        ป้องกันการแก้ Employee Code
-        และ Running ผ่าน PATCH
-      */
+       * ห้ามแก้ Employee Code
+       * และ Running Number ผ่าน PATCH
+       */
 
       employee_code:
         current.employee_code,
@@ -818,14 +918,18 @@ export async function PATCH(
         current.employee_running_no,
     };
 
+    /* =====================================================
+       7. Normalize Employee
+    ===================================================== */
+
     const employee =
       normalizeEmployeePayload(
         mergedBody
       );
 
-    /* -----------------------------------------------------
-       Validate employee
-    ----------------------------------------------------- */
+    /* =====================================================
+       8. Validate Employee
+    ===================================================== */
 
     const validationError =
       validateEmployeePayload(
@@ -854,9 +958,70 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       Duplicate validation
-    ----------------------------------------------------- */
+    /* =====================================================
+       9. Validate Organization
+
+       ตรวจว่า:
+       Branch
+       Department
+       Division
+       Unit
+       ฯลฯ
+
+       เชื่อมโยงกันถูกต้องจริง
+    ===================================================== */
+
+    const organizationResult = await validateEmployeeOrganization(employee);
+    if (!organizationResult.success) {
+      return errorResponse(
+        organizationResult.message,
+        {
+          status: 400,
+
+          error:
+            organizationResult
+              .error
+              ?.message ||
+            null,
+        }
+      );
+    }
+
+    /* =====================================================
+       10. Check NEW Organization Scope
+
+       สำคัญมาก
+
+       User อาจมีสิทธิ์แก้ Employee เดิม
+       แต่ห้ามย้าย Employee ไป Organization
+       ที่ตัวเองไม่มี Scope
+
+       ตัวอย่าง:
+
+       User Scope = Company A
+
+       Employee เดิม = Company A ✅
+
+       Request เปลี่ยนไป:
+       Branch ของ Company B ❌
+    ===================================================== */
+
+    if (
+      !guard.canAccessEmployee(
+        employee
+      )
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์ย้ายหรือแก้ไขพนักงานไปยังขอบเขตองค์กรที่เลือก",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    /* =====================================================
+       11. Duplicate Validation
+    ===================================================== */
 
     const duplicateResult =
       await checkEmployeeDuplicates({
@@ -864,7 +1029,9 @@ export async function PATCH(
         employee,
       });
 
-    if (!duplicateResult.success) {
+    if (
+      !duplicateResult.success
+    ) {
       return errorResponse(
         duplicateResult.message,
         {
@@ -884,41 +1051,18 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       Validate organization
-    ----------------------------------------------------- */
-
-    const organizationResult =
-      await validateEmployeeOrganization(
-        employee
-      );
-
-    if (
-      !organizationResult.success
-    ) {
-      return errorResponse(
-        organizationResult.message,
-        {
-          status: 400,
-
-          error:
-            organizationResult.error
-              ?.message ||
-            null,
-        }
-      );
-    }
-
-    /* -----------------------------------------------------
-       Validate payroll
-    ----------------------------------------------------- */
+    /* =====================================================
+       12. Validate Payroll
+    ===================================================== */
 
     const payrollResult =
       await validateEmployeePayroll(
         employee
       );
 
-    if (!payrollResult.success) {
+    if (
+      !payrollResult.success
+    ) {
       return errorResponse(
         payrollResult.message,
         {
@@ -932,9 +1076,9 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       Update employee
-    ----------------------------------------------------- */
+    /* =====================================================
+       13. Build Update Payload
+    ===================================================== */
 
     const updatePayload =
       buildEmployeeUpdatePayload(
@@ -942,17 +1086,36 @@ export async function PATCH(
         current
       );
 
+    /* =====================================================
+       14. Update Employee
+
+       เพิ่ม Scope ซ้ำใน UPDATE ด้วยไม่ได้
+       เพราะ Employee Scope เป็นหลาย Column
+
+       Security ถูกตรวจด้วย
+       canAccessEmployee(current)
+       ด้านบนเรียบร้อยแล้ว
+    ===================================================== */
+
     const {
-      data: updatedEmployee,
-      error: updateError,
-    } = await supabaseAdmin
-      .from("employees")
-      .update(updatePayload)
-      .eq("id", id)
-      .select(
-        EMPLOYEE_DETAIL_SELECT
-      )
-      .single();
+      data:
+        updatedEmployee,
+      error:
+        updateError,
+    } =
+      await supabaseAdmin
+        .from("employees")
+        .update(
+          updatePayload
+        )
+        .eq(
+          "id",
+          id
+        )
+        .select(
+          EMPLOYEE_DETAIL_SELECT
+        )
+        .single();
 
     if (updateError) {
       console.error(
@@ -976,13 +1139,16 @@ export async function PATCH(
       );
     }
 
-    /* -----------------------------------------------------
-       User account update
+    /* =====================================================
+       15. User Account Update
 
        update_user_account:
-       true  = แก้ไข/สร้างบัญชี
-       false = ไม่แตะบัญชี
-    ----------------------------------------------------- */
+       true
+       = แก้ไขบัญชีผู้ใช้งาน
+
+       false
+       = ไม่แตะบัญชี
+    ===================================================== */
 
     const updateUserAccount =
       cleanBoolean(
@@ -990,9 +1156,12 @@ export async function PATCH(
         false
       );
 
-    let updatedAccount = null;
+    let updatedAccount =
+      null;
 
-    if (updateUserAccount) {
+    if (
+      updateUserAccount
+    ) {
       const account =
         normalizeAccountPayload({
           ...mergedBody,
@@ -1002,12 +1171,18 @@ export async function PATCH(
             true,
         });
 
+      /* ===================================================
+         Validate Account
+      =================================================== */
+
       const accountValidationError =
         validateAccountPayload(
           account
         );
 
-      if (accountValidationError) {
+      if (
+        accountValidationError
+      ) {
         return errorResponse(
           accountValidationError,
           {
@@ -1016,12 +1191,18 @@ export async function PATCH(
         );
       }
 
+      /* ===================================================
+         Validate Role
+      =================================================== */
+
       const roleResult =
         await validateRole(
           account.role_id
         );
 
-      if (!roleResult.success) {
+      if (
+        !roleResult.success
+      ) {
         return errorResponse(
           roleResult.message,
           {
@@ -1037,15 +1218,23 @@ export async function PATCH(
         );
       }
 
+      /* ===================================================
+         Load Current User Account
+      =================================================== */
+
       const {
-        data: currentAccount,
-        error: accountLoadError,
+        data:
+          currentAccount,
+        error:
+          accountLoadError,
       } =
         await getUserAccountByEmployeeId(
           id
         );
 
-      if (accountLoadError) {
+      if (
+        accountLoadError
+      ) {
         return errorResponse(
           "ไม่สามารถโหลดบัญชีผู้ใช้งานเดิมได้",
           {
@@ -1058,12 +1247,9 @@ export async function PATCH(
       }
 
       /*
-        หากยังไม่มี User Account
-        ไม่สร้างอัตโนมัติใน PATCH นี้
-
-        การสร้างบัญชีครั้งแรกควรใช้ endpoint แยก
-        หรือสร้างพร้อม POST employee
-      */
+       * ถ้ายังไม่มี User Account
+       * ไม่สร้างอัตโนมัติใน PATCH นี้
+       */
 
       if (!currentAccount) {
         return errorResponse(
@@ -1073,6 +1259,10 @@ export async function PATCH(
           }
         );
       }
+
+      /* ===================================================
+         Update User Account
+      =================================================== */
 
       const accountPayload = {
         role_id:
@@ -1089,35 +1279,40 @@ export async function PATCH(
       const {
         data,
         error,
-      } = await supabaseAdmin
-        .from("user_accounts")
-        .update(accountPayload)
-        .eq(
-          "id",
-          currentAccount.id
-        )
-        .select(
-          `
-            id,
-            auth_user_id,
-            employee_id,
-            username,
-            role_id,
-            is_active,
-            last_login_at,
-            created_at,
-            updated_at,
-
-            roles:role_id (
+      } =
+        await supabaseAdmin
+          .from(
+            "user_accounts"
+          )
+          .update(
+            accountPayload
+          )
+          .eq(
+            "id",
+            currentAccount.id
+          )
+          .select(
+            `
               id,
-              role_code,
-              role_name,
+              auth_user_id,
+              employee_id,
+              username,
+              role_id,
               is_active,
-              is_system
-            )
-          `
-        )
-        .single();
+              last_login_at,
+              created_at,
+              updated_at,
+
+              roles:role_id (
+                id,
+                role_code,
+                role_name,
+                is_active,
+                is_system
+              )
+            `
+          )
+          .single();
 
       if (error) {
         console.error(
@@ -1131,7 +1326,9 @@ export async function PATCH(
           ),
           {
             status:
-              getErrorStatus(error),
+              getErrorStatus(
+                error
+              ),
 
             error:
               error.message,
@@ -1139,44 +1336,57 @@ export async function PATCH(
         );
       }
 
-      updatedAccount = data;
+      updatedAccount =
+        data;
 
-      /*
-        Sync Supabase Auth metadata
-      */
+      /* ===================================================
+         Sync Supabase Auth Metadata
+      =================================================== */
 
       if (
-        currentAccount.auth_user_id
+        currentAccount
+          .auth_user_id
       ) {
         const {
-          error: authUpdateError,
+          error:
+            authUpdateError,
         } =
-          await supabaseAdmin.auth.admin.updateUserById(
-            currentAccount.auth_user_id,
-            {
-              user_metadata: {
-                employee_code:
-                  current.employee_code,
+          await supabaseAdmin
+            .auth
+            .admin
+            .updateUserById(
+              currentAccount
+                .auth_user_id,
+              {
+                user_metadata: {
+                  employee_code:
+                    current
+                      .employee_code,
 
-                full_name_th:
-                  getEmployeeFullNameTh(
-                    employee
-                  ),
+                  full_name_th:
+                    getEmployeeFullNameTh(
+                      employee
+                    ),
 
-                role_id:
-                  roleResult.data.id,
+                  role_id:
+                    roleResult
+                      .data
+                      .id,
 
-                role_code:
-                  roleResult.data
-                    .role_code,
+                  role_code:
+                    roleResult
+                      .data
+                      .role_code,
 
-                must_change_password:
-                  true,
-              },
-            }
-          );
+                  must_change_password:
+                    true,
+                },
+              }
+            );
 
-        if (authUpdateError) {
+        if (
+          authUpdateError
+        ) {
           console.error(
             "Update auth metadata error:",
             authUpdateError
@@ -1185,9 +1395,9 @@ export async function PATCH(
       }
     }
 
-    /* -----------------------------------------------------
-       Activity Log
-    ----------------------------------------------------- */
+    /* =====================================================
+       16. Activity Log
+    ===================================================== */
 
     try {
       await writeActivityLog({
@@ -1224,20 +1434,23 @@ export async function PATCH(
             updateUserAccount,
         },
       });
-    } catch (logError) {
+    } catch (
+      logError
+    ) {
       console.error(
         "Write employee update log error:",
         logError
       );
     }
 
+    /* =====================================================
+       17. Response
+    ===================================================== */
+
     return successResponse(
       {
-        employee:
-          updatedEmployee,
-
-        user_account:
-          updatedAccount,
+        employee:updatedEmployee,
+        user_account: updatedAccount,
       },
       {
         message:
@@ -1247,35 +1460,48 @@ export async function PATCH(
       }
     );
   } catch (error) {
-    console.error(
-      "PATCH employee/[id] exception:",
-      error
+      console.error("PATCH employee/[id] exception:",error
     );
-
     return errorResponse(
       "เกิดข้อผิดพลาดในการแก้ไขข้อมูลพนักงาน",
       {
         status: 500,
-
-        error:
-          error?.message ||
-          "Unknown error",
+        error:error?.message || "Unknown error",
       }
     );
   }
 }
 
+
 /* =========================================================
    DELETE /api/admin/employees/[id]
+
+   Permission:
+   ems.employees.delete
+
+   Scope:
+   Employee Organization Scope
+
+   company_id
+   branch_group_id
+   branch_id
+   department_id
+   division_id
+   unit_id
 ========================================================= */
 
-export async function DELETE(
-  req,
-  { params }
-) {
+export async function DELETE(req,{ params }) {
   try {
-    const { id } = await params;
+    /* =====================================================
+       1. Permission + Employee Scope
+    ===================================================== */
 
+    const guard = await requireScopedAccess("ems.employees","delete");
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    const { id } = await params;
     if (!id) {
       return errorResponse(
         "ไม่พบรหัสพนักงาน",
@@ -1285,33 +1511,25 @@ export async function DELETE(
       );
     }
 
-    const { searchParams } =
-      new URL(req.url);
+    /* =====================================================
+       3. Query Params
+    ===================================================== */
 
-    const forceDelete =
-      cleanBoolean(
-        searchParams.get(
-          "force"
-        ),
-        false
-      );
+    const {searchParams,} = new URL(req.url);
+    const forceDelete = cleanBoolean(searchParams.get("force"),false);
+    const deleteAuthUser = cleanBoolean(searchParams.get("delete_auth_user"),true);
 
-    const deleteAuthUser =
-      cleanBoolean(
-        searchParams.get(
-          "delete_auth_user"
-        ),
-        true
-      );
+    /* =====================================================
+       4. Load Employee
 
-    /* -----------------------------------------------------
-       Load employee
-    ----------------------------------------------------- */
+       ต้องโหลด Employee ก่อน
+       เพื่อ:
+       - ตรวจว่ามีจริง
+       - ตรวจ Scope
+       - Activity Log
+    ===================================================== */
 
-    const {
-      data: current,
-      error: currentError,
-    } = await getEmployeeById(id);
+    const {data: current,error: currentError,} = await getEmployeeById(id);
 
     if (currentError) {
       return errorResponse(
@@ -1339,16 +1557,43 @@ export async function DELETE(
       );
     }
 
-    /* -----------------------------------------------------
-       Protected account
+    /* =====================================================
+       5. Employee Scope Check
 
-       ป้องกันบัญชีระบบ
-    ----------------------------------------------------- */
+       Permission:
+       ems.employees.delete
 
-    const {
-      data: account,
-      error: accountError,
-    } =
+       และ Employee ต้องอยู่ในขอบเขตที่ User ดูแล
+
+       เช่น:
+       Company
+       Branch Group
+       Branch
+       Department
+       Division
+       Unit
+
+       SUPER_ADMIN / has_all_scope
+       ผ่านอัตโนมัติ
+    ===================================================== */
+
+    if (!guard.canAccessEmployee(current)) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์ลบพนักงานรายนี้",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    /* =====================================================
+       6. Protected Account
+
+       ป้องกัน Employee
+       ที่เชื่อมกับ System Account
+    ===================================================== */
+
+    const {data: account,error: accountError,} =
       await getUserAccountByEmployeeId(
         id
       );
@@ -1365,9 +1610,7 @@ export async function DELETE(
       );
     }
 
-    if (
-      account?.roles?.is_system
-    ) {
+    if (account?.roles?.is_system) {
       return errorResponse(
         "ไม่สามารถลบพนักงานที่เชื่อมกับบัญชีระบบได้",
         {
@@ -1376,98 +1619,119 @@ export async function DELETE(
       );
     }
 
-    /* -----------------------------------------------------
-       Dependency checks
-    ----------------------------------------------------- */
+    /* =====================================================
+       7. Dependency Checks
 
-    const dependencyChecks = [
-      {
-        table:
-          "management_assignments",
+       ตรวจข้อมูลที่อ้างอิง Employee
+       ก่อน Hard Delete
+    ===================================================== */
 
-        column:
-          "employee_id",
+    const dependencyChecks =
+      [
+        {
+          table:
+            "management_assignments",
 
-        label:
-          "สายบังคับบัญชา",
-      },
-      {
-        table:
-          "management_assignments",
+          column:
+            "employee_id",
 
-        column:
-          "supervisor_employee_id",
+          label:
+            "สายบังคับบัญชา",
+        },
 
-        label:
-          "ผู้บังคับบัญชา",
-      },
-      {
-        table:
-          "employee_compensations",
+        {
+          table:
+            "management_assignments",
 
-        column:
-          "employee_id",
+          column:
+            "supervisor_employee_id",
 
-        label:
-          "โครงสร้างเงินเดือนพนักงาน",
-      },
-      {
-        table:
-          "employee_skills",
+          label:
+            "ผู้บังคับบัญชา",
+        },
 
-        column:
-          "employee_id",
+        {
+          table:
+            "employee_compensations",
 
-        label:
-          "ทักษะรายบุคคล",
-      },
-      {
-        table:
-          "benefit_entitlements",
+          column:
+            "employee_id",
 
-        column:
-          "employee_id",
+          label:
+            "โครงสร้างเงินเดือนพนักงาน",
+        },
 
-        label:
-          "สิทธิสวัสดิการ",
-      },
-      {
-        table:
-          "benefit_requests",
+        {
+          table:
+            "employee_skills",
 
-        column:
-          "employee_id",
+          column:
+            "employee_id",
 
-        label:
-          "คำขอสวัสดิการ",
-      },
-    ];
+          label:
+            "ทักษะรายบุคคล",
+        },
+
+        {
+          table:
+            "benefit_entitlements",
+
+          column:
+            "employee_id",
+
+          label:
+            "สิทธิสวัสดิการ",
+        },
+
+        {
+          table:
+            "benefit_requests",
+
+          column:
+            "employee_id",
+
+          label:
+            "คำขอสวัสดิการ",
+        },
+      ];
 
     const dependencies = [];
 
-    for (
-      const check of
-      dependencyChecks
-    ) {
-      const {
-        count,
-        error,
-      } = await supabaseAdmin
-        .from(check.table)
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .eq(check.column, id);
+    /* =====================================================
+       8. Check Each Dependency
+    ===================================================== */
+
+    for (const check of dependencyChecks) {
+      const {count,error,} = await supabaseAdmin
+          .from(
+            check.table
+          )
+          .select(
+            "id",
+            {
+              count:
+                "exact",
+
+              head: true,
+            }
+          )
+          .eq(
+            check.column,
+            id
+          );
 
       /*
-        บาง Project อาจยังไม่มีตาราง Future
-        จึงข้าม error 42P01
-      */
+       * บาง Project
+       * อาจยังไม่มี Future Table
+       *
+       * 42P01
+       * = relation does not exist
+       */
 
       if (error) {
         if (
-          error.code === "42P01" ||
+          error.code ===
+            "42P01" ||
           error.message
             ?.toLowerCase()
             .includes(
@@ -1493,23 +1757,33 @@ export async function DELETE(
         );
       }
 
-      if ((count || 0) > 0) {
-        dependencies.push({
-          table:
-            check.table,
+      if (
+        Number(
+          count || 0
+        ) > 0
+      ) {
+        dependencies.push(
+          {
+            table:
+              check.table,
 
-          label:
-            check.label,
+            label:
+              check.label,
 
-          count,
-        });
+            count:
+              Number(
+                count || 0
+              ),
+          }
+        );
       }
     }
 
-    if (
-      dependencies.length > 0 &&
-      !forceDelete
-    ) {
+    /* =====================================================
+       9. Prevent Delete If Dependencies Exist
+    ===================================================== */
+
+    if (dependencies.length > 0 && !forceDelete) {
       return errorResponse(
         "ไม่สามารถลบพนักงานที่มีข้อมูลอ้างอิงอยู่ กรุณาเปลี่ยนสถานะเป็นลาออกหรือไม่ใช้งานแทน",
         {
@@ -1525,22 +1799,37 @@ export async function DELETE(
       );
     }
 
-    /* -----------------------------------------------------
-       Delete user account first
+    /* =====================================================
+       10. Delete User Account
 
-       employee_id FK เป็น SET NULL
-       แต่ลบตรงเพื่อไม่ทิ้งบัญชี orphan
-    ----------------------------------------------------- */
+       ลบ User Account ก่อน
+       เพื่อไม่ให้เหลือบัญชี orphan
+
+       หมายเหตุ:
+       account.roles.is_system
+       ถูกป้องกันไว้ด้านบนแล้ว
+    ===================================================== */
+
+    let userAccountDeleted = false;
 
     if (account?.id) {
       const {
-        error: deleteAccountError,
-      } = await supabaseAdmin
-        .from("user_accounts")
-        .delete()
-        .eq("id", account.id);
+        error:
+          deleteAccountError,
+      } =
+        await supabaseAdmin
+          .from(
+            "user_accounts"
+          )
+          .delete()
+          .eq(
+            "id",
+            account.id
+          );
 
-      if (deleteAccountError) {
+      if (
+        deleteAccountError
+      ) {
         console.error(
           "Delete user account error:",
           deleteAccountError
@@ -1561,24 +1850,55 @@ export async function DELETE(
           }
         );
       }
+
+      userAccountDeleted =
+        true;
     }
 
-    /* -----------------------------------------------------
-       Delete employee
-    ----------------------------------------------------- */
+    /* =====================================================
+       11. Delete Employee
+    ===================================================== */
 
     const {
-      error: deleteEmployeeError,
-    } = await supabaseAdmin
-      .from("employees")
-      .delete()
-      .eq("id", id);
+      error:
+        deleteEmployeeError,
+    } =
+      await supabaseAdmin
+        .from("employees")
+        .delete()
+        .eq(
+          "id",
+          id
+        );
 
-    if (deleteEmployeeError) {
+    if (
+      deleteEmployeeError
+    ) {
       console.error(
         "Delete employee error:",
         deleteEmployeeError
       );
+
+      /*
+       * Foreign Key Constraint
+       *
+       * เผื่อยังมี Table อื่น
+       * ที่ไม่ได้อยู่ใน dependencyChecks
+       */
+      if (
+        deleteEmployeeError.code ===
+        "23503"
+      ) {
+        return errorResponse(
+          "ไม่สามารถลบพนักงานได้ เนื่องจากยังมีข้อมูลอื่นอ้างอิงพนักงานรายนี้อยู่",
+          {
+            status: 409,
+
+            error:
+              deleteEmployeeError.message,
+          }
+        );
+      }
 
       return errorResponse(
         mapEmployeeDatabaseError(
@@ -1591,115 +1911,97 @@ export async function DELETE(
             ),
 
           error:
-            deleteEmployeeError.message,
+            deleteEmployeeError
+              .message,
         }
       );
     }
 
-    /* -----------------------------------------------------
-       Delete Supabase Auth User
-    ----------------------------------------------------- */
+    /* =====================================================
+       12. Delete Supabase Auth User
 
-    let authUserDeleted = false;
+       Employee + User Account
+       ถูกลบเรียบร้อยแล้ว
+
+       ถ้า Auth ลบไม่ได้
+       จะ Log Error
+       แต่ไม่ Rollback Employee
+    ===================================================== */
+
+    let authUserDeleted =
+      false;
 
     if (
       deleteAuthUser &&
       account?.auth_user_id
     ) {
       const {
-        error: authDeleteError,
+        error:
+          authDeleteError,
       } =
-        await supabaseAdmin.auth.admin.deleteUser(
-          account.auth_user_id
-        );
+        await supabaseAdmin
+          .auth
+          .admin
+          .deleteUser(
+            account.auth_user_id
+          );
 
-      if (authDeleteError) {
+      if (
+        authDeleteError
+      ) {
         console.error(
           "Delete auth user error:",
           authDeleteError
         );
       } else {
-        authUserDeleted = true;
+        authUserDeleted =
+          true;
       }
     }
 
-    /* -----------------------------------------------------
-       Activity Log
-    ----------------------------------------------------- */
-
     try {
       await writeActivityLog({
-        moduleName:
-          "employees",
-
-        actionType:
-          "DELETE",
-
-        referenceTable:
-          "employees",
-
-        referenceId:
-          id,
-
-        description:
-          `ลบพนักงาน ${current.employee_code} ${getEmployeeFullNameTh(
-            current
-          )}`,
+        moduleName:"employees",
+        actionType:"DELETE",
+        referenceTable:"employees",
+        referenceId:id,
+        description: `ลบพนักงาน ${current.employee_code} ${getEmployeeFullNameTh(current)}`,
 
         oldData: {
-          employee:
-            current,
-
-          user_account:
-            account,
-
+          employee:current,
+          user_account:account,
           dependencies,
-
-          force_delete:
-            forceDelete,
+          force_delete:forceDelete,
+          delete_auth_user:deleteAuthUser,
         },
-
         newData: null,
       });
-    } catch (logError) {
-      console.error(
-        "Write employee delete log error:",
-        logError
-      );
+    } catch (
+      logError
+    ) {
+      console.error("Write employee delete log error:",logError);
     }
 
     return successResponse(
       {
         id,
-
-        employee_code:
-          current.employee_code,
-
-        user_account_deleted:
-          Boolean(account?.id),
-
-        auth_user_deleted:
-          authUserDeleted,
+        employee_code:current.employee_code,
+        user_account_deleted:userAccountDeleted,
+        auth_user_deleted:authUserDeleted,
       },
       {
-        message:
-          "ลบข้อมูลพนักงานเรียบร้อยแล้ว",
+        message:"ลบข้อมูลพนักงานเรียบร้อยแล้ว",
       }
     );
   } catch (error) {
-    console.error(
-      "DELETE employee/[id] exception:",
-      error
+    console.error("DELETE employee/[id] exception:",error
     );
 
     return errorResponse(
       "เกิดข้อผิดพลาดในการลบข้อมูลพนักงาน",
       {
         status: 500,
-
-        error:
-          error?.message ||
-          "Unknown error",
+        error:error?.message || "Unknown error",
       }
     );
   }

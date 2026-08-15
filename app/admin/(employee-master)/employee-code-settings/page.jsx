@@ -18,7 +18,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";

@@ -221,6 +221,20 @@ export function useAccessScopeFromUser(
       user?.has_all_scope
   );
 
+  /*
+   * ไม่มี Scope งานเลย = Permission-only ตาม behavior เดิม
+   * Frontend จึงไม่ควรซ่อน option/data ด้วย Scope
+   */
+  const hasAnyScope = useMemo(
+    () =>
+      hasAllScope ||
+      ACCESS_SCOPE_TYPES.some(
+        (type) =>
+          scopeMap[type]?.length > 0
+      ),
+    [hasAllScope, scopeMap]
+  );
+
   const primaryAssignment =
     useMemo(
       () =>
@@ -249,7 +263,7 @@ export function useAccessScopeFromUser(
 
   const hasScope = useCallback(
     (scopeType, scopeId) => {
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return true;
       }
 
@@ -261,7 +275,7 @@ export function useAccessScopeFromUser(
         scopeType
       ).includes(String(scopeId));
     },
-    [hasAllScope, getScopeIds]
+    [hasAllScope, hasAnyScope, getScopeIds]
   );
 
   const canAccessCompany = useCallback(
@@ -285,7 +299,7 @@ export function useAccessScopeFromUser(
       branchId,
       companyId = null
     ) => {
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return true;
       }
 
@@ -308,6 +322,7 @@ export function useAccessScopeFromUser(
     },
     [
       hasAllScope,
+      hasAnyScope,
       scopeMap.branch,
       scopeMap.company,
     ]
@@ -329,7 +344,7 @@ export function useAccessScopeFromUser(
         divisionId,
         departmentId = null
       ) => {
-        if (hasAllScope) {
+        if (hasAllScope || !hasAnyScope) {
           return true;
         }
 
@@ -351,6 +366,7 @@ export function useAccessScopeFromUser(
       },
       [
         hasAllScope,
+        hasAnyScope,
         scopeMap.division,
         scopeMap.department,
       ]
@@ -362,7 +378,7 @@ export function useAccessScopeFromUser(
       divisionId = null,
       departmentId = null
     ) => {
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return true;
       }
 
@@ -393,6 +409,7 @@ export function useAccessScopeFromUser(
     },
     [
       hasAllScope,
+      hasAnyScope,
       scopeMap.unit,
       scopeMap.division,
       scopeMap.department,
@@ -402,12 +419,14 @@ export function useAccessScopeFromUser(
   /* =======================================================
      Can Access Record
 
-     ถ้า Record มีหลาย field ใช้ OR ตาม Scope ที่ได้รับ
+     ใช้ allowed_*_ids ของ Current User:
+     - หลาย ID ในระดับเดียวกัน = OR
+     - คนละระดับที่มีค่า = AND
 ======================================================= */
 
   const canAccessRecord = useCallback(
     (record = {}) => {
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return true;
       }
 
@@ -415,77 +434,32 @@ export function useAccessScopeFromUser(
         return false;
       }
 
-      if (
-        record.company_id &&
-        scopeMap.company.includes(
-          String(record.company_id)
-        )
-      ) {
-        return true;
+      let hasConstraint = false;
+
+      const checks = [
+        [scopeMap.company, record.company_id],
+        [scopeMap.branch_group, record.branch_group_id],
+        [scopeMap.branch, record.branch_id],
+        [scopeMap.department, record.department_id],
+        [scopeMap.division, record.division_id],
+        [scopeMap.unit, record.unit_id],
+      ];
+
+      for (const [ids, value] of checks) {
+        if (!ids?.length) {
+          continue;
+        }
+
+        hasConstraint = true;
+
+        if (!value || !ids.includes(String(value))) {
+          return false;
+        }
       }
 
-      if (
-        record.branch_group_id &&
-        scopeMap.branch_group.includes(
-          String(
-            record.branch_group_id
-          )
-        )
-      ) {
-        return true;
-      }
-
-      if (
-        record.branch_id &&
-        canAccessBranch(
-          record.branch_id,
-          record.company_id
-        )
-      ) {
-        return true;
-      }
-
-      if (
-        record.department_id &&
-        scopeMap.department.includes(
-          String(
-            record.department_id
-          )
-        )
-      ) {
-        return true;
-      }
-
-      if (
-        record.division_id &&
-        canAccessDivision(
-          record.division_id,
-          record.department_id
-        )
-      ) {
-        return true;
-      }
-
-      if (
-        record.unit_id &&
-        canAccessUnit(
-          record.unit_id,
-          record.division_id,
-          record.department_id
-        )
-      ) {
-        return true;
-      }
-
-      return false;
+      return true;
     },
-    [
-      hasAllScope,
-      scopeMap,
-      canAccessBranch,
-      canAccessDivision,
-      canAccessUnit,
-    ]
+    [hasAllScope, hasAnyScope, scopeMap]
   );
 
   const filterByScope = useCallback(
@@ -494,7 +468,7 @@ export function useAccessScopeFromUser(
         return [];
       }
 
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return rows;
       }
 
@@ -502,7 +476,7 @@ export function useAccessScopeFromUser(
         canAccessRecord
       );
     },
-    [hasAllScope, canAccessRecord]
+    [hasAllScope, hasAnyScope, canAccessRecord]
   );
 
   /* =======================================================
@@ -513,7 +487,7 @@ export function useAccessScopeFromUser(
 
   const canUseScopeOption = useCallback(
     (scopeType, item = {}) => {
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return true;
       }
 
@@ -558,6 +532,7 @@ export function useAccessScopeFromUser(
     },
     [
       hasAllScope,
+      hasAnyScope,
       canAccessCompany,
       canAccessBranchGroup,
       canAccessBranch,
@@ -573,7 +548,7 @@ export function useAccessScopeFromUser(
         return [];
       }
 
-      if (hasAllScope) {
+      if (hasAllScope || !hasAnyScope) {
         return items;
       }
 
@@ -584,17 +559,7 @@ export function useAccessScopeFromUser(
         )
       );
     },
-    [hasAllScope, canUseScopeOption]
-  );
-
-  const hasAnyScope = useMemo(
-    () =>
-      hasAllScope ||
-      ACCESS_SCOPE_TYPES.some(
-        (type) =>
-          scopeMap[type]?.length > 0
-      ),
-    [hasAllScope, scopeMap]
+    [hasAllScope, hasAnyScope, canUseScopeOption]
   );
 
   return {

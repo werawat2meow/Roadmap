@@ -12,7 +12,7 @@ import {
 } from "antd";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import {
   hasPermission,
 } from "@/lib/permissions";

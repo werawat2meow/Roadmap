@@ -83,6 +83,10 @@ export default function EmployeePersonalStep({
       form
     );
 
+  const nationalityId = Form.useWatch("nationality_id",form);
+
+  const countryId = Form.useWatch("country_id", form);
+
   const titles =
     masterData.titles || [];
 
@@ -133,18 +137,25 @@ export default function EmployeePersonalStep({
         "religion_name_en",
     });
 
-  const nationalityOptions =
-    buildOptions(
-      nationalities,
-      {
-        codeKey:
-          "nationality_code",
-        nameKey:
-          "nationality_name",
-        nameEnKey:
-          "nationality_name_en",
-      }
-    );
+  const nationalityOptions = buildOptions(nationalities,
+    {
+      codeKey:
+        "nationality_code",
+
+      nameKey:
+        "nationality_name_th",
+
+      nameEnKey:
+        "nationality_name_en",
+    }
+  );
+
+  const nationalityInitialOption =
+    nationalityOptions.find(
+      (option) =>
+        option.value ===
+        nationalityId
+    ) || null;
 
   const countryOptions =
     buildOptions(countries, {
@@ -154,6 +165,13 @@ export default function EmployeePersonalStep({
       nameEnKey:
         "country_name_en",
     });
+
+  const countryInitialOption =
+    countryOptions.find(
+      (option) =>
+        option.value ===
+        countryId
+    ) || null;
 
   return (
     <div>
@@ -527,8 +545,11 @@ export default function EmployeePersonalStep({
             name="nationality_id"
           >
             <LazyNationalitySelect
-              disabled={disabled}
-              placeholder="เลือกสัญชาติ"
+                disabled={disabled}
+                placeholder="เลือกสัญชาติ"
+                initialOption={
+                  nationalityInitialOption
+                }
             />
           </Form.Item>
         </Col>
@@ -541,9 +562,12 @@ export default function EmployeePersonalStep({
             label="ประเทศ"
             name="country_id"
           >
-          < LazyCountrySelect  
+          <LazyCountrySelect
             disabled={disabled}
             placeholder="เลือกประเทศ"
+            initialOption={
+              countryInitialOption
+            }
           />
           </Form.Item>
           

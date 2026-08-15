@@ -1,375 +1,179 @@
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
-import { supabaseAdmin } from "@/lib/supabaseServer";
 import * as XLSX from "xlsx";
 
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("employee_token")?.value;
+import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
+import {
+  buildEmployeeMasterDashboard,
+  hasDashboardPermission,
+  toEmployeeExportRows,
+} from "@/lib/dashboard/employeeMasterDashboard";
 
-  if (!token) return null;
+function appendJsonSheet(workbook, name, rows, widths = []) {
+  const sheet = XLSX.utils.json_to_sheet(rows);
 
-  const decoded = jwt.verify(
-    token,
-    process.env.JWT_SECRET || "dev-secret-key"
-  );
-
-  const userId = decoded?.user_id;
-  if (!userId) return null;
-
-  const { data: userAccount, error } = await supabaseAdmin
-    .from("user_accounts")
-    .select(`
-      id,
-      role_id,
-      is_active,
-      roles (
-        id,
-        role_code,
-        role_name
-      )
-    `)
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !userAccount || !userAccount.is_active) return null;
-
-  let permissions = [];
-
-  if (userAccount.role_id) {
-    const { data: permissionRows } = await supabaseAdmin
-      .from("role_permissions")
-      .select(`
-        permissions (
-          permission_code,
-          is_active
-        )
-      `)
-      .eq("role_id", userAccount.role_id);
-
-    permissions =
-      permissionRows
-        ?.map((row) => row.permissions)
-        ?.filter((perm) => perm?.is_active)
-        ?.map((perm) => perm.permission_code) || [];
+  if (widths.length) {
+    sheet["!cols"] = widths.map((wch) => ({ wch }));
   }
 
-  return {
-    id: userAccount.id,
-    role_id: userAccount.role_id,
-    role_code: userAccount.roles?.role_code || null,
-    role_name: userAccount.roles?.role_name || null,
-    permissions,
-  };
+  XLSX.utils.book_append_sheet(workbook, sheet, name);
 }
 
-function hasPermission(user, permissionCode) {
-  if (!user) return false;
-
-  return (
-    Array.isArray(user.permissions) &&
-    user.permissions.includes(permissionCode)
-  );
+function distributionRows(rows = []) {
+  return rows.map((item, index) => ({
+    "ลำดับ": index + 1,
+    "รายการ": item?.label || "ไม่ระบุ",
+    "จำนวนพนักงาน": Number(item?.count || 0),
+  }));
 }
 
 export async function GET() {
   try {
-    const currentUser = await getCurrentUser();
+    const guard = await requireScopedAccess(
+      "ems.employees",
+      "view"
+    );
 
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!guard.ok) {
+      return guard.response;
     }
 
-    if (!hasPermission(currentUser, "ems.dashboard.view")) {
+    if (!hasDashboardPermission(guard, "ems.dashboard.export")) {
       return NextResponse.json(
-        { success: false, error: "Forbidden" },
+        {
+          success: false,
+          error: "คุณไม่มีสิทธิ์ Export Employee Master Dashboard",
+        },
         { status: 403 }
       );
     }
 
-    const [
-      unitPositionsResult,
-      activeEmployeesResult,
-      employeesForStatusBreakdownResult,
-    ] = await Promise.all([
-      supabaseAdmin
-        .from("unit_positions")
-        .select(`
-          id,
-          unit_id,
-          position_id,
-          headcount_target,
-          status,
-          units (
-            id,
-            unit_name
-          ),
-          positions (
-            id,
-            position_name
-          )
-        `)
-        .eq("status", "active"),
+    const dashboard = await buildEmployeeMasterDashboard(guard);
+    const workbook = XLSX.utils.book_new();
 
-      supabaseAdmin
-        .from("employees")
-        .select(`
-          id,
-          employee_code,
-          first_name_th,
-          last_name_th,
-          unit_id,
-          position_id,
-          hire_date,
-          status,
-          employee_status_id,
-          units (
-            id,
-            unit_name
-          ),
-          positions (
-            id,
-            position_name
-          ),
-          employee_statuses (
-            id,
-            status_name,
-            color
-          )
-        `)
-        .eq("status", "active"),
-
-      supabaseAdmin
-        .from("employees")
-        .select(`
-          id,
-          unit_id,
-          position_id,
-          status,
-          employee_status_id,
-          employee_statuses (
-            id,
-            status_name,
-            color
-          )
-        `),
-    ]);
-
-    const results = [
-      unitPositionsResult,
-      activeEmployeesResult,
-      employeesForStatusBreakdownResult,
+    const summaryRows = [
+      { "ตัวชี้วัด": "พนักงานในขอบเขต", "จำนวน": dashboard.kpi.employees_total },
+      { "ตัวชี้วัด": "กำลังทำงาน", "จำนวน": dashboard.kpi.working },
+      { "ตัวชี้วัด": "นับเป็น Headcount", "จำนวน": dashboard.kpi.headcount },
+      { "ตัวชี้วัด": "ทดลองงาน", "จำนวน": dashboard.kpi.probation },
+      { "ตัวชี้วัด": "เข้าใหม่เดือนนี้", "จำนวน": dashboard.kpi.new_this_month },
+      { "ตัวชี้วัด": "เข้าใหม่ปีนี้", "จำนวน": dashboard.kpi.new_this_year },
+      { "ตัวชี้วัด": "ลาออกเดือนนี้", "จำนวน": dashboard.kpi.resigned_this_month },
+      { "ตัวชี้วัด": "ลาออกปีนี้", "จำนวน": dashboard.kpi.resigned_this_year },
+      { "ตัวชี้วัด": "มีบัญชีผู้ใช้งาน", "จำนวน": dashboard.kpi.user_account_coverage },
     ];
 
-    const firstError = results.find((item) => item.error);
-    if (firstError?.error) {
-      throw firstError.error;
-    }
+    appendJsonSheet(workbook, "Summary", summaryRows, [28, 16]);
 
-    const unitPositions = unitPositionsResult.data || [];
-    const activeEmployees = activeEmployeesResult.data || [];
-    const employeesForStatusBreakdown =
-      employeesForStatusBreakdownResult.data || [];
-
-    const actualMap = activeEmployees.reduce((acc, employee) => {
-      if (!employee.unit_id || !employee.position_id) return acc;
-
-      const key = `${employee.unit_id}_${employee.position_id}`;
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    const manpowerRows = unitPositions.map((item) => {
-      const key = `${item.unit_id}_${item.position_id}`;
-      const actualHeadcount = actualMap[key] || 0;
-      const targetHeadcount = item.headcount_target || 0;
-      const vacantHeadcount = Math.max(targetHeadcount - actualHeadcount, 0);
-
-      return {
-        unit_id: item.unit_id,
-        unit_name: item.units?.unit_name || "-",
-        position_id: item.position_id,
-        position_name: item.positions?.position_name || "-",
-        headcount_target: targetHeadcount,
-        headcount_actual: actualHeadcount,
-        headcount_vacant: vacantHeadcount,
-      };
-    });
-
-    // ทุกตำแหน่งที่ขาดทั้งหมด
-    const shortageRows = manpowerRows
-      .filter((item) => item.headcount_vacant > 0)
-      .sort((a, b) => {
-        if (b.headcount_vacant !== a.headcount_vacant) {
-          return b.headcount_vacant - a.headcount_vacant;
-        }
-
-        if (a.unit_name !== b.unit_name) {
-          return a.unit_name.localeCompare(b.unit_name);
-        }
-
-        return a.position_name.localeCompare(b.position_name);
-      });
-
-    const topShortageRows = shortageRows.slice(0, 10);
-
-    const employeeStatusSummaryMap = {};
-    const positionStatusMap = {};
-
-    for (const employee of employeesForStatusBreakdown) {
-      const statusName =
-        employee.employee_statuses?.status_name ||
-        (employee.status === "active"
-          ? "Active"
-          : employee.status === "resigned"
-          ? "Resigned"
-          : employee.status === "inactive"
-          ? "Inactive"
-          : "Unknown");
-
-      if (!employeeStatusSummaryMap[statusName]) {
-        employeeStatusSummaryMap[statusName] = {
-          status_name: statusName,
-          total: 0,
-        };
-      }
-
-      employeeStatusSummaryMap[statusName].total += 1;
-
-      if (!employee.unit_id || !employee.position_id) continue;
-
-      const key = `${employee.unit_id}_${employee.position_id}`;
-
-      if (!positionStatusMap[key]) {
-        positionStatusMap[key] = {};
-      }
-
-      if (!positionStatusMap[key][statusName]) {
-        positionStatusMap[key][statusName] = 0;
-      }
-
-      positionStatusMap[key][statusName] += 1;
-    }
-
-    const employeeStatusSummary = Object.values(employeeStatusSummaryMap).sort(
-      (a, b) => b.total - a.total
-    );
-
-    const positionStatusBreakdowns = manpowerRows.map((row) => {
-      const key = `${row.unit_id}_${row.position_id}`;
-      const statuses = positionStatusMap[key] || {};
-
-      return {
-        unit_name: row.unit_name,
-        position_name: row.position_name,
-        headcount_target: row.headcount_target,
-        headcount_actual: row.headcount_actual,
-        headcount_vacant: row.headcount_vacant,
-        ...statuses,
-      };
-    });
-
-    const totalTarget = manpowerRows.reduce(
-      (sum, item) => sum + item.headcount_target,
-      0
-    );
-    const totalActual = manpowerRows.reduce(
-      (sum, item) => sum + item.headcount_actual,
-      0
-    );
-    const totalVacant = manpowerRows.reduce(
-      (sum, item) => sum + item.headcount_vacant,
-      0
-    );
-    const coverageRate =
-      totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
-
-    const summarySheetData = [
-      ["Metric", "Value"],
-      ["Target Headcount", totalTarget],
-      ["Actual Headcount", totalActual],
-      ["Vacant Headcount", totalVacant],
-      ["Coverage Rate (%)", coverageRate],
-      ["All Shortage Positions Count", shortageRows.length],
+    const readinessRows = [
+      {
+        "หมวด": "Organization Mapping",
+        "พร้อม": dashboard.readiness.organization.value,
+        "ทั้งหมด": dashboard.readiness.organization.total,
+        "เปอร์เซ็นต์": dashboard.readiness.organization.percent,
+      },
+      {
+        "หมวด": "Job Architecture",
+        "พร้อม": dashboard.readiness.job_architecture.value,
+        "ทั้งหมด": dashboard.readiness.job_architecture.total,
+        "เปอร์เซ็นต์": dashboard.readiness.job_architecture.percent,
+      },
+      {
+        "หมวด": "Cost Structure",
+        "พร้อม": dashboard.readiness.cost_structure.value,
+        "ทั้งหมด": dashboard.readiness.cost_structure.total,
+        "เปอร์เซ็นต์": dashboard.readiness.cost_structure.percent,
+      },
+      {
+        "หมวด": "Payroll",
+        "พร้อม": dashboard.readiness.payroll.value,
+        "ทั้งหมด": dashboard.readiness.payroll.total,
+        "เปอร์เซ็นต์": dashboard.readiness.payroll.percent,
+      },
+      {
+        "หมวด": "Contact / Email",
+        "พร้อม": dashboard.readiness.contact.value,
+        "ทั้งหมด": dashboard.readiness.contact.total,
+        "เปอร์เซ็นต์": dashboard.readiness.contact.percent,
+      },
+      {
+        "หมวด": "User Account",
+        "พร้อม": dashboard.readiness.user_account.value,
+        "ทั้งหมด": dashboard.readiness.user_account.total,
+        "เปอร์เซ็นต์": dashboard.readiness.user_account.percent,
+      },
     ];
 
-    // อันนี้คือทุกตำแหน่งที่ขาดทั้งหมดจากหน้า manpower
-    const allShortageSheetData = shortageRows.map((item, index) => ({
-      no: index + 1,
-      unit_name: item.unit_name,
-      position_name: item.position_name,
-      headcount_target: item.headcount_target,
-      headcount_actual: item.headcount_actual,
-      headcount_vacant: item.headcount_vacant,
-      coverage_rate_percent:
-        item.headcount_target > 0
-          ? Math.round((item.headcount_actual / item.headcount_target) * 100)
-          : 0,
-    }));
+    appendJsonSheet(workbook, "Data Readiness", readinessRows, [28, 14, 14, 14]);
 
-    const topShortageSheetData = topShortageRows.map((item, index) => ({
-      rank: index + 1,
-      unit_name: item.unit_name,
-      position_name: item.position_name,
-      headcount_target: item.headcount_target,
-      headcount_actual: item.headcount_actual,
-      headcount_vacant: item.headcount_vacant,
-    }));
+    appendJsonSheet(
+      workbook,
+      "By Company",
+      distributionRows(dashboard.distributions.companies),
+      [10, 40, 18]
+    );
 
-    const activeEmployeesSheetData = activeEmployees.map((item, index) => ({
-      no: index + 1,
-      employee_code: item.employee_code || "-",
-      full_name:
-        `${item.first_name_th || ""} ${item.last_name_th || ""}`.trim() || "-",
-      unit_name: item.units?.unit_name || "-",
-      position_name: item.positions?.position_name || "-",
-      hire_date: item.hire_date || "-",
-      employee_status_name: item.employee_statuses?.status_name || "-",
-      row_status: item.status || "-",
-    }));
+    appendJsonSheet(
+      workbook,
+      "By Branch",
+      distributionRows(dashboard.distributions.branches),
+      [10, 40, 18]
+    );
 
-    const wb = XLSX.utils.book_new();
+    appendJsonSheet(
+      workbook,
+      "By Department",
+      distributionRows(dashboard.distributions.departments),
+      [10, 40, 18]
+    );
 
-    const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
-    const wsAllShortages = XLSX.utils.json_to_sheet(allShortageSheetData);
-    const wsTopShortages = XLSX.utils.json_to_sheet(topShortageSheetData);
-    const wsEmployees = XLSX.utils.json_to_sheet(activeEmployeesSheetData);
-    const wsEmployeeStatus = XLSX.utils.json_to_sheet(employeeStatusSummary);
-    const wsPositionStatus = XLSX.utils.json_to_sheet(positionStatusBreakdowns);
+    appendJsonSheet(
+      workbook,
+      "By Employment Type",
+      distributionRows(dashboard.distributions.employment_types),
+      [10, 40, 18]
+    );
 
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
-    XLSX.utils.book_append_sheet(wb, wsAllShortages, "All Shortage Positions");
-    XLSX.utils.book_append_sheet(wb, wsTopShortages, "Top Shortages");
-    XLSX.utils.book_append_sheet(wb, wsEmployees, "Active Employees");
-    XLSX.utils.book_append_sheet(wb, wsEmployeeStatus, "Employee Status");
-    XLSX.utils.book_append_sheet(wb, wsPositionStatus, "Position Status");
+    appendJsonSheet(
+      workbook,
+      "By Position Level",
+      distributionRows(dashboard.distributions.position_levels),
+      [10, 40, 18]
+    );
 
-    const buffer = XLSX.write(wb, {
+    appendJsonSheet(
+      workbook,
+      "Employees",
+      toEmployeeExportRows(dashboard),
+      [16, 30, 34, 24, 26, 28, 26, 26, 22, 26, 28, 28, 24, 16, 16, 16]
+    );
+
+    const workbookBuffer = XLSX.write(workbook, {
       type: "buffer",
       bookType: "xlsx",
     });
 
-    const fileName = `dashboard-manpower-report-${new Date()
-      .toISOString()
-      .slice(0, 10)}.xlsx`;
+    const now = new Date();
+    const datePart = now.toISOString().slice(0, 10).replaceAll("-", "");
+    const timePart = now.toISOString().slice(11, 16).replace(":", "");
+    const fileName = `employee-master-dashboard-${datePart}-${timePart}.xlsx`;
 
-    return new NextResponse(buffer, {
+    return new NextResponse(workbookBuffer, {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (error) {
-    console.error("EXPORT_DASHBOARD_EXCEL_ERROR:", error);
+    console.error("EMPLOYEE_MASTER_DASHBOARD_EXPORT_ERROR:", error);
 
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการ Export Excel" },
+      {
+        success: false,
+        error: "ไม่สามารถ Export Employee Master Dashboard ได้",
+      },
       { status: 500 }
     );
   }

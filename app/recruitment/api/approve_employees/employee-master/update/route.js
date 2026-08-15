@@ -727,7 +727,7 @@ export async function POST(request) {
           phone: get_data_emp_recrut.phone_number,
           personal_email: get_data_emp_recrut.email,
           employment_type: get_data_emp_recrut.employment_type,
-          branch_group_id: get_data_emp_recrut.group_id,
+          branch_group_id: get_data_emp_recrut.branch_group_id,
           company_id: get_data_emp_recrut.company_id,
           branch_id: get_data_emp_recrut.branch_id,
           department_id: get_data_emp_recrut.department_id,

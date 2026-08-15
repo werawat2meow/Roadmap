@@ -292,7 +292,7 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="เพศ">
-            {getGenderText(application.gender)}
+            {application.genders.gender_name_th}
           </Descriptions.Item>
 
           {application.gender !== "female" && (
@@ -316,11 +316,11 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="สัญชาติ">
-            {value(application.nationality)}
+            {application.nationalities.nationality_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="ศาสนา">
-            {value(application.religion)}
+            {application.religions.religion_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="เลขบัตรประชาชน">
@@ -408,7 +408,7 @@ export default function CandidateDetail({
           size="middle"
         >
           <Descriptions.Item label="สถานภาพสมรส">
-            {getMaritalStatusText(application.marital_status)}
+            {application.marital_statuses.marital_status_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="จำนวนบุตร">

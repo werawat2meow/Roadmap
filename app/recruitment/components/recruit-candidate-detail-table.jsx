@@ -325,7 +325,7 @@ export default function CandidateDetailTable() {
     }
   }
 
-  if (isChecking) return <LoadingOrb />;
+  if (isChecking || loading) return <LoadingOrb />;
   if (!canView) return null;
 
   return (

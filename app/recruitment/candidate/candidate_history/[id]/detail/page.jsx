@@ -110,7 +110,7 @@ export default function Page({ params }) {
         cache: "no-store",
       });
 
-      const result = await res.json();
+      const result = await res.json();     
 
       if (!res.ok) {
         throw new Error(result.message || "Load candidate detail failed");

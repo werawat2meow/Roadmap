@@ -7,6 +7,9 @@ import { writeActivityLog } from "@/lib/activityLogger";
 import {
   requirePermission,
 } from "@/lib/auth/requirePortalAccess";
+import {
+  requireScopedAccess,
+} from "@/lib/auth/requireScopedAccess";
 
 import {
   applyCompanyScope,
@@ -16,26 +19,24 @@ import {
 
 export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.trim() || "";
+    const scopeContext = searchParams.get("scope_context")?.trim() || "";
 
+    const permissionModule =
+      scopeContext === "ems.employees"
+        ? "ems.employees"
+        : "ems.companies";
 
-     /* =====================================================
-       1. Permission
-    ===================================================== */
-
-    const guard = await requirePermission("ems.companies.view");
+    const guard = await requireScopedAccess(
+      permissionModule,
+      "view",
+      { scopeType: "company" }
+    );
 
     if (!guard.ok) {
       return guard.response;
     }
-
-    
-    /* =====================================================
-       end Permission
-    ===================================================== */
-
-
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search")?.trim() || "";
 
     let query = supabaseAdmin
       .from("companies")
@@ -84,12 +85,7 @@ export async function GET(req) {
           → เห็นเฉพาะ company ที่ได้รับ
           ไม่มี company scope → []
     ===================================================== */
-    query =
-      applyCompanyScope(
-        query,
-        guard.access,
-        "id"  
-      );
+    query = guard.applyScope(query, "id");
     /* ====================================================
       end Access Scope
     ====================================================== */  

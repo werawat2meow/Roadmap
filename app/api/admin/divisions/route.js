@@ -1,10 +1,29 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
 export async function GET(req) {
   try {
+    /* =====================================================
+       1. Permission + Scope
+    ===================================================== */
     const { searchParams } = new URL(req.url);
+    const scopeContext = searchParams.get("scope_context")?.trim() || "";
+    const permissionModule =
+      scopeContext === "ems.employees"
+        ? "ems.employees"
+        : "ems.divisions";
+
+    const guard = await requireScopedAccess(
+      permissionModule,
+      "view",
+      { scopeType: "division" }
+    );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
 
     const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
@@ -37,6 +56,16 @@ export async function GET(req) {
       )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+    
+    /* =====================================================
+       4. Apply Department Scope
+       divistions.id
+    ===================================================== */
+    query = guard.applyScope(
+      query,
+      "id"
+    );
 
     // กรองตาม department_id — ใช้ตอนเปิด form employee เพื่อดึงเฉพาะ
     // division ของแผนกที่เลือก แทนที่จะโหลดทั้งหมดมา filter ฝั่ง client
@@ -114,6 +143,16 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+
+    /* =====================================================
+       1. Permission + Scope
+    ===================================================== */
+    const guard = await requireScopedAccess("ems.divisions","view",{scopeType: "division",});
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+     
     const body = await req.json();
 
     const division_code = body?.division_code?.trim();

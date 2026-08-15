@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState , useRef } from "react";
 import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,} from "antd";
 import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,ReloadOutlined,FileTextOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {swalError,swalSuccess,} from "@/app/components/Swal";
+import usePermissions from "@/hooks/usePermissions";
 
 const mappingTypeOptions = [
   { value: "salary", label: "เงินเดือน" },
@@ -32,13 +30,8 @@ const initialForm = {
 };
 
 export default function GlMappingsPage() {
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-
-  const canView = hasPermission(user, "ems.gl_mappings.view");
-  const canCreate = hasPermission(user, "ems.gl_mappings.create");
-  const canEdit = hasPermission(user, "ems.gl_mappings.edit");
-  const canDelete = hasPermission(user, "ems.gl_mappings.delete");
+  const isFirstLoad = useRef(true);
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("ems.gl_mappings");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,18 +46,6 @@ export default function GlMappingsPage() {
   const [editingGlMapping, setEditingGlMapping] = useState(null);
   const [form, setForm] = useState(initialForm);
 
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [loadingUser, user, canView, router]);
 
   const loadBusinessUnits = async () => {
     const res = await fetch("/api/admin/business-units", {
@@ -148,11 +129,14 @@ export default function GlMappingsPage() {
         swalError(err.message || "โหลด Master ไม่สำเร็จ");
       });
 
-      loadGlMappings();
+       loadGlMappings().finally(() => {
+        isFirstLoad.current = false;
+      });
     }
   }, [loadingUser, user, canView]);
 
   useEffect(() => {
+    if (isFirstLoad.current) return;
     const timer = setTimeout(() => {
       if (!loadingUser && user && canView) {
         loadGlMappings(search);
@@ -429,7 +413,7 @@ export default function GlMappingsPage() {
     loadGlMappings(search);
   };
 
-    if (loadingUser) return <LoadingOrb />;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 

@@ -5,7 +5,7 @@ import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Toolti
 import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,ReloadOutlined,DollarOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {swalError,swalSuccess,} from "../../../components/Swal";

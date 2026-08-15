@@ -10,7 +10,7 @@ import {
   message,
 } from "antd";
 
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
 import PositionFamilyLevelSearch from "./components/PositionFamilyLevelSearch";

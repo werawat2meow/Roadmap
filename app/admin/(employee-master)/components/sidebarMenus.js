@@ -45,116 +45,116 @@ export const sidebarMenus = [
   /* =========================================================
    * MAIN
    * ========================================================= */
-  {
-    title: "MAIN",
-    icon: <HomeOutlined />,
-    items: [
-      {
-        label: "Dashboard",
-        href: "/admin/dashboard",
-        icon: <DashboardOutlined />,
-        permission: "ems.dashboard.view",
-      },
-      {
-        label: "กำลังคน",
-        href: "/admin/manpower",
-        icon: <WarningOutlined />,
-        permission: "ems.manpower.view",
-      },
-    ],
-  },
+  // {
+  //   title: "MAIN",
+  //   icon: <HomeOutlined />,
+  //   items: [
+  //     {
+  //       label: "Dashboard",
+  //       href: "/admin/dashboard",
+  //       icon: <DashboardOutlined />,
+  //       permission: "ems.dashboard.view",
+  //     },
+  //     {
+  //       label: "กำลังคน",
+  //       href: "/admin/manpower",
+  //       icon: <WarningOutlined />,
+  //       permission: "ems.manpower.view",
+  //     },
+  //   ],
+  // },
 
   /* =========================================================
   *  ข้อมูลทั่วไป
   * ========================================================= */
-  {
-    title: "ข้อมูลทั่วไป",
-    icon: <IdcardOutlined />,
-    items: [
-      {
-        label: "ประเทศ",
-        href: "/admin/countries",
-        icon: <EnvironmentOutlined />,
-        permission: "ems.countries.view",
-      },
-      {
-        label: "สัญชาติ",
-        href: "/admin/nationalities",
-        icon: <GlobalOutlined />,
-        permission: "ems.nationalities.view",
-      },
-      {
-        label: "คำนำหน้า",
-        href: "/admin/titles",
-        icon: <UserOutlined />,
-        permission: "ems.titles.view",
-      },
-      {
-        label: "ศาสนา",
-        href: "/admin/religions",
-        icon: <SafetyOutlined />,
-        permission: "ems.religions.view",
-      },
-      {
-        label: "สถานภาพสมรส",
-        href: "/admin/marital-statuses",
-        icon: <TeamOutlined />,
-        permission: "ems.marital_statuses.view",
-      },
-      {
-        label: "เพศ",
-        href: "/admin/genders",
-        icon: <UsergroupAddOutlined />,
-        permission: "ems.genders.view",
-      },
-    ],
-  },
+  // {
+  //   title: "ข้อมูลทั่วไป",
+  //   icon: <IdcardOutlined />,
+  //   items: [
+  //     {
+  //       label: "ประเทศ",
+  //       href: "/admin/countries",
+  //       icon: <EnvironmentOutlined />,
+  //       permission: "ems.countries.view",
+  //     },
+  //     {
+  //       label: "สัญชาติ",
+  //       href: "/admin/nationalities",
+  //       icon: <GlobalOutlined />,
+  //       permission: "ems.nationalities.view",
+  //     },
+  //     {
+  //       label: "คำนำหน้า",
+  //       href: "/admin/titles",
+  //       icon: <UserOutlined />,
+  //       permission: "ems.titles.view",
+  //     },
+  //     {
+  //       label: "ศาสนา",
+  //       href: "/admin/religions",
+  //       icon: <SafetyOutlined />,
+  //       permission: "ems.religions.view",
+  //     },
+  //     {
+  //       label: "สถานภาพสมรส",
+  //       href: "/admin/marital-statuses",
+  //       icon: <TeamOutlined />,
+  //       permission: "ems.marital_statuses.view",
+  //     },
+  //     {
+  //       label: "เพศ",
+  //       href: "/admin/genders",
+  //       icon: <UsergroupAddOutlined />,
+  //       permission: "ems.genders.view",
+  //     },
+  //   ],
+  // },
 
   /* =========================================================
    * ORGANIZATION
    * ========================================================= */
-  {
-    title: "ORGANIZATION",
-    icon: <BankOutlined />,
-    items: [
-      {
-        label: "บริษัท",
-        href: "/admin/companies",
-        icon: <ShopOutlined />,
-        permission: "ems.companies.view",
-      },
-      {
-        label: "กรุ๊ปสังกัด",
-        href: "/admin/branch-groups",
-        icon: <AppstoreOutlined />,
-        permission: "ems.branch_groups.view",
-      },
-      {
-        label: "สังกัด",
-        href: "/admin/branches",
-        icon: <EnvironmentOutlined />,
-        permission: "ems.branches.view",
-      },
-      {
-        label: "แผนก",
-        href: "/admin/departments",
-        icon: <ApartmentOutlined />,
-        permission: "ems.departments.view",
-      },
-      {
-        label: "ฝ่าย",
-        href: "/admin/divisions",
-        icon: <ClusterOutlined />,
-        permission: "ems.divisions.view",
-      },
-      {
-        label: "หน่วยงาน",
-        href: "/admin/units",
-        icon: <TeamOutlined />,
-        permission: "ems.units.view",
-      },
-    ],
-  },
+  // {
+  //   title: "ORGANIZATION",
+  //   icon: <BankOutlined />,
+  //   items: [
+  //     {
+  //       label: "บริษัท",
+  //       href: "/admin/companies",
+  //       icon: <ShopOutlined />,
+  //       permission: "ems.companies.view",
+  //     },
+  //     {
+  //       label: "กรุ๊ปสังกัด",
+  //       href: "/admin/branch-groups",
+  //       icon: <AppstoreOutlined />,
+  //       permission: "ems.branch_groups.view",
+  //     },
+  //     {
+  //       label: "สังกัด",
+  //       href: "/admin/branches",
+  //       icon: <EnvironmentOutlined />,
+  //       permission: "ems.branches.view",
+  //     },
+  //     {
+  //       label: "แผนก",
+  //       href: "/admin/departments",
+  //       icon: <ApartmentOutlined />,
+  //       permission: "ems.departments.view",
+  //     },
+  //     {
+  //       label: "ฝ่าย",
+  //       href: "/admin/divisions",
+  //       icon: <ClusterOutlined />,
+  //       permission: "ems.divisions.view",
+  //     },
+  //     {
+  //       label: "หน่วยงาน",
+  //       href: "/admin/units",
+  //       icon: <TeamOutlined />,
+  //       permission: "ems.units.view",
+  //     },
+  //   ],
+  // },
 
   /* =========================================================
    * JOB ARCHITECTURE    กลุ่มสายงานตำแหน่ง ในบริษัท 
@@ -462,48 +462,42 @@ export const sidebarMenus = [
         icon: <AccountBookOutlined />,
         permission: "ems.payment_methods.view",
       },
-      {
-        label: "โครงสร้างเงินเดือนพนักงาน",
-        href: "/admin/employee-compensations",
-        icon: <DollarOutlined />,
-        permission: "ems.employee_compensations.view",
-      },
     ],
   },
 
   /* =========================================================
    * COST STRUCTURE
    * ========================================================= */
-  {
-    title: "COST STRUCTURE",
-    icon: <AccountBookOutlined />,
-    items: [
-      {
-        label: "Business Unit",
-        href: "/admin/business-units",
-        icon: <BankOutlined />,
-        permission: "ems.business_units.view",
-      },
-      {
-        label: "Cost Center",
-        href: "/admin/cost-centers",
-        icon: <FundProjectionScreenOutlined />,
-        permission: "ems.cost_centers.view",
-      },
-      {
-        label: "Profit Center",
-        href: "/admin/profit-centers",
-        icon: <DollarOutlined />,
-        permission: "ems.profit_centers.view",
-      },
-      {
-        label: "GL Mapping",
-        href: "/admin/gl-mappings",
-        icon: <FileTextOutlined />,
-        permission: "ems.gl_mappings.view",
-      },
-    ],
-  },
+  // {
+  //   title: "COST STRUCTURE",
+  //   icon: <AccountBookOutlined />,
+  //   items: [
+  //     {
+  //       label: "Business Unit",
+  //       href: "/admin/business-units",
+  //       icon: <BankOutlined />,
+  //       permission: "ems.business_units.view",
+  //     },
+  //     {
+  //       label: "Cost Center",
+  //       href: "/admin/cost-centers",
+  //       icon: <FundProjectionScreenOutlined />,
+  //       permission: "ems.cost_centers.view",
+  //     },
+  //     {
+  //       label: "Profit Center",
+  //       href: "/admin/profit-centers",
+  //       icon: <DollarOutlined />,
+  //       permission: "ems.profit_centers.view",
+  //     },
+  //     {
+  //       label: "GL Mapping",
+  //       href: "/admin/gl-mappings",
+  //       icon: <FileTextOutlined />,
+  //       permission: "ems.gl_mappings.view",
+  //     },
+  //   ],
+  // },
 
   /* =========================================================
    * EMPLOYEE MASTER
@@ -594,18 +588,6 @@ export const sidebarMenus = [
         icon: <SafetyCertificateOutlined />,
         permission: "access.user_access_assignments.view",
       },
-
-      /* =====================================================
-        USER ACCESS SCOPES
-        ขอบเขตสังกัดที่แต่ละบทบาทเข้าถึงได้     
-      ===================================================== */
-      {
-        label: "กำหนดขอบเขตสังกัด",
-        href: "/admin/user-access-assignment-scopes",
-        icon: <PartitionOutlined />,
-        permission: "access.user_access_assignment_scopes.view",
-      },
-      
       {
         label: "Activity Logs",
         href: "/admin/activity-logs",
@@ -618,30 +600,30 @@ export const sidebarMenus = [
   /* =========================================================
    * API MANAGEMENT
    * ========================================================= */
-  {
-    title: "API MANAGEMENT",
-    icon: <ApiOutlined />,
-    items: [
-      {
-        label: "API Clients",
-        href: "/admin/api-clients",
-        icon: <UsergroupAddOutlined />,
-        permission: "api.api_clients.view",
-      },
-      {
-        label: "API Tokens",
-        href: "/admin/api-tokens",
-        icon: <KeyOutlined />,
-        permission: "api.api_tokens.view",
-      },
-      {
-        label: "API Logs",
-        href: "/admin/api-logs",
-        icon: <AuditOutlined />,
-        permission: "api.api_logs.view",
-      },
-    ],
-  },
+  // {
+  //   title: "API MANAGEMENT",
+  //   icon: <ApiOutlined />,
+  //   items: [
+  //     {
+  //       label: "API Clients",
+  //       href: "/admin/api-clients",
+  //       icon: <UsergroupAddOutlined />,
+  //       permission: "api.api_clients.view",
+  //     },
+  //     {
+  //       label: "API Tokens",
+  //       href: "/admin/api-tokens",
+  //       icon: <KeyOutlined />,
+  //       permission: "api.api_tokens.view",
+  //     },
+  //     {
+  //       label: "API Logs",
+  //       href: "/admin/api-logs",
+  //       icon: <AuditOutlined />,
+  //       permission: "api.api_logs.view",
+  //     },
+  //   ],
+  // },
   
 ];
 

@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
 import { Tooltip } from "antd";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
   code: "",
@@ -25,42 +23,51 @@ export default function DepartmentsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
-
   const [form, setForm] = useState(initialForm);
   const [openModal, setOpenModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
-
   const [viewMode, setViewMode] = useState("matrix");
+ 
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.departments.view");
-  const canCreate = hasPermission(user, "ems.departments.create");
-  const canEdit = hasPermission(user, "ems.departments.edit");
-  const canDelete = hasPermission(user, "ems.departments.delete");
+  /* =========================================================
+   Permission + Access Scope
+  ========================================================= */
+  const {
+    user,
+    loadingUser,
 
-  
-  useEffect(() => {
-    if (loadingUser) return;
+    /* Permission */
+    canView,
+    canCreate,
+    canEdit,
+    canDelete,
 
-    if (!user) {
-      router.replace("/login");
-      return;
+    /* Permission + Scope */
+    canEditRecord,
+    canDeleteRecord,
+
+    /* Scope */
+    hasAllScope,
+    accessibleIds,
+    accessibleCompanyIds,
+    accessibleBranchGroupIds,
+    accessibleBranchIds,
+  } = useScopedPermissions(
+    "ems.departments",
+    {
+      scopeType: "department",
     }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
+  );
 
   const loadBranches = async () => {
     try {
-      const res = await fetch("/api/admin/branches", {
-        method: "GET",
-        cache: "no-store",
-      });
+      const res = await fetch(
+        "/api/admin/branches?scope_context=ems.departments",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
 
       const data = await res.json();
 
@@ -68,7 +75,13 @@ export default function DepartmentsPage() {
         throw new Error(data?.error || "Load branches failed");
       }
 
-      setBranches(data.data || []);
+      const rows = data.data || [];
+
+      /*
+       * Branch API ถูกกรองด้วย Current User + ems.departments.view
+       * แล้ว จึงไม่ filter Company/Group/Branch ซ้ำฝั่ง Client
+       */
+      setBranches(rows);
     } catch (err) {
       console.error(err);
       swalError(err.message || "ไม่สามารถโหลดข้อมูลสังกัดได้");
@@ -114,17 +127,32 @@ export default function DepartmentsPage() {
   };
 
   useEffect(() => {
-    loadDepartments();
+    if (loadingUser || !user || !canView) {
+      return;
+    }
+
     loadBranches();
-  }, []);
+  }, [
+    loadingUser,
+    user,
+    canView,
+    hasAllScope,
+    accessibleCompanyIds,
+    accessibleBranchGroupIds,
+    accessibleBranchIds,
+  ]);
 
   useEffect(() => {
+    if (loadingUser || !user || !canView) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       loadDepartments(search);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, loadingUser, user, canView]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -142,7 +170,8 @@ export default function DepartmentsPage() {
   };
 
   const handleOpenEdit = (department) => {
-    if (!canEdit) {
+
+    if (!canEditRecord(department)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขแผนก");
       return;
     }
@@ -170,7 +199,7 @@ export default function DepartmentsPage() {
 
     const isEdit = !!editingDepartment;
 
-    if (isEdit && !canEdit) {
+    if (isEdit && !canEditRecord(editingDepartment)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขแผนก");
       return;
     }
@@ -252,7 +281,7 @@ export default function DepartmentsPage() {
   };
 
   const handleDelete = async (department) => {
-     if (!canDelete) {
+     if (!canDeleteRecord(department)) {
       swalError("คุณไม่มีสิทธิ์ลบแผนก");
       return;
     }
@@ -334,23 +363,58 @@ export default function DepartmentsPage() {
   };
 
 
+  const getBranchGroupKey = (branch) => {
+    const companyKey =
+      branch?.company_id ||
+      branch?.company_code ||
+      branch?.company_name ||
+      "NO_COMPANY";
+
+    const groupKey =
+      branch?.group_id ||
+      branch?.branch_group_id ||
+      branch?.group_name ||
+      "NO_GROUP";
+
+    return `${companyKey}:${groupKey}`;
+  };
+
   const branchGroups = Array.from(
     new Map(
-      branches.map((branch) => [
-        branch.group_name || "ไม่ระบุกลุ่ม",
-        {
-          name: branch.group_name || "ไม่ระบุกลุ่ม",
-          color: branch.group_color || "#E2E8F0",
-        },
-      ])
+      branches.map((branch) => {
+        const key = getBranchGroupKey(branch);
+        const companyLabel =
+          branch.company_code ||
+          branch.company_name ||
+          "";
+        const groupLabel =
+          branch.group_name ||
+          "ไม่ระบุกลุ่ม";
+
+        return [
+          key,
+          {
+            key,
+            name: companyLabel
+              ? `${companyLabel} · ${groupLabel}`
+              : groupLabel,
+            color:
+              branch.group_color ||
+              "#E2E8F0",
+          },
+        ];
+      })
     ).values()
   );
 
-  const getDepartmentBranchesByGroup = (department, groupName) => {
+  const getDepartmentBranchesByGroup = (
+    department,
+    groupKey
+  ) => {
     return branches.filter(
       (branch) =>
         department.branch_ids?.includes(branch.id) &&
-        (branch.group_name || "ไม่ระบุกลุ่ม") === groupName
+        getBranchGroupKey(branch) === groupKey
     );
   };
 
@@ -367,11 +431,6 @@ export default function DepartmentsPage() {
             <p className="mt-1 text-sm text-slate-500">
               จัดการข้อมูลแผนกในแต่ละสังกัด สามารถเพิ่ม แก้ไข หรือลบแผนกได้ตามสิทธิ์ที่ได้รับ
             </p>
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบแผนกได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -507,35 +566,63 @@ export default function DepartmentsPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
+                      {canEditRecord(
+                        department
+                      ) ||
+                      canDeleteRecord(
+                        department
+                      ) ? (
                         <div className="flex justify-end gap-2">
-                          {canEdit && (
+
+                          {canEditRecord(
+                            department
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleOpenEdit(department)}
+                              onClick={() =>
+                                handleOpenEdit(
+                                  department
+                                )
+                              }
                               className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                             >
                               Edit
                             </button>
                           )}
 
-                          {canDelete && (
+                          {canDeleteRecord(
+                            department
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(department)}
-                              disabled={deletingId === department.id}
+                              onClick={() =>
+                                handleDelete(
+                                  department
+                                )
+                              }
+                              disabled={
+                                deletingId ===
+                                department.id
+                              }
                               className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === department.id
+                                deletingId ===
+                                department.id
                                   ? "cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-red-200 text-red-600 hover:bg-red-50"
                               }`}
                             >
-                              {deletingId === department.id ? "Deleting..." : "Delete"}
+                              {deletingId ===
+                              department.id
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                           )}
+
                         </div>
                       ) : (
-                        <div className="text-right text-slate-400">-</div>
+                        <div className="text-right text-slate-400">
+                          -
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -611,14 +698,14 @@ export default function DepartmentsPage() {
                     {branchGroups.map((group) => {
                       const groupBranches = getDepartmentBranchesByGroup(
                         department,
-                        group.name
+                        group.key
                       );
 
                       if (!groupBranches.length) return null;
 
                       return (
                         <div
-                          key={group.name}
+                          key={group.key}
                           className="rounded-3xl border border-white/60 p-3"
                           style={{
                             backgroundColor: group.color || "#F8FAFC",
@@ -675,30 +762,57 @@ export default function DepartmentsPage() {
                     })}
                   </div>
 
-                  {(canEdit || canDelete) && (
+                  {(
+                    canEditRecord(
+                      department
+                    ) ||
+                    canDeleteRecord(
+                      department
+                    )
+                  ) && (
                     <div className="flex justify-end gap-2 border-t border-white/50 p-4">
-                      {canEdit && (
+
+                      {canEditRecord(
+                        department
+                      ) && (
                         <button
                           type="button"
-                          onClick={() => handleOpenEdit(department)}
+                          onClick={() =>
+                            handleOpenEdit(
+                              department
+                            )
+                          }
                           className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                         >
                           Edit
                         </button>
                       )}
 
-                      {canDelete && (
+                      {canDeleteRecord(
+                        department
+                      ) && (
                         <button
                           type="button"
-                          onClick={() => handleDelete(department)}
-                          disabled={deletingId === department.id}
+                          onClick={() =>
+                            handleDelete(
+                              department
+                            )
+                          }
+                          disabled={
+                            deletingId ===
+                            department.id
+                          }
                           className={`rounded-xl border bg-white px-3 py-2 text-xs font-medium ${
-                            deletingId === department.id
+                            deletingId ===
+                            department.id
                               ? "cursor-not-allowed border-slate-200 text-slate-400"
                               : "border-red-200 text-red-600 hover:bg-red-50"
                           }`}
                         >
-                          {deletingId === department.id ? "Deleting..." : "Delete"}
+                          {deletingId ===
+                          department.id
+                            ? "Deleting..."
+                            : "Delete"}
                         </button>
                       )}
                     </div>
@@ -739,7 +853,7 @@ export default function DepartmentsPage() {
 
                         {branchGroups.map((group) => (
                           <th
-                            key={group.name}
+                            key={group.key}
                             className="min-w-[210px] border border-slate-500 px-4 py-3 text-center font-bold"
                           >
                             {group.name}
@@ -773,7 +887,7 @@ export default function DepartmentsPage() {
 
                             {branchGroups.map((group) => (
                               <td
-                                key={group.name}
+                                key={group.key}
                                 className="border border-slate-200 px-4 py-5"
                               >
                                 <div className="mx-auto h-16 w-16 animate-pulse rounded-2xl bg-slate-200" />
@@ -821,12 +935,12 @@ export default function DepartmentsPage() {
                             {branchGroups.map((group) => {
                               const groupBranches = getDepartmentBranchesByGroup(
                                 department,
-                                group.name
+                                group.key
                               );
 
                               return (
                                 <td
-                                  key={group.name}
+                                  key={group.key}
                                   className="border border-slate-300 px-3 py-4 align-top"
                                   style={{ backgroundColor: group.color || "#F8FAFC" }}
                                 >
@@ -888,38 +1002,73 @@ export default function DepartmentsPage() {
                               </span>
                             </td>
 
-                            {(canEdit || canDelete) && (
-                              <td className="border border-slate-300 px-3 py-4 align-top">
-                                <div className="flex justify-center gap-2">
-                                  {canEdit && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenEdit(department)}
-                                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                                    >
-                                      Edit
-                                    </button>
+                             {(canEdit ||
+                                canDelete) && (
+                                <td className="border border-slate-300 px-3 py-4 align-top">
+
+                                  {(
+                                    canEditRecord(
+                                      department
+                                    ) ||
+                                    canDeleteRecord(
+                                      department
+                                    )
+                                  ) ? (
+                                    <div className="flex justify-center gap-2">
+
+                                      {canEditRecord(
+                                        department
+                                      ) && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleOpenEdit(
+                                              department
+                                            )
+                                          }
+                                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                                        >
+                                          Edit
+                                        </button>
+                                      )}
+
+                                      {canDeleteRecord(
+                                        department
+                                      ) && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleDelete(
+                                              department
+                                            )
+                                          }
+                                          disabled={
+                                            deletingId ===
+                                            department.id
+                                          }
+                                          className={`rounded-xl border bg-white px-3 py-2 text-xs font-medium ${
+                                            deletingId ===
+                                            department.id
+                                              ? "cursor-not-allowed border-slate-200 text-slate-400"
+                                              : "border-red-200 text-red-600 hover:bg-red-50"
+                                          }`}
+                                        >
+                                          {deletingId ===
+                                          department.id
+                                            ? "Deleting..."
+                                            : "Delete"}
+                                        </button>
+                                      )}
+
+                                    </div>
+                                  ) : (
+                                    <div className="text-center text-slate-400">
+                                      -
+                                    </div>
                                   )}
 
-                                  {canDelete && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDelete(department)}
-                                      disabled={deletingId === department.id}
-                                      className={`rounded-xl border bg-white px-3 py-2 text-xs font-medium ${
-                                        deletingId === department.id
-                                          ? "cursor-not-allowed border-slate-200 text-slate-400"
-                                          : "border-red-200 text-red-600 hover:bg-red-50"
-                                      }`}
-                                    >
-                                      {deletingId === department.id
-                                        ? "Deleting..."
-                                        : "Delete"}
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            )}
+                                </td>
+                              )}
                           </tr>
                         ))
                       ) : (
@@ -948,13 +1097,13 @@ export default function DepartmentsPage() {
                             const count = departments.reduce((total, department) => {
                               return (
                                 total +
-                                getDepartmentBranchesByGroup(department, group.name).length
+                                getDepartmentBranchesByGroup(department, group.key).length
                               );
                             }, 0);
 
                             return (
                               <td
-                                key={group.name}
+                                key={group.key}
                                 className="border border-slate-500 px-4 py-3 text-center font-bold"
                               >
                                 {count}
@@ -1167,7 +1316,7 @@ export default function DepartmentsPage() {
                 Cancel
               </button>
 
-              {((editingDepartment && canEdit) || (!editingDepartment && canCreate)) && (
+              {((editingDepartment  && canEditRecord(editingDepartment)) || (!editingDepartment  && canCreate)) && (
                 <button
                   type="button"
                   onClick={handleSave}

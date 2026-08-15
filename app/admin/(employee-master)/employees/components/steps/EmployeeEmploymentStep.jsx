@@ -96,6 +96,9 @@ export default function EmployeeEmploymentStep({
   masterData = {},
   masterLoading = false,
 }) {
+
+  const employmentTypeId = Form.useWatch("employment_type_id",form);
+
   const startWorkDate =
     Form.useWatch(
       "start_work_date",
@@ -136,38 +139,116 @@ export default function EmployeeEmploymentStep({
       "status_name"
     );
 
-  useEffect(() => {
-    if (
-      !startWorkDate ||
-      probationDays === null ||
-      probationDays ===
-        undefined ||
-      probationDays === ""
-    ) {
+  const selectedEmploymentType = employmentTypes.find((item) => String(item.id) === String(employmentTypeId)) || null;
+  const probationRequired = selectedEmploymentType?.probation_required === true;
+
+  const handleEmploymentTypeChange = (value) => {
+    if (!value) {
+      form.setFieldsValue({
+        employment_type_id: undefined,
+        employee_status_id: undefined,
+        probation_days: 0,
+        probation_status: "not_required",
+        probation_end_date: null,
+      });
+
       return;
     }
 
-    const start =
-      toDayjs(startWorkDate);
+    const selectedType =
+      employmentTypes.find(
+        (item) =>
+          String(item.id) ===
+          String(value)
+      );
 
+    if (!selectedType) {
+      return;
+    }
+
+    const isProbation =
+      selectedType
+        .probation_required === true;
+
+    const defaultProbationDays =
+      isProbation
+        ? Number(
+            selectedType
+              .probation_days || 0
+          )
+        : 0;
+
+    form.setFieldsValue({
+      employee_status_id:
+        selectedType
+          .default_employee_status_id ||
+        undefined,
+
+      probation_days:
+        defaultProbationDays,
+
+      probation_status:
+        isProbation
+          ? "probation"
+          : "not_required",
+
+      probation_end_date:
+        null,
+    });
+  };
+  
+  useEffect(() => {
+    /*
+    * ประเภทการจ้างไม่ต้องทดลองงาน
+    */
+
+    if (selectedEmploymentType && !probationRequired) {
+      form.setFieldsValue({
+        probation_days: 0,
+        probation_end_date: null,
+        probation_status:
+          "not_required",
+      });
+      return;
+    }
+
+    if (!selectedEmploymentType) {
+      return;
+    }
+
+
+    if (!startWorkDate || probationDays === null || probationDays === undefined || probationDays === "") {
+      form.setFieldValue(
+        "probation_end_date",
+        null
+      );
+      return;
+    }
+
+    const start = toDayjs(startWorkDate);
     if (!start) {
       return;
     }
+    const days = Number(probationDays);
+    if (!Number.isFinite(days) || days <= 0) {
+      form.setFieldValue(
+        "probation_end_date",
+        null
+      );
+      return;
+    }
 
-    const endDate = start.add(
-      Number(probationDays),
-      "day"
-    );
+    const endDate =
+      start.add(
+        days,
+        "day"
+      );
 
     form.setFieldValue(
       "probation_end_date",
       endDate
     );
-  }, [
-    startWorkDate,
-    probationDays,
-    form,
-  ]);
+  }, [selectedEmploymentType,probationRequired,startWorkDate,probationDays,form,]);
 
   return (
     <div>
@@ -207,6 +288,9 @@ export default function EmployeeEmploymentStep({
                 employmentTypeOptions
               }
               optionFilterProp="label"
+              onChange={
+                handleEmploymentTypeChange
+              }
             />
           </Form.Item>
         </Col>

@@ -1,44 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState , useRef } from "react";
 import {Button,Card,Col,Input,Modal,Popconfirm,Row,Space,Table,Tag,Tooltip,} from "antd";
 import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,BankOutlined,ReloadOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
 import {swalConfirm,swalError,swalSuccess,} from "@/app/components/Swal";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import usePermissions from "@/hooks/usePermissions";
 
 export default function BusinessUnitsPage() {
-
-  /* =========================
-    Permission
-  ========================= */
-  // #region
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-
-  const canView = hasPermission(user, "ems.business_units.view");
-  const canCreate = hasPermission(user, "ems.business_units.create");
-  const canEdit = hasPermission(user, "ems.business_units.edit");
-  const canDelete = hasPermission(user, "ems.business_units.delete");
-
-  useEffect(() => {
-    if (loadingUser) return;
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
-
-  /* =========================
-      States
-  ========================= */
+  const isFirstLoad = useRef(true);
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("ems.business_units");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [businessUnits, setBusinessUnits] = useState([]);
@@ -51,10 +23,6 @@ export default function BusinessUnitsPage() {
     status: "active",
     sort_order: 0,
   });
-
-  /* =========================
-      Load Data
-  ========================= */
 
   const loadBusinessUnits = async (keyword = "") => {
     try {
@@ -89,15 +57,14 @@ export default function BusinessUnitsPage() {
 
   useEffect(() => {
     if (canView) {
-      loadBusinessUnits();
+      loadBusinessUnits().finally(() => {
+        isFirstLoad.current = false;
+      });
     }
   }, [canView]);
 
-  /* =========================
-      Search
-  ========================= */
-
   useEffect(() => {
+    if (isFirstLoad.current) return;
     const timer = setTimeout(() => {
       if (canView) {
         loadBusinessUnits(search);
@@ -107,10 +74,6 @@ export default function BusinessUnitsPage() {
     return () => clearTimeout(timer);
 
   }, [search]);
-
-  /* =========================
-      Reset Form
-  ========================= */
 
   const resetForm = () => {
     setEditingBusinessUnit(null);
@@ -122,10 +85,6 @@ export default function BusinessUnitsPage() {
       sort_order: 0,
     });
   };
-
-  /* =========================
-      Open Create
-  ========================= */
 
   const handleOpenCreate = () => {
 
@@ -140,9 +99,6 @@ export default function BusinessUnitsPage() {
 
   };
 
-  /* =========================
-      Open Edit
-  ========================= */
 
   const handleOpenEdit = (item) => {
 
@@ -171,18 +127,10 @@ export default function BusinessUnitsPage() {
 
   };
 
-  /* =========================
-      Close Modal
-  ========================= */
-
   const handleCloseModal = () => {
     resetForm();
     setOpenModal(false);
   };
-
-  /* =========================
-      Summary
-  ========================= */
 
   const summary = useMemo(() => {
 
@@ -204,10 +152,6 @@ export default function BusinessUnitsPage() {
     };
 
   }, [businessUnits]);
-
-  /* =========================
-      Columns
-  ========================= */
 
   const columns = [
     {
@@ -276,10 +220,7 @@ export default function BusinessUnitsPage() {
       ),
     },
   ];
-    /* =========================
-      Save
-  ========================= */
-
+    
   const handleSave = async () => {
     const isEdit = !!editingBusinessUnit;
 
@@ -344,24 +285,12 @@ export default function BusinessUnitsPage() {
     }
   };
 
-  /* =========================
-      Delete
-  ========================= */
-
   const handleDelete = async (item) => {
     if (!canDelete) {
       swalError("คุณไม่มีสิทธิ์ลบข้อมูล");
       return;
     }
-
-    const confirm = await swalConfirm({
-      title: "ยืนยันการลบ",
-      text: `ต้องการลบ ${item.business_unit_name} ใช่หรือไม่ ?`,
-      confirmButtonText: "ลบข้อมูล",
-    });
-
-    if (!confirm.isConfirmed) return;
-
+    
     try {
       setLoading(true);
 
@@ -390,9 +319,6 @@ export default function BusinessUnitsPage() {
     }
   };
 
-  /* =========================
-      Table Columns
-  ========================= */
 
   columns[4].render = (_, record) => (
     <Space>
@@ -432,16 +358,9 @@ export default function BusinessUnitsPage() {
     </Space>
   );
 
-  /* =========================
-      Refresh
-  ========================= */
-
   const handleRefresh = () => {
     loadBusinessUnits(search);
   };
-    if (!canView) {
-    return null;
-  }
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;

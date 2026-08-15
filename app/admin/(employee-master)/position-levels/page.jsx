@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { Modal } from "antd";
 import { hasPermission } from "@/lib/permissions";
 import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
@@ -40,6 +40,7 @@ export default function PositionLevelsPage() {
   const [editingLevel, setEditingLevel] =useState(null);
   const [deletingId, setDeletingId] =useState("");
   const [form, setForm] =useState(initialForm);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   useEffect(() => {
     if (loadingUser) return;
@@ -119,10 +120,11 @@ export default function PositionLevelsPage() {
   };
 
   useEffect(() => {
-    loadLevels();
-  }, []);
-
-  useEffect(() => {
+    if (isFirstLoad) {
+      loadLevels();
+      setIsFirstLoad(false);
+      return;
+    }
     const timer = setTimeout(() => {
       loadLevels(search, 1);
     }, 300);

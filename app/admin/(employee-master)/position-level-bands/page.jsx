@@ -9,7 +9,7 @@ import PositionLevelBandPagination from "./components/PositionLevelBandPaginatio
 import PositionLevelBandModal from "./components/PositionLevelBandModal";
 
 import { useRouter,useSearchParams, } from "next/navigation";
-import  useAuth  from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
 export default function PositionLevelBandsPage() {

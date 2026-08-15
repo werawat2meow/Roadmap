@@ -1,6 +1,78 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
+const ALL_BATCH_SIZE = 1000;
+
+function applyPermissionFilters(query, search = "") {
+  if (search) {
+    query = query.or(
+      [
+        `module_code.ilike.%${search}%`,
+        `action_code.ilike.%${search}%`,
+        `permission_code.ilike.%${search}%`,
+        `permission_name.ilike.%${search}%`,
+        `description.ilike.%${search}%`,
+      ].join(",")
+    );
+  }
+
+  return query;
+}
+
+function buildPermissionQuery({ search = "", withCount = false } = {}) {
+  let query = supabaseAdmin
+    .from("permissions")
+    .select("*", withCount ? { count: "exact" } : undefined)
+    .order("module_code", { ascending: true })
+    .order("action_code", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  query = applyPermissionFilters(query, search);
+  return query;
+}
+
+async function loadAllPermissions(search = "") {
+  const rows = [];
+  let offset = 0;
+  let total = null;
+
+  while (true) {
+    const from = offset;
+    const to = offset + ALL_BATCH_SIZE - 1;
+
+    const query = buildPermissionQuery({
+      search,
+      withCount: offset === 0,
+    }).range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) throw error;
+
+    const batch = data || [];
+    rows.push(...batch);
+
+    if (offset === 0 && Number.isFinite(Number(count))) {
+      total = Number(count);
+    }
+
+    if (batch.length < ALL_BATCH_SIZE) {
+      break;
+    }
+
+    if (total !== null && rows.length >= total) {
+      break;
+    }
+
+    offset += ALL_BATCH_SIZE;
+  }
+
+  return {
+    rows,
+    total: total ?? rows.length,
+  };
+}
+
 /* =========================
    GET: list permissions
 ========================= */
@@ -12,31 +84,30 @@ export async function GET(req) {
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
     const pageSize = Math.max(Number(searchParams.get("pageSize") || 20), 1);
     const all = searchParams.get("all") === "true";
+
+    if (all) {
+      const { rows, total } = await loadAllPermissions(search);
+
+      return NextResponse.json({
+        success: true,
+        data: rows,
+        pagination: {
+          page: 1,
+          pageSize: rows.length,
+          total,
+          totalPages: 1,
+        },
+        all: true,
+      });
+    }
+
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    let query = supabaseAdmin
-      .from("permissions")
-      .select("*", { count: "exact" })
-      .order("module_code", { ascending: true })
-      .order("action_code", { ascending: true })
-      .order("created_at", { ascending: false })
-      
-      if (!all) {
-        query = query.range(from, to);
-      }
-
-    if (search) {
-      query = query.or(
-        [
-          `module_code.ilike.%${search}%`,
-          `action_code.ilike.%${search}%`,
-          `permission_code.ilike.%${search}%`,
-          `permission_name.ilike.%${search}%`,
-          `description.ilike.%${search}%`,
-        ].join(",")
-      );
-    }
+    const query = buildPermissionQuery({
+      search,
+      withCount: true,
+    }).range(from, to);
 
     const { data, error, count } = await query;
 

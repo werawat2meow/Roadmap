@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import {
+  requireAuthenticatedAccess,
+} from "@/lib/auth/requirePortalAccess";
+import {
+  hasAccessPermission,
+} from "@/lib/auth/applyAccessScope";
+import {
+  hasAllAccessScope,
+  requireScopedAccess,
+  resolveAccessibleIds,
+} from "@/lib/auth/requireScopedAccess";
 
 /* =========================================================
    CONSTANTS
@@ -116,8 +127,78 @@ function mapDatabaseError(error) {
 
 export async function GET(req) {
   try {
+    const auth =
+      await requireAuthenticatedAccess();
+
+    if (!auth.ok) {
+      return auth.response;
+    }
+
+    const access = auth.access || {};
+
     const { searchParams } =
       new URL(req.url);
+
+    const scopeContext =
+      searchParams
+        .get("scope_context")
+        ?.trim() || "";
+
+    const allowedScopeContexts = [
+      "ems.employees",
+      "ems.departments",
+      "ems.divisions",
+      "ems.units",
+    ];
+
+    const requestedPermission =
+      allowedScopeContexts.includes(
+        scopeContext
+      )
+        ? `${scopeContext}.view`
+        : null;
+
+    const fallbackPermission =
+      [
+        "ems.departments.view",
+        "ems.divisions.view",
+        "ems.units.view",
+        "ems.employees.view",
+      ].find((permission) =>
+        hasAccessPermission(
+          access,
+          permission
+        )
+      ) || null;
+
+    const scopePermission =
+      requestedPermission ||
+      fallbackPermission;
+
+    const canReadMapping =
+      access.is_super_admin ||
+      [
+        "ems.employees.view",
+        "ems.departments.view",
+        "ems.divisions.view",
+        "ems.units.view",
+      ].some((permission) =>
+        hasAccessPermission(
+          access,
+          permission
+        )
+      );
+
+    if (!canReadMapping) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "คุณไม่มีสิทธิ์ดูข้อมูลโครงสร้างสังกัดและแผนก",
+        },
+        { status: 403 }
+      );
+    }
 
     const search =
       searchParams
@@ -204,6 +285,53 @@ export async function GET(req) {
             : "exact",
         }
       );
+
+    if (
+      !hasAllAccessScope(
+        access,
+        scopePermission
+      )
+    ) {
+      const [
+        allowedBranchIds,
+        allowedDepartmentIds,
+      ] = await Promise.all([
+        resolveAccessibleIds(
+          access,
+          "branch",
+          {
+            permission:
+              scopePermission,
+          }
+        ),
+        resolveAccessibleIds(
+          access,
+          "department",
+          {
+            permission:
+              scopePermission,
+          }
+        ),
+      ]);
+
+      if (
+        allowedBranchIds.length
+      ) {
+        query = query.in(
+          "branch_id",
+          allowedBranchIds
+        );
+      }
+
+      if (
+        allowedDepartmentIds.length
+      ) {
+        query = query.in(
+          "department_id",
+          allowedDepartmentIds
+        );
+      }
+    }
 
     if (branchId) {
       query = query.eq(
@@ -358,6 +486,19 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+    const guard =
+      await requireScopedAccess(
+        "ems.departments",
+        "create",
+        {
+          scopeType: "department",
+        }
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
     const body =
       await req.json();
 
@@ -378,6 +519,29 @@ export async function POST(req) {
           status: 400,
         }
       );
+    }
+
+    if (!guard.hasAllScope) {
+      const allowedBranchIds =
+        await resolveAccessibleIds(
+          guard.access,
+          "branch"
+        );
+
+      if (
+        !allowedBranchIds.includes(
+          String(payload.branch_id)
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "สังกัดที่เลือกอยู่นอก Scope ของผู้ใช้งาน",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     /* -----------------------------------------------------

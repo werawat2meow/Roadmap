@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Form } from "antd";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
 import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {swalConfirm,swalError,swalSuccess,} from "@/components/Swal";

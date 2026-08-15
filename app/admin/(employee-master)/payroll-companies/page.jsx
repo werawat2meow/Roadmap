@@ -5,7 +5,7 @@ import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Toolti
 import {BankOutlined,DeleteOutlined,EditOutlined,PlusOutlined,ReloadOutlined,SearchOutlined,InfoCircleOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { CompanySelect, PayrollTypeSelect, } from "@/app/components/selectors";
 import { SortOrderField,StatusSelect,} from "@/app/components/forms";

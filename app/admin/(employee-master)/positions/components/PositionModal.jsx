@@ -1,85 +1,177 @@
 "use client";
 
-import { Form, Modal } from "antd";
-import { useEffect, useState } from "react";
+import {
+  Form,
+  Modal,
+} from "antd";
+
+import {
+  useEffect,
+} from "react";
 
 import PositionForm from "./PositionForm";
 
 export default function PositionModal({
-    open,
-    onCancel,
-    onSubmit,
-    initialValues,
-    loading,
-    families = [],
-    jobs = [],
+  open,
+  onCancel,
+  onSubmit,
+  initialValues,
+  loading,
 }) {
-  const [form] = Form.useForm();
+  const [form] =
+    Form.useForm();
+
+  /* =========================================================
+     Set Form
+  ========================================================= */
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+
+    /* =======================================================
+       Edit
+    ======================================================= */
 
     if (initialValues) {
-      form.setFieldsValue({
-        ...initialValues,
-
-        position_levels:
-          initialValues.levels?.map(
-            (item) => item.id
-          ) || [],
-      });
-    } else {
       form.resetFields();
 
       form.setFieldsValue({
-        status: "active",
+        ...initialValues,
 
-        is_manager: false,
+        /*
+         * รองรับกรณี API ส่ง family.id
+         * หรือ position_family_id
+         */
+        position_family_id:
+          initialValues
+            .position_family_id ||
+          initialValues
+            .family?.id ||
+          null,
 
-        is_executive: false,
-
-        allow_multiple_assignment: false,
+        /*
+         * Select mode=multiple
+         * ต้องการ UUID[]
+         */
+        position_levels:
+          Array.isArray(
+            initialValues.levels
+          )
+            ? initialValues
+                .levels
+                .map(
+                  (item) =>
+                    item.id
+                )
+                .filter(Boolean)
+            : [],
       });
-    }
-  }, [open, initialValues]);
 
+      return;
+    }
+
+    /* =======================================================
+       Create
+    ======================================================= */
+
+    form.resetFields();
+
+    form.setFieldsValue({
+      status: "active",
+
+      is_manager: false,
+
+      is_executive: false,
+
+      allow_multiple_assignment:
+        false,
+
+      position_family_id:
+        null,
+
+      position_levels: [],
+    });
+  }, [
+    open,
+    initialValues,
+    form,
+  ]);
+
+  /* =========================================================
+     Submit
+  ========================================================= */
 
   async function handleFinish() {
     try {
-      const values = await form.validateFields();
+      const values =
+        await form.validateFields();
 
       if (onSubmit) {
         await onSubmit(values);
       }
     } catch (err) {
-      console.error("POSITION_FORM_ERROR", err);
+      console.error(
+        "POSITION_FORM_ERROR",
+        err
+      );
     }
   }
+
+  /* =========================================================
+     Render
+  ========================================================= */
 
   return (
     <Modal
       open={open}
+
       width={900}
+
       destroyOnHidden
+
       mask={{
         closable: false,
       }}
+
       title={
         initialValues
           ? "แก้ไขตำแหน่ง"
           : "เพิ่มตำแหน่ง"
       }
+
       okText="บันทึก"
+
       cancelText="ยกเลิก"
-      confirmLoading={loading}
-      onCancel={onCancel}
-      onOk={handleFinish}
+
+      confirmLoading={
+        loading
+      }
+
+      onCancel={
+        onCancel
+      }
+
+      onOk={
+        handleFinish
+      }
     >
       <PositionForm
         form={form}
-        families={families}
-        jobs={jobs}
-        disabled={loading}
+
+        /*
+         * สำคัญมาก
+         * ส่งข้อมูล row เดิมลงไป
+         * เพื่อสร้าง Label ตอน Edit
+         */
+        initialValues={
+          initialValues
+        }
+
+        disabled={
+          loading
+        }
       />
     </Modal>
   );

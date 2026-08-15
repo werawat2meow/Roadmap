@@ -6,7 +6,7 @@ import { WalletOutlined , InfoCircleOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import { swalError, swalSuccess } from "../../../components/Swal";

@@ -66,7 +66,8 @@ export async function GET(request) {
         positions (position_name),
         recruit_job_interviews!inner (
           interview_datetime,
-          interview_order
+          interview_order,
+          reviewer
         )
       `,
       { count: "exact" }

@@ -15,9 +15,13 @@ import {
   Tag,
   Modal,
   InputNumber,
+  Upload,
+  UploadFile, 
+  UploadProps,
 } from "antd";
+
 import dayjs, { Dayjs } from "dayjs";
-import { SearchOutlined } from "@ant-design/icons";
+import AntIcon from '@/components/AntIcon';
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
 
@@ -148,6 +152,13 @@ export default function RecruitmentApplicationsPage() {
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
   const [interviewErrors, setInterviewErrors] = useState<InterviewErrors>({});
 
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoApplication, setPhotoApplication] =
+    useState<Application | null>(null);
+
+  const [photoFile, setPhotoFile] = useState<UploadFile | null>(null);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+
   const isAll = pageSize === "all";
   const numericPageSize = isAll ? undefined : pageSize;
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
@@ -200,7 +211,7 @@ export default function RecruitmentApplicationsPage() {
         `/recruitment/api/schedule_interviews?${params.toString()}`
       );
       const json = await res.json();
-
+      
       // API ไม่มี field success, ต้องเช็คจาก error แทน
       if (!json.error) {
         setRows(json.data ?? []);
@@ -270,10 +281,10 @@ export default function RecruitmentApplicationsPage() {
   const saveUpdate = async () => {
     if (!selectedApplication || savingUpdate) return;
 
-    if (selectedStatus === 5 && !selectedInterviewer) {
-      message.warning("กรุณาเลือกผู้สัมภาษณ์");
-      return;
-    }
+    // if (selectedStatus === 5 && !selectedInterviewer) {
+    //   message.warning("กรุณาเลือกผู้สัมภาษณ์");
+    //   return;
+    // }
 
     if (selectedStatus === 6 && !interviewDateTime) {
       setInterviewErrors((prev) => ({
@@ -328,6 +339,17 @@ export default function RecruitmentApplicationsPage() {
     } finally {
       setSavingUpdate(false);
     }
+  };
+
+  const openPhotoModal = (record: Application) => {
+    if (record.status !== 5) {
+      message.warning("สามารถอัปเดตรูปได้เฉพาะผู้สมัครที่มีสถานะ 5 เท่านั้น");
+      return;
+    }
+
+    setPhotoApplication(record);
+    setPhotoFile(null);
+    setPhotoModalOpen(true);
   };
 
   const columns = useMemo(
@@ -396,6 +418,16 @@ export default function RecruitmentApplicationsPage() {
                 อัพเดตข้อมูล
               </Button>
             )}
+
+            {canEdit && record.status === 5 && (
+              <Button
+                type="primary"
+                icon={<AntIcon name="UploadOutlined" />}
+                onClick={() => openPhotoModal(record)}
+              >
+                อัปเดตรูปผู้สมัคร
+              </Button>
+            )}
           </Space>
         ),
       },
@@ -410,16 +442,13 @@ export default function RecruitmentApplicationsPage() {
 
     try {
       // ===== Future =====
-      // const res = await fetch("/recruitment/api/schedule_interviews/getInterviewer");
-      // const json = await res.json();
-      // setInterviewerOptions(json.data);
-
-      // ===== Mock Data =====
-      setInterviewerOptions([
-        { value: "5345373a-dd77-4173-84a9-d8aca3f15047", label: "คุณม่อน" },
-        { value: "1", label: "คุณกุ้งนาง" },
-        { value: "2", label: "Mr. John" },
-      ]);
+      const res = await fetch("/recruitment/api/schedule_interviews/getInterviewer");
+      const json = await res.json();
+      setInterviewerOptions(json.data);
+    } catch (err) {
+      setLoadingInterviewer(false);
+      console.error(err);
+      message.error("เกิดข้อผิดพลาด");
     } finally {
       setLoadingInterviewer(false);
     }
@@ -433,7 +462,94 @@ export default function RecruitmentApplicationsPage() {
     }
   }, [selectedStatus]);
 
-  if (isChecking) return <LoadingOrb />;
+  const saveApplicantPhoto = async () => {
+    if (!photoApplication) return;
+
+    if (!photoFile?.originFileObj) {
+      message.warning("กรุณาเลือกรูปผู้สมัคร");
+      return;
+    }
+
+    setSavingPhoto(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append(
+        "application_id",
+        String(photoApplication.id)
+      );
+
+      formData.append(
+        "file",
+        photoFile.originFileObj
+      );
+
+      const res = await fetch(
+        "/recruitment/api/schedule_interviews/update_candidate_photo",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        message.error(json.error || "ไม่สามารถอัปโหลดรูปได้");
+        return;
+      }
+
+      message.success("อัปเดตรูปผู้สมัครเรียบร้อย");
+
+      setPhotoModalOpen(false);
+      setPhotoApplication(null);
+      setPhotoFile(null);
+
+      await loadData(page);
+    } catch (error) {
+      console.error(error);
+      message.error("เกิดข้อผิดพลาดในการอัปโหลดรูป");
+    } finally {
+      setSavingPhoto(false);
+    }
+  };
+
+  const photoUploadProps: UploadProps = {
+    maxCount: 1,
+    accept: "image/png,image/jpeg",
+    beforeUpload: (file) => {
+      const isImage =
+        file.type === "image/png" ||
+        file.type === "image/jpeg";
+
+      if (!isImage) {
+        message.error("สามารถอัปโหลดได้เฉพาะ JPG หรือ PNG เท่านั้น");
+        return Upload.LIST_IGNORE;
+      }
+
+      const isLt2M = file.size / 1024 / 1024 < 2;
+
+      if (!isLt2M) {
+        message.error("รูปภาพต้องมีขนาดไม่เกิน 2MB");
+        return Upload.LIST_IGNORE;
+      }
+
+      setPhotoFile({
+        uid: file.uid,
+        name: file.name,
+        status: "done",
+        originFileObj: file,
+      });
+
+      return false;
+    },
+    onRemove: () => {
+      setPhotoFile(null);
+    },
+  };
+
+  if (isChecking || loading) return <LoadingOrb />;
   if (!canView) return null;
 
   return (
@@ -508,7 +624,7 @@ export default function RecruitmentApplicationsPage() {
                 onChange={(val) => setStatusFilter(val)}
                 style={{ width: 200 }}
                 options={STATUS_OPTIONS}
-                suffixIcon={<SearchOutlined style={{ color: "#94a3b8" }} />}
+                suffixIcon={ <AntIcon name="SearchOutlined" style={{ color: "#94a3b8" }} />}
               />
               <Select
                 allowClear
@@ -598,7 +714,7 @@ export default function RecruitmentApplicationsPage() {
           {selectedStatus === 5 && (
             <div>
               <div style={{ marginBottom: 6 }}>
-                ผู้สัมภาษณ์ <span style={{ color: "red" }}>*</span>
+                ผู้สัมภาษณ์
               </div>
 
               <Select
@@ -650,6 +766,63 @@ export default function RecruitmentApplicationsPage() {
               )}
             </div>
           )}
+        </Space>
+      </Modal>
+
+      <Modal
+        title="อัปเดตรูปผู้สมัคร"
+        open={photoModalOpen}
+        onCancel={() => {
+          if (!savingPhoto) {
+            setPhotoModalOpen(false);
+            setPhotoApplication(null);
+            setPhotoFile(null);
+          }
+        }}
+        onOk={saveApplicantPhoto}
+        okText="บันทึก"
+        cancelText="ยกเลิก"
+        confirmLoading={savingPhoto}
+        closable={!savingPhoto}
+        mask={{ closable: !savingPhoto }}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%" }}
+          size="middle"
+        >
+          {photoApplication && (
+            <div>
+              <Text strong>ผู้สมัคร: </Text>
+              <Text>
+                {photoApplication.first_name}{" "}
+                {photoApplication.last_name}
+              </Text>
+            </div>
+          )}
+
+          <div>
+            <Text strong>รูปผู้สมัคร</Text>
+
+            <div style={{ marginTop: 8 }}>
+              <Upload {...photoUploadProps}>
+                <Button icon={<AntIcon name="UploadOutlined" />}>
+                  เลือกรูปภาพ
+                </Button>
+              </Upload>
+            </div>
+
+            <Text
+              type="secondary"
+              style={{
+                display: "block",
+                marginTop: 8,
+                fontSize: 12,
+              }}
+            >
+              รองรับ JPG, PNG และขนาดไม่เกิน 2MB
+            </Text>
+          </div>
         </Space>
       </Modal>
     </>

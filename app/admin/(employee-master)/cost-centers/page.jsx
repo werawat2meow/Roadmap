@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState , useRef } from "react";
 import {Button,Card,Col,Input,Modal,Popconfirm,Row,Select,Space,Table,Tag,Tooltip,} from "antd";
 import {PlusOutlined,EditOutlined,DeleteOutlined,SearchOutlined,ReloadOutlined,FundProjectionScreenOutlined,} from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {swalConfirm,swalError,swalSuccess,} from "@/app/components/Swal";
+import usePermissions from "@/hooks/usePermissions";
+
 
 const initialForm = {
   cost_center_code: "",
@@ -19,36 +18,16 @@ const initialForm = {
 };
 
 export default function CostCentersPage() {
-
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-
-  const canView = hasPermission(user, "ems.cost_centers.view");
-  const canCreate = hasPermission(user, "ems.cost_centers.create");
-  const canEdit = hasPermission(user, "ems.cost_centers.edit");
-  const canDelete = hasPermission(user, "ems.cost_centers.delete");
-
+  const isFirstLoad = useRef(true);
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("ems.cost_centers");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [costCenters, setCostCenters] = useState([]);
   const [businessUnits, setBusinessUnits] = useState([]);
-
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [editingCostCenter, setEditingCostCenter] = useState(null);
   const [form, setForm] = useState(initialForm);
-
-  useEffect(() => {
-    if (loadingUser) return;
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
 
   const loadBusinessUnits = async () => {
     try {
@@ -92,11 +71,14 @@ export default function CostCentersPage() {
   useEffect(() => {
     if (!loadingUser && user && canView) {
       loadBusinessUnits();
-      loadCostCenters();
+      loadCostCenters().finally(() => {
+        isFirstLoad.current = false;
+      });
     }
   }, [loadingUser, user, canView]);
 
   useEffect(() => {
+    if (isFirstLoad.current) return;
     const timer = setTimeout(() => {
       if (!loadingUser && user && canView) {
         loadCostCenters(search);
@@ -324,7 +306,7 @@ export default function CostCentersPage() {
     loadCostCenters(search);
   };
 
-    if (loadingUser) return <LoadingOrb />;
+  if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 

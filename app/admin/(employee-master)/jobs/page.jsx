@@ -3,7 +3,7 @@
 import { useEffect, useState , useRef } from "react";
 import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import { Spin } from "antd";
@@ -254,12 +254,6 @@ export default function JobsPage() {
             <p className="mt-1 text-sm text-slate-500">
               กำหนดบทบาทงาน ขอบเขตการกำกับดูแล และโครงสร้างบัญชีสำหรับองค์กร
             </p>
-
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบบทบาทงานได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -290,121 +284,115 @@ export default function JobsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <Spin size="large" />
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="p-3 text-left">รหัส</th>
-                <th className="p-3 text-left">บทบาทงาน</th>
-                <th className="p-3 text-left">กลุ่มสายงาน</th>
-                <th className="p-3 text-left">ขอบเขต</th>
-                <th className="p-3 text-left">บัญชี</th>
-                <th className="p-3 text-left">สถานะ</th>
-                <th className="p-3 text-center">จัดการ</th>
-              </tr>
-            </thead>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="p-3 text-left">รหัส</th>
+              <th className="p-3 text-left">บทบาทงาน</th>
+              <th className="p-3 text-left">กลุ่มสายงาน</th>
+              <th className="p-3 text-left">ขอบเขต</th>
+              <th className="p-3 text-left">บัญชี</th>
+              <th className="p-3 text-left">สถานะ</th>
+              <th className="p-3 text-center">จัดการ</th>
+            </tr>
+          </thead>
 
-            <tbody>
-              {jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <tr key={job.id} className="border-t hover:bg-slate-50">
-                    <td className="p-3 font-semibold text-slate-700">
-                      {job.job_code}
-                    </td>
+          <tbody>
+            {jobs.length > 0 ? (
+              jobs.map((job) => (
+                <tr key={job.id} className="border-t hover:bg-slate-50">
+                  <td className="p-3 font-semibold text-slate-700">
+                    {job.job_code}
+                  </td>
 
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="flex h-8 w-8 items-center justify-center rounded-xl text-base"
-                          style={{ backgroundColor: job.job_color || "#E2E8F0" }}
-                        >
-                          {job.job_icon || "👤"}
-                        </span>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-xl text-base"
+                        style={{ backgroundColor: job.job_color || "#E2E8F0" }}
+                      >
+                        {job.job_icon || "👤"}
+                      </span>
 
-                        <div>
-                          <div className="font-medium text-slate-800">
-                            {job.job_name}
-                          </div>
+                      <div>
+                        <div className="font-medium text-slate-800">
+                          {job.job_name}
+                        </div>
 
-                          <div className="text-xs text-slate-500">
-                            {job.job_description || "-"}
-                          </div>
+                        <div className="text-xs text-slate-500">
+                          {job.job_description || "-"}
                         </div>
                       </div>
-                    </td>
+                    </div>
+                  </td>
 
-                    <td className="p-3 text-sm text-slate-600">
-                      <div>{job.job_family || "-"}</div>
-                      <div className="text-xs text-slate-400">
-                        {job.job_category || "-"}
-                      </div>
-                    </td>
+                  <td className="p-3 text-sm text-slate-600">
+                    <div>{job.job_family || "-"}</div>
+                    <div className="text-xs text-slate-400">
+                      {job.job_category || "-"}
+                    </div>
+                  </td>
 
-                    <td className="p-3 text-sm text-slate-600">
-                      <div>{job.management_level || "-"}</div>
-                      <div className="text-xs text-slate-400">
-                        {job.scope_type || "-"}
-                      </div>
-                    </td>
+                  <td className="p-3 text-sm text-slate-600">
+                    <div>{job.management_level || "-"}</div>
+                    <div className="text-xs text-slate-400">
+                      {job.scope_type || "-"}
+                    </div>
+                  </td>
 
-                    <td className="p-3 text-sm text-slate-600">
-                      {job.accounting_scope || "none"}
-                    </td>
+                  <td className="p-3 text-sm text-slate-600">
+                    {job.accounting_scope || "none"}
+                  </td>
 
-                    <td className="p-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          job.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {job.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
-                      </span>
-                    </td>
+                  <td className="p-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        job.status === "active"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {job.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
+                    </span>
+                  </td>
 
-                    <td className="p-3">
-                      <div className="flex justify-center gap-2">
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(job)}
-                            className="rounded-lg border px-3 py-1 text-sm hover:bg-slate-100"
-                          >
-                            แก้ไข
-                          </button>
-                        )}
+                  <td className="p-3">
+                    <div className="flex justify-center gap-2">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(job)}
+                          className="rounded-lg border px-3 py-1 text-sm hover:bg-slate-100"
+                        >
+                          แก้ไข
+                        </button>
+                      )}
 
-                        {canDelete && (
-                          <button
-                            type="button"
-                            disabled={deletingId === job.id}
-                            onClick={() => handleDelete(job)}
-                            className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {deletingId === job.id ? "กำลังลบ..." : "ลบ"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-slate-400">
-                    ไม่พบข้อมูลบทบาทงาน
+                      {canDelete && (
+                        <button
+                          type="button"
+                          disabled={deletingId === job.id}
+                          onClick={() => handleDelete(job)}
+                          className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingId === job.id ? "กำลังลบ..." : "ลบ"}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-sm text-slate-400">
+                  ไม่พบข้อมูลบทบาทงาน
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

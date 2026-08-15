@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {TeamOutlined,UserAddOutlined,UserDeleteOutlined,SafetyOutlined,DownloadOutlined,SearchOutlined,} from "@ant-design/icons";
-import { useRouter } from "next/navigation";
 import { Spin } from 'antd';
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
+import { hasPermission } from "@/lib/permissions";
+import { useRouter } from "next/navigation";
 
 const DEFAULT_FILTERS = {
   search: "",
@@ -26,6 +26,9 @@ const DEFAULT_FILTERS = {
 };
 
 export default function EmployeeReportsPage() {
+  const router = useRouter();
+  const {user, loadingUser:authLoading,canView,} = useScopedPermissions("ems.employee_reports",{scopeType:"employee",});
+  const canExportreport = hasPermission(user, "ems.employee_reports.export");
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false); // loading เฉพาะตอน filter/เปลี่ยนหน้า (ไม่ทำให้ทั้งหน้า flash)
   const isFirstRender = useRef(true);
@@ -56,26 +59,6 @@ export default function EmployeeReportsPage() {
   });
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.employee_reports.view");
-  const canExportreport = hasPermission(user, "ems.employee_reports.export");
-
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-
-  // #endregion
 
   const buildQueryString = (currentFilters, currentPagination) => {
     const params = new URLSearchParams();
@@ -105,6 +88,38 @@ export default function EmployeeReportsPage() {
 
     if (currentFilters.unit) {
       params.set("unit_id", currentFilters.unit);
+    }
+
+    if (currentFilters.employmentType) {
+      params.set("employment_type", currentFilters.employmentType);
+    }
+
+    if (currentFilters.gender) {
+      params.set("gender", currentFilters.gender);
+    }
+
+    if (currentFilters.nationality) {
+      params.set("nationality", currentFilters.nationality);
+    }
+
+    if (currentFilters.positionLevel) {
+      params.set("position_level", currentFilters.positionLevel);
+    }
+
+    if (currentFilters.hireDateFrom) {
+      params.set("start_work_date_from", currentFilters.hireDateFrom);
+    }
+
+    if (currentFilters.hireDateTo) {
+      params.set("start_work_date_to", currentFilters.hireDateTo);
+    }
+
+    if (currentFilters.resignationDateFrom) {
+      params.set("resignation_date_from", currentFilters.resignationDateFrom);
+    }
+
+    if (currentFilters.resignationDateTo) {
+      params.set("resignation_date_to", currentFilters.resignationDateTo);
     }
 
     return params.toString();
@@ -261,13 +276,15 @@ export default function EmployeeReportsPage() {
     // Filter วันที่เริ่มงาน
     if (filters.hireDateFrom) {
       rows = rows.filter(
-        (item) => item.hire_date && item.hire_date >= filters.hireDateFrom
+        (item) => (item.start_work_date || item.hire_date) &&
+          (item.start_work_date || item.hire_date) >= filters.hireDateFrom
       );
     }
 
     if (filters.hireDateTo) {
       rows = rows.filter(
-        (item) => item.hire_date && item.hire_date <= filters.hireDateTo
+        (item) => (item.start_work_date || item.hire_date) &&
+          (item.start_work_date || item.hire_date) <= filters.hireDateTo
       );
     }
 
@@ -310,13 +327,17 @@ export default function EmployeeReportsPage() {
       retiredEmployees: countByStatus("RETIRED"),
       suspendedEmployees: countByStatus("SUSPENDED"),
       newThisMonth: filteredEmployees.filter((x) =>
-        x.hire_date?.startsWith(new Date().toISOString().slice(0, 7))
+        (x.start_work_date || x.hire_date)?.startsWith(
+          new Date().toISOString().slice(0, 7)
+        )
       ).length,
       resignedThisMonth: filteredEmployees.filter((x) =>
         x.resignation_date?.startsWith(new Date().toISOString().slice(0, 7))
       ).length,
       newThisYear: filteredEmployees.filter((x) =>
-        x.hire_date?.startsWith(String(new Date().getFullYear()))
+        (x.start_work_date || x.hire_date)?.startsWith(
+          String(new Date().getFullYear())
+        )
       ).length,
       resignedThisYear: filteredEmployees.filter((x) =>
         x.resignation_date?.startsWith(String(new Date().getFullYear()))
@@ -442,7 +463,7 @@ export default function EmployeeReportsPage() {
     }
   };
 
-  if (loadingUser) return <LoadingOrb />;
+  if (authLoading) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
 
@@ -742,7 +763,9 @@ export default function EmployeeReportsPage() {
                   <td className="px-4 py-4">{item.department_name}</td>
                   <td className="px-4 py-4">{item.position_name}</td>
                   <td className="px-4 py-4">{item.employee_status_name}</td>
-                  <td className="px-4 py-4">{item.hire_date}</td>
+                  <td className="px-4 py-4">
+                    {item.start_work_date || item.hire_date || "-"}
+                  </td>
                   <td className="px-4 py-4">
                     {item.resignation_date || "-"}
                   </td>

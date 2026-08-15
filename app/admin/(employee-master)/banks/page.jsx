@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Form } from "antd";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
 import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
 import BankSearch from "./components/BankSearch";

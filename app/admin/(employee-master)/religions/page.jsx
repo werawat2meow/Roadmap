@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Form } from "antd";
 import { useRouter } from "next/navigation";
 
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
 import LoadingOrb from "@/app/components/LoadingOrb";

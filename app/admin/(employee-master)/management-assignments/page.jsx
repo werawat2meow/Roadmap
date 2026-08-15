@@ -4,7 +4,7 @@ import {useCallback,useEffect,useMemo,useRef,useState,} from "react";
 import { useRouter } from "next/navigation";
 import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
 import LoadingOrb from "../../../components/LoadingOrb";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import ManagementOrgChart from "../components/ManagementOrgChart";
 

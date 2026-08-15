@@ -16,6 +16,9 @@ const ROLE_TABLE =
 const PERMISSION_TABLE =
   "permissions";
 
+const QUERY_BATCH_SIZE = 1000;
+const INSERT_BATCH_SIZE = 500;
+
 /* =========================================================
    Helpers
 ========================================================= */
@@ -39,6 +42,70 @@ function uniqueIds(values = []) {
         .filter(Boolean)
     ),
   ];
+}
+
+function chunkArray(values = [], size = 500) {
+  const result = [];
+
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+
+  return result;
+}
+
+async function loadRoleMappings(roleId) {
+  const rows = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } =
+      await supabaseAdmin
+        .from(ROLE_PERMISSION_TABLE)
+        .select(`
+          id,
+          role_id,
+          permission_id
+        `)
+        .eq("role_id", roleId)
+        .order("id", { ascending: true })
+        .range(
+          offset,
+          offset + QUERY_BATCH_SIZE - 1
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    const batch = data || [];
+    rows.push(...batch);
+
+    if (batch.length < QUERY_BATCH_SIZE) {
+      break;
+    }
+
+    offset += QUERY_BATCH_SIZE;
+  }
+
+  return rows;
+}
+
+async function insertRoleMappings(rows = []) {
+  if (!rows.length) {
+    return;
+  }
+
+  for (const batch of chunkArray(rows, INSERT_BATCH_SIZE)) {
+    const { error } =
+      await supabaseAdmin
+        .from(ROLE_PERMISSION_TABLE)
+        .insert(batch);
+
+    if (error) {
+      throw error;
+    }
+  }
 }
 
 async function safeWriteActivityLog(payload) {
@@ -90,31 +157,32 @@ async function loadPermissionDetails(
     return [];
   }
 
-  /*
-   * ไม่ใส่ is_system ใน select
-   * เพราะต้องตรวจว่าตาราง permissions
-   * ของระบบมีคอลัมน์นี้จริงหรือไม่
-   */
+  const rows = [];
 
-  const { data, error } =
-    await supabaseAdmin
-      .from(PERMISSION_TABLE)
-      .select(`
-        id,
-        module_code,
-        action_code,
-        permission_code,
-        permission_name,
-        description,
-        is_active
-      `)
-      .in("id", ids);
+  // แบ่ง .in(...) เป็นชุดเล็ก ป้องกัน URL/row-limit เมื่อ Permission มากกว่า 1,000
+  for (const idBatch of chunkArray(ids, 200)) {
+    const { data, error } =
+      await supabaseAdmin
+        .from(PERMISSION_TABLE)
+        .select(`
+          id,
+          module_code,
+          action_code,
+          permission_code,
+          permission_name,
+          description,
+          is_active
+        `)
+        .in("id", idBatch);
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+
+    rows.push(...(data || []));
   }
 
-  return data || [];
+  return rows;
 }
 
 /* =========================================================
@@ -124,13 +192,47 @@ async function loadPermissionDetails(
 
 export async function GET(req) {
   try {
-    const { searchParams } = new URL(
-      req.url
+    const { searchParams } = new URL(req.url);
+
+    const roleId = cleanText(searchParams.get("role_id"));
+    const summary = searchParams.get("summary") === "true";
+    const roleIds = uniqueIds(
+      cleanText(searchParams.get("role_ids"))
+        .split(",")
+        .filter(Boolean)
     );
 
-    const roleId = cleanText(
-      searchParams.get("role_id")
-    );
+    /* =====================================================
+       Summary mode: จำนวน Permission ต่อ Role สำหรับหน้า Role List
+    ===================================================== */
+    if (summary) {
+      if (!roleIds.length) {
+        return NextResponse.json({
+          success: true,
+          permission_counts: {},
+          total_mappings: 0,
+        });
+      }
+
+      const permissionCounts = {};
+      let totalMappings = 0;
+
+      for (const id of roleIds) {
+        const mappings = await loadRoleMappings(id);
+        const count = uniqueIds(
+          mappings.map((item) => item.permission_id)
+        ).length;
+
+        permissionCounts[id] = count;
+        totalMappings += count;
+      }
+
+      return NextResponse.json({
+        success: true,
+        permission_counts: permissionCounts,
+        total_mappings: totalMappings,
+      });
+    }
 
     if (!roleId) {
       return NextResponse.json(
@@ -138,15 +240,9 @@ export async function GET(req) {
           success: false,
           error: "กรุณาระบุ role_id",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
-
-    /* =====================================================
-       1. ตรวจสอบ Role
-    ===================================================== */
 
     const role = await loadRole(roleId);
 
@@ -156,102 +252,49 @@ export async function GET(req) {
           success: false,
           error: "ไม่พบ Role ที่เลือก",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
-    /* =====================================================
-       2. โหลด Mapping จาก role_permissions
-    ===================================================== */
-
-    const {
-      data: mappingRows,
-      error: mappingError,
-    } = await supabaseAdmin
-      .from(ROLE_PERMISSION_TABLE)
-      .select(`
-        id,
-        role_id,
-        permission_id
-      `)
-      .eq("role_id", roleId);
-
-    if (mappingError) {
-      throw mappingError;
-    }
+    const mappingRows = await loadRoleMappings(roleId);
 
     const permissionIds = uniqueIds(
-      (mappingRows || []).map(
-        (item) => item.permission_id
-      )
+      mappingRows.map((item) => item.permission_id)
     );
 
-    /* =====================================================
-       3. โหลดรายละเอียด Permissions
-    ===================================================== */
-
-    const permissions =
-      await loadPermissionDetails(
-        permissionIds
-      );
+    const permissions = await loadPermissionDetails(permissionIds);
 
     const permissionMap = new Map(
-      permissions.map((permission) => [
-        permission.id,
-        permission,
-      ])
+      permissions.map((permission) => [permission.id, permission])
     );
 
-    const data = (mappingRows || []).map(
-      (item) => ({
-        id: item.id,
-
-        role_id: item.role_id,
-
-        permission_id:
-          item.permission_id,
-
-        permission:
-          permissionMap.get(
-            item.permission_id
-          ) || null,
-      })
-    );
+    const data = mappingRows.map((item) => ({
+      id: item.id,
+      role_id: item.role_id,
+      permission_id: item.permission_id,
+      permission: permissionMap.get(item.permission_id) || null,
+    }));
 
     return NextResponse.json({
       success: true,
-
       role,
-
       permission_ids: permissionIds,
-
       permissions,
-
       data,
-
       total: data.length,
     });
   } catch (error) {
-    console.error(
-      "GET_ROLE_PERMISSIONS_ERROR:",
-      error
-    );
+    console.error("GET_ROLE_PERMISSIONS_ERROR:", error);
 
     return NextResponse.json(
       {
         success: false,
-
         error:
           error?.message ||
           "ไม่สามารถดึงข้อมูลสิทธิ์ของ Role ได้",
-
         code: error?.code || null,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
@@ -391,21 +434,7 @@ export async function PUT(req) {
        3. โหลด Mapping เดิม
     ===================================================== */
 
-    const {
-      data: oldMappings,
-      error: oldMappingError,
-    } = await supabaseAdmin
-      .from(ROLE_PERMISSION_TABLE)
-      .select(`
-        id,
-        role_id,
-        permission_id
-      `)
-      .eq("role_id", roleId);
-
-    if (oldMappingError) {
-      throw oldMappingError;
-    }
+    const oldMappings = await loadRoleMappings(roleId);
 
     const oldPermissionIds = uniqueIds(
       (oldMappings || []).map(
@@ -447,36 +476,23 @@ export async function PUT(req) {
           })
         );
 
-      const { error: insertError } =
-        await supabaseAdmin
-          .from(ROLE_PERMISSION_TABLE)
-          .insert(insertRows);
-
-      if (insertError) {
+      try {
+        await insertRoleMappings(insertRows);
+      } catch (insertError) {
         /*
          * พยายามคืนค่าเดิม หาก Insert ใหม่ล้ม
          */
-
         if (oldPermissionIds.length > 0) {
-          const rollbackRows =
-            oldPermissionIds.map(
-              (permissionId) => ({
-                role_id: roleId,
+          const rollbackRows = oldPermissionIds.map(
+            (permissionId) => ({
+              role_id: roleId,
+              permission_id: permissionId,
+            })
+          );
 
-                permission_id:
-                  permissionId,
-              })
-            );
-
-          const {
-            error: rollbackError,
-          } = await supabaseAdmin
-            .from(
-              ROLE_PERMISSION_TABLE
-            )
-            .insert(rollbackRows);
-
-          if (rollbackError) {
+          try {
+            await insertRoleMappings(rollbackRows);
+          } catch (rollbackError) {
             console.error(
               "ROLLBACK_ROLE_PERMISSIONS_ERROR:",
               rollbackError

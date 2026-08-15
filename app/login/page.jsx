@@ -101,9 +101,15 @@ export default function LoginPage() {
           <div className="flex items-center justify-center p-6 sm:p-10 bg-white">
             <Card variant="borderless" className="w-full max-w-md shadow-none" styles={{ body: { padding: 0 } }}>
               <div className="flex text-center mb-8">
-                <Image src="/hanuman-logo.jpg" alt="Hanuman World" width={100} height={100}
+                <Image
+                  src="/hanuman-logo.jpg"
+                  alt="Hanuman World"
+                  width={100}
+                  height={100}
                   className="mx-auto rounded-full object-cover"
-                  style={{ width: "auto", height: "auto" }} loading="eager" />
+                  loading="eager"
+                  unoptimized
+                />
               </div>
               <div className="mb-8">
                 <Title level={2} className="!mb-1 !text-slate-800">Welcome Back</Title>

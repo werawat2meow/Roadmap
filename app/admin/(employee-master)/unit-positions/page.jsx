@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState ,useRef } from "react";
 import {Alert,Button,Card,} from "antd";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import {swalError,swalSuccess} from "../../../components/Swal";
+import usePermissions from "@/hooks/usePermissions";
 
 
 import UnitPositionSearch from "./components/UnitPositionSearch";
@@ -21,23 +19,8 @@ const initialValues = {
 };
 
 export default function UnitPositionsPage() {
-
-  /* =========================
-      Permission
-  ========================= */
-
-  const router = useRouter();
-  const {user,loadingUser} = useAuth();
-
-  const canView = hasPermission(user,"ems.unit_positions.view");
-  const canCreate = hasPermission(user,"ems.unit_positions.create");
-  const canEdit = hasPermission(user,"ems.unit_positions.edit");
-  const canDelete = hasPermission(user,"ems.unit_positions.delete");
-
-  /* =========================
-      State
-  ========================= */
-
+  const isFirstLoad = useRef(true);
+  const { user, loadingUser, canView, canCreate, canEdit, canDelete } = usePermissions("ems.unit_positions");
   const [loading,setLoading] = useState(true);
   const [saving,setSaving] = useState(false);
   const [rows,setRows] = useState([]);
@@ -51,34 +34,7 @@ export default function UnitPositionsPage() {
   const [editingRow,setEditingRow] = useState(null);
   const [deletingId,setDeletingId] = useState("");
   const [formData,setFormData] = useState(initialValues);
-
-  /* =========================
-      Permission Check
-  ========================= */
-
-  useEffect(() => {
-
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-
-  },[
-    user,
-    loadingUser,
-    canView,
-    router,
-  ]);
-
-  /* =========================
-      Load Data
-  ========================= */
+  
 
   const loadUnitPositions = async (
     keyword = "",
@@ -170,43 +126,28 @@ export default function UnitPositionsPage() {
 
   };
 
-  /* =========================
-      First Load
-  ========================= */
-
   useEffect(() => {
     if (!loadingUser && canView) {
-      loadUnitPositions();
+      loadUnitPositions().finally(() => {
+        isFirstLoad.current = false;
+      });
     }
   },[
     loadingUser,
     canView,
   ]);
 
-  /* =========================
-      Search
-  ========================= */
-
   useEffect(() => {
-
+    if (isFirstLoad.current) return;
     const timer =
       setTimeout(() => {
-
-        loadUnitPositions(
-          search,
-          1
-        );
-
+        loadUnitPositions(search,1);
       },300);
-
     return () =>
       clearTimeout(timer);
 
-  },[
-    search,
-  ]);
+  },[search,]);
    
-
   const handleOpenCreate = () => {
 
     if (!canCreate) {
@@ -226,10 +167,6 @@ export default function UnitPositionsPage() {
     setOpenModal(true);
 
   };
-
-  /* =========================
-      Open Edit
-  ========================= */
 
   const handleOpenEdit = (row) => {
 
@@ -265,10 +202,6 @@ export default function UnitPositionsPage() {
 
   };
 
-  /* =========================
-      Close Modal
-  ========================= */
-
   const handleCloseModal = () => {
 
     setEditingRow(null);
@@ -278,10 +211,6 @@ export default function UnitPositionsPage() {
     setOpenModal(false);
 
   };
-
-  /* =========================
-      Save
-  ========================= */
 
   const handleSave = async (
     values
@@ -383,10 +312,6 @@ export default function UnitPositionsPage() {
     }
   };
 
-  /* =========================
-      Delete
-  ========================= */
-
   const handleDelete = async (row) => {
     if (!canDelete) {
       swalError(
@@ -438,22 +363,10 @@ export default function UnitPositionsPage() {
     }
   };
   
-  /* =========================
-      Render
-  ========================= */
-
-  if (loadingUser) {
-    return <LoadingOrb />;
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  if (!canView) {
-    return null;
-  }
-
+  if (loadingUser) return <LoadingOrb />;
+  if (!user) return null;
+  if (!canView) return null;
+  
   return (
     <>
       <Card>
@@ -476,7 +389,7 @@ export default function UnitPositionsPage() {
             <Alert
               type="warning"
               showIcon
-              message="คุณมีสิทธิ์ดูข้อมูลอย่างเดียว"
+              title="คุณมีสิทธิ์ดูข้อมูลอย่างเดียว"
             />
 
           )}
@@ -550,7 +463,7 @@ export default function UnitPositionsPage() {
           <Alert
             showIcon
             type="error"
-            message={error}
+            title={error}
           />
         </div>
       )}

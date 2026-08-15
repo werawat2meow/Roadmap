@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "antd";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
 import LoadingOrb from "../../../components/LoadingOrb";

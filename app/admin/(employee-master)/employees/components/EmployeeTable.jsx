@@ -19,18 +19,11 @@ import {
 } from "@ant-design/icons";
 
 import dayjs from "dayjs";
-
 import MasterTable from "@/app/admin/(employee-master)/components/master/MasterTable";
-
 import StatusTag from "@/app/admin/(employee-master)/components/master/StatusTag";
-
 import DeleteConfirm from "@/app/admin/(employee-master)/components/master/DeleteConfirm";
 
 const { Text } = Typography;
-
-/* =========================================================
-   HELPERS
-========================================================= */
 
 function getEmployeeFullName(record) {
   const thaiName = [
@@ -183,7 +176,7 @@ function formatDate(value) {
 ========================================================= */
 
 export default function EmployeeTable({
-  dataSource = [],
+   dataSource = [],
 
   loading = false,
 
@@ -515,15 +508,10 @@ export default function EmployeeTable({
 
     {
       title: "สถานะระบบ",
-
       dataIndex: "status",
-
       key: "status",
-
       width: 120,
-
       align: "center",
-
       render: (value) => (
         <StatusTag value={value} />
       ),
@@ -531,13 +519,9 @@ export default function EmployeeTable({
 
     {
       title: "จัดการ",
-
       key: "actions",
-
       width: 150,
-
       fixed: "right",
-
       align: "center",
 
       render: (_, record) => {
@@ -545,41 +529,89 @@ export default function EmployeeTable({
           getUserAccount(record);
 
         const protectedAccount =
-          account?.roles
-            ?.is_system === true;
+          account?.roles?.is_system ===
+          true;
+
+        /* =====================================================
+          Permission
+
+          รายการ Employee ถูก Backend Scope
+          มาเรียบร้อยแล้ว
+
+          ตรง Action ใช้ Permission ปกติ:
+          - ems.employees.view
+          - ems.employees.edit
+          - ems.employees.delete
+        ===================================================== */
+
+        const allowView =
+          Boolean(canView);
+
+        const allowEdit =
+          Boolean(canEdit);
+
+        const allowDelete =
+          Boolean(canDelete);
+
+        /* =====================================================
+          ACTION
+        ===================================================== */
 
         return (
           <Space size={2}>
-            {canView && (
+
+            {/* =========================
+                VIEW
+            ========================= */}
+
+            {allowView && (
               <Tooltip title="ดูรายละเอียด">
                 <Button
                   type="text"
-                  icon={<EyeOutlined />}
+                  icon={
+                    <EyeOutlined />
+                  }
                   onClick={() =>
-                    onView?.(record)
+                    onView?.(
+                      record
+                    )
                   }
                 />
               </Tooltip>
             )}
 
-            {canEdit && (
+            {/* =========================
+                EDIT
+            ========================= */}
+
+            {allowEdit && (
               <Tooltip title="แก้ไข">
                 <Button
                   type="text"
-                  icon={<EditOutlined />}
+                  icon={
+                    <EditOutlined />
+                  }
                   onClick={() =>
-                    onEdit?.(record)
+                    onEdit?.(
+                      record
+                    )
                   }
                 />
               </Tooltip>
             )}
 
-            {canDelete &&
+            {/* =========================
+                DELETE
+            ========================= */}
+
+            {allowDelete &&
               !protectedAccount && (
                 <Tooltip title="ลบ">
                   <DeleteConfirm
                     title="ลบพนักงาน"
-                    description={`ยืนยันการลบพนักงาน ${record.employee_code} ใช่หรือไม่`}
+                    description={
+                      `ยืนยันการลบพนักงาน ${record.employee_code} ใช่หรือไม่`
+                    }
                     loading={
                       deletingId ===
                       record.id
@@ -593,17 +625,23 @@ export default function EmployeeTable({
                 </Tooltip>
               )}
 
-            {protectedAccount && (
-              <Tooltip title="บัญชีระบบไม่สามารถลบได้">
-                <Button
-                  type="text"
-                  disabled
-                  icon={
-                    <LockOutlined />
-                  }
-                />
-              </Tooltip>
-            )}
+            {/* =========================
+                SYSTEM ACCOUNT
+            ========================= */}
+
+            {protectedAccount &&
+              allowDelete && (
+                <Tooltip title="บัญชีระบบไม่สามารถลบได้">
+                  <Button
+                    type="text"
+                    disabled
+                    icon={
+                      <LockOutlined />
+                    }
+                  />
+                </Tooltip>
+              )}
+
           </Space>
         );
       },

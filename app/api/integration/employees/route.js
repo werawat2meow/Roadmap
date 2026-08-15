@@ -29,6 +29,522 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateApiKey } from "@/lib/validateApiKey";
 import { logApiAccess } from "@/lib/logApiAccess";
 
+const EMPLOYEE_INTEGRATION_SELECT = `
+  id,
+  employee_code,
+
+  first_name_th,
+  middle_name_th,
+  last_name_th,
+
+  first_name_en,
+  middle_name_en,
+  last_name_en,
+
+  nickname_th,
+  nickname_en,
+
+  mobile_phone,
+  work_phone,
+  personal_email,
+  work_email,
+
+  employee_photo_url,
+
+  start_work_date,
+  confirmation_date,
+  resignation_date,
+  retirement_date,
+
+  status,
+
+  company_id,
+  branch_group_id,
+  branch_id,
+  department_id,
+  division_id,
+  unit_id,
+
+  employment_type_id,
+  gender_id,
+  nationality_id,
+
+  position_family_id,
+  position_level_id,
+  position_id,
+  job_id,
+
+  employee_status_id,
+
+  companies:companies!employees_company_id_fkey (
+    id,
+    company_code,
+    company_name_th,
+    company_name_en
+  ),
+
+  branch_groups:branch_groups!employees_branch_group_id_fkey (
+    id,
+    group_code,
+    group_name
+  ),
+
+  branches:branches!employees_branch_id_fkey (
+    id,
+    branch_code,
+    branch_name
+  ),
+
+  departments:departments!employees_department_id_fkey (
+    id,
+    department_code,
+    department_name
+  ),
+
+  divisions:divisions!employees_division_id_fkey (
+    id,
+    division_code,
+    division_name
+  ),
+
+  units:units!employees_unit_id_fkey (
+    id,
+    unit_code,
+    unit_name
+  ),
+
+  employment_types:employment_types!employees_employment_type_id_fkey (
+    id,
+    type_code,
+    type_name
+  ),
+
+  genders:genders!employees_gender_id_fkey (
+    id,
+    gender_code,
+    gender_name_th,
+    gender_name_en
+  ),
+
+  nationalities:nationalities!employees_nationality_id_fkey (
+    id,
+    nationality_code,
+    nationality_name_th,
+    nationality_name_en,
+    iso2,
+    iso3
+  ),
+
+  position_families:position_families!employees_position_family_id_fkey (
+    id,
+    family_code,
+    family_name
+  ),
+
+  position_levels:position_levels!employees_position_level_id_fkey (
+    id,
+    level_code,
+    level_name,
+    sort_order
+  ),
+
+  positions:positions!employees_position_id_fkey (
+    id,
+    position_code,
+    position_name
+  ),
+
+  employee_statuses:employee_statuses!employees_employee_status_id_fkey (
+    id,
+    status_code,
+    status_name,
+    color
+  )
+`;
+
+function mapEmployeeForIntegration(
+  item
+) {
+  return {
+    id:
+      item.id,
+
+    employee_code:
+      item.employee_code,
+
+    /* =========================
+       Name
+    ========================= */
+
+    first_name_th:
+      item.first_name_th,
+
+    middle_name_th:
+      item.middle_name_th,
+
+    last_name_th:
+      item.last_name_th,
+
+    full_name_th:
+      [
+        item.first_name_th,
+        item.middle_name_th,
+        item.last_name_th,
+      ]
+        .filter(Boolean)
+        .join(" "),
+
+    first_name_en:
+      item.first_name_en,
+
+    middle_name_en:
+      item.middle_name_en,
+
+    last_name_en:
+      item.last_name_en,
+
+    full_name_en:
+      [
+        item.first_name_en,
+        item.middle_name_en,
+        item.last_name_en,
+      ]
+        .filter(Boolean)
+        .join(" "),
+
+    nickname_th:
+      item.nickname_th || null,
+
+    nickname_en:
+      item.nickname_en || null,
+
+    /* =========================
+       Contact
+    ========================= */
+
+    mobile_phone:
+      item.mobile_phone || null,
+
+    work_phone:
+      item.work_phone || null,
+
+    personal_email:
+      item.personal_email || null,
+
+    work_email:
+      item.work_email || null,
+
+    employee_photo_url:
+      item.employee_photo_url || "",
+
+    /* =========================
+       Employment Dates
+    ========================= */
+
+    start_work_date:
+      item.start_work_date || null,
+
+    confirmation_date:
+      item.confirmation_date || null,
+
+    resignation_date:
+      item.resignation_date || null,
+
+    retirement_date:
+      item.retirement_date || null,
+
+    status:
+      item.status,
+
+    /* =========================
+       Company
+    ========================= */
+
+    company: {
+      id:
+        item.company_id || null,
+
+      code:
+        item.companies
+          ?.company_code ||
+        null,
+
+      name_th:
+        item.companies
+          ?.company_name_th ||
+        null,
+
+      name_en:
+        item.companies
+          ?.company_name_en ||
+        null,
+    },
+
+    /* =========================
+       Branch Group
+    ========================= */
+
+    branch_group: {
+      id:
+        item.branch_group_id ||
+        null,
+
+      code:
+        item.branch_groups
+          ?.group_code ||
+        null,
+
+      name:
+        item.branch_groups
+          ?.group_name ||
+        null,
+    },
+
+    /* =========================
+       Branch
+    ========================= */
+
+    branch: {
+      id:
+        item.branch_id || null,
+
+      code:
+        item.branches
+          ?.branch_code ||
+        null,
+
+      name:
+        item.branches
+          ?.branch_name ||
+        null,
+    },
+
+    /* =========================
+       Department
+    ========================= */
+
+    department: {
+      id:
+        item.department_id ||
+        null,
+
+      code:
+        item.departments
+          ?.department_code ||
+        null,
+
+      name:
+        item.departments
+          ?.department_name ||
+        null,
+    },
+
+    /* =========================
+       Division
+    ========================= */
+
+    division: {
+      id:
+        item.division_id || null,
+
+      code:
+        item.divisions
+          ?.division_code ||
+        null,
+
+      name:
+        item.divisions
+          ?.division_name ||
+        null,
+    },
+
+    /* =========================
+       Unit
+    ========================= */
+
+    unit: {
+      id:
+        item.unit_id || null,
+
+      code:
+        item.units
+          ?.unit_code ||
+        null,
+
+      name:
+        item.units
+          ?.unit_name ||
+        null,
+    },
+
+    /* =========================
+       Employment Type
+    ========================= */
+
+    employment_type: {
+      id:
+        item.employment_type_id ||
+        null,
+
+      code:
+        item.employment_types
+          ?.type_code ||
+        null,
+
+      name:
+        item.employment_types
+          ?.type_name ||
+        null,
+    },
+
+    /* =========================
+       Gender
+    ========================= */
+
+    gender: {
+      id:
+        item.gender_id || null,
+
+      code:
+        item.genders
+          ?.gender_code ||
+        null,
+
+      name_th:
+        item.genders
+          ?.gender_name_th ||
+        null,
+
+      name_en:
+        item.genders
+          ?.gender_name_en ||
+        null,
+    },
+
+    /* =========================
+       Nationality
+    ========================= */
+
+    nationality: {
+      id:
+        item.nationality_id ||
+        null,
+
+      code:
+        item.nationalities
+          ?.nationality_code ||
+        null,
+
+      name_th:
+        item.nationalities
+          ?.nationality_name_th ||
+        null,
+
+      name_en:
+        item.nationalities
+          ?.nationality_name_en ||
+        null,
+
+      iso2:
+        item.nationalities
+          ?.iso2 ||
+        null,
+
+      iso3:
+        item.nationalities
+          ?.iso3 ||
+        null,
+    },
+
+    /* =========================
+       Position Family
+    ========================= */
+
+    position_family: {
+      id:
+        item.position_family_id ||
+        null,
+
+      code:
+        item.position_families
+          ?.family_code ||
+        null,
+
+      name:
+        item.position_families
+          ?.family_name ||
+        null,
+    },
+
+    /* =========================
+       Position Level
+    ========================= */
+
+    position_level: {
+      id:
+        item.position_level_id ||
+        null,
+
+      code:
+        item.position_levels
+          ?.level_code ||
+        null,
+
+      name:
+        item.position_levels
+          ?.level_name ||
+        null,
+    },
+
+    /* =========================
+       Position
+    ========================= */
+
+    position: {
+      id:
+        item.position_id || null,
+
+      code:
+        item.positions
+          ?.position_code ||
+        null,
+
+      name:
+        item.positions
+          ?.position_name ||
+        null,
+    },
+
+    job_id:
+      item.job_id || null,
+
+    /* =========================
+       Employee Status
+    ========================= */
+
+    employee_status: {
+      id:
+        item.employee_status_id ||
+        null,
+
+      code:
+        item.employee_statuses
+          ?.status_code ||
+        null,
+
+      name:
+        item.employee_statuses
+          ?.status_name ||
+        null,
+
+      color:
+        item.employee_statuses
+          ?.color ||
+        null,
+    },
+  };
+}
+
 export async function GET(req) {
   const url = new URL(req.url);
   const requestIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
@@ -63,57 +579,12 @@ export async function GET(req) {
 
     let query = supabaseAdmin
       .from("employees")
-      .select(`
-        id,
-        employee_code,
-        first_name_th,
-        last_name_th,
-        first_name_en,
-        last_name_en,
-        nick_name,
-        gender,
-        phone,
-        email,
-        employee_photo_url,
-        hire_date,
-        employment_type,
-        nationality,
-        status,
-        branch_id,
-        department_id,
-        division_id,
-        unit_id,
-        position_id,
-        employee_status_id,
-        branches (
-          branch_code,
-          branch_name
-        ),
-        departments (
-          department_code,
-          department_name
-        ),
-        divisions (
-          division_code,
-          division_name
-        ),
-        units (
-          unit_code,
-          unit_name
-        ),
-        positions (
-          position_code,
-          position_name,
-          position_group,
-          position_level
-        ),
-        employee_statuses (
-          status_code,
-          status_name,
-          color
-        )
-      `)
-      .order("created_at", { ascending: false });
+      .select(
+        EMPLOYEE_INTEGRATION_SELECT
+      )
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (employee_code) {
       query = query.eq("employee_code", employee_code);
@@ -131,62 +602,7 @@ export async function GET(req) {
 
     if (error) throw error;
 
-    const mappedData = (data || []).map((item) => ({
-      id: item.id,
-      employee_code: item.employee_code,
-      first_name_th: item.first_name_th,
-      last_name_th: item.last_name_th,
-      first_name_en: item.first_name_en,
-      last_name_en: item.last_name_en,
-      nick_name: item.nick_name,
-      gender: item.gender,
-      phone: item.phone,
-      email: item.email,
-      employee_photo_url: item.employee_photo_url || "",
-      nationality: item.nationality,
-      hire_date: item.hire_date,
-      employment_type: item.employment_type,
-      status: item.status,
-
-      branch: {
-        id: item.branch_id,
-        code: item.branches?.branch_code || null,
-        name: item.branches?.branch_name || null,
-      },
-
-      department: {
-        id: item.department_id,
-        code: item.departments?.department_code || null,
-        name: item.departments?.department_name || null,
-      },
-
-      division: {
-        id: item.division_id,
-        code: item.divisions?.division_code || null,
-        name: item.divisions?.division_name || null,
-      },
-
-      unit: {
-        id: item.unit_id,
-        code: item.units?.unit_code || null,
-        name: item.units?.unit_name || null,
-      },
-
-      position: {
-        id: item.position_id,
-        code: item.positions?.position_code || null,
-        name: item.positions?.position_name || null,
-        group: item.positions?.position_group || null,
-        level: item.positions?.position_level || null,
-      },
-
-      employee_status: {
-        id: item.employee_status_id,
-        code: item.employee_statuses?.status_code || null,
-        name: item.employee_statuses?.status_name || null,
-        color: item.employee_statuses?.color || null,
-      },
-    }));
+    const mappedData = (data || []).map(mapEmployeeForIntegration);
 
     const responseBody = {
       success: true,
@@ -284,57 +700,12 @@ export async function POST(req) {
 
     let query = supabaseAdmin
       .from("employees")
-      .select(`
-        id,
-        employee_code,
-        first_name_th,
-        last_name_th,
-        first_name_en,
-        last_name_en,
-        nick_name,
-        gender,
-        phone,
-        email,
-        employee_photo_url,
-        hire_date,
-        employment_type,
-        nationality,
-        status,
-        branch_id,
-        department_id,
-        division_id,
-        unit_id,
-        position_id,
-        employee_status_id,
-        branches (
-          branch_code,
-          branch_name
-        ),
-        departments (
-          department_code,
-          department_name
-        ),
-        divisions (
-          division_code,
-          division_name
-        ),
-        units (
-          unit_code,
-          unit_name
-        ),
-        positions (
-          position_code,
-          position_name,
-          position_group,
-          position_level
-        ),
-        employee_statuses (
-          status_code,
-          status_name,
-          color
-        )
-      `)
-      .order("created_at", { ascending: false });
+      .select(
+        EMPLOYEE_INTEGRATION_SELECT
+      )
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (employee_code) {
       query = query.eq("employee_code", employee_code);
@@ -352,62 +723,10 @@ export async function POST(req) {
 
     if (error) throw error;
 
-    const mappedData = (data || []).map((item) => ({
-      id: item.id,
-      employee_code: item.employee_code,
-      first_name_th: item.first_name_th,
-      last_name_th: item.last_name_th,
-      first_name_en: item.first_name_en,
-      last_name_en: item.last_name_en,
-      nick_name: item.nick_name,
-      gender: item.gender,
-      phone: item.phone,
-      email: item.email,
-      employee_photo_url: item.employee_photo_url || "",
-      nationality: item.nationality,
-      hire_date: item.hire_date,
-      employment_type: item.employment_type,
-      status: item.status,
-
-      branch: {
-        id: item.branch_id,
-        code: item.branches?.branch_code || null,
-        name: item.branches?.branch_name || null,
-      },
-
-      department: {
-        id: item.department_id,
-        code: item.departments?.department_code || null,
-        name: item.departments?.department_name || null,
-      },
-
-      division: {
-        id: item.division_id,
-        code: item.divisions?.division_code || null,
-        name: item.divisions?.division_name || null,
-      },
-
-      unit: {
-        id: item.unit_id,
-        code: item.units?.unit_code || null,
-        name: item.units?.unit_name || null,
-      },
-
-      position: {
-        id: item.position_id,
-        code: item.positions?.position_code || null,
-        name: item.positions?.position_name || null,
-        group: item.positions?.position_group || null,
-        level: item.positions?.position_level || null,
-      },
-
-      employee_status: {
-        id: item.employee_status_id,
-        code: item.employee_statuses?.status_code || null,
-        name: item.employee_statuses?.status_name || null,
-        color: item.employee_statuses?.color || null,
-      },
-    }));
+    const mappedData =
+    (data || []).map(
+      mapEmployeeForIntegration
+    );
 
     const responseBody = {
       success: true,

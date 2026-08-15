@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
+
 
 const initialForm = {
   code: "",
@@ -35,31 +34,38 @@ export default function DivisionsPage() {
   const [totalPages, setTotalPages] = useState(1);
  
   // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.divisions.view");
-  const canCreate = hasPermission(user, "ems.divisions.create");
-  const canEdit = hasPermission(user, "ems.divisions.edit");
-  const canDelete = hasPermission(user, "ems.divisions.delete");
+    /* =========================================================
+      Permission + Access Scope
+    ========================================================= */
 
-  useEffect(() => {
-    if (loadingUser) return;
+    const {
+      user,
+      loadingUser,
 
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
+      /* Permission */
+      canView,
+      canCreate,
+      canEdit,
+      canDelete,
 
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
+      /* Permission + Scope */
+      canEditRecord,
+      canDeleteRecord,
 
+      /* Scope */
+      hasAllScope,
+      accessibleIds,
+    } = useScopedPermissions(
+      "ems.divisions",
+      {
+        scopeType: "division",
+      }
+    );
   // #endregion
 
   const loadDepartments = async () => {
     try {
-      const res = await fetch("/api/admin/departments?all=true", {
+      const res = await fetch("/api/admin/departments?all=true&status=active&scope_context=ems.divisions", {
         method: "GET",
         cache: "no-store",
       });
@@ -151,7 +157,7 @@ export default function DivisionsPage() {
   };
 
   const handleOpenEdit = (division) => {
-    if (!canEdit) {
+    if (!canEditRecord(division)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขฝ่าย");
       return;
     }
@@ -176,7 +182,7 @@ export default function DivisionsPage() {
   const handleSave = async () => {
     const isEdit = !!editingDivision;
 
-    if (isEdit && !canEdit) {
+    if (isEdit && !canEditRecord(editingDivision)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขฝ่าย");
       return;
     }
@@ -239,7 +245,7 @@ export default function DivisionsPage() {
   };
 
   const handleDelete = async (division) => {
-    if (!canDelete) {
+    if (!canDeleteRecord(division)) {
       swalError("คุณไม่มีสิทธิ์ลบฝ่าย");
       return;
     }

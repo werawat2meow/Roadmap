@@ -1,13 +1,30 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
-/* =========================
-   GET: list units
-========================= */
 export async function GET(req) {
   try {
+
+    /* =====================================================
+       1. Permission + Scope
+    ===================================================== */
     const { searchParams } = new URL(req.url);
+    const scopeContext = searchParams.get("scope_context")?.trim() || "";
+    const permissionModule =
+      scopeContext === "ems.employees"
+        ? "ems.employees"
+        : "ems.units";
+
+    const guard = await requireScopedAccess(
+      permissionModule,
+      "view",
+      { scopeType: "unit" }
+    );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
 
     const search = searchParams.get("search")?.trim() || "";
     const all = searchParams.get("all") === "true";
@@ -41,6 +58,15 @@ export async function GET(req) {
       )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+
+     /* =====================================================
+       4. Apply Department Scope
+       divistions.id
+    ===================================================== */
+    query = guard.applyScope(
+      query,
+      "id"
+    );
 
     // กรองตาม division_id — ใช้ตอนเปิด form employee เพื่อดึงเฉพาะ
     // unit ของฝ่ายที่เลือก แทนที่จะโหลดทั้งหมดมา filter ฝั่ง client
@@ -143,6 +169,14 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+    /* =====================================================
+       1. Permission + Scope
+    ===================================================== */
+    const guard = await requireScopedAccess("ems.units","create",{scopeType: "unit",});
+    if (!guard.ok) {
+      return guard.response;
+    }
+
     const body = await req.json();
 
     const unit_code = body?.unit_code?.trim();

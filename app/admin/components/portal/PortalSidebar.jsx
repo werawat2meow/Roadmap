@@ -22,6 +22,11 @@ import {
   Tooltip,
 } from "antd";
 
+import {
+  LockOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
+
 
 import {
   getPortalIcon,
@@ -78,6 +83,7 @@ import {
 } from "@ant-design/icons";
 
 const PORTAL_MENU_API = "/api/admin/portal-menu";
+const CHANGE_PASSWORD_PATH = "/admin/change-password";
 
 const ICON_REGISTRY = {
   appstore:
@@ -229,13 +235,16 @@ function getHrefSearch(
 }
 
 export default function PortalSidebar({
-  collapsed = false,
+  user,
 
+  collapsed = false,
   setCollapsed,
 
   mobileOpen = false,
-
   setMobileOpen,
+
+  loggingOut,
+  onLogout,
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -959,6 +968,24 @@ export default function PortalSidebar({
       );
     };
 
+  /* =======================================================
+     Mobile Account Actions
+  ======================================================= */
+
+  const handleMobileChangePassword = () => {
+    setMobileOpen?.(false);
+    router.push(CHANGE_PASSWORD_PATH);
+  };
+
+  const handleMobileLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
+
+    setMobileOpen?.(false);
+    await onLogout?.();
+  };
+
   const renderSidebarContent = ({
     responsive = false,
   } = {}) => {
@@ -1450,6 +1477,60 @@ export default function PortalSidebar({
               )}
             </div>
           )}
+
+        {/* =================================================
+            Mobile Account
+        ================================================= */}
+
+        {responsive && (
+          <div className="shrink-0 border-t border-white/10 bg-[#102f50]/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+              <div className="truncate text-sm font-semibold text-white">
+                {user?.full_name ||
+                  user?.username ||
+                  "ผู้ใช้งาน"}
+              </div>
+
+              <div className="mt-1 truncate text-[11px] text-blue-100/50">
+                {user?.role_name ||
+                  user?.role ||
+                  "User"}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={
+                  handleMobileChangePassword
+                }
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <LockOutlined />
+                <span>เปลี่ยนรหัสผ่าน</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  loggingOut ||
+                  !onLogout
+                }
+                onClick={
+                  handleMobileLogout
+                }
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-300/15 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-200 transition-colors hover:bg-red-500/20 hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <LogoutOutlined />
+                <span>
+                  {loggingOut
+                    ? "กำลังออก..."
+                    : "ออกจากระบบ"}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

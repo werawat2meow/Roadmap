@@ -18,21 +18,19 @@ import DeleteConfirm from "@/app/admin/(employee-master)/components/master/Delet
 
 export default function MaritalStatusTable({
   data = [],
-
   loading = false,
 
   page = 1,
-
   pageSize = 20,
-
   total = 0,
 
+  canView = false,
+  canEdit = false,
+  canDelete = false,
+
   onChange,
-
   onView,
-
   onEdit,
-
   onDelete,
 }) {
 
@@ -151,33 +149,39 @@ export default function MaritalStatusTable({
       render: (_, record) => (
         <Space size={4}>
 
-          <Tooltip title="ดูข้อมูล">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() =>
-                onView?.(record)
+          {canView && (
+            <Tooltip title="ดูข้อมูล">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() =>
+                  onView?.(record)
+                }
+              />
+            </Tooltip>
+          )}
+
+          {canEdit && (
+            <Tooltip title="แก้ไข">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() =>
+                  onEdit?.(record)
+                }
+              />
+            </Tooltip>
+          )}
+
+          {canDelete && (
+            <DeleteConfirm
+              title="ลบสถานภาพสมรส"
+              description={`ต้องการลบ "${record.marital_status_name_th}" ใช่หรือไม่`}
+              onConfirm={() =>
+                onDelete?.(record)
               }
             />
-          </Tooltip>
-
-          <Tooltip title="แก้ไข">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() =>
-                onEdit?.(record)
-              }
-            />
-          </Tooltip>
-
-          <DeleteConfirm
-            title="ลบสถานภาพสมรส"
-            description={`ต้องการลบ "${record.marital_status_name_th}" ใช่หรือไม่`}
-            onConfirm={() =>
-              onDelete?.(record)
-            }
-          />
+          )}
 
         </Space>
       ),

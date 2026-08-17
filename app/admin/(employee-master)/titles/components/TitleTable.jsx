@@ -18,21 +18,19 @@ import DeleteConfirm from "@/app/admin/(employee-master)/components/master/Delet
 
 export default function TitleTable({
   data = [],
-
   loading = false,
 
   page = 1,
-
   pageSize = 20,
-
   total = 0,
 
+  canView = false,
+  canEdit = false,
+  canDelete = false,
+
   onChange,
-
   onView,
-
   onEdit,
-
   onDelete,
 }) {
   const genderColor = {
@@ -168,7 +166,9 @@ export default function TitleTable({
 
       render: (_, record) => (
         <Space size={4}>
+          
 
+          {canView && (
           <Tooltip title="ดูข้อมูล">
             <Button
               type="text"
@@ -178,7 +178,9 @@ export default function TitleTable({
               }
             />
           </Tooltip>
+          )}
 
+          {canEdit && (
           <Tooltip title="แก้ไข">
             <Button
               type="text"
@@ -188,7 +190,9 @@ export default function TitleTable({
               }
             />
           </Tooltip>
+          )}
 
+          {canDelete && (
           <DeleteConfirm
             title="ลบคำนำหน้า"
             description={`ต้องการลบ "${record.title_name_th}" ใช่หรือไม่`}
@@ -196,6 +200,7 @@ export default function TitleTable({
               onDelete?.(record)
             }
           />
+          )}
 
         </Space>
       ),

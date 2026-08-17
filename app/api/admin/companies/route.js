@@ -1,11 +1,45 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+<<<<<<< HEAD
+=======
+
+
+
+import {
+  requirePermission,
+} from "@/lib/auth/requirePortalAccess";
+import {
+  requireScopedAccess,
+} from "@/lib/auth/requireScopedAccess";
+
+import {
+  applyCompanyScope,
+  hasAllAccessScope,
+} from "@/lib/auth/applyAccessScope";
+
+>>>>>>> test_merge_all
 
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.trim() || "";
+    const scopeContext = searchParams.get("scope_context")?.trim() || "";
+
+    const permissionModule =
+      scopeContext === "ems.employees"
+        ? "ems.employees"
+        : "ems.companies";
+
+    const guard = await requireScopedAccess(
+      permissionModule,
+      "view",
+      { scopeType: "company" }
+    );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
 
     let query = supabaseAdmin
       .from("companies")
@@ -46,6 +80,19 @@ export async function GET(req) {
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
+
+    /* =====================================================
+       4. Apply Access Scope
+          SUPER_ADMIN / all → เห็นทั้งหมด
+          company scope
+          → เห็นเฉพาะ company ที่ได้รับ
+          ไม่มี company scope → []
+    ===================================================== */
+    query = guard.applyScope(query, "id");
+    /* ====================================================
+      end Access Scope
+    ====================================================== */  
+
     if (search) {
       query = query.or(
         [
@@ -81,6 +128,38 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+
+    /* =====================================================
+       1. Permission
+    ===================================================== */
+
+    const guard = await requirePermission("ems.companies.create");
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    /* =====================================================
+       2. Scope
+       Create Company เป็นระดับ Root
+       จึงต้องมี all scope
+    ===================================================== */
+
+    if (!hasAllAccessScope(guard.access)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:"คุณไม่มีขอบเขตสิทธิ์ในการเพิ่มบริษัทใหม่",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+    /* ======================================================
+      End Scope
+    ======================================================= */
+
+
     const body = await req.json();
 
     const company_code = body?.company_code?.trim();

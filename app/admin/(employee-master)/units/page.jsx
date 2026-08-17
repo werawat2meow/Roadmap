@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
 import { Select } from "antd";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
   code: "",
@@ -34,32 +32,11 @@ export default function UnitsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.units.view");
-  const canCreate = hasPermission(user, "ems.units.create");
-  const canEdit = hasPermission(user, "ems.units.edit");
-  const canDelete = hasPermission(user, "ems.units.delete");
-
-  
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
+   const {user,loadingUser,canView,canCreate,canEditRecord,canDeleteRecord,hasAllScope, accessibleIds,} = useScopedPermissions("ems.units",{scopeType:"unit",});
 
   const loadDivisions = async () => {
     try {
-      const res = await fetch("/api/admin/divisions?all=true", {
+      const res = await fetch("/api/admin/divisions?all=true&status=active&scope_context=ems.units", {
         method: "GET",
         cache: "no-store",
       });
@@ -150,7 +127,7 @@ export default function UnitsPage() {
   };
 
   const handleOpenEdit = (unit) => {
-    if (!canEdit) {
+    if (!canEditRecord(unit)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขหน่วย");
       return;
     }
@@ -175,7 +152,7 @@ export default function UnitsPage() {
   const handleSave = async () => {
     const isEdit = !!editingUnit;
 
-    if (isEdit && !canEdit) {
+    if (isEdit && !canEditRecord(editingUnit)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขหน่วย");
       return;
     }
@@ -245,7 +222,7 @@ export default function UnitsPage() {
   };
 
   const handleDelete = async (unit) => {
-    if (!canDelete) {
+    if (!canDeleteRecord(unit)) {
       swalError("คุณไม่มีสิทธิ์ลบหน่วย");
       return;
     }
@@ -316,11 +293,6 @@ export default function UnitsPage() {
             <p className="mt-1 text-sm text-slate-500">
               จัดการข้อมูลหน่วยภายใต้แต่ละฝ่าย จุดปฏิบัติงานจริง
             </p>
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบหน่วยได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -429,9 +401,10 @@ export default function UnitsPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
+                      {(canEditRecord(unit) || canDeleteRecord(unit)) ? (
                         <div className="flex justify-end gap-2">
-                          {canEdit && (
+
+                          {canEditRecord(unit) && (
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(unit)}
@@ -441,7 +414,7 @@ export default function UnitsPage() {
                             </button>
                           )}
 
-                          {canDelete && (
+                          {canDeleteRecord(unit) && (
                             <button
                               type="button"
                               onClick={() => handleDelete(unit)}
@@ -455,6 +428,7 @@ export default function UnitsPage() {
                               {deletingId === unit.id ? "Deleting..." : "Delete"}
                             </button>
                           )}
+
                         </div>
                       ) : (
                         <div className="text-right text-slate-400">-</div>
@@ -596,7 +570,7 @@ export default function UnitsPage() {
                 Cancel
               </button>
 
-              {((editingUnit && canEdit) || (!editingUnit && canCreate)) && (
+              {((editingUnit && canEditRecord(editingUnit)) || (!editingUnit && canCreate)) && (
                 <button
                   type="button"
                   onClick={handleSave}

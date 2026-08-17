@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Select } from "antd";
 import { swalError, swalSuccess } from "../../../components/Swal";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {getSystemTitleByPermission,getSystemSelectOptions,} from "../components/systemApps";
@@ -157,6 +157,24 @@ export default function RolePermissionsPage() {
   useEffect(() => {
     loadAssignedPermissions(selectedRoleId);
   }, [selectedRoleId]);
+
+  const getSystemGroup = (moduleCode = "") => {
+    if (moduleCode.startsWith("benefit")) return "Benefit System";
+    if (moduleCode.startsWith("payroll")) return "Payroll System";
+    if (moduleCode.startsWith("hrm")) return "HRM System";
+    if (moduleCode.startsWith("ems")) return "Employee Master";
+    if (moduleCode.startsWith("leave")) return "Leave System";
+    if (
+      moduleCode.startsWith("user_accounts") ||
+      moduleCode.startsWith("roles") ||
+      moduleCode.startsWith("permissions") ||
+      moduleCode.startsWith("role_permissions")
+    ) {
+      return "Access Control";
+    }
+
+    return "Other";
+  };
 
   const getFeatureGroup = (moduleCode = "") => {
     if (!moduleCode) return "Other";

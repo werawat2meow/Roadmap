@@ -1,74 +1,28 @@
-.loading-orb-wrapper {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.onloadding{
+  background-color: #00000036;
+}
+/* From Uiverse.io by doniaskima */ 
+.loader {
+  width: fit-content;
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 30px;
+  background: radial-gradient(circle closest-side,#000 94%,#0000) right/calc(200% - 1em) 100%;
+  animation: l24 1s infinite alternate linear;
 }
 
-.svg-frame {
-  position: relative;
-  width: 300px;
-  height: 300px;
-  transform-style: preserve-3d;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.loader::before {
+  content: "Loading...";
+  line-height: 1em;
+  color: #0000;
+  background: inherit;
+  background-image: radial-gradient(circle closest-side,#fff 94%,#000);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
-.svg-frame svg {
-  position: absolute;
-  transition: 0.5s;
-  z-index: calc(1 - (0.2 * var(--j)));
-  transform-origin: center;
-  width: 344px;
-  height: 344px;
-  fill: none;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 255, 0.25));
-}
-
-.svg-frame:hover svg {
-  transform: rotate(-80deg) skew(30deg) translateX(calc(45px * var(--i))) translateY(calc(-35px * var(--i)));
-}
-
-.svg-frame svg #center {
-  transition: 0.5s;
-  transform-origin: center;
-}
-
-.svg-frame:hover svg #center {
-  transform: rotate(-30deg) translateX(45px) translateY(-3px);
-}
-
-#out2 {
-  animation: rotate16 7s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-#out3 {
-  animation: rotate16 3s ease-in-out infinite alternate;
-  transform-origin: center;
-  stroke: #fffb00;
-}
-
-#inner3,
-#inner1 {
-  animation: rotate16 4s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-#center1 {
-  fill: #fffb00;
-  animation: rotate16 2s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-@keyframes rotate16 {
-  to {
-    transform: rotate(360deg);
+@keyframes l24 {
+  100% {
+    background-position: left
   }
 }

@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+package-lock.json
+app/globals_BASE_1201.css
+app/globals_LOCAL_1201.css
+app/globals_REMOTE_1201.css

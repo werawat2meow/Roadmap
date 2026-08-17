@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
 export async function PATCH(req, { params }) {
   try {
+
+     /* =====================================================
+       1. Permission + Scope Context
+    ===================================================== */
+
+    const guard =
+      await requireScopedAccess(
+        "ems.branches",
+        "edit",
+        {
+          scopeType:
+            "branch",
+        }
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
     const { id } = await params;
     const body = await req.json();
 
@@ -195,8 +215,30 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const guard =
+      await requireScopedAccess("ems.branches","delete",{scopeType:"branch",});
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+    
     const { id } = await params;
 
+<<<<<<< HEAD
+=======
+    if (!guard.canAccessId(id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:"คุณไม่มีสิทธิ์ลบสังกัดนี้",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+>>>>>>> test_merge_all
     const { data: oldBranch, error: oldBranchError } = await supabaseAdmin
       .from("branches")
       .select(`

@@ -6,11 +6,13 @@ import { swalSuccess, swalError } from "../components/Swal";
 import { Form, Input, Button, Alert, Card, Typography } from "antd";
 import { UserOutlined, LockOutlined, EyeTwoTone, EyeInvisibleOutlined } from "@ant-design/icons";
 import Image from "next/image";
+import { useAuth } from "@/contexts/AuthContext"; 
 
 const { Title, Text } = Typography;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth(); 
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,13 +24,17 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // ลบ space / tab / newline ทั้งหมดออกจาก username
+      const username = String(values.username || "")
+        .replace(/\s+/g, "");
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: values.username.trim(),
+          username,
           password: values.password,
         }),
       });
@@ -36,23 +42,32 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || "Login failed");
+        throw new Error(
+          data?.error || "Login failed"
+        );
       }
 
       swalSuccess("Login สำเร็จ");
-      localStorage.setItem("employee_user", JSON.stringify(data.user));
+
+      await refreshUser();
+
       router.push("/admin");
       router.refresh();
 
     } catch (err) {
-      swalError(err.message);
-      setError(err.message || "Something went wrong");
+      const message =
+        err?.message ||
+        "Something went wrong";
+
+      swalError(message);
+      setError(message);
+
     } finally {
       setLoading(false);
     }
   };
 
- return (
+  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-emerald-50 flex items-center justify-center px-4 py-8">
       <div className="rb-wrap w-full max-w-5xl">
         <div className="rb-glow" />
@@ -99,9 +114,15 @@ export default function LoginPage() {
           <div className="flex items-center justify-center p-6 sm:p-10 bg-white">
             <Card variant="borderless" className="w-full max-w-md shadow-none" styles={{ body: { padding: 0 } }}>
               <div className="flex text-center mb-8">
-                <Image src="/hanuman-logo.jpg" alt="Hanuman World" width={100} height={100}
+                <Image
+                  src="/hanuman-logo.jpg"
+                  alt="Hanuman World"
+                  width={100}
+                  height={100}
                   className="mx-auto rounded-full object-cover"
-                  style={{ width: "auto", height: "auto" }} loading="eager" />
+                  loading="eager"
+                  unoptimized
+                />
               </div>
               <div className="mb-8">
                 <Title level={2} className="!mb-1 !text-slate-800">Welcome Back</Title>
@@ -109,9 +130,34 @@ export default function LoginPage() {
               </div>
               {error ? <Alert title={error} type="error" showIcon className="!mb-5 rounded-xl" /> : null}
               <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off" size="large">
-                <Form.Item label={<span className="font-medium text-slate-700">Username</span>} name="username" rules={[{ required: true, message: "Please enter username" }]}>
-                  <Input prefix={<UserOutlined className="text-slate-400" />} placeholder="Enter username" autoComplete="username" className="!rounded-2xl !py-2" />
+                <Form.Item
+                  label={
+                    <span className="font-medium text-slate-700">
+                      Username
+                    </span>
+                  }
+                  name="username"
+                  normalize={(value) =>
+                    String(value || "").replace(/\s+/g, "")
+                  }
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please enter username",
+                    },
+                  ]}
+                >
+                  <Input
+                    prefix={
+                      <UserOutlined className="text-slate-400" />
+                    }
+                    placeholder="Enter username"
+                    autoComplete="username"
+                    className="!rounded-2xl !py-2"
+                  />
                 </Form.Item>
+
+
                 <Form.Item label={<span className="font-medium text-slate-700">Password</span>} name="password" rules={[{ required: true, message: "Please enter password" }]}>
                   <Input.Password prefix={<LockOutlined className="text-slate-400" />} placeholder="Enter password" autoComplete="current-password"
                     iconRender={(visible) => visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />}

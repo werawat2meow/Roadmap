@@ -124,6 +124,36 @@ export default function BenefitPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="font-bold text-slate-800">5. Self Service</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  พนักงานเข้ามาดูสิทธิ์ของตัวเอง ดูยอดคงเหลือ และรายละเอียดสวัสดิการที่มี
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="font-bold text-slate-800">6. Approval</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  หัวหน้างาน/ฝ่าย HR ตรวจสอบคำขอ แล้วอนุมัติหรือปฏิเสธ อาจมีหลายลำดับขั้น
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="font-bold text-slate-800">7. Usage</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  หักยอดสิทธิ์คงเหลือ และบันทึกประวัติการใช้จริงหลังอนุมัติ
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="font-bold text-slate-800">8. Reports</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  สรุปยอดการใช้สิทธิ์ รายการค้างอนุมัติ และค่าใช้จ่ายรวมแต่ละประเภท
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
               <ApartmentOutlined />
               Flow หลัก: Benefit Setup → Benefit Matrix → Generate
@@ -151,6 +181,10 @@ Reports                      ✅ 100%
 Dashboard                    🟡 85%
 Audit Log                    ❌
 Attachments Management       🟡 70%
-Notifications                ❌
+Notifications System         ❌
 Advanced Quota Rules         ❌
+  2.1 Carry Forward
+  2.2 Monthly Limit
+  2.3 Family Quota
+Production Hardening         ❌
 */

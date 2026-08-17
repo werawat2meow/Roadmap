@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback,useEffect, useState } from "react";
 import { swalSuccess , swalError , swalConfirm} from "../../../components/Swal";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { PhoneOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import ImageCropModal from "../components/ImageCropModal";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
   code: "",
   name: "",
   company_id: "",
+  group_id: "",
   phone: "",
   status: "active",
+  branch_image_url: "",
+  branch_image_path: "",
 };
 
 export default function BranchesPage() {
@@ -32,33 +34,30 @@ export default function BranchesPage() {
   const [editingBranch, setEditingBranch] = useState(null);
   const [phoneError, setPhoneError] = useState("");
   const [companies, setCompanies] = useState([]);
+  const [branchGroups, setBranchGroups] = useState([]);
 
-  // #region Permission
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
-  const canView = hasPermission(user, "ems.branches.view");
-  const canCreate = hasPermission(user, "ems.branches.create");
-  const canEdit = hasPermission(user, "ems.branches.edit");
-  const canDelete = hasPermission(user, "ems.branches.delete");
+  // crop image
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState("");
 
-  
-  useEffect(() => {
-    if (loadingUser) return;
+  /* =========================================================
+    Permission + Access Scope
+  ========================================================= */
+  const {user,loadingUser,canView,canCreate,canEdit,canDelete,canEditRecord,canDeleteRecord,hasAllScope,accessibleIds,accessibleCompanyIds,accessibleBranchGroupIds,} = useScopedPermissions("ems.branches",{scopeType: "branch",});
 
-    if (!user) {
-      router.replace("/login");
-      return;
+  const loadBranchGroups = async () => {
+    const res = await fetch("/api/admin/branch-groups?scope_context=ems.branches");
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setBranchGroups(data.data || []);
     }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-  }, [user, canView, loadingUser, router]);
-  // #endregion
+  };
 
   const loadCompanies = async () => {
     try {
-      const res = await fetch("/api/admin/companies", {
+      const res = await fetch("/api/admin/companies?scope_context=ems.branches", {
         method: "GET",
         cache: "no-store",
       });
@@ -75,52 +74,136 @@ export default function BranchesPage() {
     }
   };
 
-  const loadBranches = async (keyword = "") => {
-    try {
-      setLoading(true);
-      setError("");
-      const url = keyword ? `/api/admin/branches?search=${encodeURIComponent(keyword)}` : "/api/admin/branches";
-      const res = await fetch(url, {
-        method: "GET",
-        cache: "no-store",
-      });
+  const loadBranches = useCallback(async (keyword = "") => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const data = await res.json();
+        const url =
+          keyword
+            ? `/api/admin/branches?search=${encodeURIComponent(
+                keyword
+              )}`
+            : "/api/admin/branches";
 
-      if (!res.ok) {
-        throw new Error(data?.error || "Load branches failed");
+        const res =
+          await fetch(
+            url,
+            {
+              method: "GET",
+              cache:
+                "no-store",
+            }
+          );
+
+        const data =
+          await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            data?.error ||
+              "Load branches failed"
+          );
+        }
+
+        const mapped =
+          (
+            data.data || []
+          ).map(
+            (branch) => ({
+              id:
+                branch.id,
+
+              code:
+                branch.branch_code,
+
+              name:
+                branch.branch_name,
+
+              company_id:
+                branch.company_id ||
+                "",
+
+              company:
+                branch.company_name ||
+                "",
+
+              phone:
+                branch.phone ||
+                "",
+
+              status:
+                branch.status,
+
+              branch_image_url:
+                branch.branch_image_url ||
+                "",
+
+              branch_image_path:
+                branch.branch_image_path ||
+                "",
+
+              group_id:
+                branch.group_id ||
+                "",
+
+              group_name:
+                branch.group_name ||
+                "",
+
+              group_color:
+                branch.group_color ||
+                "#E2E8F0",
+            })
+          );
+
+        setBranches(
+          mapped
+        );
+      } catch (err) {
+        setError(
+          err.message ||
+            "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+        );
+      } finally {
+        setLoading(false);
       }
-
-      const mapped = (data.data || []).map((branch) => ({
-        id: branch.id,
-        code: branch.branch_code,
-        name: branch.branch_name,
-        company_id: branch.company_id || "",
-        company: branch.company_name || "",
-        phone: branch.phone || "",
-        status: branch.status,
-      }));
-
-      setBranches(mapped);
-    } catch (err) {
-      setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    []
+  );
 
   useEffect(() => {
-    loadBranches();
+    loadBranchGroups();
     loadCompanies();
-  }, []);
+    if (loadingUser) {
+      return;
+    }
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadBranches(search);
-    }, 300);
+    if (
+      !user ||
+      !canView
+    ) {
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [search]);
+    const timer =
+      setTimeout(() => {
+        loadBranches(
+          search
+        );
+      }, 300);
+
+    return () =>
+      clearTimeout(
+        timer
+      );
+  }, [
+    search,
+    loadingUser,
+    user,
+    canView,
+    loadBranches,
+  ]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -130,7 +213,7 @@ export default function BranchesPage() {
 
   const handleOpenCreate = () => {
     if (!canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสาขา");
+      swalError("คุณไม่มีสิทธิ์เพิ่มสังกัด");
       return;
     }
     resetForm();
@@ -138,8 +221,10 @@ export default function BranchesPage() {
   };
 
   const handleOpenEdit = (branch) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสาขา");
+    if (!canEditRecord(branch)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขสังกัดนี้"
+      );
       return;
     }
     setEditingBranch(branch);
@@ -149,6 +234,9 @@ export default function BranchesPage() {
       company_id: branch.company_id || "",
       phone: branch.phone || "",
       status: branch.status || "active",
+      branch_image_url: branch.branch_image_url || "",
+      branch_image_path: branch.branch_image_path || "",
+      group_id: branch.group_id || "",
     });
     setOpenModal(true);
   };
@@ -160,13 +248,14 @@ export default function BranchesPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingBranch;
-    if (isEdit && !canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขสาขา");
+
+    if (isEdit && !canEditRecord(editingBranch)) {
+      swalError("คุณไม่มีสิทธิ์แก้ไขสังกัดนี้");
       return;
     }
 
     if (!isEdit && !canCreate) {
-      swalError("คุณไม่มีสิทธิ์เพิ่มสาขา");
+      swalError("คุณไม่มีสิทธิ์เพิ่มสังกัด");
       return;
     }
     
@@ -201,8 +290,11 @@ export default function BranchesPage() {
           branch_code: form.code.trim(),
           branch_name: form.name.trim(),
           company_id: form.company_id || null,
-          phone: form.phone.trim(),
+          phone: form.phone.trim() || null,
           status: form.status,
+          branch_image_url: form.branch_image_url || null,
+          branch_image_path: form.branch_image_path || null,
+          group_id: form.group_id || null,
         }),
       });
 
@@ -220,6 +312,11 @@ export default function BranchesPage() {
         company: data.data.company_name || "",
         phone: data.data.phone || "",
         status: data.data.status,
+        branch_image_url: data.data.branch_image_url || null,
+        branch_image_path: data.data.branch_image_path || null,
+        group_id: data.data.group_id || "",
+        group_name: data.data.group_name || "",
+        group_color: data.data.group_color || "#E2E8F0",
       };
 
       if (isEdit) {
@@ -242,8 +339,8 @@ export default function BranchesPage() {
   };
 
   const handleDelete = async (branch) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบสาขา");
+    if (!canDeleteRecord(branch)) {
+      swalError("คุณไม่มีสิทธิ์ลบสังกัด");
       return;
     }
 
@@ -276,6 +373,76 @@ export default function BranchesPage() {
     }
   };
 
+  const handleUploadImage = async (file) => {
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("branchId", editingBranch?.id || "temp");
+
+      const res = await fetch("/api/admin/branches/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "อัปโหลดรูปไม่สำเร็จ");
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        branch_image_url: data.url,
+        branch_image_path: data.path,
+      }));
+
+      swalSuccess("อัปโหลดรูปสำเร็จ");
+    } catch (err) {
+      swalError(err.message || "อัปโหลดรูปไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectImage = (file) => {
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setImageSrc(reader.result);
+      setCropModalOpen(true);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
   if (!canView) return null;
@@ -285,15 +452,10 @@ export default function BranchesPage() {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">สาขา</h1>
+            <h1 className="text-2xl font-bold text-slate-800">แบรนด์</h1>
             <p className="text-sm text-slate-500 mt-1">
-              จัดการข้อมูลสังกัดของพนักงานในระบบ Employee Master
+              จัดการข้อมูลแบรนด์ของบริษัท
             </p>
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบสาขาได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -302,7 +464,7 @@ export default function BranchesPage() {
               onClick={handleOpenCreate}
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition"
             >
-              + เพิ่มสาขา
+              + เพิ่มสังกัด
             </button>
           )}
         </div>
@@ -312,7 +474,7 @@ export default function BranchesPage() {
       <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
         <input
           type="text"
-          placeholder="ค้นหารหัสสังกัด / ชื่อสังกัด / บริษัท"
+          placeholder="ค้นหารหัสสังกัด / ชื่อสังกัด / ชื่อบริษัท"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
@@ -325,78 +487,73 @@ export default function BranchesPage() {
         </div>
       ) : null}
 
-      {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-6 py-4 text-left font-semibold">ลำดับ</th>
-                <th className="px-6 py-4 text-left font-semibold">รหัส</th>
-                <th className="px-6 py-4 text-left font-semibold">ชื่อสาขา</th>
-                <th className="px-6 py-4 text-left font-semibold">บริษัท</th>
-                <th className="px-6 py-4 text-left font-semibold">เบอร์โทร</th>
-                <th className="px-6 py-4 text-left font-semibold">สถานะ</th>
-                <th className="px-6 py-4 text-right font-semibold">จัดการ</th>
-              </tr>
-            </thead>
+      {/* Card Group By Company */}
+      <div className="space-y-6">
+        {loading ? (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm"
+              />
+            ))}
+          </div>
+        ) : branches.length > 0 ? (
+          Object.entries(
+            branches.reduce((acc, branch) => {
+              const key = branch.company || "ไม่ระบุบริษัท";
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(branch);
+              return acc;
+            }, {})
+          ).map(([companyName, companyBranches]) => (
+            <div
+              key={companyName}
+              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    {companyName}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    ทั้งหมด {companyBranches.length} สังกัด
+                  </p>
+                </div>
+              </div>
 
-            <tbody>
-              {loading ? (
-                <>
-                  {[...Array(5)].map((_, i) => (
-                    <tr key={i} className="border-t border-slate-200">
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-12 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-32 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-24 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-3.5 w-20 animate-pulse rounded-md bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-end gap-2">
-                          <div className="h-7 w-11 animate-pulse rounded-xl bg-slate-200" />
-                          <div className="h-7 w-14 animate-pulse rounded-xl bg-slate-200" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </>
-              ) : branches.length > 0 ? (
-                branches.map((branch,index) => (
-                  <tr
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+                {companyBranches.map((branch) => (
+                  <div
                     key={branch.id}
-                    className="border-t border-slate-200 hover:bg-slate-50"
+                    className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {index + 1}
-                    </td>
+                    <div
+                      className="relative flex h-28 items-center justify-center"
+                      style={{ backgroundColor: branch.group_color || "#F8FAFC" }}
+                    >
+                      {branch.group_name ? (
+                        <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 shadow">
+                          {branch.group_name}
+                        </div>
+                      ) : null}
+                      
+                      {branch.branch_image_url ? (
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                          <img
+                            src={branch.branch_image_url}
+                            alt={branch.name}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+                          ไม่มีรูป
+                        </div>
+                      )}
 
-                    <td className="px-6 py-4 font-medium text-slate-700">
-                      {branch.code}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-700">{branch.name}</td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {branch.company || "-"}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {branch.phone || "-"}
-                    </td>
-
-                    <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
                           branch.status === "active"
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-600"
@@ -404,59 +561,88 @@ export default function BranchesPage() {
                       >
                         {branch.status === "active" ? "Active" : "Inactive"}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="px-6 py-4">
-                      {(canEdit || canDelete) ? (
-                        <div className="flex justify-end gap-2">
-                          {canEdit && (
+                    <div className="flex flex-1 flex-col space-y-2 p-4">
+                      <div>
+                        <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                          {branch.code}
+                        </div>
+
+                        <h3 className="mt-3 text-lg font-bold text-slate-800">
+                          {branch.name}
+                        </h3>
+
+                        <p className="text-sm text-slate-500">
+                          เบอร์โทร: {branch.phone || "-"}
+                        </p>
+                      </div>
+
+                      {canEditRecord(branch) ||
+                      canDeleteRecord(branch) ? (
+                        <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
+
+                          {canEditRecord(
+                            branch
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleOpenEdit(branch)}
+                              onClick={() =>
+                                handleOpenEdit(
+                                  branch
+                                )
+                              }
                               className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                             >
                               Edit
                             </button>
                           )}
 
-                          {canDelete && (
+                          {canDeleteRecord(
+                            branch
+                          ) && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(branch)}
-                              disabled={deletingId === branch.id}
+                              onClick={() =>
+                                handleDelete(
+                                  branch
+                                )
+                              }
+                              disabled={
+                                deletingId ===
+                                branch.id
+                              }
                               className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                                deletingId === branch.id
-                                  ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                                deletingId ===
+                                branch.id
+                                  ? "cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-red-200 text-red-600 hover:bg-red-50"
                               }`}
                             >
-                              {deletingId === branch.id ? "Deleting..." : "Delete"}
+                              {deletingId ===
+                              branch.id
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                           )}
+
                         </div>
-                      ) : (
-                        <div className="text-right text-slate-400">-</div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-slate-400"
-                  >
-                    ไม่พบข้อมูลสังกัด
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      ) : null}  
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">
+            ไม่พบข้อมูลสังกัด
+          </div>
+        )}
       </div>
       
       {/* Madal แสดงข้อมูล  */}
-      {openModal && (
+      {openModal && ( 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
 
@@ -470,6 +656,43 @@ export default function BranchesPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+
+              {/* รูปภาพสังกัด */}
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  รูปภาพสังกัด
+                </label>
+
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  {form.branch_image_url ? (
+                    <div className="mb-4 flex h-48 w-full items-center justify-center rounded-2xl bg-white">
+                      <div className="flex h-36 w-36 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3">
+                        <img
+                          src={form.branch_image_url}
+                          alt="Branch preview"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-4 flex h-48 items-center justify-center rounded-2xl bg-white text-sm text-slate-400">
+                      ยังไม่มีรูปภาพ
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => handleSelectImage(e.target.files?.[0])}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm"
+                  />
+
+                  <p className="mt-2 text-xs text-slate-400">
+                    รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 50MB
+                  </p>
+                </div>
+              </div>
+
               {/* สังกัด */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -526,6 +749,30 @@ export default function BranchesPage() {
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>
                       {company.company_name_th}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  กลุ่มแบรนด์
+                </label>
+
+                <select
+                  value={form.group_id}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      group_id: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">เลือกกลุ่มแบรนด์</option>
+                  {branchGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.group_name}
                     </option>
                   ))}
                 </select>
@@ -630,24 +877,55 @@ export default function BranchesPage() {
                 Cancel
               </button>
 
-              {((editingBranch && canEdit) || (!editingBranch && canCreate)) && (
+              {(
+                (
+                  editingBranch &&
+                  canEditRecord(
+                    editingBranch
+                  )
+                ) ||
+                (
+                  !editingBranch &&
+                  canCreate
+                )
+              ) && (
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
                   className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white ${
                     saving
-                      ? "bg-slate-400 cursor-not-allowed"
+                      ? "cursor-not-allowed bg-slate-400"
                       : "bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
-                  {saving ? "Saving..." : editingBranch ? "Update" : "Save"}
+                  {saving
+                    ? "Saving..."
+                    : editingBranch
+                      ? "Update"
+                      : "Save"}
                 </button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={imageSrc}
+        aspect={1}
+        saving={saving}
+        onClose={() => {
+          setCropModalOpen(false);
+          setImageSrc("");
+        }}
+        onComplete={async (croppedFile) => {
+          await handleUploadImage(croppedFile);
+          setCropModalOpen(false);
+          setImageSrc("");
+        }}
+      />
     </div>
   );
 }

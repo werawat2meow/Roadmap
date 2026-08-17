@@ -44,3 +44,10 @@ package-lock.json
 app/globals_BASE_1201.css
 app/globals_LOCAL_1201.css
 app/globals_REMOTE_1201.css
+
+
+
+*_BACKUP_*.js
+*_BASE_*.js
+*_LOCAL_*.js
+*_REMOTE_*.js

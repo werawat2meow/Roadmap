@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
-<<<<<<< HEAD
-=======
 
 
 
@@ -18,7 +16,6 @@ import {
   hasAllAccessScope,
 } from "@/lib/auth/applyAccessScope";
 
->>>>>>> test_merge_all
 
 export async function GET(req) {
   try {

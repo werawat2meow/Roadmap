@@ -67,33 +67,8 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-<<<<<<< HEAD
-    const { data, error } = await supabaseAdmin
-      .from("departments")
-      .select(`
-        id,
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        sort_order,
-        created_at,
-        branch_departments (
-          branch_id,
-          branches (
-            id,
-            branch_code,
-            branch_name
-          )
-        )
-      `)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
-=======
     const scopeContext =
       searchParams.get("scope_context")?.trim() || "";
->>>>>>> test_merge_all
 
     const permissionModule =
       scopeContext === "ems.employees"
@@ -106,30 +81,9 @@ export async function GET(req) {
       { scopeType: "department" }
     );
 
-<<<<<<< HEAD
-      return {
-        id: department.id,
-        department_code: department.department_code,
-        department_name: department.department_name,
-        department_color: department.department_color || "#E2E8F0",
-        department_icon: department.department_icon || "",
-        branch_ids: branchRows.map((row) => row.branch_id),
-        branch_names: branchRows
-          .map((row) => row.branches?.branch_name)
-          .filter(Boolean),
-        branch_codes: branchRows
-          .map((row) => row.branches?.branch_code)
-          .filter(Boolean),
-        status: department.status,
-        sort_order: department.sort_order,
-        created_at: department.created_at,
-      };
-    });
-=======
     if (!guard.ok) {
       return guard.response;
     }
->>>>>>> test_merge_all
 
     const search =
       searchParams
@@ -360,19 +314,9 @@ export async function POST(req) {
         }
       );
 
-<<<<<<< HEAD
-    const department_code = body?.department_code?.trim();
-    const department_name = body?.department_name?.trim();
-    const department_color = body?.department_color?.trim() || "#E2E8F0";
-    const department_icon = body?.department_icon?.trim() || null;
-    const branch_ids = Array.isArray(body?.branch_ids) ? body.branch_ids : [];
-    const status = body?.status || "active";
-    
-=======
     if (!guard.ok) {
       return guard.response;
     }
->>>>>>> test_merge_all
 
     const body =
       await req.json();
@@ -489,61 +433,18 @@ export async function POST(req) {
           department_color,
           department_icon,
           status,
-<<<<<<< HEAD
-        },
-      ])
-      .select(`
-        id,
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        sort_order,
-        created_at
-      `)
-      .single();
-=======
           sort_order,
           created_at
         `)
         .single();
->>>>>>> test_merge_all
 
     if (departmentError) {
       throw departmentError;
     }
 
-<<<<<<< HEAD
-    const branchDepartmentPayload = branch_ids.map((branch_id) => ({
-      branch_id,
-      department_id: department.id,
-      status: "active",
-    }));
-
-    const { error: relationError } = await supabaseAdmin
-      .from("branch_departments")
-      .insert(branchDepartmentPayload);
-
-    if (relationError) throw relationError;
-
-    const { data: fullDepartment, error: fetchError } = await supabaseAdmin
-      .from("departments")
-      .select(`
-        id,
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        sort_order,
-        created_at,
-        branch_departments (
-=======
     const branchDepartmentPayload =
       branch_ids.map(
         (branch_id) => ({
->>>>>>> test_merge_all
           branch_id,
           department_id:
             department.id,
@@ -617,20 +518,6 @@ export async function POST(req) {
       description:
         `เพิ่มแผนก ${fullDepartment.department_code} - ${fullDepartment.department_name}`,
       new_data: {
-<<<<<<< HEAD
-        department_code: fullDepartment.department_code,
-        department_name: fullDepartment.department_name,
-        department_color: fullDepartment.department_color,
-        department_icon: fullDepartment.department_icon,
-        status: fullDepartment.status,
-        branch_ids: branchRows.map((row) => row.branch_id),
-        branch_codes: branchRows
-          .map((row) => row.branches?.branch_code)
-          .filter(Boolean),
-        branch_names: branchRows
-          .map((row) => row.branches?.branch_name)
-          .filter(Boolean),
-=======
         department_code:
           fullDepartment
             .department_code,
@@ -666,7 +553,6 @@ export async function POST(req) {
                   ?.branch_name
             )
             .filter(Boolean),
->>>>>>> test_merge_all
       },
     });
 
@@ -675,23 +561,6 @@ export async function POST(req) {
       message:
         "เพิ่มข้อมูลแผนกสำเร็จ",
       data: {
-<<<<<<< HEAD
-        id: fullDepartment.id,
-        department_code: fullDepartment.department_code,
-        department_name: fullDepartment.department_name,
-        department_color: fullDepartment.department_color,
-        department_icon:fullDepartment.department_icon,
-        branch_ids: branchRows.map((row) => row.branch_id),
-        branch_names: branchRows
-          .map((row) => row.branches?.branch_name)
-          .filter(Boolean),
-        branch_codes: branchRows
-          .map((row) => row.branches?.branch_code)
-          .filter(Boolean),
-        status: fullDepartment.status,
-        sort_order: fullDepartment.sort_order,
-        created_at: fullDepartment.created_at,
-=======
         id:
           fullDepartment.id,
         department_code:
@@ -735,7 +604,6 @@ export async function POST(req) {
         created_at:
           fullDepartment
             .created_at,
->>>>>>> test_merge_all
       },
     });
   } catch (error) {

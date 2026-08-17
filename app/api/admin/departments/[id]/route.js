@@ -78,18 +78,9 @@ export async function PATCH(
         }
       );
 
-<<<<<<< HEAD
-    const department_code = body?.department_code?.trim();
-    const department_name = body?.department_name?.trim();
-    const department_color = body?.department_color?.trim() || "#E2E8F0";
-    const department_icon = body?.department_icon?.trim() || null;
-    const branch_ids = Array.isArray(body?.branch_ids) ? body.branch_ids : [];
-    const status = body?.status || "active";
-=======
     if (!guard.ok) {
       return guard.response;
     }
->>>>>>> test_merge_all
 
     const { id } =
       await params;
@@ -198,23 +189,6 @@ export async function PATCH(
       );
     }
 
-<<<<<<< HEAD
-    const { data: oldDepartment, error: oldDepartmentError } = await supabaseAdmin
-      .from("departments")
-      .select(`
-        id,
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        branch_departments (
-          branch_id,
-          branches (
-            id,
-            branch_code,
-            branch_name
-=======
     const {
       data: oldDepartment,
       error: oldDepartmentError,
@@ -235,7 +209,6 @@ export async function PATCH(
               branch_code,
               branch_name
             )
->>>>>>> test_merge_all
           )
         `)
         .eq("id", id)
@@ -245,17 +218,6 @@ export async function PATCH(
       throw oldDepartmentError;
     }
 
-<<<<<<< HEAD
-    const { error: updateError } = await supabaseAdmin
-      .from("departments")
-      .update({
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        updated_at: new Date().toISOString(),
-=======
     const allowedBranchIds = guard.hasAllScope
       ? []
       : await resolveAccessibleIds(
@@ -341,7 +303,6 @@ export async function PATCH(
         branch_id,
         department_id: id,
         status: "active",
->>>>>>> test_merge_all
       })
     );
 
@@ -356,39 +317,6 @@ export async function PATCH(
       }
     }
 
-<<<<<<< HEAD
-    if (deleteRelationError) throw deleteRelationError;
-
-    const relationPayload = branch_ids.map((branch_id) => ({
-      branch_id,
-      department_id: id,
-      status: "active",
-    }));
-
-    const { error: insertRelationError } = await supabaseAdmin
-      .from("branch_departments")
-      .insert(relationPayload);
-
-    if (insertRelationError) throw insertRelationError;
-
-    const { data, error } = await supabaseAdmin
-      .from("departments")
-      .select(`
-        id,
-        department_code,
-        department_name,
-        department_color,
-        department_icon,
-        status,
-        sort_order,
-        created_at,
-        branch_departments (
-          branch_id,
-          branches (
-            id,
-            branch_code,
-            branch_name
-=======
     const { data, error } =
       await supabaseAdmin
         .from("departments")
@@ -408,7 +336,6 @@ export async function PATCH(
               branch_code,
               branch_name
             )
->>>>>>> test_merge_all
           )
         `)
         .eq("id", id)
@@ -439,26 +366,6 @@ export async function PATCH(
       description:
         `แก้ไขแผนก ${data.department_code} - ${data.department_name}`,
       old_data: {
-<<<<<<< HEAD
-        department_code: oldDepartment.department_code,
-        department_name: oldDepartment.department_name,
-        department_color: oldDepartment.department_color,
-        department_icon: oldDepartment.department_icon,
-        status: oldDepartment.status,
-        branch_ids: (oldDepartment.branch_departments || []).map((row) => row.branch_id),
-        branch_codes: (oldDepartment.branch_departments || [])
-          .map((row) => row.branches?.branch_code)
-          .filter(Boolean),
-        branch_names: (oldDepartment.branch_departments || [])
-          .map((row) => row.branches?.branch_name)
-          .filter(Boolean),
-      },
-      new_data: {
-        department_code: data.department_code,
-        department_name: data.department_name,
-        department_color: data.department_color,
-        department_icon: data.department_icon,
-=======
         department_code:
           oldDepartment
             .department_code,
@@ -510,7 +417,6 @@ export async function PATCH(
           data.department_color,
         department_icon:
           data.department_icon,
->>>>>>> test_merge_all
         status: data.status,
         branch_ids:
           branchRows.map(
@@ -542,19 +448,6 @@ export async function PATCH(
         "อัพเดทข้อมูลแผนกสำเร็จ",
       data: {
         id: data.id,
-<<<<<<< HEAD
-        department_code: data.department_code,
-        department_name: data.department_name,
-        department_color: data.department_color || "#E2E8F0",
-        department_icon: data.department_icon || "",
-        branch_ids: branchRows.map((row) => row.branch_id),
-        branch_names: branchRows
-          .map((row) => row.branches?.branch_name)
-          .filter(Boolean),
-        branch_codes: branchRows
-          .map((row) => row.branches?.branch_code)
-          .filter(Boolean),
-=======
         department_code:
           data.department_code,
         department_name:
@@ -585,7 +478,6 @@ export async function PATCH(
                   ?.branch_code
             )
             .filter(Boolean),
->>>>>>> test_merge_all
         status: data.status,
         sort_order:
           data.sort_order,

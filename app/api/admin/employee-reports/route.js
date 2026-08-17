@@ -1,21 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
-<<<<<<< HEAD
-
-export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-
-    const monthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    )
-=======
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
 const EMPLOYEE_REPORT_SELECT = `
@@ -250,7 +235,6 @@ export async function GET(req) {
     const monthStart = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),1)
->>>>>>> test_merge_all
       .toISOString()
       .split("T")[0];
 
@@ -270,10 +254,6 @@ export async function GET(req) {
       100
     );
 
-<<<<<<< HEAD
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-=======
     const currentEmployeeId =
       getCurrentEmployeeId(guard);
 
@@ -332,147 +312,10 @@ export async function GET(req) {
        ตัด Current Employee ออกจาก Scoped Query ก่อน
        เพื่อไม่ให้ข้อมูลตัวเองซ้ำ
     ===================================================== */
->>>>>>> test_merge_all
 
     let query = supabaseAdmin
       .from("employees")
       .select(
-<<<<<<< HEAD
-        `
-        id,
-        employee_code,
-
-        first_name_th,
-        last_name_th,
-
-        first_name_en,
-        last_name_en,
-
-        nick_name,
-
-        gender,
-
-        phone,
-        email,
-
-        citizen_id,
-        passport_no,
-
-        birth_date,
-
-        line_id,
-
-        nationality,
-
-        hire_date,
-        resignation_date,
-
-        employment_type,
-
-        employee_type_digit,
-        employee_year_2d,
-        employee_running_no,
-
-        employee_photo_url,
-
-        employee_status_id,
-
-        branch_id,
-        department_id,
-        division_id,
-        unit_id,
-        position_id,
-
-        created_at,
-
-        branches (
-          id,
-          branch_code,
-          branch_name
-        ),
-
-        departments (
-          id,
-          department_code,
-          department_name
-        ),
-
-        divisions (
-          id,
-          division_code,
-          division_name
-        ),
-
-        units (
-          id,
-          unit_code,
-          unit_name
-        ),
-
-        positions (
-          id,
-          position_code,
-          position_name,
-          position_level,
-          position_group
-        ),
-
-        employee_statuses!inner (
-          id,
-          status_code,
-          status_name,
-          color
-        )
-      `,
-        { count: "exact" }
-      )
-      .order("employee_code", { ascending: true })
-      .range(from, to);
-
-    if (search) {
-      query = query.or(
-        [
-          `employee_code.ilike.%${search}%`,
-          `first_name_th.ilike.%${search}%`,
-          `last_name_th.ilike.%${search}%`,
-          `first_name_en.ilike.%${search}%`,
-          `last_name_en.ilike.%${search}%`,
-          `nick_name.ilike.%${search}%`,
-          `phone.ilike.%${search}%`,
-          `email.ilike.%${search}%`,
-          `citizen_id.ilike.%${search}%`,
-          `passport_no.ilike.%${search}%`,
-          `nationality.ilike.%${search}%`,
-        ].join(",")
-      );
-    }
-
-    if (status && status !== "ALL") {
-      query = query.eq("employee_statuses.status_code", status);
-    }
-
-    if (branchId) {
-      query = query.eq("branches.branch_name", branchId);
-    }
-
-    if (departmentId) {
-      query = query.eq("departments.department_name", departmentId);
-    }
-
-    if (divisionId) {
-      query = query.eq("divisions.division_name", divisionId);
-    }
-
-    if (unitId) {
-      query = query.eq("units.unit_name", unitId);
-    }
-
-    if (positionId) {
-      query = query.eq("position_id", positionId);
-    }
-
-    const { data: employees, error, count } = await query;
-=======
         EMPLOYEE_REPORT_SELECT,
         {
           count: "exact",
@@ -556,14 +399,11 @@ export async function GET(req) {
       error,
       count: scopedCountRaw,
     } = await query;
->>>>>>> test_merge_all
 
     if (error) {
       throw error;
     }
 
-<<<<<<< HEAD
-=======
     const scopedEmployeesSafe =
       Array.isArray(scopedEmployees)
         ? scopedEmployees
@@ -581,7 +421,6 @@ export async function GET(req) {
       Number(scopedCountRaw || 0) +
       selfCount;
 
->>>>>>> test_merge_all
     const rows = employees || [];
 
     const organizationSummary = {
@@ -600,12 +439,6 @@ export async function GET(req) {
       const department = item.departments?.department_name || "Unknown";
       const division = item.divisions?.division_name || "Unknown";
       const unit = item.units?.unit_name || "Unknown";
-<<<<<<< HEAD
-      const level = item.positions?.position_level || "N/A";
-      const employmentType = item.employment_type || "Unknown";
-      const gender = item.gender || "Unknown";
-      const nationality = item.nationality || "Unknown";
-=======
       const level = item.position_levels?.level_code || "N/A";
       const gender =
         item.genders
@@ -621,7 +454,6 @@ export async function GET(req) {
         item.nationalities
           ?.nationality_name_en ||
         "Unknown";
->>>>>>> test_merge_all
 
       organizationSummary.branches[branch] =
         (organizationSummary.branches[branch] || 0) + 1;
@@ -702,73 +534,6 @@ export async function GET(req) {
       );
     };
 
-<<<<<<< HEAD
-    const mappedEmployees = rows.map((employee) => ({
-      id: employee.id,
-
-      employee_code: employee.employee_code || "",
-      first_name_th: employee.first_name_th || "",
-      last_name_th: employee.last_name_th || "",
-      first_name_en: employee.first_name_en || "",
-      last_name_en: employee.last_name_en || "",
-      full_name_th: `${employee.first_name_th || ""} ${
-        employee.last_name_th || ""
-      }`.trim(),
-      full_name_en: `${employee.first_name_en || ""} ${
-        employee.last_name_en || ""
-      }`.trim(),
-
-      nick_name: employee.nick_name || "",
-      gender: employee.gender || "",
-      phone: employee.phone || "",
-      email: employee.email || "",
-
-      citizen_id: employee.citizen_id || "",
-      passport_no: employee.passport_no || "",
-      birth_date: employee.birth_date || "",
-      line_id: employee.line_id || "",
-      nationality: employee.nationality || "",
-
-      hire_date: employee.hire_date || "",
-      resignation_date: employee.resignation_date || "",
-
-      employment_type: employee.employment_type || "",
-      employee_type_digit: employee.employee_type_digit || "",
-      employee_year_2d: employee.employee_year_2d || "",
-      employee_running_no: employee.employee_running_no || "",
-      employee_photo_url: employee.employee_photo_url || "",
-
-      employee_status_id: employee.employee_status_id || "",
-      employee_status_code: employee.employee_statuses?.status_code || "",
-      employee_status_name: employee.employee_statuses?.status_name || "-",
-      employee_status_color: employee.employee_statuses?.color || "slate",
-
-      branch_id: employee.branch_id || "",
-      branch_code: employee.branches?.branch_code || "",
-      branch_name: employee.branches?.branch_name || "-",
-
-      department_id: employee.department_id || "",
-      department_code: employee.departments?.department_code || "",
-      department_name: employee.departments?.department_name || "-",
-
-      division_id: employee.division_id || "",
-      division_code: employee.divisions?.division_code || "",
-      division_name: employee.divisions?.division_name || "-",
-
-      unit_id: employee.unit_id || "",
-      unit_code: employee.units?.unit_code || "",
-      unit_name: employee.units?.unit_name || "-",
-
-      position_id: employee.position_id || "",
-      position_code: employee.positions?.position_code || "",
-      position_name: employee.positions?.position_name || "-",
-      position_level: employee.positions?.position_level || "",
-      position_group: employee.positions?.position_group || "",
-
-      created_at: employee.created_at,
-      service_years: calculateServiceYears(employee.hire_date),
-    }));
-=======
     const mappedEmployees =
     (employees || []).map(
     (employee) => ({
@@ -1020,7 +785,6 @@ export async function GET(req) {
         null,
     })
   );
->>>>>>> test_merge_all
 
     if (search || status || branchId || departmentId || divisionId || unitId ) {
       await writeActivityLog({
@@ -1074,8 +838,6 @@ export async function GET(req) {
         total: count || 0,
         totalPages: Math.ceil((count || 0) / pageSize),
       },
-<<<<<<< HEAD
-=======
 
       meta: {
         access: {
@@ -1089,7 +851,6 @@ export async function GET(req) {
             "ems.employee_reports.view",
         },
       },
->>>>>>> test_merge_all
     });
   } catch (error) {
     console.error("EMPLOYEE_REPORTS_ERROR:", error);

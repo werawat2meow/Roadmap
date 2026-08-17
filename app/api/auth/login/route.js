@@ -53,20 +53,9 @@ export async function POST(req) {
         user_id: userAccount.id,
         employee_id: userAccount.employee_id || null,
         username: userAccount.username,
-<<<<<<< HEAD
-        role: primaryRole,
-        role_name: primaryRoleName,
-        // permissions,
-        employee_code: employee?.employee_code || null,
-        full_name: fullNameTh,
-      },
-      process.env.JWT_SECRET || "dev-secret-key",
-      { expiresIn: "10h" }
-=======
       },
       process.env.JWT_SECRET || "dev-secret-key",
       { expiresIn: TOKEN_EXPIRES_IN }
->>>>>>> test_merge_all
     );
 
     await supabaseAdmin
@@ -81,11 +70,7 @@ export async function POST(req) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-<<<<<<< HEAD
-      maxAge: 60 * 60 * 10, // 10 hours
-=======
       maxAge: TOKEN_MAX_AGE,
->>>>>>> test_merge_all
     });
 
     return response;

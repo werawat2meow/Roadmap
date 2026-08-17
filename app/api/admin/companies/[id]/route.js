@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseServer";
-import { writeActivityLog } from "@/lib/activityLogger";
-=======
 import {NextResponse,} from "next/server";
 import {supabaseAdmin,} from "@/lib/supabaseServer";
 import {writeActivityLog,} from "@/lib/activityLogger";
->>>>>>> test_merge_all
 
 
 import {requirePermission,} from "@/lib/auth/requirePortalAccess";
@@ -26,44 +20,6 @@ import {canAccessCompany,} from "@/lib/auth/applyAccessScope";
 export async function PATCH(req,{ params }) {
   try {
 
-<<<<<<< HEAD
-    const company_code = body?.company_code?.trim();
-    const company_name_th = body?.company_name_th?.trim();
-    const company_name_en = body?.company_name_en?.trim() || null;
-
-    const tax_id = body?.tax_id?.trim() || null;
-    const branch_no = body?.branch_no?.trim() || null;
-
-    const address = body?.address?.trim() || null;
-
-    const country_code = body?.country_code?.trim() || "TH";
-
-    const province_code = body?.province_code?.trim() || null;
-    const province = body?.province?.trim() || null;
-
-    const district_code = body?.district_code?.trim() || null;
-    const district = body?.district?.trim() || null;
-
-    const subdistrict_code = body?.subdistrict_code?.trim() || null;
-    const subdistrict = body?.subdistrict?.trim() || null;
-
-    const postcode = body?.postcode?.trim() || null;
-
-    const phone = body?.phone?.trim() || null;
-    const email = body?.email?.trim() || null;
-    const website = body?.website?.trim() || null;
-
-    const logo_url = body?.logo_url?.trim() || null;
-    const logo_path = body?.logo_path?.trim() || null;
-
-    const status = body?.status || "active";
-    const sort_order = Number(body?.sort_order || 0);
-
-    if (!company_code || !company_name_th) {
-      return NextResponse.json(
-        {
-          error: "กรุณากรอกรหัสบริษัทและชื่อบริษัท",
-=======
     /* =====================================================
        1. Permission
     ===================================================== */
@@ -83,7 +39,6 @@ export async function PATCH(req,{ params }) {
           success: false,
           error:
             "ไม่พบรหัสบริษัท",
->>>>>>> test_merge_all
         },
         {
           status: 400,
@@ -91,98 +46,6 @@ export async function PATCH(req,{ params }) {
       );
     }
 
-<<<<<<< HEAD
-    // =========================
-    // Old Data
-    // =========================
-
-    const { data: oldData } = await supabaseAdmin
-      .from("companies")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    // =========================
-    // Update
-    // =========================
-
-    const { data, error } = await supabaseAdmin
-      .from("companies")
-      .update({
-        company_code,
-        company_name_th,
-        company_name_en,
-
-        tax_id,
-        branch_no,
-
-        address,
-
-        country_code,
-
-        province_code,
-        province,
-
-        district_code,
-        district,
-
-        subdistrict_code,
-        subdistrict,
-
-        postcode,
-
-        phone,
-        email,
-        website,
-
-        logo_url,
-        logo_path,
-
-        status,
-        sort_order,
-
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select(`
-        id,
-        company_code,
-        company_name_th,
-        company_name_en,
-
-        tax_id,
-        branch_no,
-
-        address,
-
-        country_code,
-
-        province_code,
-        province,
-
-        district_code,
-        district,
-
-        subdistrict_code,
-        subdistrict,
-
-        postcode,
-
-        phone,
-        email,
-        website,
-
-        logo_url,
-        logo_path,
-
-        status,
-        sort_order,
-
-        created_at,
-        updated_at
-      `)
-      .single();
-=======
     /* =====================================================
        3. Load Existing Company
 
@@ -451,7 +314,6 @@ export async function PATCH(req,{ params }) {
     /* =====================================================
        8. DB Error
     ===================================================== */
->>>>>>> test_merge_all
 
     if (error) {
       if (
@@ -460,13 +322,9 @@ export async function PATCH(req,{ params }) {
       ) {
         return NextResponse.json(
           {
-<<<<<<< HEAD
-            error: "รหัสบริษัทนี้มีอยู่แล้ว",
-=======
             success: false,
             error:
               "รหัสบริษัทนี้มีอยู่แล้ว",
->>>>>>> test_merge_all
           },
           {
             status: 400,
@@ -477,22 +335,6 @@ export async function PATCH(req,{ params }) {
       throw error;
     }
 
-<<<<<<< HEAD
-    // =========================
-    // Activity Log
-    // =========================
-
-    await writeActivityLog({
-      module_name: "companies",
-      action_type: "update",
-      reference_table: "companies",
-      reference_id: data.id,
-      description: `แก้ไขบริษัท ${data.company_code} - ${data.company_name_th}`,
-      old_data: oldData,
-      new_data: data,
-    });
-
-=======
     /* =====================================================
        9. Activity Log
     ===================================================== */
@@ -524,7 +366,6 @@ export async function PATCH(req,{ params }) {
        10. Response
     ===================================================== */
 
->>>>>>> test_merge_all
     return NextResponse.json({
       success: true,
 
@@ -542,13 +383,9 @@ export async function PATCH(req,{ params }) {
 
     return NextResponse.json(
       {
-<<<<<<< HEAD
-        error: "ไม่สามารถแก้ไขข้อมูลบริษัทได้",
-=======
         success: false,
         error:
           "ไม่สามารถแก้ไขข้อมูลบริษัทได้",
->>>>>>> test_merge_all
       },
       {
         status: 500,
@@ -577,33 +414,15 @@ export async function DELETE(
        1. Permission
     ===================================================== */
 
-<<<<<<< HEAD
-    // =========================
-    // Check Branch
-    // =========================
-
-    const { data: usedBranches, error: checkError } = await supabaseAdmin
-      .from("branches")
-      .select("id")
-      .eq("company_id", id)
-      .limit(1);
-=======
     const guard =
       await requirePermission(
         "ems.companies.delete"
       );
->>>>>>> test_merge_all
 
     if (!guard.ok) {
       return guard.response;
     }
 
-<<<<<<< HEAD
-    if (usedBranches?.length > 0) {
-      return NextResponse.json(
-        {
-          error: "ไม่สามารถลบบริษัทได้ เพราะมีสาขาที่อ้างอิงบริษัทนี้อยู่",
-=======
     /* =====================================================
        2. Params
     ===================================================== */
@@ -617,7 +436,6 @@ export async function DELETE(
           success: false,
           error:
             "ไม่พบรหัสบริษัท",
->>>>>>> test_merge_all
         },
         {
           status: 400,
@@ -625,29 +443,8 @@ export async function DELETE(
       );
     }
 
-<<<<<<< HEAD
-    // =========================
-    // Old Data
-    // =========================
-
-    const { data: oldData } = await supabaseAdmin
-      .from("companies")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    // =========================
-    // Delete
-    // =========================
-
-    const { error } = await supabaseAdmin
-      .from("companies")
-      .delete()
-      .eq("id", id);
-=======
     /* =====================================================
        3. Load Existing Company
->>>>>>> test_merge_all
 
        ต้องโหลดก่อนเช็ค Branch
        เพราะเราต้องตรวจ Scope ก่อน
@@ -820,14 +617,10 @@ export async function DELETE(
 
     return NextResponse.json(
       {
-<<<<<<< HEAD
-        error: "ไม่สามารถลบข้อมูลบริษัทได้",
-=======
         success: false,
 
         error:
           "ไม่สามารถลบข้อมูลบริษัทได้",
->>>>>>> test_merge_all
       },
       {
         status: 500,

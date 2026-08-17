@@ -2,52 +2,6 @@ import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
-<<<<<<< HEAD
-
-const calculateServiceYears = (hireDate) => {
-  if (!hireDate) return 0;
-
-  return Number(
-    ((new Date() - new Date(hireDate)) / (1000 * 60 * 60 * 24 * 365)).toFixed(1)
-  );
-};
-
-const textIncludes = (value, keyword) => String(value || "").toLowerCase().includes(keyword.toLowerCase());
-
-export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status")?.trim() || "";
-    const branch = searchParams.get("branch_id")?.trim() || "";
-    const department = searchParams.get("department_id")?.trim() || "";
-    const division = searchParams.get("division_id")?.trim() || "";
-    const unit = searchParams.get("unit_id")?.trim() || "";
-    const employmentType = searchParams.get("employmentType")?.trim() || "";
-    const gender = searchParams.get("gender")?.trim() || "";
-    const nationality = searchParams.get("nationality")?.trim() || "";
-    const positionLevel = searchParams.get("positionLevel")?.trim() || "";
-    const hireDateFrom = searchParams.get("hireDateFrom")?.trim() || "";
-    const hireDateTo = searchParams.get("hireDateTo")?.trim() || "";
-    const resignationDateFrom =
-      searchParams.get("resignationDateFrom")?.trim() || "";
-    const resignationDateTo =
-      searchParams.get("resignationDateTo")?.trim() || "";
-
-    const { data, error } = await supabaseAdmin
-      .from("employees")
-      .select(`
-        employee_code,
-        first_name_th,
-        last_name_th,
-        first_name_en,
-        last_name_en,
-        nick_name,
-        gender,
-        phone,
-        email,
-=======
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
 const EMPLOYEE_REPORT_EXPORT_SELECT = `
@@ -74,61 +28,10 @@ const EMPLOYEE_REPORT_EXPORT_SELECT = `
         personal_email,
         work_email,
 
->>>>>>> test_merge_all
         citizen_id,
         passport_no,
         birth_date,
         line_id,
-<<<<<<< HEAD
-        nationality,
-        hire_date,
-        resignation_date,
-        employment_type,
-        employee_type_digit,
-        employee_year_2d,
-        employee_running_no,
-        branches (
-          branch_name
-        ),
-        departments (
-          department_name
-        ),
-        divisions (
-          division_name
-        ),
-        units (
-          unit_name
-        ),
-        positions (
-          position_name,
-          position_level,
-          position_group
-        ),
-        employee_statuses (
-          status_code,
-          status_name
-        )
-      `)
-      .order("employee_code");
-
-    if (error) throw error;
-
-    let filteredData = data || [];
-
-    if (search) {
-      filteredData = filteredData.filter(
-        (item) =>
-          textIncludes(item.employee_code, search) ||
-          textIncludes(item.first_name_th, search) ||
-          textIncludes(item.last_name_th, search) ||
-          textIncludes(item.first_name_en, search) ||
-          textIncludes(item.last_name_en, search) ||
-          textIncludes(item.nick_name, search) ||
-          textIncludes(item.phone, search) ||
-          textIncludes(item.email, search) ||
-          textIncludes(item.line_id, search) ||
-          textIncludes(item.employment_type, search) ||
-=======
 
         hire_date,
         start_work_date,
@@ -449,18 +352,10 @@ export async function GET(req) {
           textIncludes(getEmploymentTypeName(item), search) ||
           textIncludes(getGenderName(item), search) ||
           textIncludes(getNationalityName(item), search) ||
->>>>>>> test_merge_all
           textIncludes(item.branches?.branch_name, search) ||
           textIncludes(item.departments?.department_name, search) ||
           textIncludes(item.divisions?.division_name, search) ||
           textIncludes(item.units?.unit_name, search) ||
-<<<<<<< HEAD
-          textIncludes(item.positions?.position_name, search)
-      );
-    }
-
-    if (status) {
-=======
           textIncludes(item.positions?.position_name, search) ||
           textIncludes(getPositionLevel(item), search)
         );
@@ -468,7 +363,6 @@ export async function GET(req) {
     }
 
     if (status && status !== "ALL") {
->>>>>>> test_merge_all
       filteredData = filteredData.filter(
         (item) => item.employee_statuses?.status_code === status
       );
@@ -500,52 +394,24 @@ export async function GET(req) {
 
     if (employmentType) {
       filteredData = filteredData.filter(
-<<<<<<< HEAD
-        (item) => item.employment_type === employmentType
-=======
         (item) => getEmploymentTypeName(item) === employmentType
->>>>>>> test_merge_all
       );
     }
 
     if (gender) {
-<<<<<<< HEAD
-      filteredData = filteredData.filter((item) => item.gender === gender);
-=======
       filteredData = filteredData.filter(
         (item) => getGenderName(item) === gender
       );
->>>>>>> test_merge_all
     }
 
     if (nationality) {
       filteredData = filteredData.filter(
-<<<<<<< HEAD
-        (item) => item.nationality === nationality
-=======
         (item) => getNationalityName(item) === nationality
->>>>>>> test_merge_all
       );
     }
 
     if (positionLevel) {
       filteredData = filteredData.filter(
-<<<<<<< HEAD
-        (item) => item.positions?.position_level === positionLevel
-      );
-    }
-
-    if (hireDateFrom) {
-      filteredData = filteredData.filter(
-        (item) => item.hire_date && item.hire_date >= hireDateFrom
-      );
-    }
-
-    if (hireDateTo) {
-      filteredData = filteredData.filter(
-        (item) => item.hire_date && item.hire_date <= hireDateTo
-      );
-=======
         (item) => getPositionLevel(item) === positionLevel
       );
     }
@@ -562,74 +428,26 @@ export async function GET(req) {
         const date = getStartWorkDate(item);
         return date && date <= startWorkDateTo;
       });
->>>>>>> test_merge_all
     }
 
     if (resignationDateFrom) {
       filteredData = filteredData.filter(
         (item) =>
-<<<<<<< HEAD
-          item.resignation_date && item.resignation_date >= resignationDateFrom
-=======
           item.resignation_date &&
           item.resignation_date >= resignationDateFrom
->>>>>>> test_merge_all
       );
     }
 
     if (resignationDateTo) {
       filteredData = filteredData.filter(
         (item) =>
-<<<<<<< HEAD
-          item.resignation_date && item.resignation_date <= resignationDateTo
-=======
           item.resignation_date &&
           item.resignation_date <= resignationDateTo
->>>>>>> test_merge_all
       );
     }
 
     const currentYear = new Date().getFullYear();
 
-<<<<<<< HEAD
-    const rows = filteredData.map((item) => ({
-      "รหัสพนักงาน": item.employee_code || "",
-      "ชื่อ (TH)": item.first_name_th || "",
-      "นามสกุล (TH)": item.last_name_th || "",
-      "ชื่อ (EN)": item.first_name_en || "",
-      "นามสกุล (EN)": item.last_name_en || "",
-      ชื่อเล่น: item.nick_name || "",
-      เพศ: item.gender || "",
-      สัญชาติ: item.nationality || "",
-      โทรศัพท์: item.phone || "",
-      Email: item.email || "",
-      "Line ID": item.line_id || "",
-      "เลขบัตรประชาชน": item.citizen_id || "",
-      Passport: item.passport_no || "",
-      วันเกิด: item.birth_date || "",
-      สาขา: item.branches?.branch_name || "",
-      แผนก: item.departments?.department_name || "",
-      ฝ่าย: item.divisions?.division_name || "",
-      หน่วยงาน: item.units?.unit_name || "",
-      ตำแหน่ง: item.positions?.position_name || "",
-      Level: item.positions?.position_level || "",
-      "Position Group": item.positions?.position_group || "",
-      "ประเภทการจ้าง": item.employment_type || "",
-      "สถานะพนักงาน": item.employee_statuses?.status_name || "",
-      "วันที่เริ่มงาน": item.hire_date || "",
-      "วันที่ลาออก": item.resignation_date || "",
-      "อายุงาน (ปี)": calculateServiceYears(item.hire_date),
-    }));
-
-    const newJoinersRows = filteredData
-      .filter(
-        (item) => item.hire_date && item.hire_date.startsWith(String(currentYear))
-      )
-      .map((item) => ({
-        รหัสพนักงาน: item.employee_code,
-        ชื่อ: `${item.first_name_th || ""} ${item.last_name_th || ""}`,
-        วันที่เริ่มงาน: item.hire_date,
-=======
     /* =========================================================
        EMPLOYEE SHEET
     ========================================================= */
@@ -677,18 +495,13 @@ export async function GET(req) {
         รหัสพนักงาน: item.employee_code,
         ชื่อ: `${item.first_name_th || ""} ${item.last_name_th || ""}`.trim(),
         วันที่เริ่มงาน: getStartWorkDate(item),
->>>>>>> test_merge_all
       }));
 
     const resignedRows = filteredData
       .filter((item) => item.resignation_date)
       .map((item) => ({
         รหัสพนักงาน: item.employee_code,
-<<<<<<< HEAD
-        ชื่อ: `${item.first_name_th || ""} ${item.last_name_th || ""}`,
-=======
         ชื่อ: `${item.first_name_th || ""} ${item.last_name_th || ""}`.trim(),
->>>>>>> test_merge_all
         วันที่ลาออก: item.resignation_date,
       }));
 
@@ -732,21 +545,13 @@ export async function GET(req) {
 
     const levelRows = makeSummaryRows(
       filteredData,
-<<<<<<< HEAD
-      (item) => item.positions?.position_level || "N/A",
-=======
       getPositionLevel,
->>>>>>> test_merge_all
       "Level"
     );
 
     const employmentTypeRows = makeSummaryRows(
       filteredData,
-<<<<<<< HEAD
-      (item) => item.employment_type,
-=======
       getEmploymentTypeName,
->>>>>>> test_merge_all
       "ประเภทการจ้าง"
     );
 
@@ -756,12 +561,9 @@ export async function GET(req) {
       "สถานะพนักงาน"
     );
 
-<<<<<<< HEAD
-=======
     /* =========================================================
        WORKBOOK
     ========================================================= */
->>>>>>> test_merge_all
     const workbook = XLSX.utils.book_new();
 
     XLSX.utils.book_append_sheet(
@@ -858,13 +660,6 @@ export async function GET(req) {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-<<<<<<< HEAD
-        "Content-Disposition": `attachment; filename=Employee_Master_Report.xlsx`,
-      },
-    });
-  } catch (error) {
-    console.error("EXPORT_EMPLOYEE_REPORT_ERROR:", error);
-=======
         "Content-Disposition":
           'attachment; filename="Employee_Master_Report.xlsx"',
         "Cache-Control": "no-store",
@@ -875,26 +670,17 @@ export async function GET(req) {
       "EXPORT_EMPLOYEE_REPORT_ERROR:",
       error
     );
->>>>>>> test_merge_all
 
     return NextResponse.json(
       {
         success: false,
-<<<<<<< HEAD
-        error: error.message || "Export Employee Report ไม่สำเร็จ",
-=======
         error:
           error?.message ||
           "Export Employee Report ไม่สำเร็จ",
->>>>>>> test_merge_all
       },
       {
         status: 500,
       }
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> test_merge_all

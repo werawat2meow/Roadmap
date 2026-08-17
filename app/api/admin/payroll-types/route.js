@@ -8,11 +8,8 @@ const payrollTypeSelect = `
   payroll_type_name,
   description,
   default_payment_day,
-<<<<<<< HEAD
-=======
   cutoff_end_day,
   payment_offset_month,
->>>>>>> test_merge_all
   payment_frequency,
   status,
   sort_order,
@@ -27,11 +24,8 @@ function mapPayrollType(item) {
     payroll_type_name: item.payroll_type_name,
     description: item.description || "",
     default_payment_day: item.default_payment_day,
-<<<<<<< HEAD
-=======
     cutoff_end_day: item.cutoff_end_day,
     payment_offset_month:Number(item.payment_offset_month || 0),
->>>>>>> test_merge_all
     payment_frequency: item.payment_frequency,
     status: item.status || "active",
     sort_order: Number(item.sort_order || 0),
@@ -42,41 +36,6 @@ function mapPayrollType(item) {
 
 export async function GET(req) {
   try {
-<<<<<<< HEAD
-
-    const { searchParams } = new URL(req.url);
-
-    const search =
-      searchParams
-        .get("search")
-        ?.trim()
-        ?.toLowerCase() || "";
-    const status =
-      searchParams
-        .get("status")
-        ?.trim();
-    let query =
-      supabaseAdmin
-        .from("payroll_types")
-        .select(payrollTypeSelect)
-        .order("sort_order")
-        .order("payroll_type_code");
-    if (status) {
-      query =
-        query.eq(
-          "status",
-          status
-        );
-    }
-    const {
-      data,
-      error,
-    } = await query;
-    if (error) throw error;
-    let rows =
-      (data || [])
-      .map(mapPayrollType);
-=======
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.trim()?.toLowerCase() || "";
     const status = searchParams.get("status")?.trim();
@@ -94,7 +53,6 @@ export async function GET(req) {
     const {data,error,} = await query;
     if (error) throw error;
     let rows =(data || []).map(mapPayrollType);
->>>>>>> test_merge_all
 
     if (search) {
       rows =
@@ -156,19 +114,9 @@ export async function POST(req) {
         ?.description
         ?.trim() || null;
 
-<<<<<<< HEAD
-    const default_payment_day =
-      body
-        ?.default_payment_day
-        ? Number(
-            body.default_payment_day
-          )
-        : null;
-=======
     const default_payment_day = body?.default_payment_day? Number( body.default_payment_day): null;
     const cutoff_end_day = body?.cutoff_end_day? Number(body.cutoff_end_day): null;
     const payment_offset_month = Number(body?.payment_offset_month || 0);
->>>>>>> test_merge_all
 
     const payment_frequency = body ?.payment_frequency || "monthly";
     const status = body?.status || "active";
@@ -184,10 +132,6 @@ export async function POST(req) {
       });
     }
 
-<<<<<<< HEAD
-    const {data:exists,} =
-      await supabaseAdmin
-=======
 
     if (default_payment_day && (default_payment_day < 1 || default_payment_day > 31)) {
       return NextResponse.json(
@@ -221,7 +165,6 @@ export async function POST(req) {
     }
 
     const {data:exists,} = await supabaseAdmin
->>>>>>> test_merge_all
       .from("payroll_types")
       .select("id")
       .eq(
@@ -245,11 +188,8 @@ export async function POST(req) {
       payroll_type_name,
       description,
       default_payment_day,
-<<<<<<< HEAD
-=======
       cutoff_end_day,
       payment_offset_month,
->>>>>>> test_merge_all
       payment_frequency,
       status,
       sort_order,

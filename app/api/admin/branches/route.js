@@ -13,33 +13,6 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const scopeContext = searchParams.get("scope_context")?.trim() || "";
 
-<<<<<<< HEAD
-    const { data, error } = await supabaseAdmin
-      .from("branches")
-      .select(`
-        id,
-        branch_code,
-        branch_name,
-        company_id,
-        group_id,
-        phone,
-        status,
-        sort_order,
-        branch_image_url,
-        branch_image_path,
-        created_at,
-        companies (
-          id,
-          company_code,
-          company_name_th,
-          company_name_en
-        ),
-        branch_groups (
-          id,
-          group_code,
-          group_name,
-          group_color
-=======
     const allowedScopeContexts = new Set([
       "ems.employees",
       "ems.departments",
@@ -97,7 +70,6 @@ export async function GET(req) {
           {
             ascending: true,
           }
->>>>>>> test_merge_all
         )
         .order(
           "created_at",
@@ -110,40 +82,6 @@ export async function GET(req) {
        Scope
     ===================================================== */
 
-<<<<<<< HEAD
-    const mappedData = (data || []).map((branch) => ({
-      id: branch.id,
-      branch_code: branch.branch_code,
-      branch_name: branch.branch_name,
-      company_id: branch.company_id,
-      company_name:
-        branch.companies?.company_name_th ||
-        branch.companies?.company_name_en ||
-        "-",
-      company_code: branch.companies?.company_code || "",
-      phone: branch.phone,
-      status: branch.status,
-      sort_order: branch.sort_order,
-      branch_image_url: branch.branch_image_url || "",
-      branch_image_path: branch.branch_image_path || "",
-      created_at: branch.created_at,
-      group_id: branch.group_id || "",
-      group_code: branch.branch_groups?.group_code || "",
-      group_name: branch.branch_groups?.group_name || "",
-      group_color: branch.branch_groups?.group_color || "#E2E8F0",
-    }));
-
-    const filteredData = search ? mappedData.filter((item) => {
-          const keyword = search.toLowerCase();
-          return (
-            item.branch_code?.toLowerCase().includes(keyword) ||
-            item.branch_name?.toLowerCase().includes(keyword) ||
-            item.company_name?.toLowerCase().includes(keyword) ||
-            item.company_code?.toLowerCase().includes(keyword) ||
-            item.group_name?.toLowerCase().includes(keyword) ||
-            item.group_code?.toLowerCase().includes(keyword) 
-          );
-=======
     query =
       guard.applyScope(
         query,
@@ -211,7 +149,6 @@ export async function GET(req) {
             branch.branch_groups
               ?.group_color ||
             "#E2E8F0",
->>>>>>> test_merge_all
         })
       );
 

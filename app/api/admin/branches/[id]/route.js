@@ -224,8 +224,6 @@ export async function DELETE(req, { params }) {
     
     const { id } = await params;
 
-<<<<<<< HEAD
-=======
     if (!guard.canAccessId(id)) {
       return NextResponse.json(
         {
@@ -238,7 +236,6 @@ export async function DELETE(req, { params }) {
       );
     }
 
->>>>>>> test_merge_all
     const { data: oldBranch, error: oldBranchError } = await supabaseAdmin
       .from("branches")
       .select(`

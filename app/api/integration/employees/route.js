@@ -700,66 +700,12 @@ export async function POST(req) {
 
     let query = supabaseAdmin
       .from("employees")
-<<<<<<< HEAD
-      .select(`
-        id,
-        employee_code,
-        first_name_th,
-        last_name_th,
-        first_name_en,
-        last_name_en,
-        nick_name,
-        gender,
-        phone,
-        email,
-        employee_photo_url,
-        hire_date,
-        employment_type,
-        nationality,
-        status,
-        branch_id,
-        department_id,
-        division_id,
-        unit_id,
-        position_id,
-        employee_status_id,
-        branches (
-          branch_code,
-          branch_name
-        ),
-        departments (
-          department_code,
-          department_name
-        ),
-        divisions (
-          division_code,
-          division_name
-        ),
-        units (
-          unit_code,
-          unit_name
-        ),
-        positions (
-          position_code,
-          position_name,
-          position_group,
-          position_level
-        ),
-        employee_statuses (
-          status_code,
-          status_name,
-          color
-        )
-      `)
-      .order("created_at", { ascending: false });
-=======
       .select(
         EMPLOYEE_INTEGRATION_SELECT
       )
       .order("created_at", {
         ascending: false,
       });
->>>>>>> test_merge_all
 
     if (employee_code) {
       query = query.eq("employee_code", employee_code);
@@ -777,69 +723,10 @@ export async function POST(req) {
 
     if (error) throw error;
 
-<<<<<<< HEAD
-    const mappedData = (data || []).map((item) => ({
-      id: item.id,
-      employee_code: item.employee_code,
-      first_name_th: item.first_name_th,
-      last_name_th: item.last_name_th,
-      first_name_en: item.first_name_en,
-      last_name_en: item.last_name_en,
-      nick_name: item.nick_name,
-      gender: item.gender,
-      phone: item.phone,
-      email: item.email,
-      employee_photo_url: item.employee_photo_url || "",
-      nationality: item.nationality,
-      hire_date: item.hire_date,
-      employment_type: item.employment_type,
-      status: item.status,
-
-      branch: {
-        id: item.branch_id,
-        code: item.branches?.branch_code || null,
-        name: item.branches?.branch_name || null,
-      },
-
-      department: {
-        id: item.department_id,
-        code: item.departments?.department_code || null,
-        name: item.departments?.department_name || null,
-      },
-
-      division: {
-        id: item.division_id,
-        code: item.divisions?.division_code || null,
-        name: item.divisions?.division_name || null,
-      },
-
-      unit: {
-        id: item.unit_id,
-        code: item.units?.unit_code || null,
-        name: item.units?.unit_name || null,
-      },
-
-      position: {
-        id: item.position_id,
-        code: item.positions?.position_code || null,
-        name: item.positions?.position_name || null,
-        group: item.positions?.position_group || null,
-        level: item.positions?.position_level || null,
-      },
-
-      employee_status: {
-        id: item.employee_status_id,
-        code: item.employee_statuses?.status_code || null,
-        name: item.employee_statuses?.status_name || null,
-        color: item.employee_statuses?.color || null,
-      },
-    }));
-=======
     const mappedData =
     (data || []).map(
       mapEmployeeForIntegration
     );
->>>>>>> test_merge_all
 
     const responseBody = {
       success: true,

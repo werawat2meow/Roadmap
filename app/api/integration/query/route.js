@@ -632,29 +632,16 @@ activity_logs
 Future modules will use the exact same request format without changing the endpoint.
 
 */
-<<<<<<< HEAD
-import { NextResponse } from "next/server";
-=======
 
 
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
->>>>>>> test_merge_all
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateApiKey } from "@/lib/validateApiKey";
 import { logApiAccess } from "@/lib/logApiAccess";
 import { getIntegrationModule } from "@/lib/integrationRegistry";
 
-<<<<<<< HEAD
-function applyFilters(query, config, filter = {}) {
-  Object.entries(filter || {}).forEach(([key, value]) => {
-    if (!config.filterFields.includes(key)) return;
-    if (value === undefined || value === null || value === "") return;
-
-    query = query.eq(key, value);
-  });
-=======
 const EMPLOYEE_CACHE_TTL_MS = 60 * 1000;
 
 const MASTER_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -825,38 +812,10 @@ function applyFilters(
         value
       );
   }
->>>>>>> test_merge_all
 
   return query;
 }
 
-<<<<<<< HEAD
-function applySearch(query, config, search = "") {
-  const keyword = search?.trim();
-
-  if (!keyword) return query;
-  if (!config.searchFields?.length) return query;
-
-  const orQuery = config.searchFields
-    .map((field) => `${field}.ilike.%${keyword}%`)
-    .join(",");
-
-  return query.or(orQuery);
-}
-
-function getPagination(page, limit) {
-  const safePage = Math.max(Number(page || 1), 1);
-  const safeLimit = Math.min(Math.max(Number(limit || 20), 1), 100);
-
-  const from = (safePage - 1) * safeLimit;
-  const to = from + safeLimit - 1;
-
-  return {
-    page: safePage,
-    limit: safeLimit,
-    from,
-    to,
-=======
 function applySearch(
   query,
   config,
@@ -1485,16 +1444,10 @@ async function executeQuery({
       data:
         rows,
     },
->>>>>>> test_merge_all
   };
 }
 
 export async function POST(req) {
-<<<<<<< HEAD
-  const url = new URL(req.url);
-  const requestIp =req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
-  const userAgent = req.headers.get("user-agent") || null;
-=======
   const url =
     new URL(req.url);
 
@@ -1505,32 +1458,10 @@ export async function POST(req) {
     req.headers.get(
       "user-agent"
     ) || null;
->>>>>>> test_merge_all
 
   let body = {};
 
   try {
-<<<<<<< HEAD
-    body = await req.json();
-  } catch {
-    body = {};
-  }
-
-  const auth = await validateApiKey(req);
-
-  if (!auth.success) {
-    await logApiAccess({
-      clientId: null,
-      tokenId: null,
-      method: "POST",
-      endpoint: url.pathname,
-      requestIp,
-      userAgent,
-      statusCode: 401,
-      isSuccess: false,
-      requestQuery: body,
-      errorMessage: "Unauthorized: Invalid or missing API token",
-=======
     body =
       await req.json();
   } catch {
@@ -1584,19 +1515,12 @@ export async function POST(req) {
 
       errorMessage:
         "Unauthorized: Invalid or missing API token",
->>>>>>> test_merge_all
     });
 
     return auth.response;
   }
 
   try {
-<<<<<<< HEAD
-    const moduleName = body?.module?.trim();
-    const action = body?.action?.trim() || "list";
-
-    const config = getIntegrationModule(moduleName);
-=======
     /* ===================================================
        MODULE / ACTION
     =================================================== */
@@ -1620,190 +1544,11 @@ export async function POST(req) {
       getIntegrationModule(
         moduleName
       );
->>>>>>> test_merge_all
 
     if (!config) {
       return NextResponse.json(
         {
           success: false,
-<<<<<<< HEAD
-          error: "Invalid module",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!["get", "list", "count", "summary"].includes(action)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid action",
-        },
-        { status: 400 }
-      );
-    }
-
-    const { page, limit, from, to } = getPagination(body?.page, body?.limit);
-
-    let query = supabaseAdmin
-      .from(config.table)
-      .select(config.select, { count: "exact" });
-
-    query = applyFilters(query, config, body?.filter || {});
-    query = applySearch(query, config, body?.search || "");
-
-    if (action === "get") {
-      const id = body?.id || body?.filter?.id;
-
-      if (!id) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "id is required for get action",
-          },
-          { status: 400 }
-        );
-      }
-
-      query = query.eq("id", id).maybeSingle();
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const responseBody = {
-        success: true,
-        client: {
-          id: auth.client.id,
-          client_code: auth.client.client_code,
-          client_name: auth.client.client_name,
-        },
-        module: moduleName,
-        action,
-        data,
-      };
-
-      await logApiAccess({
-        clientId: auth.client.id,
-        tokenId: auth.token.id,
-        method: "POST",
-        endpoint: url.pathname,
-        requestIp,
-        userAgent,
-        statusCode: 200,
-        isSuccess: true,
-        requestQuery: body,
-        responseBody: {
-          success: true,
-          module: moduleName,
-          action,
-        },
-      });
-
-      return NextResponse.json(responseBody);
-    }
-
-
-    if (action === "count") {
-      query = query.select("id", { count: "exact", head: true });
-
-      const { count, error } = await query;
-
-      if (error) throw error;
-
-      const responseBody = {
-        success: true,
-        client: {
-          id: auth.client.id,
-          client_code: auth.client.client_code,
-          client_name: auth.client.client_name,
-        },
-        module: moduleName,
-        action,
-        count: count || 0,
-      };
-
-      await logApiAccess({
-        clientId: auth.client.id,
-        tokenId: auth.token.id,
-        method: "POST",
-        endpoint: url.pathname,
-        requestIp,
-        userAgent,
-        statusCode: 200,
-        isSuccess: true,
-        requestQuery: body,
-        responseBody: {
-          success: true,
-          module: moduleName,
-          action,
-          count: count || 0,
-        },
-      });
-
-      return NextResponse.json(responseBody);
-    }
-
-    query = query
-      .order(config.defaultOrder || "created_at", { ascending: false })
-      .range(from, to);
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-
-    const responseBody = {
-      success: true,
-      client: {
-        id: auth.client.id,
-        client_code: auth.client.client_code,
-        client_name: auth.client.client_name,
-      },
-      module: moduleName,
-      action,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-      },
-      data: data || [],
-    };
-
-    await logApiAccess({
-      clientId: auth.client.id,
-      tokenId: auth.token.id,
-      method: "POST",
-      endpoint: url.pathname,
-      requestIp,
-      userAgent,
-      statusCode: 200,
-      isSuccess: true,
-      requestQuery: body,
-      responseBody: {
-        success: true,
-        module: moduleName,
-        action,
-        count: data?.length || 0,
-      },
-    });
-
-    return NextResponse.json(responseBody);
-  } catch (error) {
-    console.error("INTEGRATION_QUERY_API_ERROR:", error);
-
-    await logApiAccess({
-      clientId: auth.client?.id || null,
-      tokenId: auth.token?.id || null,
-      method: "POST",
-      endpoint: url.pathname,
-      requestIp,
-      userAgent,
-      statusCode: 500,
-      isSuccess: false,
-      requestQuery: body,
-      errorMessage: error.message || "Integration query failed",
-=======
           error:
             "Invalid module",
         },
@@ -2076,17 +1821,11 @@ export async function POST(req) {
       errorMessage:
         error?.message ||
         "Integration query failed",
->>>>>>> test_merge_all
     });
 
     return NextResponse.json(
       {
         success: false,
-<<<<<<< HEAD
-        error: error.message || "Integration query failed",
-      },
-      { status: 500 }
-=======
 
         /*
          * ไม่เปิด Database Error
@@ -2098,7 +1837,6 @@ export async function POST(req) {
       {
         status: 500,
       }
->>>>>>> test_merge_all
     );
   }
 }

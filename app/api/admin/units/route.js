@@ -59,8 +59,6 @@ export async function GET(req) {
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
-<<<<<<< HEAD
-=======
      /* =====================================================
        4. Apply Department Scope
        divistions.id
@@ -70,7 +68,6 @@ export async function GET(req) {
       "id"
     );
 
->>>>>>> test_merge_all
     // กรองตาม division_id — ใช้ตอนเปิด form employee เพื่อดึงเฉพาะ
     // unit ของฝ่ายที่เลือก แทนที่จะโหลดทั้งหมดมา filter ฝั่ง client
     if (divisionId) {

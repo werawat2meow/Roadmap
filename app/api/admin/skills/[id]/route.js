@@ -1,28 +1,17 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-<<<<<<< HEAD
-
-=======
 import { writeActivityLog } from "@/lib/activityLogger";
 
 /* ==========================================================
  * GET
  * Get Skill Detail
  * ========================================================== */
->>>>>>> test_merge_all
 export async function GET(req, { params }) {
   try {
     const { id } = await params;
 
     const { data, error } = await supabaseAdmin
       .from("skills")
-<<<<<<< HEAD
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) throw error;
-=======
       .select(
         `
           id,
@@ -60,7 +49,6 @@ export async function GET(req, { params }) {
         }
       );
     }
->>>>>>> test_merge_all
 
     return NextResponse.json({
       success: true,
@@ -70,10 +58,6 @@ export async function GET(req, { params }) {
     console.error("GET_SKILL_DETAIL_ERROR:", error);
 
     return NextResponse.json(
-<<<<<<< HEAD
-      { success: false, error: error.message || "Load skill failed" },
-      { status: 500 }
-=======
       {
         success: false,
         error: error.message || "Load skill failed",
@@ -81,16 +65,10 @@ export async function GET(req, { params }) {
       {
         status: 500,
       }
->>>>>>> test_merge_all
     );
   }
 }
 
-<<<<<<< HEAD
-export async function PATCH(req, { params }) {
-  try {
-    const { id } = await params;
-=======
 /* ==========================================================
  * PATCH
  * Update Skill
@@ -99,7 +77,6 @@ export async function PATCH(req, { params }) {
   try {
     const { id } = await params;
 
->>>>>>> test_merge_all
     const body = await req.json();
 
     const skillCode = body?.skill_code?.trim()?.toUpperCase();
@@ -107,10 +84,6 @@ export async function PATCH(req, { params }) {
 
     if (!skillCode) {
       return NextResponse.json(
-<<<<<<< HEAD
-        { success: false, error: "กรุณากรอกรหัส Skill" },
-        { status: 400 }
-=======
         {
           success: false,
           error: "กรุณากรอกรหัสทักษะ",
@@ -118,16 +91,11 @@ export async function PATCH(req, { params }) {
         {
           status: 400,
         }
->>>>>>> test_merge_all
       );
     }
 
     if (!skillName) {
       return NextResponse.json(
-<<<<<<< HEAD
-        { success: false, error: "กรุณากรอกชื่อ Skill" },
-        { status: 400 }
-=======
         {
           success: false,
           error: "กรุณากรอกชื่อทักษะ",
@@ -203,18 +171,10 @@ export async function PATCH(req, { params }) {
         {
           status: 400,
         }
->>>>>>> test_merge_all
       );
     }
 
     const payload = {
-<<<<<<< HEAD
-      skill_code: skillCode,
-      skill_name: skillName,
-      skill_category: body?.skill_category?.trim() || null,
-      status: body?.status || "active",
-      sort_order: Number(body?.sort_order || 0),
-=======
       category_id: body?.category_id || null,
 
       skill_code: skillCode,
@@ -227,7 +187,6 @@ export async function PATCH(req, { params }) {
 
       sort_order: Number(body?.sort_order || 0),
 
->>>>>>> test_merge_all
       updated_at: new Date().toISOString(),
     };
 
@@ -235,18 +194,6 @@ export async function PATCH(req, { params }) {
       .from("skills")
       .update(payload)
       .eq("id", id)
-<<<<<<< HEAD
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json({
-      success: true,
-      message: "อัพเดท Skill สำเร็จ",
-      data,
-    });
-=======
       .select(
         `
           id,
@@ -298,15 +245,10 @@ export async function PATCH(req, { params }) {
       data,
     });
 
->>>>>>> test_merge_all
   } catch (error) {
     console.error("PATCH_SKILL_ERROR:", error);
 
     return NextResponse.json(
-<<<<<<< HEAD
-      { success: false, error: error.message || "Update skill failed" },
-      { status: 500 }
-=======
       {
         success: false,
         error: error.message || "Update skill failed",
@@ -314,24 +256,18 @@ export async function PATCH(req, { params }) {
       {
         status: 500,
       }
->>>>>>> test_merge_all
     );
   }
 }
 
-<<<<<<< HEAD
-=======
 /* ==========================================================
  * DELETE
  * Delete Skill
  * ========================================================== */
->>>>>>> test_merge_all
 export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
 
-<<<<<<< HEAD
-=======
     // โหลดข้อมูลเดิมก่อนลบ
     const { data: oldData, error: oldError } =
       await supabaseAdmin
@@ -387,20 +323,11 @@ export async function DELETE(req, { params }) {
     // ==========================================
     // Delete
     // ==========================================
->>>>>>> test_merge_all
     const { error } = await supabaseAdmin
       .from("skills")
       .delete()
       .eq("id", id);
 
-<<<<<<< HEAD
-    if (error) throw error;
-
-    return NextResponse.json({
-      success: true,
-      message: "ลบ Skill สำเร็จ",
-    });
-=======
     if (error) {
       throw error;
     }
@@ -430,15 +357,10 @@ export async function DELETE(req, { params }) {
       message: "ลบทักษะสำเร็จ",
     });
 
->>>>>>> test_merge_all
   } catch (error) {
     console.error("DELETE_SKILL_ERROR:", error);
 
     return NextResponse.json(
-<<<<<<< HEAD
-      { success: false, error: error.message || "Delete skill failed" },
-      { status: 500 }
-=======
       {
         success: false,
         error: error.message || "Delete skill failed",
@@ -446,7 +368,6 @@ export async function DELETE(req, { params }) {
       {
         status: 500,
       }
->>>>>>> test_merge_all
     );
   }
 }

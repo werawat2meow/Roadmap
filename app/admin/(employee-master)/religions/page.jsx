@@ -384,25 +384,19 @@ export default function ReligionsPage() {
         <ReligionTable
           data={rows}
           loading={loading}
+
           page={page}
           pageSize={pageSize}
           total={total}
-          onChange={
-            handleTableChange
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            canEdit
-              ? handleEdit
-              : undefined
-          }
-          onDelete={
-            canDelete
-              ? handleDelete
-              : undefined
-          }
+
+          canView={canView}
+          canEdit={canEdit}
+          canDelete={canDelete}
+
+          onChange={handleTableChange}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       }
       modal={

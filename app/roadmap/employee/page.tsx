@@ -18,6 +18,10 @@ export default function EmployeePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // --- เพิ่ม State สำหรับ Pagination ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9; 
+
   useEffect(() => {
     async function loadEmployees() {
       try {
@@ -157,6 +161,15 @@ export default function EmployeePage() {
     });
   }, [searchTerm, filters, employees]);
 
+  // --- Logic สำหรับการตัดแบ่งข้อมูล (Pagination) ---
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  
+  const currentEmployees = useMemo(() => {
+    const lastIndex = currentPage * itemsPerPage;
+    const firstIndex = lastIndex - itemsPerPage;
+    return filteredEmployees.slice(firstIndex, lastIndex);
+  }, [filteredEmployees, currentPage]);
+
   return (
     <div className="p-4 md:p-8">
       <div className="space-y-2">
@@ -169,8 +182,14 @@ export default function EmployeePage() {
       <div>
         <SearchBar
           placeholder="Search Employees..."
-          onSearch={setSearchTerm}
-          onFilter={setFilters}
+          onSearch={(value) => {
+            setSearchTerm(value);
+            setCurrentPage(1);
+          }}
+          onFilter={(values) => {
+            setFilters(values);
+            setCurrentPage(1);
+          }}
           selectedFilters={filters}
           filterOptions={{
             branches,
@@ -184,11 +203,55 @@ export default function EmployeePage() {
         />
       </div>
 
-      <div>
+      <div className="mt-6">
         {loading ? (
           <p>Loading employees...</p>
         ) : (
-          <EmployeeTable employees={filteredEmployees} />
+          <>
+            {/* ส่งข้อมูลที่ถูกหั่นแล้ว (currentEmployees) ไปแสดงผล */}
+            <EmployeeTable employees={currentEmployees} />
+
+            {/* ส่วนควบคุม Pagination UI */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 border-t border-slate-200 pt-4">
+                <div className="text-sm text-slate-600">
+                  แสดงข้อมูล {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} จากทั้งหมด {filteredEmployees.length} รายการ
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                     {/* แสดงเลขหน้าแบบย่อ (หรือวนลูปแสดงทุกหน้าถ้าหน้าไม่เยอะมาก) */}
+                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                       <button
+                         key={page}
+                         onClick={() => setCurrentPage(page)}
+                         className={`px-3 py-1 text-sm rounded-md cursor-pointer ${
+                           currentPage === page
+                             ? "bg-blue-600 text-white font-bold"
+                             : "text-slate-600 hover:bg-slate-100"
+                         }`}
+                       >
+                         {page}
+                       </button>
+                     ))}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -9,6 +9,7 @@ import EvaluationForm, {
   defaultSummaryData,
 } from "@/app/roadmap/evaluate/components/EvaluationForm";
 import SummarySidebar from "@/app/roadmap/evaluate/components/SummarySidebar";
+import ReportPreviewModal from "@/app/roadmap/evaluate/components/ReportPreviewModal";
 import SelectionModal from "@/app/roadmap/evaluatemgr/components/SelectionModal";
 import { Employee } from "@/app/roadmap/types";
 import { useSearchParams } from "next/navigation";
@@ -135,6 +136,9 @@ export default function EvaluateMgrPage() {
   const [saveNotification, setSaveNotification] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const fetchPendingEvaluations = useCallback(async () => {
     if (!reviewerId) return;
@@ -342,6 +346,22 @@ export default function EvaluateMgrPage() {
 
   const handleSaveDraft = async () => sendEvaluationPayload("Draft");
   const handleSubmit = async () => sendEvaluationPayload("Submitted");
+
+  const handlePreview = async () => {
+    if (!selectedEvaluation) return;
+    setIsLoadingPreview(true);
+    const res = await fetch(
+      `/roadmap/api/reports/evaluation-preview?id=${encodeURIComponent(
+        selectedEvaluation.id,
+      )}`,
+    );
+    const json = await res.json();
+    if (res.ok && json?.success) {
+      setPreviewData(json.data);
+      setIsPreviewOpen(true);
+    }
+    setIsLoadingPreview(false);
+  };
 
   const searchParams = useSearchParams();
   const urlEvaluationId = searchParams.get("evaluationId");
@@ -571,6 +591,7 @@ export default function EvaluateMgrPage() {
                   handleFormChange({ maxScore: value })
                 }
                 onSubmit={isReadOnly ? undefined : handleSubmit}
+                onPreview={handlePreview}
                 showSaveDraft={false}
               />
             </div>
@@ -588,6 +609,11 @@ export default function EvaluateMgrPage() {
           {error}
         </div>
       )}
+      <ReportPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        data={previewData}
+      />
       <EvaluationHistoryModal
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}

@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const { data: evalRows, error: evalError } = await supabaseAdmin
     .from("rm_evaluations")
     .select(
-      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id",
+      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by",
     )
     .eq("evaluation_type_id", typeRow.id)
     .eq("status", "Completed")
@@ -90,6 +90,60 @@ export async function GET(req: Request) {
     (employeeRows || []).map((emp: any) => [emp.id, emp]),
   );
 
+  const approverIds = [
+    ...new Set((evalRows || []).map((r: any) => r.approved_by).filter(Boolean)),
+  ];
+
+  const approverNameByUserId = new Map<string, string>();
+
+  if (approverIds.length > 0) {
+    const { data: approverUsers, error: approverUserError } =
+      await supabaseAdmin
+        .from("user_accounts")
+        .select("id,employee_id")
+        .in("id", approverIds);
+
+    if (approverUserError) {
+      console.error("Failed to load approvers", approverUserError);
+      return NextResponse.json(
+        { success: false, error: approverUserError.message },
+        { status: 500 },
+      );
+    }
+
+    const approverEmployeeIds = [
+      ...new Set(
+        approverUsers.map((user: any) => user.employee_id).filter(Boolean),
+      ),
+    ];
+
+    const { data: approverEmployees, error: approverEmpError } =
+      await supabaseAdmin
+        .from("employees")
+        .select("id, first_name_th, last_name_th")
+        .in("id", approverEmployeeIds);
+
+    if (approverEmpError) {
+      console.error("Failed to load approver employee info", approverEmpError);
+      return NextResponse.json(
+        { success: false, error: approverEmpError.message },
+        { status: 500 },
+      );
+    }
+
+    const approverEmpMap = new Map(
+      approverEmployees.map((emp: any) => [
+        emp.id,
+        `${emp.first_name_th || ""} ${emp.last_name_th || ""}`.trim(),
+      ]),
+    );
+
+    approverUsers.forEach((user: any) => {
+      const name = approverEmpMap.get(user.employee_id) || "ไม่ระบุ";
+      approverNameByUserId.set(user.id, name);
+    });
+  }
+
   const mapped = (evalRows || []).map((item: any) => {
     const employee = employeeMap.get(item.employee_id) || {};
     const totalScore = item.totalScore ?? 0;
@@ -118,6 +172,9 @@ export async function GET(req: Request) {
       maxScore,
       scorePercent,
       status: item.status,
+      approvedByName: item.approved_by
+        ? approverNameByUserId.get(item.approved_by) || "ไม่ระบุ"
+        : "ไม่ระบุ",
     };
   });
 

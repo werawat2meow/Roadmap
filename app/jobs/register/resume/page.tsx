@@ -23,7 +23,7 @@ import { InboxOutlined } from "@ant-design/icons";
 
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { validatePhone, validateEmail , createAgreement} from "@/app/jobs/types/utils";
 
 import AgreementSection from "@/app/jobs/components/AgreementSection";
@@ -45,6 +45,7 @@ interface ResumeFormValues {
   line_id: string;
   other_position: string;
   expected_salary?: number;
+  self_presentation_url?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -231,6 +232,7 @@ export default function ResumeForm() {
           certify: agreement.certify,
           pdpa: agreement.pdpa,
           from_social_media: agreement.from_social_media || "",
+          self_presentation_url: values.self_presentation_url || null,
         })
       );
 
@@ -582,6 +584,37 @@ export default function ResumeForm() {
                         />
                         <Input value={getUIText(uiText.type_salary, locale)} disabled />
                       </Space.Compact>
+                    </Form.Item>
+                  </Col>
+
+                  {/* Self Presentation URL */}
+                  <Col xs={24}>
+                    <Form.Item
+                      name="self_presentation_url"
+                      label={
+                        locale === "TH"
+                          ? "URL สำหรับพรีเซ้นตัวเอง"
+                          : "Self Presentation URL"
+                      }
+                      rules={[
+                        {
+                          type: "url",
+                          message:
+                            locale === "TH"
+                              ? "กรุณากรอก URL ให้ถูกต้อง"
+                              : "Please enter a valid URL.",
+                        },
+                      ]}
+                        >
+                      <Input
+                        placeholder={
+                          locale === "TH"
+                            ? "เช่น https://www.linkedin.com/in/yourname"
+                            : "Example: https://www.linkedin.com/in/yourname"
+                        }
+                        maxLength={500}
+                        allowClear
+                      />
                     </Form.Item>
                   </Col>
                 </Row>

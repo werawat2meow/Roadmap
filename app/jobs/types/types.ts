@@ -10,7 +10,7 @@ export type LanguageCode = string;
 
 export interface PositionInfo {
   jobId: string;
-  positionId: string;
+  positionId: string | number | undefined;
   positionName: string;
   department?: string;
   companyName?: string;
@@ -73,8 +73,8 @@ export interface PersonalInformationData  {
   gender: Gender;
   pregnancyAge: string;
   militaryStatus: MilitaryStatus | "";
-  height: string;
-  weight: string;
+  height: number | null;
+  weight: number | null;
   nationality: string;
   religion: string;
   idCardNo: string;
@@ -125,7 +125,7 @@ export interface WorkExperience {
   period: string;
   companyName: string;
   position: string;
-  latestSalary: string;
+  latestSalary: number;
   reasonForLeaving: string;
 }
 
@@ -189,7 +189,8 @@ export interface Agreement {
 
 export interface JobApplicationPayload {
   jobId: string;
-  positionId: string;
+  positionId: string | number;
+  self_presentation_url?: string;
   personal: PersonalInformationData;
   education: EducationHistory[];
   workExperience: WorkExperience[];

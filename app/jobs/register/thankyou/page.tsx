@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Flex, Progress, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation, uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 

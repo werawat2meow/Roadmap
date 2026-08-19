@@ -1,6 +1,8 @@
+// PersonalInformation
+
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import {
   Card,
@@ -14,17 +16,17 @@ import {
   Row,
   Select,
   Space,
+  Spin,
   Typography,
   Flex,
 } from "antd";
 
 import { uiText } from "@/app/jobs/components/translations";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getUIText } from "@/app/jobs/lib/ui";
 import { AddressSelector } from "@/app/jobs/components/address";
 
 import {
-  MaritalStatus,
   MilitaryStatus,
   PersonalInformationProps,
   ResidenceType,
@@ -41,6 +43,45 @@ import {
 const { Title } = Typography;
 
 const { Option } = Select;
+
+/* ---------------------------------------------------------------------- */
+/*                              Gender Types                              */
+/* ---------------------------------------------------------------------- */
+
+type GenderCode = "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED";
+
+interface GenderOption {
+  id: number | string;
+  gender_code: GenderCode;
+  gender_name_th: string;
+  gender_name_en: string;
+  status?: string;
+  is_default?: boolean;
+}
+
+interface MaritalStatusOption {
+  id: number | string;
+  marital_status_name_th: string;
+  marital_status_name_en: string;
+  status?: string;
+  sort_order?: number;
+}
+
+interface NationalityOption {
+  id: number | string;
+  nationality_name_th: string;
+  nationality_name_en: string;
+  status?: string;
+  sort_order?: number;
+}
+
+interface ReligionOption {
+  id: number | string;
+  religion_name_th: string;
+  religion_name_en: string;
+  status?: string;
+  sort_order?: number;
+}
 
 export default function PersonalInformation({
   form,
@@ -66,6 +107,270 @@ export default function PersonalInformation({
   }, [form, value]);
 
   /* ---------------------------------------------------------------------- */
+  /*                          Fetch Gender Options                          */
+  /* ---------------------------------------------------------------------- */
+
+  const [genderOptions, setGenderOptions] = useState<GenderOption[]>([]);
+  const [genderLoading, setGenderLoading] = useState<boolean>(true);
+  const [genderError, setGenderError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchGenders = async () => {
+      try {
+        setGenderLoading(true);
+        setGenderError(false);
+
+        const res = await fetch("/jobs/api/gender");
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch genders: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        // API route responds with { data: [...] } on success,
+        // or { message: string } on error (see app/jobs/api/gender/route.ts).
+        const list: GenderOption[] = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+
+        if (list.length === 0) {
+          console.warn("Genders API did not return any options:", json);
+        }
+
+        if (isMounted) {
+          setGenderOptions(list);
+        }
+      } catch (err) {
+        console.error("Error fetching genders:", err);
+        if (isMounted) {
+          setGenderError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setGenderLoading(false);
+        }
+      }
+    };
+
+    fetchGenders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Currently selected gender option (used to derive gender_code for
+  // conditional logic below, since the stored value is now the gender id
+  // rather than a hardcoded "male" / "female" / "other" string).
+  const selectedGenderOption = Array.isArray(genderOptions)
+    ? genderOptions.find((g) => String(g.id) === String(value.gender))
+    : undefined;
+
+  const selectedGenderCode = selectedGenderOption?.gender_code;
+
+  const isFemale = selectedGenderCode === "FEMALE";
+  const isMale = selectedGenderCode === "MALE";
+
+  /* ---------------------------------------------------------------------- */
+  /*                       Fetch Marital Status Options                     */
+  /* ---------------------------------------------------------------------- */
+
+  const [maritalStatusOptions, setMaritalStatusOptions] = useState<
+    MaritalStatusOption[]
+  >([]);
+  const [maritalStatusLoading, setMaritalStatusLoading] = useState<boolean>(true);
+  const [maritalStatusError, setMaritalStatusError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchMaritalStatuses = async () => {
+      try {
+        setMaritalStatusLoading(true);
+        setMaritalStatusError(false);
+
+        // NOTE: assumes an API route at app/jobs/api/marital-status/route.ts
+        // that mirrors the gender route (Supabase, filtered to status = "active").
+        const res = await fetch("/jobs/api/marital-status");
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch marital statuses: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        const list: MaritalStatusOption[] = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+
+        if (list.length === 0) {
+          console.warn("Marital statuses API did not return any options:", json);
+        }
+
+        // Sort by sort_order (ascending); options without sort_order fall
+        // back to their original order.
+        const sorted = [...list].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        );
+
+        if (isMounted) {
+          setMaritalStatusOptions(sorted);
+        }
+      } catch (err) {
+        console.error("Error fetching marital statuses:", err);
+        if (isMounted) {
+          setMaritalStatusError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setMaritalStatusLoading(false);
+        }
+      }
+    };
+
+    fetchMaritalStatuses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /* ---------------------------------------------------------------------- */
+  /*                        Fetch Nationality Options                       */
+  /* ---------------------------------------------------------------------- */
+
+  const [nationalityOptions, setNationalityOptions] = useState<
+    NationalityOption[]
+  >([]);
+  const [nationalityLoading, setNationalityLoading] = useState<boolean>(true);
+  const [nationalityError, setNationalityError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchNationalities = async () => {
+      try {
+        setNationalityLoading(true);
+        setNationalityError(false);
+
+        // NOTE: assumes an API route at app/jobs/api/nationality/route.ts
+        // that mirrors the gender route (Supabase, filtered to status =
+        // "active", ordered by sort_order).
+        const res = await fetch("/jobs/api/nationality");
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch nationalities: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        const list: NationalityOption[] = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+
+        if (list.length === 0) {
+          console.warn("Nationalities API did not return any options:", json);
+        }
+
+        const sorted = [...list].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        );
+
+        if (isMounted) {
+          setNationalityOptions(sorted);
+        }
+      } catch (err) {
+        console.error("Error fetching nationalities:", err);
+        if (isMounted) {
+          setNationalityError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setNationalityLoading(false);
+        }
+      }
+    };
+
+    fetchNationalities();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /* ---------------------------------------------------------------------- */
+  /*                         Fetch Religion Options                         */
+  /* ---------------------------------------------------------------------- */
+
+  const [religionOptions, setReligionOptions] = useState<ReligionOption[]>([]);
+  const [religionLoading, setReligionLoading] = useState<boolean>(true);
+  const [religionError, setReligionError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchReligions = async () => {
+      try {
+        setReligionLoading(true);
+        setReligionError(false);
+
+        // NOTE: assumes an API route at app/jobs/api/religion/route.ts
+        // that mirrors the gender route (Supabase, filtered to status =
+        // "active", ordered by sort_order).
+        const res = await fetch("/jobs/api/religion");
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch religions: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        const list: ReligionOption[] = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+
+        if (list.length === 0) {
+          console.warn("Religions API did not return any options:", json);
+        }
+
+        const sorted = [...list].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        );
+
+        if (isMounted) {
+          setReligionOptions(sorted);
+        }
+      } catch (err) {
+        console.error("Error fetching religions:", err);
+        if (isMounted) {
+          setReligionError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setReligionLoading(false);
+        }
+      }
+    };
+
+    fetchReligions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /* ---------------------------------------------------------------------- */
   /*                            Update Form Data                            */
   /* ---------------------------------------------------------------------- */
 
@@ -79,6 +384,22 @@ export default function PersonalInformation({
     };
     onChange(newValue);
   };
+
+  // Auto-select the default gender (is_default = true) once options have
+  // loaded, but only if the user hasn't already picked one (e.g. editing
+  // an existing application) — never override an existing selection.
+  useEffect(() => {
+    if (value.gender) return;
+    if (!Array.isArray(genderOptions) || genderOptions.length === 0) return;
+
+    const defaultOption = genderOptions.find((g) => g.is_default);
+
+    if (defaultOption) {
+      updateField("gender", defaultOption.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genderOptions]);
+
 
   const updateDriverLicense = (
     key: keyof typeof value.driverLicense,
@@ -161,28 +482,6 @@ export default function PersonalInformation({
     {
       label:getUIText(uiText.residenceOther, locale),
       value: "other",
-    },
-  ];
-
-  const maritalOptions: {
-    label: string;
-    value: MaritalStatus;
-  }[] = [
-    {
-      label:getUIText(uiText.maritalSingle, locale),
-      value: "single",
-    },
-    {
-      label:getUIText(uiText.maritalMarried, locale),
-      value: "married",
-    },
-    {
-      label:getUIText(uiText.maritalDivorced, locale),
-      value: "divorced",
-    },
-    {
-      label:getUIText(uiText.maritalWidowed, locale),
-      value: "widowed",
     },
   ];
 
@@ -350,28 +649,34 @@ export default function PersonalInformation({
                     {/* Gender */}
                     <Col xs={24} md={12}>
                         <Form.Item label={getUIText(uiText.gender, locale)} required >
-                            <Radio.Group
-                                name="gender"
-                                value={value.gender}
-                                onChange={(e) => updateField("gender", e.target.value) }
-                            >
-                                <Radio value="male">
-                                    {getUIText(uiText.genderMale, locale)}
-                                </Radio>
-
-                                <Radio value="female">
-                                    {getUIText(uiText.genderFemale, locale)}
-                                </Radio>
-
-                                <Radio value="other">
-                                    {getUIText(uiText.genderOther, locale)}
-                                </Radio>
-                            </Radio.Group>
+                            {genderLoading ? (
+                                <Spin size="small" />
+                            ) : genderError ? (
+                                <Typography.Text type="danger">
+                                    {language === "TH"
+                                        ? "ไม่สามารถโหลดข้อมูลเพศได้"
+                                        : "Failed to load gender options"}
+                                </Typography.Text>
+                            ) : (
+                                <Radio.Group
+                                    name="gender"
+                                    value={value.gender}
+                                    onChange={(e) => updateField("gender", e.target.value) }
+                                >
+                                    {(Array.isArray(genderOptions) ? genderOptions : []).map((option) => (
+                                        <Radio key={option.id} value={option.id}>
+                                            {locale === "TH"
+                                                ? option.gender_name_th
+                                                : option.gender_name_en}
+                                        </Radio>
+                                    ))}
+                                </Radio.Group>
+                            )}
                         </Form.Item>
                     </Col>
 
                     {/* Pregnancy */}
-                    {value.gender === "female" && (
+                    {isFemale && (
                     <Col xs={24} md={6}>
                         <Form.Item label={getUIText(uiText.pregnancyAge, locale)} >
                             <Input
@@ -389,7 +694,7 @@ export default function PersonalInformation({
 
                     {/* Military */}
 
-                    {value.gender === "male" && (
+                    {isMale && (
                         <Col xs={24}>
                             <Form.Item label={getUIText(uiText.militaryStatus, locale)} >
                                 <Radio.Group
@@ -411,22 +716,26 @@ export default function PersonalInformation({
 
                     {/* Height */}
                     <Col xs={24} md={6}>
-                        <Form.Item label={getUIText(uiText.height, locale)} >
-                            <Input
+                        <Form.Item label={getUIText(uiText.height, locale)}>
+                            <InputNumber
+                                style={{ width: "100%" }}
                                 value={value.height}
-                                onChange={(e) => updateField("height", e.target.value) }
+                                onChange={(val) => updateField("height", val)}
                                 suffix="cm"
+                                min={0}
                             />
                         </Form.Item>
                     </Col>
 
                     {/* Weight */}
                     <Col xs={24} md={6}>
-                        <Form.Item label={getUIText(uiText.weight, locale)} >
-                            <Input
+                        <Form.Item label={getUIText(uiText.weight, locale)}>
+                            <InputNumber
+                                style={{ width: "100%" }}
                                 value={value.weight}
-                                onChange={(e) => updateField("weight", e.target.value) }
+                                onChange={(val) => updateField("weight", val)}
                                 suffix="kg"
+                                min={0}
                             />
                         </Form.Item>
                     </Col>
@@ -434,9 +743,33 @@ export default function PersonalInformation({
                     {/* Nationality */}
                     <Col xs={24} md={6}>
                         <Form.Item label={getUIText(uiText.nationality, locale)} >
-                            <Input
-                                value={value.nationality}
-                                onChange={(e) => updateField( "nationality", e.target.value )}
+                            <Select
+                                showSearch
+                                allowClear
+                                loading={nationalityLoading}
+                                disabled={nationalityLoading || nationalityError}
+                                placeholder={
+                                    nationalityError
+                                    ? (language === "TH"
+                                        ? "ไม่สามารถโหลดข้อมูลสัญชาติได้"
+                                        : "Failed to load nationalities")
+                                    : (language === "TH"
+                                        ? "เลือกสัญชาติ"
+                                        : "Select nationality")
+                                }
+                                style={{ width: "100%" }}
+                                value={value.nationality || undefined}
+                                onChange={(v) => updateField("nationality", v)}
+                                optionFilterProp="label"
+                                options={(Array.isArray(nationalityOptions) ? nationalityOptions : []).map(
+                                    (option) => ({
+                                        value: option.id,
+                                        label:
+                                            locale === "TH"
+                                                ? option.nationality_name_th
+                                                : option.nationality_name_en,
+                                    })
+                                )}
                             />
                         </Form.Item>
                     </Col>
@@ -444,9 +777,33 @@ export default function PersonalInformation({
                     {/* Religion */}
                     <Col xs={24} md={6}>
                         <Form.Item label={getUIText(uiText.religion, locale)} >
-                            <Input
-                                value={value.religion}
-                                onChange={(e) => updateField("religion", e.target.value) }
+                            <Select
+                                showSearch
+                                allowClear
+                                loading={religionLoading}
+                                disabled={religionLoading || religionError}
+                                placeholder={
+                                    religionError
+                                    ? (language === "TH"
+                                        ? "ไม่สามารถโหลดข้อมูลศาสนาได้"
+                                        : "Failed to load religions")
+                                    : (language === "TH"
+                                        ? "เลือกศาสนา"
+                                        : "Select religion")
+                                }
+                                style={{ width: "100%" }}
+                                value={value.religion || undefined}
+                                onChange={(v) => updateField("religion", v)}
+                                optionFilterProp="label"
+                                options={(Array.isArray(religionOptions) ? religionOptions : []).map(
+                                    (option) => ({
+                                        value: option.id,
+                                        label:
+                                            locale === "TH"
+                                                ? option.religion_name_th
+                                                : option.religion_name_en,
+                                    })
+                                )}
                             />
                         </Form.Item>
                     </Col>
@@ -689,25 +1046,39 @@ export default function PersonalInformation({
                     <Col xs={24}>
                         <div data-field="maritalStatus">
                             <Form.Item  label={getUIText(uiText.maritalStatus, locale)} required >
-                                <Radio.Group
-                                    name="maritalStatus"
-                                    style={{ width: "100%" }}
-                                    value={value.maritalStatus}
-                                    onChange={(e) => updateField( "maritalStatus", e.target.value) }
-                                >
-                                    <Row gutter={[16, 12]}>
-                                        {maritalOptions.map((item) => (
-                                            <Col
-                                                xs={24}
-                                                sm={12}
-                                                md={8}
-                                                key={item.value}
-                                            >
-                                                <Radio value={item.value}> {item.label} </Radio>
-                                            </Col>
-                                        ))}
-                                    </Row>
-                                </Radio.Group>
+                                {maritalStatusLoading ? (
+                                    <Spin size="small" />
+                                ) : maritalStatusError ? (
+                                    <Typography.Text type="danger">
+                                        {language === "TH"
+                                            ? "ไม่สามารถโหลดข้อมูลสถานภาพสมรสได้"
+                                            : "Failed to load marital status options"}
+                                    </Typography.Text>
+                                ) : (
+                                    <Radio.Group
+                                        name="maritalStatus"
+                                        style={{ width: "100%" }}
+                                        value={value.maritalStatus}
+                                        onChange={(e) => updateField( "maritalStatus", e.target.value) }
+                                    >
+                                        <Row gutter={[16, 12]}>
+                                            {(Array.isArray(maritalStatusOptions) ? maritalStatusOptions : []).map((item) => (
+                                                <Col
+                                                    xs={24}
+                                                    sm={12}
+                                                    md={8}
+                                                    key={item.id}
+                                                >
+                                                    <Radio value={item.id}>
+                                                        {locale === "TH"
+                                                            ? item.marital_status_name_th
+                                                            : item.marital_status_name_en}
+                                                    </Radio>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </Radio.Group>
+                                )}
                             </Form.Item>
                         </div>
                     </Col>
@@ -718,7 +1089,7 @@ export default function PersonalInformation({
                     <Col xs={24} md={8}>
                         <Form.Item label={getUIText(uiText.numberOfChildren, locale)} >
                             <Input
-                                value={value.children}
+                                value={value.children ?? 0}
                                 onChange={(e) => updateField( "children", e.target.value.replace(/\D/g, "") ) }
                                 placeholder={
                                     language === "TH"

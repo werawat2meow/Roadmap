@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import {
   Col,
   Form,
@@ -9,14 +8,60 @@ import {
   Select,
   Switch,
 } from "antd";
+
 import JobSelector from "./JobSelector";
 import PositionLevelSelector from "./Positionlevelselector";
+import LazyPositionFamilySelect from "./LazyPositionFamilySelect";
 
 const { TextArea } = Input;
 
-export default function PositionForm({form,families = [],disabled = false,}) {
+export default function PositionForm({
+  form,
+  initialValues = null,
+  disabled = false,
+}) {
+  const familyId = Form.useWatch(
+    "position_family_id",
+    form
+  );
 
-  const familyId = Form.useWatch("position_family_id",form);
+  /* =========================================================
+     Edit Mode - Current Family Option
+  ========================================================= */
+
+  const initialFamilyOption =
+    initialValues?.position_family_id &&
+    initialValues?.family
+      ? {
+          id:
+            initialValues.position_family_id,
+
+          family_code:
+            initialValues.family.code,
+
+          family_name:
+            initialValues.family.name,
+        }
+      : null;
+
+  /* =========================================================
+     Edit Mode - Current Level Options
+  ========================================================= */
+
+  const initialLevelOptions =
+    Array.isArray(initialValues?.levels)
+      ? initialValues.levels.map(
+          (item) => ({
+            id: item.id,
+            level_code:
+              item.level_code,
+            level_name:
+              item.level_name,
+            sort_order:
+              item.sort_order ?? 0,
+          })
+        )
+      : [];
 
   return (
     <Form
@@ -32,13 +77,12 @@ export default function PositionForm({form,families = [],disabled = false,}) {
         <Col xs={24} md={8}>
           <Form.Item
             label="รหัสตำแหน่ง"
-
             name="position_code"
-
             rules={[
               {
                 required: true,
-                message: "กรุณากรอกรหัสตำแหน่ง",
+                message:
+                  "กรุณากรอกรหัสตำแหน่ง",
               },
             ]}
           >
@@ -56,13 +100,12 @@ export default function PositionForm({form,families = [],disabled = false,}) {
         <Col xs={24} md={16}>
           <Form.Item
             label="ชื่อตำแหน่ง"
-
             name="position_name"
-
             rules={[
               {
                 required: true,
-                message: "กรุณากรอกชื่อตำแหน่ง",
+                message:
+                  "กรุณากรอกชื่อตำแหน่ง",
               },
             ]}
           >
@@ -80,7 +123,6 @@ export default function PositionForm({form,families = [],disabled = false,}) {
         <Col xs={24} md={8}>
           <Form.Item
             label="ชื่อย่อ"
-
             name="short_name"
           >
             <Input
@@ -90,9 +132,10 @@ export default function PositionForm({form,families = [],disabled = false,}) {
           </Form.Item>
         </Col>
 
-        {/* =========================
+        {/* =====================================================
             Job Family
-        ========================= */}
+            Lazy Load + Edit Initial Label
+        ===================================================== */}
 
         <Col xs={24} md={16}>
           <Form.Item
@@ -101,34 +144,27 @@ export default function PositionForm({form,families = [],disabled = false,}) {
             rules={[
               {
                 required: true,
-                message: "กรุณาเลือกกลุ่มสายงาน",
+                message:
+                  "กรุณาเลือกกลุ่มสายงาน",
               },
             ]}
           >
-            <Select
-              showSearch
-              allowClear
+            <LazyPositionFamilySelect
               disabled={disabled}
-              optionFilterProp="label"
-              placeholder="เลือกกลุ่มสายงาน"
-              onChange={(value) => {
-                form.setFieldValue("position_family_id", value);
-                form.setFieldValue("position_levels", []);
+              initialOption={
+                initialFamilyOption
+              }
+              afterChange={() => {
+                form.setFieldValue(
+                  "position_levels",
+                  []
+                );
               }}
-            >
-              {families.map((item) => (
-                <Select.Option
-                  key={item.id}
-                  value={item.id}
-                  label={`${item.family_code} - ${item.family_name}`}
-                >
-                  {item.family_code} - {item.family_name}
-                </Select.Option>
-              ))}
-            </Select>
+            />
           </Form.Item>
         </Col>
-                {/* =========================
+
+        {/* =========================
             Job
         ========================= */}
 
@@ -143,9 +179,10 @@ export default function PositionForm({form,families = [],disabled = false,}) {
           </Form.Item>
         </Col>
 
-        {/* =========================
+        {/* =====================================================
             Position Levels
-        ========================= */}
+            Load by Family + Edit Initial Labels
+        ===================================================== */}
 
         <Col xs={24} md={12}>
           <Form.Item
@@ -154,12 +191,16 @@ export default function PositionForm({form,families = [],disabled = false,}) {
             rules={[
               {
                 required: true,
-                message: "กรุณาเลือกระดับตำแหน่ง",
+                message:
+                  "กรุณาเลือกระดับตำแหน่ง",
               },
             ]}
           >
             <PositionLevelSelector
               familyId={familyId}
+              initialOptions={
+                initialLevelOptions
+              }
               disabled={disabled}
             />
           </Form.Item>
@@ -246,7 +287,9 @@ export default function PositionForm({form,families = [],disabled = false,}) {
             name="status"
             initialValue="active"
           >
-            <Select disabled={disabled}>
+            <Select
+              disabled={disabled}
+            >
               <Select.Option value="active">
                 Active
               </Select.Option>

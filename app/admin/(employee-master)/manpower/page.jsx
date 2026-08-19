@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Progress, Skeleton, Tag, Input } from "antd";
 import {WarningOutlined,SearchOutlined,ArrowLeftOutlined,DownloadOutlined,} from "@ant-design/icons";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 

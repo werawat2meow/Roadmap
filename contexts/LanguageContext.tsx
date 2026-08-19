@@ -12,8 +12,7 @@ interface LanguageContextType {
   setLocale: (locale: string) => void;
 }
 
-const LanguageContext =
-  createContext<LanguageContextType | null>(null);
+const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export function LanguageProvider({
   children,

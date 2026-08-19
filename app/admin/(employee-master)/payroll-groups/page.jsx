@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Form } from "antd";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { swalSuccess, swalError, swalConfirm, } from "@/components/Swal";
 import {hasPermission,} from "@/lib/permissions";

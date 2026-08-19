@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Form } from "antd";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
@@ -156,14 +156,21 @@ export default function CountriesPage() {
   };
 
   const handleCreate = () => {
-    resetForm();
+    if (!canCreate) {
+      swalError("คุณไม่มีสิทธิ์เพิ่มประเทศ");
+      return;
+    }
 
+    resetForm();
     setOpen(true);
   };
 
-  const handleView = async (
-    record
-  ) => {
+  const handleView = async (record) => {
+    if (!canView) {
+      swalError("คุณไม่มีสิทธิ์ดูข้อมูลประเทศ");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -171,19 +178,18 @@ export default function CountriesPage() {
         `/api/admin/countries/${record.id}`
       );
 
-      const result =
-        await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          result.error
+          result.error ||
+            "ไม่สามารถโหลดข้อมูลประเทศได้"
         );
       }
 
       resetForm();
 
       setEditing(result.data);
-
       setViewMode(true);
 
       form.setFieldsValue(
@@ -193,16 +199,20 @@ export default function CountriesPage() {
       setOpen(true);
     } catch (error) {
       swalError(
-        error.message
+        error.message ||
+          "ไม่สามารถโหลดข้อมูลประเทศได้"
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = async (
-    record
-  ) => {
+  const handleEdit = async (record) => {
+    if (!canEdit) {
+      swalError("คุณไม่มีสิทธิ์แก้ไขประเทศ");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -210,19 +220,18 @@ export default function CountriesPage() {
         `/api/admin/countries/${record.id}`
       );
 
-      const result =
-        await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          result.error
+          result.error ||
+            "ไม่สามารถโหลดข้อมูลประเทศได้"
         );
       }
 
       resetForm();
 
       setEditing(result.data);
-
       setViewMode(false);
 
       form.setFieldsValue(
@@ -232,7 +241,8 @@ export default function CountriesPage() {
       setOpen(true);
     } catch (error) {
       swalError(
-        error.message
+        error.message ||
+          "ไม่สามารถโหลดข้อมูลประเทศได้"
       );
     } finally {
       setLoading(false);
@@ -245,14 +255,21 @@ export default function CountriesPage() {
     resetForm();
   };
  
-  const handleSubmit = async (
-    values
-  ) => {
+  const handleSubmit = async (values) => {
+    const isEdit = Boolean(editing);
+
+    if (isEdit && !canEdit) {
+      swalError("คุณไม่มีสิทธิ์แก้ไขประเทศ");
+      return;
+    }
+
+    if (!isEdit && !canCreate) {
+      swalError("คุณไม่มีสิทธิ์เพิ่มประเทศ");
+      return;
+    }
+
     try {
       setSaving(true);
-
-      const isEdit =
-        Boolean(editing);
 
       const url = isEdit
         ? `/api/admin/countries/${editing.id}`
@@ -268,22 +285,23 @@ export default function CountriesPage() {
           "Content-Type":
             "application/json",
         },
-        body: JSON.stringify(
-          values
-        ),
+        body: JSON.stringify(values),
       });
 
-      const result =
-        await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          result.error
+          result.error ||
+            "ไม่สามารถบันทึกข้อมูลประเทศได้"
         );
       }
 
       await swalSuccess(
-        result.message
+        result.message ||
+          (isEdit
+            ? "แก้ไขข้อมูลประเทศเรียบร้อยแล้ว"
+            : "เพิ่มประเทศเรียบร้อยแล้ว")
       );
 
       handleClose();
@@ -291,7 +309,8 @@ export default function CountriesPage() {
       await fetchCountries();
     } catch (error) {
       swalError(
-        error.message
+        error.message ||
+          "ไม่สามารถบันทึกข้อมูลประเทศได้"
       );
     } finally {
       setSaving(false);
@@ -299,13 +318,10 @@ export default function CountriesPage() {
   };
 
   const handleDelete = async (record) => {
-    const confirmed =
-      await swalConfirm({
-        title: "ยืนยันการลบ",
-        text: `ต้องการลบ "${record.country_name_th}" ใช่หรือไม่`,
-      });
-
-    if (!confirmed) return;
+    if (!canDelete) {
+      swalError("คุณไม่มีสิทธิ์ลบประเทศ");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -317,23 +333,40 @@ export default function CountriesPage() {
         }
       );
 
-      const result =
-        await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          result.error
+          result.error ||
+            "ไม่สามารถลบประเทศได้"
         );
       }
 
       await swalSuccess(
-        result.message
+        result.message ||
+          "ลบประเทศเรียบร้อยแล้ว"
       );
+
+      // กรณีลบรายการสุดท้ายของหน้าปัจจุบัน
+      if (
+        rows.length === 1 &&
+        page > 1
+      ) {
+        setPage(
+          (current) =>
+            Math.max(
+              current - 1,
+              1
+            )
+        );
+        return;
+      }
 
       await fetchCountries();
     } catch (error) {
       swalError(
-        error.message
+        error.message ||
+          "ไม่สามารถลบประเทศได้"
       );
     } finally {
       setLoading(false);
@@ -358,6 +391,14 @@ export default function CountriesPage() {
     setPage(pagination.current);
     setPageSize(pagination.pageSize);
   };
+
+  console.log("COUNTRY PERMISSIONS", {
+  permissions: user?.permissions,
+  canView,
+  canCreate,
+  canEdit,
+  canDelete,
+});
 
   if (loadingUser) return <LoadingOrb />;
   if (!user) return null;
@@ -409,25 +450,19 @@ export default function CountriesPage() {
         <CountryTable
           data={rows}
           loading={loading}
+
           page={page}
           pageSize={pageSize}
           total={total}
-          onChange={
-            handleTableChange
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            canEdit
-              ? handleEdit
-              : undefined
-          }
-          onDelete={
-            canDelete
-              ? handleDelete
-              : undefined
-          }
+
+          canView={canView}
+          canEdit={canEdit}
+          canDelete={canDelete}
+
+          onChange={handleTableChange}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       }
       modal={

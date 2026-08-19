@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Link from "next/link";
 import { readFilters, updateFilter } from "@/app/jobs/lib/filters";
 import { useBranches } from "@/app/jobs/contexts/BranchContext";

@@ -216,18 +216,13 @@ export default function AdminLayout({
       =================================================== */}
 
       <PortalSidebar
-        collapsed={
-          collapsed
-        }
-        setCollapsed={
-          setCollapsed
-        }
-        mobileOpen={
-          mobileOpen
-        }
-        setMobileOpen={
-          setMobileOpen
-        }
+        user={user}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        loggingOut={loggingOut}
+        onLogout={handleLogout}
       />
 
       {/* ===================================================

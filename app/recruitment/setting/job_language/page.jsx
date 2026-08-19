@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import JobLanguageModal from "@/app/recruitment/components/JobLanguageModal";
 import DeleteModal from "@/app/recruitment/components/DeleteModal";
 
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
+
 export default function JobLanguagePage() {
   const [items, setItems] = useState([]);
   const [positions, setPositions] = useState([]);
@@ -17,6 +20,11 @@ export default function JobLanguagePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const { isChecking, canView, canCreate, canEdit, canDelete } = usePageGuard({
+    module: "recruitment.job.language",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   async function loadData() {
     setLoading(true);
@@ -76,6 +84,9 @@ export default function JobLanguagePage() {
     }
   }
 
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
+
   return (
     <div className="h-full w-full">
       <div className="overflow-y-auto p-6 w-full">
@@ -84,15 +95,17 @@ export default function JobLanguagePage() {
             <h1 className="text-2xl font-semibold">Job Language</h1>
             <p className="text-sm text-gray-600">จัดการข้อมูลภาษาของตำแหน่งงาน</p>
           </div>
-          <div className="justify-self-center md:justify-self-end">
-            <button
-              onClick={handleAdd}
-              className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
-              style={{ backgroundColor: "green" }}
-            >
-              + เพิ่มข้อมูล
-            </button>
-          </div>
+          { canCreate && (
+            <div className="justify-self-center md:justify-self-end">
+              <button
+                onClick={handleAdd}
+                className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
+                style={{ backgroundColor: "green" }}
+              >
+                + เพิ่มข้อมูล
+              </button>
+            </div>
+          )}
         </div>
       </div>
       
@@ -133,18 +146,22 @@ export default function JobLanguagePage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2 justify-center">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
-                          >
-                            แก้ไข
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="rounded-lg border border-red-300 px-3 py-1.5 text-red-600 hover:bg-red-50"
-                          >
-                            ลบ
-                          </button>
+                          { canEdit &&(
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+                            >
+                              แก้ไข
+                            </button>
+                          )}
+                          { canDelete && (
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="rounded-lg border border-red-300 px-3 py-1.5 text-red-600 hover:bg-red-50"
+                            >
+                              ลบ
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

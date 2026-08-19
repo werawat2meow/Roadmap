@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { swalSuccess, swalError, swalConfirm } from "../../../components/Swal";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
   group_code: "",
@@ -16,6 +14,7 @@ const initialForm = {
 };
 
 export default function BranchGroupsPage() {
+  const {user,loadingUser,canView,canCreate,canEditRecord,canDeleteRecord,hasAllScope, accessibleIds,} = useScopedPermissions("ems.branch_groups",{scopeType:"branch_group",});
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,67 +26,77 @@ export default function BranchGroupsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
 
-  const router = useRouter();
-  const { user, loadingUser } = useAuth();
+  const loadGroups = useCallback(async (keyword = "") => {
+    try {
+        setLoading(true);
+        setError("");
 
-  const canView = hasPermission(user, "ems.branch_groups.view");
-  const canCreate = hasPermission(user, "ems.branch_groups.create");
-  const canEdit = hasPermission(user, "ems.branch_groups.edit");
-  const canDelete = hasPermission(user, "ems.branch_groups.delete");
+        const url =
+          keyword
+            ? `/api/admin/branch-groups?search=${encodeURIComponent(
+                keyword
+              )}`
+            : "/api/admin/branch-groups";
+
+        const res =
+          await fetch(
+            url,
+            {
+              method: "GET",
+              cache:
+                "no-store",
+            }
+          );
+
+        const data =
+          await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            data?.error ||
+              "Load branch groups failed"
+          );
+        }
+
+        setGroups(
+          data.data || []
+        );
+      } catch (err) {
+        console.error(
+          err
+        );
+
+        setError(
+          err.message ||
+            "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
+    if (loadingUser) {
       return;
     }
 
-    if (!canView) {
-      router.replace("/admin");
+    if ( !user || !canView) {
+      return;
     }
-  }, [user, canView, loadingUser, router]);
 
-  const loadGroups = async (keyword = "") => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const url = keyword
-        ? `/api/admin/branch-groups?search=${encodeURIComponent(keyword)}`
-        : "/api/admin/branch-groups";
-
-      const res = await fetch(url, {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Load branch groups failed");
-      }
-
-      setGroups(data.data || []);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadGroups();
-  }, []);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
-      loadGroups(search);
-    }, 300);
+        loadGroups(
+          search
+        );
+      }, 300);
 
-    return () => clearTimeout(timer);
-  }, [search]);
+    return () =>
+      clearTimeout(
+        timer
+      );
+  }, [search,loadingUser,user,canView,loadGroups,]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -105,8 +114,10 @@ export default function BranchGroupsPage() {
   };
 
   const handleOpenEdit = (group) => {
-    if (!canEdit) {
-      swalError("คุณไม่มีสิทธิ์แก้ไขกลุ่มสังกัด");
+    if (!canEditRecord(group)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขกลุ่มสังกัดนี้"
+      );
       return;
     }
 
@@ -128,6 +139,17 @@ export default function BranchGroupsPage() {
 
   const handleSave = async () => {
     const isEdit = !!editingGroup;
+
+     /* =====================================================
+       Edit Permission + Scope
+    ===================================================== */
+
+    if ( isEdit && !canEditRecord(editingGroup)) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขกลุ่มสังกัดนี้"
+      );
+      return;
+    }
 
     if (isEdit && !canEdit) {
       swalError("คุณไม่มีสิทธิ์แก้ไขกลุ่มสังกัด");
@@ -193,8 +215,10 @@ export default function BranchGroupsPage() {
   };
 
   const handleDelete = async (group) => {
-    if (!canDelete) {
-      swalError("คุณไม่มีสิทธิ์ลบกลุ่มสังกัด");
+    if (!canDeleteRecord(group)) {
+      swalError(
+        "คุณไม่มีสิทธิ์ลบกลุ่มสังกัดนี้"
+      );
       return;
     }
 
@@ -240,12 +264,6 @@ export default function BranchGroupsPage() {
             <p className="mt-1 text-sm text-slate-500">
               จัดการกรุ๊ปสังกัด เช่น Mountain, Ocean, Factory, Cuisine
             </p>
-
-            {!canCreate && !canEdit && !canDelete ? (
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                คุณมีสิทธิ์ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบกลุ่มสังกัดได้
-              </div>
-            ) : null}
           </div>
 
           {canCreate && (
@@ -332,32 +350,53 @@ export default function BranchGroupsPage() {
                   </span>
                 </div>
 
-                {(canEdit || canDelete) ? (
+                {canEditRecord(group) || canDeleteRecord(group) ? (
                   <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                    {canEdit && (
+
+                    {canEditRecord(
+                      group
+                    ) && (
                       <button
                         type="button"
-                        onClick={() => handleOpenEdit(group)}
+                        onClick={() =>
+                          handleOpenEdit(
+                            group
+                          )
+                        }
                         className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
                         Edit
                       </button>
                     )}
 
-                    {canDelete && (
+                    {canDeleteRecord(
+                      group
+                    ) && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(group)}
-                        disabled={deletingId === group.id}
+                        onClick={() =>
+                          handleDelete(
+                            group
+                          )
+                        }
+                        disabled={
+                          deletingId ===
+                          group.id
+                        }
                         className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                          deletingId === group.id
+                          deletingId ===
+                          group.id
                             ? "cursor-not-allowed border-slate-200 text-slate-400"
                             : "border-red-200 text-red-600 hover:bg-red-50"
                         }`}
                       >
-                        {deletingId === group.id ? "Deleting..." : "Delete"}
+                        {deletingId ===
+                        group.id
+                          ? "Deleting..."
+                          : "Delete"}
                       </button>
                     )}
+
                   </div>
                 ) : null}
               </div>
@@ -511,7 +550,18 @@ export default function BranchGroupsPage() {
                 Cancel
               </button>
 
-              {((editingGroup && canEdit) || (!editingGroup && canCreate)) && (
+              {(
+                (
+                  editingGroup &&
+                  canEditRecord(
+                    editingGroup
+                  )
+                ) ||
+                (
+                  !editingGroup &&
+                  canCreate
+                )
+              ) && (
                 <button
                   type="button"
                   onClick={handleSave}
@@ -522,7 +572,11 @@ export default function BranchGroupsPage() {
                       : "bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
-                  {saving ? "Saving..." : editingGroup ? "Update" : "Save"}
+                  {saving
+                    ? "Saving..."
+                    : editingGroup
+                      ? "Update"
+                      : "Save"}
                 </button>
               )}
             </div>

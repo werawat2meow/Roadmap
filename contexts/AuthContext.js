@@ -1,70 +1,212 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+export function AuthProvider({
+  children,
+}) {
+  const [user, setUser] =
+    useState(null);
+
+  const [
+    loadingUser,
+    setLoadingUser,
+  ] = useState(true);
+
+  const hasFetchedOnce =
+    useRef(false);
+
+  /* =========================================================
+     Local Storage
+  ========================================================= */
 
   const readUserFromStorage = () => {
-    if (typeof window === "undefined") return null;
-    const raw = localStorage.getItem("employee_user");
-    if (!raw) return null;
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return null;
+    }
+
+    const raw =
+      localStorage.getItem(
+        "employee_user"
+      );
+
+    if (!raw) {
+      return null;
+    }
+
     try {
       return JSON.parse(raw);
     } catch {
+      localStorage.removeItem(
+        "employee_user"
+      );
+
       return null;
     }
   };
 
-  const refreshUser = async () => {
+  /* =========================================================
+     Refresh User
+  ========================================================= */
+
+  const refreshUser = async ({
+    silent = false,
+  } = {}) => {
     try {
-      const res = await fetch("/api/auth/me", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "include",
-      });
+      const res = await fetch(
+        "/api/auth/me",
+        {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        }
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
-      if (!res.ok || !data?.success) {
-        // throw new Error(data?.error || "Refresh user failed");
-        localStorage.removeItem("employee_user");
-        localStorage.removeItem("employee_token");
+      if (
+        !res.ok ||
+        !data?.success
+      ) {
+        localStorage.removeItem(
+          "employee_user"
+        );
+
+        localStorage.removeItem(
+          "employee_user_cached_at"
+        );
+
+        localStorage.removeItem(
+          "employee_token"
+        );
+
         setUser(null);
-        return;
+
+        return null;
       }
 
-      localStorage.setItem("employee_user", JSON.stringify(data.user));
+      // =====================================================
+      // Backend คือ Source of Truth
+      // =====================================================
+
+      localStorage.setItem(
+        "employee_user",
+        JSON.stringify(
+          data.user
+        )
+      );
+
       setUser(data.user);
+
       return data.user;
     } catch (error) {
-      console.error("REFRESH_USER_ERROR:", error);
-      localStorage.removeItem("employee_user");
-      setUser(null);
+      console.error(
+        "REFRESH_USER_ERROR:",
+        error
+      );
+
+      if (!silent) {
+        localStorage.removeItem(
+          "employee_user"
+        );
+
+        setUser(null);
+      }
+
       return null;
     }
   };
 
-  // ✅ ยิงแค่ครั้งเดียวตอน mount
-  useEffect(() => {
-    const currentUser = readUserFromStorage();
-    if (currentUser) setUser(currentUser);
+  /* =========================================================
+     Initial Authentication
+  ========================================================= */
 
-    refreshUser().finally(() => setLoadingUser(false));
+  useEffect(() => {
+    if (
+      hasFetchedOnce.current
+    ) {
+      return;
+    }
+
+    hasFetchedOnce.current =
+      true;
+
+    const cachedUser =
+      readUserFromStorage();
+
+    if (cachedUser) {
+      // =====================================================
+      // Render cache ก่อน
+      // เพื่อไม่ให้หน้ากระพริบ / รอ API
+      // =====================================================
+
+      setUser(cachedUser);
+      setLoadingUser(false);
+
+      // =====================================================
+      // แต่ต้อง sync backend ทุกครั้ง
+      //
+      // Permission / Role / Scope
+      // อาจถูก Admin เปลี่ยนแล้ว
+      // =====================================================
+
+      refreshUser({
+        silent: true,
+      });
+
+      return;
+    }
+
+    // =======================================================
+    // ไม่มี Cache
+    // =======================================================
+
+    refreshUser().finally(
+      () => {
+        setLoadingUser(false);
+      }
+    );
   }, []);
 
+  /* =========================================================
+     Provider
+  ========================================================= */
+
   return (
-    <AuthContext.Provider value={{ user, setUser, refreshUser, loadingUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        refreshUser,
+        loadingUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  const ctx =
+    useContext(AuthContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useAuth must be used within AuthProvider"
+    );
+  }
+
   return ctx;
 }

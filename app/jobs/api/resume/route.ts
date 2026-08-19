@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
     const certify = payload.certify;
     const pdpa = payload.pdpa;
     const from_social_media = typeof payload.from_social_media === "string" ? payload.from_social_media.trim() : "";
+    const self_presentation_url = typeof payload.self_presentation_url === "string" ? payload.self_presentation_url.trim() : "";
 
     // /* ---------------------------------------------------------------------- */
     // /* Validation                                                            */
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
         certify,
         pdpa,
         from_social_media: from_social_media || null,
+        self_presentation_url: self_presentation_url || null,
         status: 16,
       })
       .select("id")

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Select } from "antd";
 import { swalError, swalSuccess } from "../../../components/Swal";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 import {getSystemTitleByPermission,getSystemSelectOptions,} from "../components/systemApps";

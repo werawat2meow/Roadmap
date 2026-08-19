@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Alert,
   Col,
@@ -177,19 +178,12 @@ export default function UserAccessAssignmentForm({
 
   units = [],
 }) {
-  const status =
-    Form.useWatch(
-      "status",
-      form
-    );
 
-  const userAccountOptions =
-    makeUserAccountOptions(
-      userAccounts
-    );
-
-  const roleOptions =
-    makeRoleOptions(roles);
+  const [saving, setSaving] = useState(false);
+  const selectedUserAccountId = Form.useWatch("user_account_id",form);
+  const status = Form.useWatch("status",form);
+  const userAccountOptions = makeUserAccountOptions(userAccounts);
+  const roleOptions = makeRoleOptions(roles);
 
   /* =======================================================
      Inactive Assignment cannot be Primary
@@ -204,6 +198,33 @@ export default function UserAccessAssignmentForm({
         false
       );
     }
+  };
+
+  const handleUserAccountChange = (userAccountId) => {
+    if (!userAccountId) {
+      form.setFieldValue(
+        "role_id",
+        null
+      );
+      return;
+    }
+
+    const selectedUser =
+      userAccounts.find(
+        (item) =>
+          item.id === userAccountId
+      );
+
+    const defaultRoleId =
+      selectedUser?.role_id ||
+      selectedUser?.role?.id ||
+      selectedUser?.roles?.id ||
+      null;
+
+    form.setFieldValue(
+      "role_id",
+      defaultRoleId
+    );
   };
 
   return (
@@ -247,11 +268,10 @@ export default function UserAccessAssignmentForm({
               allowClear
               optionFilterProp="label"
               placeholder="เลือกผู้ใช้งานระบบ"
-              loading={
-                masterLoading
-              }
-              options={
-                userAccountOptions
+              loading={masterLoading}
+              options={userAccountOptions}
+              onChange={
+                handleUserAccountChange
               }
             />
           </Form.Item>
@@ -274,14 +294,16 @@ export default function UserAccessAssignmentForm({
           >
             <Select
               showSearch
-              allowClear
               optionFilterProp="label"
-              placeholder="เลือก Role"
-              loading={
-                masterLoading
-              }
-              options={
-                roleOptions
+              placeholder="บทบาทผู้ใช้งาน"
+              loading={masterLoading}
+              options={roleOptions}
+              disabled={
+                disabled ||
+                saving ||
+                Boolean(
+                  selectedUserAccountId
+                )
               }
             />
           </Form.Item>

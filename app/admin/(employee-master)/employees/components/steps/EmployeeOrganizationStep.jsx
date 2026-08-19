@@ -19,8 +19,11 @@ import {
 } from "@ant-design/icons";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 
 /* =========================================================
@@ -49,6 +52,625 @@ function isActive(item) {
   );
 }
 
+function normalizeRows(result) {
+  if (Array.isArray(result?.data)) {
+    return result.data;
+  }
+
+  if (Array.isArray(result?.items)) {
+    return result.items;
+  }
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  return [];
+}
+
+function normalizeFamilyOption(item) {
+  if (!item?.id) {
+    return null;
+  }
+
+  return {
+    value: item.id,
+    label: makeLabel(
+      item,
+      "family_code",
+      "family_name"
+    ),
+  };
+}
+
+function mergeOptions(...groups) {
+  const optionMap = new Map();
+
+  groups
+    .flat()
+    .filter(Boolean)
+    .forEach((option) => {
+      if (!option?.value) {
+        return;
+      }
+
+      optionMap.set(
+        String(option.value),
+        option
+      );
+    });
+
+  return [...optionMap.values()];
+}
+
+/* =========================================================
+   LAZY POSITION FAMILY SELECT
+
+   Enterprise HRMS behavior:
+   - โหลดครั้งละ 20 รายการ
+   - Scroll ถึงท้าย Dropdown -> โหลดหน้าถัดไปครั้งละ 20
+   - Search -> ค้นจาก API ทั้งฐานข้อมูล
+   - Search ใหม่ -> reset page ทันที ป้องกันยิง page เก่าชนกัน
+   - Abort request search เก่าที่ไม่ใช้แล้ว
+   - ป้องกันยิงหน้าถัดไปซ้ำระหว่างกำลังโหลด
+   - รองรับ Edit ที่ selected value ไม่อยู่ในหน้าแรก
+========================================================= */
+
+function LazyPositionFamilySelect({
+  value,
+  onChange,
+  afterChange,
+  disabled = false,
+  initialOption = null,
+}) {
+  const PAGE_SIZE = 20;
+
+  const [options, setOptions] =
+    useState(() =>
+      initialOption
+        ? [initialOption]
+        : []
+    );
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [loadingMore, setLoadingMore] =
+    useState(false);
+
+  const [page, setPage] =
+    useState(0);
+
+  const [hasMore, setHasMore] =
+    useState(true);
+
+  const [searchText, setSearchText] =
+    useState("");
+
+  const loadedOnceRef =
+    useRef(false);
+
+  const searchTimerRef =
+    useRef(null);
+
+  const requestControllerRef =
+    useRef(null);
+
+  const loadingMoreRef =
+    useRef(false);
+
+  const pageRef =
+    useRef(0);
+
+  const hasMoreRef =
+    useRef(true);
+
+  const searchTextRef =
+    useRef("");
+
+  const requestIdRef =
+    useRef(0);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    searchTextRef.current = searchText;
+  }, [searchText]);
+
+  useEffect(() => {
+    if (!initialOption) {
+      return;
+    }
+
+    setOptions((current) =>
+      mergeOptions(
+        current,
+        initialOption
+      )
+    );
+  }, [initialOption]);
+
+  const fetchPage = useCallback(
+    async ({
+      nextPage = 1,
+      keyword = "",
+      replace = false,
+    } = {}) => {
+      const cleanKeyword =
+        String(keyword || "").trim();
+
+      /* ---------------------------------------------------
+         ป้องกัน Scroll ยิงหน้าถัดไปซ้ำ
+      --------------------------------------------------- */
+
+      if (
+        !replace &&
+        loadingMoreRef.current
+      ) {
+        return;
+      }
+
+      if (
+        !replace &&
+        !hasMoreRef.current
+      ) {
+        return;
+      }
+
+      /* ---------------------------------------------------
+         Search / Replace ใหม่
+         ยกเลิก request เก่าที่ยังไม่จบ
+      --------------------------------------------------- */
+
+      if (
+        replace &&
+        requestControllerRef.current
+      ) {
+        requestControllerRef.current.abort();
+      }
+
+      const controller =
+        new AbortController();
+
+      if (replace) {
+        requestControllerRef.current =
+          controller;
+
+        setLoading(true);
+      } else {
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+      }
+
+      const requestId =
+        ++requestIdRef.current;
+
+      try {
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "page",
+          String(nextPage)
+        );
+
+        params.set(
+          "pageSize",
+          String(PAGE_SIZE)
+        );
+
+        params.set(
+          "status",
+          "active"
+        );
+
+        if (cleanKeyword) {
+          params.set(
+            "search",
+            cleanKeyword
+          );
+        }
+
+        const response = await fetch(
+          `/api/admin/position-families?${params.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.message ||
+              result?.error ||
+              "ไม่สามารถโหลดกลุ่มสายงานได้"
+          );
+        }
+
+        /* -------------------------------------------------
+           Search ใหม่ยิงแซง request เก่า
+           ไม่เอาผลของ request เก่ามาทับ
+        ------------------------------------------------- */
+
+        if (
+          replace &&
+          requestId !==
+            requestIdRef.current
+        ) {
+          return;
+        }
+
+        const rows =
+          normalizeRows(result);
+
+        const nextOptions = rows
+          .filter(isActive)
+          .map(normalizeFamilyOption)
+          .filter(Boolean);
+
+        const pagination =
+          result?.pagination || {};
+
+        const currentPage =
+          Number(
+            pagination.page
+          ) || nextPage;
+
+        const total = Number(
+          pagination.total ??
+            result?.total ??
+            0
+        );
+
+        const totalPages =
+          Number(
+            pagination.totalPages
+          ) ||
+          (total > 0
+            ? Math.ceil(
+                total / PAGE_SIZE
+              )
+            : 0);
+
+        const nextHasMore =
+          typeof pagination.hasMore ===
+          "boolean"
+            ? pagination.hasMore
+            : totalPages > 0
+              ? currentPage < totalPages
+              : rows.length === PAGE_SIZE;
+
+        setOptions((current) => {
+          const selectedOption =
+            current.find(
+              (option) =>
+                String(
+                  option.value
+                ) ===
+                String(value || "")
+            ) || null;
+
+          if (replace) {
+            return mergeOptions(
+              selectedOption,
+              initialOption,
+              nextOptions
+            );
+          }
+
+          return mergeOptions(
+            current,
+            nextOptions
+          );
+        });
+
+        setPage(currentPage);
+        pageRef.current = currentPage;
+
+        setHasMore(nextHasMore);
+        hasMoreRef.current =
+          nextHasMore;
+
+        loadedOnceRef.current = true;
+      } catch (error) {
+        if (
+          error?.name ===
+          "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "LazyPositionFamilySelect load error:",
+          error
+        );
+      } finally {
+        if (replace) {
+          if (
+            requestControllerRef.current ===
+            controller
+          ) {
+            requestControllerRef.current =
+              null;
+          }
+
+          setLoading(false);
+        } else {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        }
+      }
+    },
+    [initialOption, value]
+  );
+
+  const fetchSelectedById =
+    useCallback(
+      async (selectedId) => {
+        if (!selectedId) {
+          return;
+        }
+
+        const alreadyLoaded =
+          options.some(
+            (option) =>
+              String(option.value) ===
+              String(selectedId)
+          );
+
+        if (alreadyLoaded) {
+          return;
+        }
+
+        try {
+          const params =
+            new URLSearchParams();
+
+          params.set(
+            "id",
+            String(selectedId)
+          );
+
+          params.set(
+            "status",
+            "active"
+          );
+
+          const response = await fetch(
+            `/api/admin/position-families?${params.toString()}`,
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          );
+
+          const result =
+            await response.json();
+
+          if (!response.ok) {
+            return;
+          }
+
+          const selectedOption =
+            normalizeFamilyOption(
+              normalizeRows(result)[0]
+            );
+
+          if (!selectedOption) {
+            return;
+          }
+
+          setOptions((current) =>
+            mergeOptions(
+              current,
+              selectedOption
+            )
+          );
+        } catch (error) {
+          console.error(
+            "LazyPositionFamilySelect selected option error:",
+            error
+          );
+        }
+      },
+      [options]
+    );
+
+  useEffect(() => {
+    if (!value) {
+      return;
+    }
+
+    fetchSelectedById(value);
+  }, [
+    value,
+    fetchSelectedById,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(
+          searchTimerRef.current
+        );
+      }
+
+      if (
+        requestControllerRef.current
+      ) {
+        requestControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const handleDropdownOpenChange =
+    (open) => {
+      if (
+        open &&
+        !loadedOnceRef.current
+      ) {
+        fetchPage({
+          nextPage: 1,
+          keyword: "",
+          replace: true,
+        });
+      }
+
+      if (!open && searchTextRef.current) {
+        if (searchTimerRef.current) {
+          clearTimeout(
+            searchTimerRef.current
+          );
+        }
+
+        searchTextRef.current = "";
+        setSearchText("");
+
+        /* -----------------------------------------------
+           ปิด Dropdown แล้ว Reset state
+           ครั้งหน้าเปิด จะเห็นรายการปกติหน้าแรก
+        ----------------------------------------------- */
+
+        setPage(0);
+        pageRef.current = 0;
+
+        setHasMore(true);
+        hasMoreRef.current = true;
+
+        loadedOnceRef.current = false;
+      }
+    };
+
+  const handleSearch = (value) => {
+    const nextSearch =
+      String(value || "");
+
+    searchTextRef.current =
+      nextSearch;
+
+    setSearchText(
+      nextSearch
+    );
+
+    /* ---------------------------------------------------
+       สำคัญ:
+       Reset pagination ทันที ไม่รอ debounce
+       ป้องกัน Scroll ยิง page เก่าของ keyword ก่อนหน้า
+    --------------------------------------------------- */
+
+    setPage(0);
+    pageRef.current = 0;
+
+    setHasMore(true);
+    hasMoreRef.current = true;
+
+    if (searchTimerRef.current) {
+      clearTimeout(
+        searchTimerRef.current
+      );
+    }
+
+    searchTimerRef.current =
+      setTimeout(() => {
+        fetchPage({
+          nextPage: 1,
+          keyword: nextSearch,
+          replace: true,
+        });
+      }, 300);
+  };
+
+  const handlePopupScroll = (event) => {
+    if (
+      loading ||
+      loadingMoreRef.current ||
+      !hasMoreRef.current ||
+      pageRef.current <= 0
+    ) {
+      return;
+    }
+
+    const target =
+      event.currentTarget;
+
+    const distanceToBottom =
+      target.scrollHeight -
+      target.scrollTop -
+      target.clientHeight;
+
+    if (distanceToBottom > 48) {
+      return;
+    }
+
+    fetchPage({
+      nextPage:
+        pageRef.current + 1,
+      keyword:
+        searchTextRef.current,
+      replace: false,
+    });
+  };
+
+  const handleChange = (nextValue) => {
+    onChange?.(nextValue);
+    afterChange?.(nextValue);
+  };
+
+  return (
+    <Select
+      showSearch
+      allowClear
+      value={value}
+      disabled={disabled}
+      loading={loading}
+      options={options}
+      filterOption={false}
+      searchValue={searchText}
+      placeholder="เลือกกลุ่มสายงาน"
+      onChange={handleChange}
+      onSearch={handleSearch}
+      onPopupScroll={
+        handlePopupScroll
+      }
+      onOpenChange={
+        handleDropdownOpenChange
+      }
+      notFoundContent={
+        loading
+          ? "กำลังโหลด..."
+          : "ไม่พบกลุ่มสายงาน"
+      }
+      popupRender={(menu) => (
+        <>
+          {menu}
+          {loadingMore ? (
+            <div
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+                fontSize: 12,
+              }}
+            >
+              กำลังโหลดเพิ่มอีก 20 รายการ...
+            </div>
+          ) : null}
+        </>
+      )}
+    />
+  );
+}
+
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -69,6 +691,12 @@ export default function EmployeeOrganizationStep({
   const companyId =
     Form.useWatch(
       "company_id",
+      form
+    );
+
+  const branchGroupId =
+    Form.useWatch(
+      "branch_group_id",
       form
     );
 
@@ -151,6 +779,27 @@ export default function EmployeeOrganizationStep({
   const positionFamilies =
     masterData.positionFamilies || [];
 
+  const positionFamilyInitialOption =
+    useMemo(() => {
+      if (!positionFamilyId) {
+        return null;
+      }
+
+      const selected =
+        positionFamilies.find(
+          (item) =>
+            String(item.id) ===
+            String(positionFamilyId)
+        );
+
+      return selected
+        ? normalizeFamilyOption(selected)
+        : null;
+    }, [
+      positionFamilies,
+      positionFamilyId,
+    ]);
+
   const positionLevels =
     masterData.positionLevels || [];
 
@@ -189,25 +838,8 @@ export default function EmployeeOrganizationStep({
     );
 
   const branchGroupOptions =
-    useMemo(
-      () =>
-        branchGroups
-          .filter(isActive)
-          .map((item) => ({
-            value: item.id,
-
-            label: makeLabel(
-              item,
-              "group_code",
-              "group_name"
-            ),
-          })),
-      [branchGroups]
-    );
-
-  const branchOptions =
-    useMemo(
-      () =>
+    useMemo(() => {
+      const allowedGroupIds = new Set(
         branches
           .filter(
             (item) =>
@@ -215,6 +847,71 @@ export default function EmployeeOrganizationStep({
               (!companyId ||
                 item.company_id ===
                   companyId)
+          )
+          .map(
+            (item) =>
+              item.group_id ||
+              item.branch_group_id
+          )
+          .filter(Boolean)
+          .map(String)
+      );
+
+      return branchGroups
+        .filter(
+          (item) =>
+            isActive(item) &&
+            allowedGroupIds.has(
+              String(item.id)
+            )
+        )
+        .map((item) => ({
+          value: item.id,
+
+          label: makeLabel(
+            item,
+            "group_code",
+            "group_name"
+          ),
+        }));
+    }, [
+      branchGroups,
+      branches,
+      companyId,
+    ]);
+
+  const branchOptions =
+    useMemo(
+      () =>
+        branches
+          .filter(
+            (item) => {
+              if (!isActive(item)) {
+                return false;
+              }
+
+              if (
+                companyId &&
+                item.company_id !==
+                  companyId
+              ) {
+                return false;
+              }
+
+              const itemGroupId =
+                item.group_id ||
+                item.branch_group_id;
+
+              if (
+                branchGroupId &&
+                itemGroupId !==
+                  branchGroupId
+              ) {
+                return false;
+              }
+
+              return true;
+            }
           )
           .map((item) => ({
             value: item.id,
@@ -228,6 +925,7 @@ export default function EmployeeOrganizationStep({
       [
         branches,
         companyId,
+        branchGroupId,
       ]
     );
 
@@ -342,31 +1040,7 @@ export default function EmployeeOrganizationStep({
      JOB ARCHITECTURE OPTIONS
   ======================================================= */
 
-  const positionFamilyOptions =
-    useMemo(
-      () =>
-        positionFamilies
-          .filter(isActive)
-          .sort(
-            (a, b) =>
-              Number(
-                a.sort_order || 0
-              ) -
-              Number(
-                b.sort_order || 0
-              )
-          )
-          .map((item) => ({
-            value: item.id,
 
-            label: makeLabel(
-              item,
-              "family_code",
-              "family_name"
-            ),
-          })),
-      [positionFamilies]
-    );
 
   /*
     Position Level ต้องกรองตาม
@@ -824,6 +1498,22 @@ export default function EmployeeOrganizationStep({
               }
               optionFilterProp="label"
               placeholder="เลือกกรุ๊ปสังกัด"
+              onChange={() => {
+                form.setFieldsValue({
+                  branch_id:
+                    undefined,
+                  department_id:
+                    undefined,
+                  division_id:
+                    undefined,
+                  unit_id:
+                    undefined,
+                  position_id:
+                    undefined,
+                  job_id:
+                    undefined,
+                });
+              }}
             />
           </Form.Item>
         </Col>
@@ -1057,17 +1747,12 @@ export default function EmployeeOrganizationStep({
               },
             ]}
           >
-            <Select
-              showSearch
-              allowClear
-              loading={masterLoading}
+            <LazyPositionFamilySelect
               disabled={disabled}
-              options={
-                positionFamilyOptions
+              initialOption={
+                positionFamilyInitialOption
               }
-              optionFilterProp="label"
-              placeholder="เลือกกลุ่มสายงาน"
-              onChange={() => {
+              afterChange={() => {
                 form.setFieldsValue({
                   position_level_id:
                     undefined,

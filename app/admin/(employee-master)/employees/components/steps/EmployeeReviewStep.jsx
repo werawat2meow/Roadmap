@@ -28,15 +28,35 @@ import dayjs from "dayjs";
 const { TextArea } = Input;
 const { Text } = Typography;
 
+/* =========================================================
+   FIND MASTER BY ID
+========================================================= */
+
 function findById(
   rows = [],
   id
 ) {
-  return rows.find(
-    (item) =>
-      item.id === id
+  if (
+    !Array.isArray(rows) ||
+    !id
+  ) {
+    return null;
+  }
+
+  return (
+    rows.find(
+      (item) =>
+        String(
+          item?.id
+        ) ===
+        String(id)
+    ) || null
   );
 }
+
+/* =========================================================
+   GET DISPLAY VALUE
+========================================================= */
 
 function getValue(
   item,
@@ -46,14 +66,28 @@ function getValue(
     return "-";
   }
 
-  for (const key of keys) {
-    if (item?.[key]) {
-      return item[key];
+  for (
+    const key of keys
+  ) {
+    const value =
+      item?.[key];
+
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !==
+        ""
+    ) {
+      return value;
     }
   }
 
   return "-";
 }
+
+/* =========================================================
+   FORMAT DATE
+========================================================= */
 
 function formatDate(value) {
   if (!value) {
@@ -66,23 +100,69 @@ function formatDate(value) {
       : dayjs(value);
 
   return date.isValid()
-    ? date.format("DD/MM/YYYY")
+    ? date.format(
+        "DD/MM/YYYY"
+      )
     : "-";
 }
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function EmployeeReviewStep({
   form,
+
   mode = "create",
+
   selectedRecord = null,
+
   masterData = {},
 }) {
-  const values =
-    Form.useWatch([], form) || {};
+  /* =========================================================
+     CURRENT FORM VALUES
 
-  const company = findById(
-    masterData.companies,
-    values.company_id
-  );
+     สำคัญมาก:
+     Step ก่อนหน้าถูก Unmount แล้ว
+
+     preserve: true
+     ทำให้ Review อ่านค่าจาก Form Store
+     ของ Step 0 - 6 ได้ทั้งหมด
+  ========================================================= */
+
+  const watchedValues =
+    Form.useWatch(
+      [],
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  /*
+   * fallback:
+   * กรณี render แรก useWatch
+   * ยังไม่ได้คืนค่า
+   */
+  const values =
+    watchedValues &&
+    Object.keys(
+      watchedValues
+    ).length > 0
+      ? watchedValues
+      : form.getFieldsValue(
+          true
+        ) || {};
+
+  /* =========================================================
+     ORGANIZATION MASTER
+  ========================================================= */
+
+  const company =
+    findById(
+      masterData.companies,
+      values.company_id
+    );
 
   const branchGroup =
     findById(
@@ -90,10 +170,11 @@ export default function EmployeeReviewStep({
       values.branch_group_id
     );
 
-  const branch = findById(
-    masterData.branches,
-    values.branch_id
-  );
+  const branch =
+    findById(
+      masterData.branches,
+      values.branch_id
+    );
 
   const department =
     findById(
@@ -101,25 +182,37 @@ export default function EmployeeReviewStep({
       values.department_id
     );
 
-  const division = findById(
-    masterData.divisions,
-    values.division_id
-  );
+  const division =
+    findById(
+      masterData.divisions,
+      values.division_id
+    );
 
-  const unit = findById(
-    masterData.units,
-    values.unit_id
-  );
+  const unit =
+    findById(
+      masterData.units,
+      values.unit_id
+    );
 
-  const position = findById(
-    masterData.positions,
-    values.position_id
-  );
+  /* =========================================================
+     POSITION / JOB
+  ========================================================= */
 
-  const job = findById(
-    masterData.jobs,
-    values.job_id
-  );
+  const position =
+    findById(
+      masterData.positions,
+      values.position_id
+    );
+
+  const job =
+    findById(
+      masterData.jobs,
+      values.job_id
+    );
+
+  /* =========================================================
+     EMPLOYMENT
+  ========================================================= */
 
   const employmentType =
     findById(
@@ -132,6 +225,10 @@ export default function EmployeeReviewStep({
       masterData.employeeStatuses,
       values.employee_status_id
     );
+
+  /* =========================================================
+     PAYROLL
+  ========================================================= */
 
   const payrollCompany =
     findById(
@@ -157,40 +254,63 @@ export default function EmployeeReviewStep({
       values.salary_structure_id
     );
 
-  const role = findById(
-    masterData.roles,
-    values.role_id
-  );
+  /* =========================================================
+     ACCOUNT / ROLE
+  ========================================================= */
+
+  const role =
+    findById(
+      masterData.roles,
+      values.role_id
+    );
 
   const codeSetting =
     findById(
-      masterData.employeeCodeSettings,
+      masterData
+        .employeeCodeSettings,
       values.employee_code_setting_id
     );
 
-  const fullNameTh = [
-    values.first_name_th,
-    values.middle_name_th,
-    values.last_name_th,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  /* =========================================================
+     FULL NAME
+  ========================================================= */
 
-  const fullNameEn = [
-    values.first_name_en,
-    values.middle_name_en,
-    values.last_name_en,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const fullNameTh =
+    [
+      values.first_name_th,
+      values.middle_name_th,
+      values.last_name_th,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+  const fullNameEn =
+    [
+      values.first_name_en,
+      values.middle_name_en,
+      values.last_name_en,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div>
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <Card
         className="mb-5"
         title={
           <Space>
             <CheckCircleOutlined />
+
             ตรวจสอบข้อมูลก่อนบันทึก
           </Space>
         }
@@ -200,12 +320,17 @@ export default function EmployeeReviewStep({
         </Text>
       </Card>
 
+      {/* =====================================================
+          PERSONAL
+      ===================================================== */}
+
       <Divider
         titlePlacement="left"
         plain
       >
         <Space>
           <IdcardOutlined />
+
           ข้อมูลพนักงาน
         </Space>
       </Divider>
@@ -219,35 +344,54 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item label="ชื่อภาษาไทย">
-          {fullNameTh || "-"}
+        <Descriptions.Item
+          label="ชื่อภาษาไทย"
+        >
+          {fullNameTh ||
+            "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="ชื่อภาษาอังกฤษ">
-          {fullNameEn || "-"}
+        <Descriptions.Item
+          label="ชื่อภาษาอังกฤษ"
+        >
+          {fullNameEn ||
+            "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="ชื่อเล่น">
+        <Descriptions.Item
+          label="ชื่อเล่น"
+        >
           {values.nickname_th ||
             values.nickname_en ||
             "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="วันเกิด">
+        <Descriptions.Item
+          label="วันเกิด"
+        >
           {formatDate(
             values.birth_date
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="เลขบัตรประชาชน">
-          {values.citizen_id || "-"}
+        <Descriptions.Item
+          label="เลขบัตรประชาชน"
+        >
+          {values.citizen_id ||
+            "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="หนังสือเดินทาง">
+        <Descriptions.Item
+          label="หนังสือเดินทาง"
+        >
           {values.passport_no ||
             "-"}
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          CONTACT
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -255,6 +399,7 @@ export default function EmployeeReviewStep({
       >
         <Space>
           <ContactsOutlined />
+
           ข้อมูลติดต่อ
         </Space>
       </Divider>
@@ -268,21 +413,31 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item label="โทรศัพท์มือถือ">
+        <Descriptions.Item
+          label="โทรศัพท์มือถือ"
+        >
           {values.mobile_phone ||
             "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="อีเมลส่วนตัว">
+        <Descriptions.Item
+          label="อีเมลส่วนตัว"
+        >
           {values.personal_email ||
             "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="อีเมลบริษัท">
+        <Descriptions.Item
+          label="อีเมลบริษัท"
+        >
           {values.work_email ||
             "-"}
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          ORGANIZATION
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -290,6 +445,7 @@ export default function EmployeeReviewStep({
       >
         <Space>
           <ApartmentOutlined />
+
           องค์กรและตำแหน่ง
         </Space>
       </Divider>
@@ -303,57 +459,107 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item label="บริษัท">
-          {getValue(company, [
-            "company_name_th",
-            "company_name_en",
-          ])}
+        <Descriptions.Item
+          label="บริษัท"
+        >
+          {getValue(
+            company,
+            [
+              "company_name_th",
+              "company_name_en",
+              "company_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="กรุ๊ปสังกัด">
+        <Descriptions.Item
+          label="กรุ๊ปสังกัด"
+        >
           {getValue(
             branchGroup,
-            ["group_name"]
+            [
+              "group_name",
+              "group_code",
+            ]
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="สังกัด">
-          {getValue(branch, [
-            "branch_name",
-          ])}
+        <Descriptions.Item
+          label="สังกัด"
+        >
+          {getValue(
+            branch,
+            [
+              "branch_name",
+              "branch_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="แผนก">
+        <Descriptions.Item
+          label="แผนก"
+        >
           {getValue(
             department,
-            ["department_name"]
+            [
+              "department_name",
+              "department_code",
+            ]
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="ฝ่าย">
-          {getValue(division, [
-            "division_name",
-          ])}
+        <Descriptions.Item
+          label="ฝ่าย"
+        >
+          {getValue(
+            division,
+            [
+              "division_name",
+              "division_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="หน่วยงาน">
-          {getValue(unit, [
-            "unit_name",
-          ])}
+        <Descriptions.Item
+          label="หน่วยงาน"
+        >
+          {getValue(
+            unit,
+            [
+              "unit_name",
+              "unit_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="ตำแหน่ง">
-          {getValue(position, [
-            "position_name",
-          ])}
+        <Descriptions.Item
+          label="ตำแหน่ง"
+        >
+          {getValue(
+            position,
+            [
+              "position_name",
+              "position_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="บทบาทงาน">
-          {getValue(job, [
-            "job_name",
-          ])}
+        <Descriptions.Item
+          label="บทบาทงาน"
+        >
+          {getValue(
+            job,
+            [
+              "job_name",
+              "job_code",
+            ]
+          )}
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          EMPLOYMENT
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -361,6 +567,7 @@ export default function EmployeeReviewStep({
       >
         <Space>
           <SolutionOutlined />
+
           การจ้างงาน
         </Space>
       </Divider>
@@ -374,7 +581,9 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item label="ประเภทการจ้าง">
+        <Descriptions.Item
+          label="ประเภทการจ้าง"
+        >
           {getValue(
             employmentType,
             [
@@ -384,7 +593,9 @@ export default function EmployeeReviewStep({
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="สถานะพนักงาน">
+        <Descriptions.Item
+          label="สถานะพนักงาน"
+        >
           {getValue(
             employeeStatus,
             [
@@ -394,39 +605,55 @@ export default function EmployeeReviewStep({
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="วันที่เริ่มงาน">
+        <Descriptions.Item
+          label="วันที่เริ่มงาน"
+        >
           {formatDate(
             values.start_work_date
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="จำนวนวันทดลองงาน">
+        <Descriptions.Item
+          label="จำนวนวันทดลองงาน"
+        >
           {values.probation_days ??
             "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="สิ้นสุดทดลองงาน">
+        <Descriptions.Item
+          label="สิ้นสุดทดลองงาน"
+        >
           {formatDate(
             values.probation_end_date
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="สถานะระบบ">
+        <Descriptions.Item
+          label="สถานะระบบ"
+        >
           <Tag
             color={
               values.status ===
               "active"
                 ? "green"
                 : values.status ===
-                  "resigned"
-                ? "red"
-                : "default"
+                    "resigned"
+                  ? "red"
+                  : values.status ===
+                      "inactive"
+                    ? "default"
+                    : "blue"
             }
           >
-            {values.status || "-"}
+            {values.status ||
+              "-"}
           </Tag>
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          PAYROLL
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -434,6 +661,7 @@ export default function EmployeeReviewStep({
       >
         <Space>
           <BankOutlined />
+
           Payroll
         </Space>
       </Divider>
@@ -447,38 +675,61 @@ export default function EmployeeReviewStep({
           lg: 4,
         }}
       >
-        <Descriptions.Item label="บริษัทเงินเดือน">
+        <Descriptions.Item
+          label="บริษัทเงินเดือน"
+        >
           {getValue(
             payrollCompany,
             [
+              "payroll_company_name",
               "company_name",
+              "payroll_company_code",
               "company_code",
             ]
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="รอบจ่ายเงิน">
-          {getValue(payrollType, [
-            "payroll_type_name",
-          ])}
-        </Descriptions.Item>
-
-        <Descriptions.Item label="กลุ่มเงินเดือน">
+        <Descriptions.Item
+          label="รอบจ่ายเงิน"
+        >
           {getValue(
-            payrollGroup,
+            payrollType,
             [
-              "payroll_group_name",
+              "payroll_type_name",
+              "payroll_type_code",
             ]
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="โครงสร้างเงินเดือน">
+        <Descriptions.Item
+          label="กลุ่มเงินเดือน"
+        >
+          {getValue(
+            payrollGroup,
+            [
+              "payroll_group_name",
+              "payroll_group_code",
+            ]
+          )}
+        </Descriptions.Item>
+
+        <Descriptions.Item
+          label="โครงสร้างเงินเดือน"
+        >
           {getValue(
             salaryStructure,
-            ["structure_name"]
+            [
+              "structure_name",
+              "salary_structure_name",
+              "structure_code",
+            ]
           )}
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          EMPLOYEE CODE + ACCOUNT
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -486,6 +737,7 @@ export default function EmployeeReviewStep({
       >
         <Space>
           <SafetyCertificateOutlined />
+
           รหัสพนักงานและบัญชีผู้ใช้
         </Space>
       </Divider>
@@ -499,46 +751,75 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item label="รหัสพนักงาน">
-          {mode === "edit"
-            ? selectedRecord
+        <Descriptions.Item
+          label="รหัสพนักงาน"
+        >
+          {mode === "create"
+            ? "ระบบสร้างอัตโนมัติ"
+            : selectedRecord
                 ?.employee_code ||
-              "-"
-            : "ระบบสร้างอัตโนมัติ"}
+              values.employee_code ||
+              "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="รูปแบบรหัส">
+        <Descriptions.Item
+          label="รูปแบบรหัส"
+        >
           {codeSetting
-            ? `${codeSetting.code_name} (${codeSetting.code_pattern})`
+            ? `${codeSetting.code_name || "-"} (${codeSetting.code_pattern || "-"})`
             : "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="ประเภทพนักงาน">
+        <Descriptions.Item
+          label="ประเภทพนักงาน"
+        >
           {values.employee_type ||
             "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="สร้างบัญชีผู้ใช้">
+        <Descriptions.Item
+          label="วันที่ Running"
+        >
+          {formatDate(
+            values.running_date
+          )}
+        </Descriptions.Item>
+
+        <Descriptions.Item
+          label="สร้างบัญชีผู้ใช้"
+        >
           {mode === "create"
             ? values.create_user_account
               ? "สร้าง"
               : "ไม่สร้าง"
             : values.update_user_account
-            ? "อัปเดตบัญชี"
-            : "ไม่แก้ไขบัญชี"}
+              ? "อัปเดตบัญชี"
+              : "ไม่แก้ไขบัญชี"}
         </Descriptions.Item>
 
-        <Descriptions.Item label="Role">
-          {getValue(role, [
-            "role_name",
-            "role_code",
-          ])}
+        <Descriptions.Item
+          label="Role"
+        >
+          {getValue(
+            role,
+            [
+              "role_name",
+              "role_code",
+            ]
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="อีเมลเข้าสู่ระบบ">
-          {values.auth_email || "-"}
+        <Descriptions.Item
+          label="อีเมลเข้าสู่ระบบ"
+        >
+          {values.auth_email ||
+            "-"}
         </Descriptions.Item>
       </Descriptions>
+
+      {/* =====================================================
+          REMARK
+      ===================================================== */}
 
       <Divider
         titlePlacement="left"

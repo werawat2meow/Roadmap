@@ -1,557 +1,623 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {Alert,Button,Card,} from "antd";
-import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
-import { hasPermission } from "@/lib/permissions";
-import LoadingOrb from "@/app/components/LoadingOrb";
-import {swalError,swalSuccess} from "../../../components/Swal";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Card } from "antd";
 
+import LoadingOrb from "@/app/components/LoadingOrb";
+import {
+  swalConfirm,
+  swalError,
+  swalSuccess,
+} from "../../../components/Swal";
+import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 import UnitPositionSearch from "./components/UnitPositionSearch";
+import UnitPositionSummaryCards from "./components/UnitPositionSummaryCards";
 import UnitPositionTable from "./components/UnitPositionTable";
 import UnitPositionModal from "./components/UnitPositionModal";
 
-const initialValues = {
+const DEFAULT_PAGE_SIZE = 20;
+
+const INITIAL_FILTERS = {
+  search: "",
+  company_id: "",
+  branch_group_id: "",
+  branch_id: "",
+  department_id: "",
+  division_id: "",
+  unit_id: "",
+  position_id: "",
+  status: "active",
+};
+
+const INITIAL_FORM = {
+  company_id: "",
+  branch_group_id: "",
+  branch_id: "",
+  department_id: "",
+  division_id: "",
   unit_id: "",
   position_id: "",
   headcount_target: 0,
   status: "active",
 };
 
+async function safeJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
 export default function UnitPositionsPage() {
+  /* =======================================================
+     Workforce Planning Permission + Scope
+  ======================================================= */
 
-  /* =========================
-      Permission
-  ========================= */
+  const planningAccess = useScopedPermissions("ems.unit_positions");
+  const orgAccess = useScopedPermissions("ems.org_structure");
 
-  const router = useRouter();
-  const {user,loadingUser} = useAuth();
-
-  const canView = hasPermission(user,"ems.unit_positions.view");
-  const canCreate = hasPermission(user,"ems.unit_positions.create");
-  const canEdit = hasPermission(user,"ems.unit_positions.edit");
-  const canDelete = hasPermission(user,"ems.unit_positions.delete");
-
-  /* =========================
-      State
-  ========================= */
-
-  const [loading,setLoading] = useState(true);
-  const [saving,setSaving] = useState(false);
-  const [rows,setRows] = useState([]);
-  const [search,setSearch] = useState("");
-  const [page,setPage] = useState(1);
-  const [pageSize] = useState(20);
-  const [total,setTotal] = useState(0);
-  const [totalPages,setTotalPages] = useState(1);
-  const [error,setError] = useState("");
-  const [openModal,setOpenModal] = useState(false);
-  const [editingRow,setEditingRow] = useState(null);
-  const [deletingId,setDeletingId] = useState("");
-  const [formData,setFormData] = useState(initialValues);
-
-  /* =========================
-      Permission Check
-  ========================= */
-
-  useEffect(() => {
-
-    if (loadingUser) return;
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!canView) {
-      router.replace("/admin");
-    }
-
-  },[
+  const {
     user,
     loadingUser,
     canView,
-    router,
-  ]);
+    canCreate,
+    canEdit,
+    canDelete,
+  } = planningAccess;
 
-  /* =========================
-      Load Data
-  ========================= */
+  const canGenerateSlots = Boolean(canEdit && orgAccess.canCreate);
 
-  const loadUnitPositions = async (
-    keyword = "",
-    nextPage = 1
-  ) => {
+  /* =======================================================
+     State
+  ======================================================= */
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState("");
+
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(INITIAL_FILTERS);
+
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = useState(0);
+
+  const [summary, setSummary] = useState({
+    plan_count: 0,
+    target_total: 0,
+    slot_capacity_total: 0,
+    filled_total: 0,
+    vacant_total: 0,
+    gap_total: 0,
+    over_plan_total: 0,
+  });
+
+  const [options, setOptions] = useState({
+    lineages: [],
+    companies: [],
+    branch_groups: [],
+    branches: [],
+    branch_departments: [],
+    departments: [],
+    divisions: [],
+    units: [],
+    positions: [],
+  });
+
+  const [openModal, setOpenModal] = useState(false);
+  const [editingRow, setEditingRow] = useState(null);
+  const [formData, setFormData] = useState(INITIAL_FORM);
+
+  const [deletingId, setDeletingId] = useState("");
+  const [generatingId, setGeneratingId] = useState("");
+
+  /* =======================================================
+     Load Options
+  ======================================================= */
+
+  const loadOptions = useCallback(async () => {
     try {
+      const response = await fetch("/api/admin/unit-positions/options", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-      setLoading(true);
+      const payload = await safeJson(response);
 
-      setError("");
-
-      const params =
-        new URLSearchParams();
-
-      params.set(
-        "page",
-        String(nextPage)
-      );
-
-      params.set(
-        "pageSize",
-        String(pageSize)
-      );
-
-      if (keyword) {
-
-        params.set(
-          "search",
-          keyword
+      if (!response.ok) {
+        throw new Error(
+          payload?.error || "ไม่สามารถโหลดตัวเลือก Workforce Planning ได้"
         );
-
       }
 
-      const res = await fetch(
+      setOptions({
+        lineages: payload?.data?.lineages || [],
+        companies: payload?.data?.companies || [],
+        branch_groups: payload?.data?.branch_groups || [],
+        branches: payload?.data?.branches || [],
+        branch_departments: payload?.data?.branch_departments || [],
+        departments: payload?.data?.departments || [],
+        divisions: payload?.data?.divisions || [],
+        units: payload?.data?.units || [],
+        positions: payload?.data?.positions || [],
+      });
+    } catch (loadError) {
+      console.error("LOAD_UNIT_POSITION_OPTIONS_ERROR:", loadError);
+      swalError(loadError?.message || "ไม่สามารถโหลดข้อมูลโครงสร้างองค์กรได้");
+    }
+  }, []);
 
-        `/api/admin/unit-positions?${params.toString()}`,
+  /* =======================================================
+     Load Workforce Plans
+  ======================================================= */
 
-        {
-          cache:"no-store",
+  const loadUnitPositions = useCallback(
+    async ({ nextFilters = appliedFilters, nextPage = page } = {}) => {
+      if (!canView) return;
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = new URLSearchParams({
+          page: String(nextPage),
+          pageSize: String(pageSize),
+        });
+
+        Object.entries(nextFilters || {}).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && String(value).trim()) {
+            params.set(key, String(value).trim());
+          }
+        });
+
+        const response = await fetch(
+          `/api/admin/unit-positions?${params.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        const payload = await safeJson(response);
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.error || "ไม่สามารถโหลดข้อมูลวางแผนอัตรากำลังได้"
+          );
         }
 
-      );
+        setRows(payload?.data || []);
+        setSummary(payload?.summary || {});
+        setPage(payload?.pagination?.page || nextPage);
+        setTotal(payload?.pagination?.total || 0);
+      } catch (loadError) {
+        console.error("LOAD_UNIT_POSITIONS_ERROR:", loadError);
+        setRows([]);
+        setError(loadError?.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appliedFilters, page, pageSize, canView]
+  );
 
-      const json =
-        await res.json();
+  /* =======================================================
+     Initial Load
+  ======================================================= */
 
-      if (!res.ok) {
+  useEffect(() => {
+    if (loadingUser || !user || !canView) return;
 
-        throw new Error(
-          json.error ||
-          "Load failed"
-        );
+    loadOptions();
+    loadUnitPositions({
+      nextFilters: INITIAL_FILTERS,
+      nextPage: 1,
+    });
+  }, [loadingUser, user, canView]);
 
+  /* =======================================================
+     Filter Cascade
+  ======================================================= */
+
+  const handleFilterChange = (field, value) => {
+    setFilters((current) => {
+      const next = {
+        ...current,
+        [field]: value ?? "",
+      };
+
+      if (field === "company_id") {
+        next.branch_group_id = "";
+        next.branch_id = "";
+        next.department_id = "";
+        next.division_id = "";
+        next.unit_id = "";
       }
 
-      setRows(
-        json.data || []
-      );
+      if (field === "branch_group_id") {
+        next.branch_id = "";
+        next.department_id = "";
+        next.division_id = "";
+        next.unit_id = "";
+      }
 
-      setPage(
-        json.pagination?.page || 1
-      );
+      if (field === "branch_id") {
+        next.department_id = "";
+        next.division_id = "";
+        next.unit_id = "";
+      }
 
-      setTotal(
-        json.pagination?.total || 0
-      );
+      if (field === "department_id") {
+        next.division_id = "";
+        next.unit_id = "";
+      }
 
-      setTotalPages(
-        json.pagination?.totalPages || 1
-      );
+      if (field === "division_id") {
+        next.unit_id = "";
+      }
 
-    }
-    catch(err){
-
-      console.error(err);
-
-      setError(
-        err.message ||
-        "เกิดข้อผิดพลาด"
-      );
-
-    }
-    finally{
-
-      setLoading(false);
-
-    }
-
+      return next;
+    });
   };
 
-  /* =========================
-      First Load
-  ========================= */
+  /* =======================================================
+     Search / Reset / Refresh
+  ======================================================= */
 
-  useEffect(() => {
-    if (!loadingUser && canView) {
-      loadUnitPositions();
-    }
-  },[
-    loadingUser,
-    canView,
-  ]);
+  const handleSearch = async () => {
+    const next = { ...filters };
+    setAppliedFilters(next);
+    setPage(1);
 
-  /* =========================
-      Search
-  ========================= */
+    await loadUnitPositions({
+      nextFilters: next,
+      nextPage: 1,
+    });
+  };
 
-  useEffect(() => {
+  const handleReset = async () => {
+    const reset = { ...INITIAL_FILTERS };
+    setFilters(reset);
+    setAppliedFilters(reset);
+    setPage(1);
 
-    const timer =
-      setTimeout(() => {
+    await loadUnitPositions({
+      nextFilters: reset,
+      nextPage: 1,
+    });
+  };
 
-        loadUnitPositions(
-          search,
-          1
-        );
+  const handleRefresh = async () => {
+    await Promise.all([
+      loadOptions(),
+      loadUnitPositions({
+        nextFilters: appliedFilters,
+        nextPage: page,
+      }),
+    ]);
+  };
 
-      },300);
-
-    return () =>
-      clearTimeout(timer);
-
-  },[
-    search,
-  ]);
-   
+  /* =======================================================
+     Create / Edit
+  ======================================================= */
 
   const handleOpenCreate = () => {
-
     if (!canCreate) {
-
-      swalError(
-        "คุณไม่มีสิทธิ์เพิ่มข้อมูลกำหนดตำแหน่งตามหน่วย"
-      );
-
+      swalError("คุณไม่มีสิทธิ์เพิ่ม Workforce Plan");
       return;
-
     }
 
     setEditingRow(null);
-
-    setFormData(initialValues);
-
+    setFormData({
+      ...INITIAL_FORM,
+      company_id: filters.company_id || "",
+      branch_group_id: filters.branch_group_id || "",
+      branch_id: filters.branch_id || "",
+      department_id: filters.department_id || "",
+      division_id: filters.division_id || "",
+      unit_id: filters.unit_id || "",
+      position_id: filters.position_id || "",
+    });
     setOpenModal(true);
-
   };
 
-  /* =========================
-      Open Edit
-  ========================= */
-
   const handleOpenEdit = (row) => {
-
     if (!canEdit) {
-
-      swalError(
-        "คุณไม่มีสิทธิ์แก้ไขข้อมูลกำหนดตำแหน่งตามหน่วย"
-      );
-
+      swalError("คุณไม่มีสิทธิ์แก้ไข Workforce Plan");
       return;
-
     }
 
     setEditingRow(row);
-
     setFormData({
-
-      unit_id:
-        row.unit_id,
-
-      position_id:
-        row.position_id,
-
-      headcount_target:
-        row.headcount_target,
-
-      status:
-        row.status,
-
+      company_id: row.company_id || "",
+      branch_group_id: row.branch_group_id || "",
+      branch_id: row.branch_id || "",
+      department_id: row.department_id || "",
+      division_id: row.division_id || "",
+      unit_id: row.unit_id || "",
+      position_id: row.position_id || "",
+      headcount_target: Number(row.headcount_target || 0),
+      status: row.status || "active",
     });
-
     setOpenModal(true);
-
   };
-
-  /* =========================
-      Close Modal
-  ========================= */
 
   const handleCloseModal = () => {
-
     setEditingRow(null);
-
-    setFormData(initialValues);
-
+    setFormData(INITIAL_FORM);
     setOpenModal(false);
-
   };
 
-  /* =========================
-      Save
-  ========================= */
+  /* =======================================================
+     Save
+  ======================================================= */
 
-  const handleSave = async (
-    values
-  ) => {
+  const handleSave = async (values) => {
+    const isEdit = Boolean(editingRow?.id);
+
+    if (isEdit && !canEdit) {
+      swalError("คุณไม่มีสิทธิ์แก้ไข Workforce Plan");
+      return;
+    }
+
+    if (!isEdit && !canCreate) {
+      swalError("คุณไม่มีสิทธิ์เพิ่ม Workforce Plan");
+      return;
+    }
 
     try {
-
       setSaving(true);
-
-      const isEdit =
-        !!editingRow;
 
       const url = isEdit
         ? `/api/admin/unit-positions/${editingRow.id}`
         : "/api/admin/unit-positions";
 
-      const method = isEdit
-        ? "PATCH"
-        : "POST";
+      const response = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          branch_id: values.branch_id,
+          unit_id: values.unit_id,
+          position_id: values.position_id,
+          headcount_target: Number(values.headcount_target ?? 0),
+          status: values.status || "active",
+        }),
+      });
 
-      const res = await fetch(
-        url,
-        {
+      const payload = await safeJson(response);
 
-          method,
-
-          headers:{
-
-            "Content-Type":
-              "application/json",
-
-          },
-
-          body:JSON.stringify({
-
-            unit_id:
-              values.unit_id,
-
-            position_id:
-              values.position_id,
-
-            headcount_target:
-              Number(
-                values.headcount_target
-              ) || 0,
-
-            status:
-              values.status,
-
-          }),
-
-        }
-      );
-
-      const json =
-        await res.json();
-
-      if (!res.ok) {
-
-        throw new Error(
-
-          json.error ||
-          "Save failed"
-
-        );
-
+      if (!response.ok) {
+        throw new Error(payload?.error || "ไม่สามารถบันทึก Workforce Plan ได้");
       }
 
       swalSuccess(
-
-        isEdit
-          ? "อัปเดตข้อมูลเรียบร้อยแล้ว"
-          : "เพิ่มข้อมูลเรียบร้อยแล้ว"
-
+        payload?.message ||
+          (isEdit
+            ? "อัปเดต Workforce Plan เรียบร้อยแล้ว"
+            : "เพิ่ม Workforce Plan เรียบร้อยแล้ว")
       );
 
       handleCloseModal();
 
-      await loadUnitPositions(
-
-        search,
-
-        isEdit
-          ? page
-          : 1
-
-      );
-
-    }
-    catch(err){
-      console.error(err);
-      swalError(
-        err.message ||
-        "เกิดข้อผิดพลาดในการบันทึก"
-      );
-    }
-    finally{
+      await loadUnitPositions({
+        nextFilters: appliedFilters,
+        nextPage: isEdit ? page : 1,
+      });
+    } catch (saveError) {
+      console.error("SAVE_UNIT_POSITION_ERROR:", saveError);
+      swalError(saveError?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
       setSaving(false);
     }
   };
 
-  /* =========================
-      Delete
-  ========================= */
+  /* =======================================================
+     Delete
+  ======================================================= */
 
   const handleDelete = async (row) => {
     if (!canDelete) {
+      swalError("คุณไม่มีสิทธิ์ลบ Workforce Plan");
+      return;
+    }
+
+    if (row.slot_count > 0) {
+      swalError("แผนนี้มี Position Slot เชื่อมอยู่แล้ว กรุณาเปลี่ยน Status เป็น Inactive แทน");
+      return;
+    }
+
+    const confirmed = await swalConfirm(
+      `ต้องการลบ Workforce Plan "${row.branch_name} / ${row.unit_name} / ${row.position_name}" ใช่หรือไม่?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(row.id);
+
+      const response = await fetch(`/api/admin/unit-positions/${row.id}`, {
+        method: "DELETE",
+      });
+
+      const payload = await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "ไม่สามารถลบ Workforce Plan ได้");
+      }
+
+      swalSuccess(payload?.message || "ลบ Workforce Plan เรียบร้อยแล้ว");
+
+      const nextPage = rows.length === 1 && page > 1 ? page - 1 : page;
+
+      await loadUnitPositions({
+        nextFilters: appliedFilters,
+        nextPage,
+      });
+    } catch (deleteError) {
+      console.error("DELETE_UNIT_POSITION_ERROR:", deleteError);
+      swalError(deleteError?.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =======================================================
+     Generate Missing Position Slots
+  ======================================================= */
+
+  const handleGenerateSlots = async (row) => {
+    if (!canGenerateSlots) {
       swalError(
-        "คุณไม่มีสิทธิ์ลบข้อมูลกำหนดตำแหน่งตามหน่วย"
+        "การ Generate Slot ต้องมีทั้ง ems.unit_positions.edit และ ems.org_structure.create"
       );
       return;
     }
 
-    try{
-      setDeletingId(row.id);
-      const res = await fetch(
-          `/api/admin/unit-positions/${row.id}`,
-          {
-            method:"DELETE",
-          }
-        );
-      const json =
-        await res.json();
-      if (!res.ok){
-        throw new Error(
-          json.error ||
-          "Delete failed"
-        );
+    if (row.slot_gap <= 0) {
+      swalError("Position Slot ครบตาม Target แล้ว");
+      return;
+    }
+
+    const confirmed = await swalConfirm(
+      `Target ${row.headcount_target} | Slot Capacity ${row.slot_capacity} | Gap ${row.slot_gap}\n\nต้องการ Generate Position Slot ที่ขาดหรือไม่?\nSlot ใหม่จะยังไม่มี Parent Slot และต้องจัดสายบังคับบัญชาที่หน้า Position Slot Master`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setGeneratingId(row.id);
+
+      const response = await fetch(
+        `/api/admin/unit-positions/${row.id}/generate-slots`,
+        {
+          method: "POST",
+        }
+      );
+
+      const payload = await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "ไม่สามารถ Generate Position Slot ได้");
       }
 
-      swalSuccess(
-        "ลบข้อมูลเรียบร้อยแล้ว"
-      );
+      swalSuccess(payload?.message || "Generate Position Slot เรียบร้อยแล้ว");
 
-      const nextPage =
-        rows.length === 1 &&
-        page > 1
-          ? page - 1
-          : page;
-      await loadUnitPositions(
-        search,
-        nextPage
-      );
-    }
-    catch(err){
-      console.error(err);
-      swalError(
-        err.message ||
-        "เกิดข้อผิดพลาดในการลบข้อมูล"
-      );
-    }
-    finally{
-      setDeletingId("");
+      await loadUnitPositions({
+        nextFilters: appliedFilters,
+        nextPage: page,
+      });
+    } catch (generateError) {
+      console.error("GENERATE_POSITION_SLOTS_ERROR:", generateError);
+      swalError(generateError?.message || "เกิดข้อผิดพลาดในการ Generate Slot");
+    } finally {
+      setGeneratingId("");
     }
   };
-  
-  /* =========================
-      Render
-  ========================= */
 
-  if (loadingUser) {
-    return <LoadingOrb />;
-  }
+  /* =======================================================
+     Guard
+  ======================================================= */
 
-  if (!user) {
-    return null;
-  }
+  if (loadingUser) return <LoadingOrb />;
+  if (!user) return null;
+  if (!canView) return null;
 
-  if (!canView) {
-    return null;
-  }
+  /* =======================================================
+     Render
+  ======================================================= */
 
   return (
     <>
-      <Card>
-        <div className="flex items-center justify-between">
-
+      <Card className="shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">
-              กำหนดตำแหน่งตามหน่วย
-            </h2>
-
+            <h2 className="text-2xl font-bold">วางแผนอัตรากำลังตามหน่วย</h2>
             <p className="mt-1 text-gray-500">
-              จัดการตำแหน่งที่สามารถใช้งานในแต่ละหน่วยงาน
+              Workforce Planning: กำหนด Target Headcount และติดตาม Position Slot / Filled / Vacant / Gap ตามโครงสร้างองค์กร
             </p>
           </div>
 
-          {(!canCreate &&
-            !canEdit &&
-            !canDelete) && (
-
+          {!canCreate && !canEdit && !canDelete && (
             <Alert
               type="warning"
               showIcon
-              message="คุณมีสิทธิ์ดูข้อมูลอย่างเดียว"
+              title="คุณมีสิทธิ์ดูข้อมูลอย่างเดียว"
             />
-
           )}
-
         </div>
       </Card>
 
-      <div style={{ marginTop: 16 }}>
-
-        <UnitPositionSearch
-          search={search}
-          onSearch={setSearch}
-          canCreate={canCreate}
-          onCreate={handleOpenCreate}
+      <div className="mt-4">
+        <Alert
+          type="info"
+          showIcon
+          title="Workforce Plan → Position Slot → Employee Assignment"
+          description="Target เก็บที่ unit_positions, Seat จริงเก็บที่ org_position_slots ผ่าน unit_position_id และผู้ครองตำแหน่งเก็บที่ employee_position_assignments"
         />
-
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
+        <UnitPositionSummaryCards summary={summary} />
+      </div>
 
-        <UnitPositionTable
+      <div className="mt-4">
+        <UnitPositionSearch
+          filters={filters}
+          options={options}
           loading={loading}
-
-          rows={rows}
-
-          page={page}
-          pageSize={pageSize}
-          total={total}
-
-          deletingId={deletingId}
-
-          canEdit={canEdit}
-          canDelete={canDelete}
-
-          onEdit={handleOpenEdit}
-
-          onDelete={handleDelete}
-
-          onPageChange={(nextPage) => {
-
-            loadUnitPositions(
-              search,
-              nextPage
-            );
-
-          }}
+          canCreate={canCreate}
+          onChange={handleFilterChange}
+          onSearch={handleSearch}
+          onReset={handleReset}
+          onRefresh={handleRefresh}
+          onCreate={handleOpenCreate}
         />
+      </div>
 
+      <div className="mt-4">
+        <Card className="shadow-sm" styles={{ body: { padding: 0 } }}>
+          <UnitPositionTable
+            loading={loading}
+            rows={rows}
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            deletingId={deletingId}
+            generatingId={generatingId}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            canGenerateSlots={canGenerateSlots}
+            onEdit={handleOpenEdit}
+            onDelete={handleDelete}
+            onGenerateSlots={handleGenerateSlots}
+            onPageChange={(nextPage) => {
+              loadUnitPositions({
+                nextFilters: appliedFilters,
+                nextPage,
+              });
+            }}
+          />
+        </Card>
       </div>
 
       <UnitPositionModal
         open={openModal}
-
         editingRow={editingRow}
-
         saving={saving}
-
         initialValues={formData}
-
+        options={options}
         onCancel={handleCloseModal}
-
         onSubmit={handleSave}
       />
 
       {error && (
-        <div
-          style={{
-            marginTop: 16,
-          }}
-        >
-          <Alert
-            showIcon
-            type="error"
-            message={error}
-          />
+        <div className="mt-4">
+          <Alert showIcon type="error" title={error} />
         </div>
       )}
     </>

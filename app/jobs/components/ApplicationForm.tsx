@@ -1,11 +1,13 @@
+// app/jobs/components/ApplicationForm.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Form, message, Space } from "antd";
+import { Button, Form, message, Space, Col, Input, Card } from "antd";
 import { useRouter } from "next/navigation";
 
 import { getTranslation, uiText } from "@/app/jobs/components/translations";
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getUIText } from "@/app/jobs/lib/ui";
 import PersonalInformation from "@/app/jobs/components/PersonalInformation";
 import EducationSection from "@/app/jobs/components/EducationSection";
@@ -48,6 +50,7 @@ export default function ApplicationForm({
   const { locale } = useLanguage();
   const router = useRouter();
 
+  const [selfPresentationUrl, setSelfPresentationUrl] = useState<string>("");
   /* -------------------------------------------------------------------------- */
   /*                                  Antd Form                                */
   /* -------------------------------------------------------------------------- */
@@ -98,9 +101,24 @@ export default function ApplicationForm({
   /* -------------------------------------------------------------------------- */
 
   const handleSubmit = async () => {
+    // position.positionId is `string | number | undefined` (a position may
+    // not have been resolved/loaded yet), but JobApplicationPayload.positionId
+    // requires `string | number`. Guard here instead of silently coercing
+    // (e.g. with `?? ""`), so we never submit an application with a missing
+    // position, and so TypeScript can narrow the type below.
+    if (position.positionId === undefined) {
+      message.error(
+        language === "TH"
+          ? "ไม่พบข้อมูลตำแหน่งงานที่สมัคร กรุณาลองใหม่อีกครั้ง"
+          : "Missing position information. Please try again."
+      );
+      return;
+    }
+
     const payload: JobApplicationPayload = {
       jobId: position.jobId,
       positionId: position.positionId,
+      self_presentation_url: selfPresentationUrl || undefined,
       personal,
       education,
       workExperience,
@@ -227,6 +245,45 @@ export default function ApplicationForm({
             value={documents}
             onChange={setDocuments}
         />
+
+        <Card
+          style={{ marginTop: 24 }}
+          title={language === "TH"
+                    ? "URL สำหรับพรีเซ้นตัวเอง"
+                    : "Self Presentation URL"}
+        >
+          <Col xs={24}>
+            <Form.Item
+              name="self_presentation_url"
+              label={
+                language === "TH"
+                  ? "URL สำหรับพรีเซ้นตัวเอง"
+                  : "Self Presentation URL"
+              }
+              rules={[
+                {
+                  type: "url",
+                  message:
+                    language === "TH"
+                      ? "กรุณากรอก URL ให้ถูกต้อง"
+                      : "Please enter a valid URL.",
+                },
+              ]}
+            >
+              <Input
+                value={selfPresentationUrl}
+                onChange={(e) => setSelfPresentationUrl(e.target.value)}
+                placeholder={
+                  language === "TH"
+                    ? "เช่น https://www.linkedin.com/in/yourname"
+                    : "Example: https://www.linkedin.com/in/yourname"
+                }
+                maxLength={500}
+                allowClear
+              />
+            </Form.Item>
+          </Col>
+        </Card>
 
         {/* ---------------------------------------------------------------------- */}
         {/* Agreement / PDPA                                                       */}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {Table,Card,Input,Select,DatePicker,Button,Space,Tag,Modal,Typography,message,} from "antd";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 

@@ -11,8 +11,7 @@ export const spacesClient = new S3Client({
   endpoint: process.env.DO_SPACES_ENDPOINT!,
   credentials: {
     accessKeyId: process.env.DO_SPACES_KEY!,
-    secretAccessKey:
-      process.env.DO_SPACES_SECRET!,
+    secretAccessKey: process.env.DO_SPACES_SECRET!,
   },
 });
 
@@ -20,17 +19,21 @@ const BUCKET = process.env.DO_SPACES_BUCKET!;
 
 export async function uploadFileToSpaces(
   file: File,
-  folder = "job-recruitment"
+  folder = "job-recruitment",
+  customFileName?: string
 ) {
-  
   const bytes = await file.arrayBuffer();
 
   const buffer = Buffer.from(bytes);
 
   const extension =
-    file.name.split(".").pop() ?? "";
+    file.name.split(".").pop()?.toLowerCase() ?? "";
 
-  const fileName = `${randomUUID()}.${extension}`;
+  // ถ้ามี customFileName ให้ใช้ชื่อที่กำหนด
+  // ถ้าไม่มี ให้ใช้ UUID แบบเดิม
+  const fileName =
+    customFileName ??
+    `${randomUUID()}.${extension}`;
 
   const key = `${folder}/${fileName}`;
 
@@ -60,11 +63,10 @@ export async function uploadMultipleFiles(
   const uploaded = [];
 
   for (const item of files) {
-    const result =
-      await uploadFileToSpaces(
-        item.file,
-        item.type
-      );
+    const result = await uploadFileToSpaces(
+      item.file,
+      item.type
+    );
 
     uploaded.push({
       type: item.type,
@@ -78,12 +80,12 @@ export async function uploadMultipleFiles(
 }
 
 export async function deleteFileFromSpaces(
-    key: string
+  key: string
 ) {
-    await spacesClient.send(
-        new DeleteObjectCommand({
-            Bucket: BUCKET,
-            Key: key,
-        })
-    );
+  await spacesClient.send(
+    new DeleteObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    })
+  );
 }

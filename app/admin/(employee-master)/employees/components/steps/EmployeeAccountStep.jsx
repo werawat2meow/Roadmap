@@ -17,7 +17,6 @@ import {
 } from "antd";
 
 import {
-  IdcardOutlined,
   KeyOutlined,
   LockOutlined,
   SafetyCertificateOutlined,
@@ -31,6 +30,7 @@ import {
 } from "react";
 
 import dayjs from "dayjs";
+import { useAuth } from "@/contexts/AuthContext";
 
 const { Text } = Typography;
 
@@ -63,10 +63,13 @@ function toDayjs(value) {
   }
 
   if (dayjs.isDayjs(value)) {
-    return value;
+    return value.isValid()
+      ? value
+      : null;
   }
 
-  const parsed = dayjs(value);
+  const parsed =
+    dayjs(value);
 
   return parsed.isValid()
     ? parsed
@@ -75,84 +78,318 @@ function toDayjs(value) {
 
 export default function EmployeeAccountStep({
   form,
+
   mode = "create",
+
   disabled = false,
+
   selectedRecord = null,
+
   masterData = {},
+
   masterLoading = false,
 }) {
-  const companyId =
+
+  const { user } = useAuth();
+
+  const currentRoleCode = String(user?.role_code || (typeof user?.role === "string"? user.role : user?.role?.role_code) || "").trim().toUpperCase();
+  const isSuperAdmin = currentRoleCode === "SUPER_ADMIN";
+
+  /* =========================================================
+     COMPANY
+
+     company_id อยู่ใน Step:
+     "องค์กรและกลุ่มงาน"
+
+     EmployeeAccountStep อยู่คนละ Step
+
+     เพราะฉะนั้นต้อง preserve ค่าไว้
+     และ fallback ไปอ่านจาก Form Store
+  ========================================================= */
+
+  const watchedCompanyId =
     Form.useWatch(
       "company_id",
-      form
+      {
+        form,
+        preserve: true,
+      }
     );
+
+  const companyId =
+    watchedCompanyId ||
+    form.getFieldValue(
+      "company_id"
+    ) ||
+    selectedRecord
+      ?.company_id ||
+    null;
+
+  /* =========================================================
+     ACCOUNT WATCHERS
+  ========================================================= */
 
   const createUserAccount =
     Form.useWatch(
       "create_user_account",
-      form
+      {
+        form,
+        preserve: true,
+      }
     );
+
+  const updateUserAccount =
+    Form.useWatch(
+      "update_user_account",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  /* =========================================================
+     EMAIL
+
+     work_email / personal_email
+     อยู่ใน Step อื่น
+
+     จึงต้อง preserve
+  ========================================================= */
 
   const workEmail =
     Form.useWatch(
       "work_email",
-      form
+      {
+        form,
+        preserve: true,
+      }
     );
 
   const personalEmail =
     Form.useWatch(
       "personal_email",
-      form
+      {
+        form,
+        preserve: true,
+      }
     );
 
+  /* =========================================================
+     MASTER DATA
+  ========================================================= */
+
   const settings =
-    masterData.employeeCodeSettings ||
+    masterData
+      .employeeCodeSettings ||
     [];
 
   const roles =
     masterData.roles || [];
 
+  /* =========================================================
+     EMPLOYEE CODE SETTINGS
+
+     ต้องแสดงเฉพาะ Setting
+     ของ Company ที่เลือกเท่านั้น
+  ========================================================= */
+
   const filteredSettings =
+    useMemo(() => {
+      if (!companyId) {
+        return [];
+      }
+
+      return settings.filter(
+        (item) =>
+          String(
+            item.company_id
+          ) ===
+          String(
+            companyId
+          )
+      );
+    }, [
+      settings,
+      companyId,
+    ]);
+
+  /* =========================================================
+     SETTING OPTIONS
+  ========================================================= */
+
+  const settingOptions =
     useMemo(
       () =>
-        settings.filter(
-          (item) =>
-            !companyId ||
-            item.company_id ===
-              companyId
+        filteredSettings.map(
+          (item) => ({
+            value:
+              item.id,
+
+            label:
+              `${item.code_name} (${item.code_pattern})${
+                item.is_default
+                  ? " - Default"
+                  : ""
+              }`,
+          })
         ),
       [
-        settings,
-        companyId,
+        filteredSettings,
       ]
     );
 
-  const settingOptions =
-    filteredSettings.map(
-      (item) => ({
-        value: item.id,
-        label: `${item.code_name} (${item.code_pattern})${
-          item.is_default
-            ? " - Default"
-            : ""
-        }`,
-      })
-    );
+  /* =========================================================
+     SYNC EMPLOYEE CODE SETTING WITH COMPANY
 
-  const roleOptions =
-    roles
-      .filter(
+     CREATE เท่านั้น
+
+     กรณี:
+     1. เลือก Company ใหม่
+     2. Setting เดิมเป็นของ Company อื่น
+
+     → ล้าง Setting เดิม
+
+     ถ้า Company มี is_default = true
+     → เลือก Default ให้อัตโนมัติ
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      mode !== "create"
+    ) {
+      return;
+    }
+
+    /* -----------------------------------------------------
+       ยังไม่ได้เลือก Company
+    ----------------------------------------------------- */
+
+    if (!companyId) {
+      form.setFieldValue(
+        "employee_code_setting_id",
+        undefined
+      );
+
+      return;
+    }
+
+    /* -----------------------------------------------------
+       Setting ปัจจุบัน
+    ----------------------------------------------------- */
+
+    const currentSettingId =
+      form.getFieldValue(
+        "employee_code_setting_id"
+      );
+
+    /* -----------------------------------------------------
+       Setting ปัจจุบัน
+       ยังอยู่ใน Company นี้หรือไม่
+    ----------------------------------------------------- */
+
+    const currentIsValid =
+      currentSettingId
+        ? filteredSettings.some(
+            (item) =>
+              String(
+                item.id
+              ) ===
+              String(
+                currentSettingId
+              )
+          )
+        : false;
+
+    /*
+     * ถ้าถูกต้องอยู่แล้ว
+     * ไม่ต้องเปลี่ยน
+     */
+    if (currentIsValid) {
+      return;
+    }
+
+    /* -----------------------------------------------------
+       หา Default Setting
+    ----------------------------------------------------- */
+
+    const defaultSetting =
+      filteredSettings.find(
         (item) =>
-          item.is_active !== false
-      )
+          item.is_default ===
+          true
+      );
+
+    /*
+     * ถ้ามี Default
+     * → เลือกให้
+     *
+     * ถ้าไม่มี
+     * → undefined
+     * ให้ User เลือกเอง
+     */
+    form.setFieldValue(
+      "employee_code_setting_id",
+      defaultSetting?.id
+    );
+  }, [
+    mode,
+    companyId,
+    filteredSettings,
+    form,
+  ]);
+
+  /* =========================================================
+     ROLE OPTIONS
+  ========================================================= */
+
+  const roleOptions = useMemo(() => {
+    return roles.filter((item) => {
+    
+        if ( item?.is_active === false) {
+          return false;
+        }
+
+        const roleCode =
+          String(
+            item?.role_code || ""
+          )
+            .trim()
+            .toUpperCase();
+        if (
+          roleCode ===
+            "SUPER_ADMIN" &&
+          !isSuperAdmin
+        ) {
+          return false;
+        }
+
+        return true;
+      })
       .map((item) => ({
-        value: item.id,
-        label: item.role_code
-          ? `${item.role_code} - ${
-              item.role_name || "-"
-            }`
-          : item.role_name || "-",
+        value:
+          item.id,
+
+        label:
+          item.role_code
+            ? `${item.role_code} - ${
+                item.role_name ||
+                "-"
+              }`
+            : item.role_name ||
+              "-",
       }));
+  }, [roles,isSuperAdmin,]);
+
+  /* =========================================================
+     AUTO EMAIL
+
+     CREATE ACCOUNT:
+     work_email
+     ↓
+     personal_email
+     ↓
+     auth_email
+  ========================================================= */
 
   useEffect(() => {
     if (
@@ -167,14 +404,20 @@ export default function EmployeeAccountStep({
         "auth_email"
       );
 
-    if (!current) {
-      form.setFieldValue(
-        "auth_email",
-        workEmail ||
-          personalEmail ||
-          null
-      );
+    /*
+     * ถ้า User กรอกเองแล้ว
+     * ห้ามเขียนทับ
+     */
+    if (current) {
+      return;
     }
+
+    form.setFieldValue(
+      "auth_email",
+      workEmail ||
+        personalEmail ||
+        null
+    );
   }, [
     mode,
     createUserAccount,
@@ -183,20 +426,53 @@ export default function EmployeeAccountStep({
     form,
   ]);
 
+  /* =========================================================
+     ACCOUNT ENABLED
+  ========================================================= */
+
+  const accountEnabled =
+    mode === "create"
+      ? Boolean(
+          createUserAccount
+        )
+      : Boolean(
+          updateUserAccount
+        );
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <div>
+      {/* =====================================================
+          EMPLOYEE CODE
+      ===================================================== */}
+
       <Divider
         titlePlacement="left"
         plain
       >
         <Space>
           <SettingOutlined />
+
           การสร้างรหัสพนักงาน
         </Space>
       </Divider>
 
-      {mode === "edit" &&
-      selectedRecord?.employee_code ? (
+      {/* =====================================================
+          EDIT / VIEW
+
+          Employee Code
+          ไม่ Generate ใหม่
+      ===================================================== */}
+
+      {(
+        mode === "edit" ||
+        mode === "view"
+      ) &&
+      selectedRecord
+        ?.employee_code ? (
         <Card
           size="small"
           className="mb-5 bg-slate-50"
@@ -210,11 +486,13 @@ export default function EmployeeAccountStep({
               code
               copyable={{
                 text:
-                  selectedRecord.employee_code,
+                  selectedRecord
+                    .employee_code,
               }}
             >
               {
-                selectedRecord.employee_code
+                selectedRecord
+                  .employee_code
               }
             </Text>
           </div>
@@ -227,6 +505,10 @@ export default function EmployeeAccountStep({
         </Card>
       ) : (
         <>
+          {/* =================================================
+              CREATE EMPLOYEE CODE
+          ================================================= */}
+
           <Alert
             showIcon
             type="info"
@@ -235,7 +517,16 @@ export default function EmployeeAccountStep({
             className="mb-5"
           />
 
-          <Row gutter={[16, 0]}>
+          <Row
+            gutter={[
+              16,
+              0,
+            ]}
+          >
+            {/* =============================================
+                EMPLOYEE CODE SETTING
+            ============================================= */}
+
             <Col
               xs={24}
               md={8}
@@ -248,6 +539,7 @@ export default function EmployeeAccountStep({
                     required:
                       mode ===
                       "create",
+
                     message:
                       "กรุณาเลือกรูปแบบรหัสพนักงาน",
                   },
@@ -256,21 +548,57 @@ export default function EmployeeAccountStep({
                 <Select
                   showSearch
                   allowClear
+
                   loading={
                     masterLoading
                   }
+
                   disabled={
                     disabled ||
+                    masterLoading ||
                     !companyId
                   }
-                  placeholder="เลือกรูปแบบรหัส"
+
+                  placeholder={
+                    !companyId
+                      ? "กรุณาเลือกบริษัทก่อน"
+                      : settingOptions.length ===
+                          0
+                        ? "ไม่พบรูปแบบรหัสของบริษัทนี้"
+                        : "เลือกรูปแบบรหัส"
+                  }
+
                   options={
                     settingOptions
                   }
+
                   optionFilterProp="label"
+
+                  notFoundContent={
+                    companyId
+                      ? "ไม่พบรูปแบบรหัสพนักงานของบริษัทนี้"
+                      : "กรุณาเลือกบริษัทก่อน"
+                  }
                 />
               </Form.Item>
+
+              {/* ===========================================
+                  HELPER
+              =========================================== */}
+
+              {companyId &&
+                !masterLoading &&
+                settingOptions.length ===
+                  0 && (
+                  <div className="-mt-4 mb-4 text-xs text-orange-500">
+                    บริษัทที่เลือกยังไม่มี Employee Code Setting ที่เปิดใช้งาน
+                  </div>
+                )}
             </Col>
+
+            {/* =============================================
+                EMPLOYEE TYPE
+            ============================================= */}
 
             <Col
               xs={24}
@@ -284,20 +612,29 @@ export default function EmployeeAccountStep({
                     required:
                       mode ===
                       "create",
+
                     message:
                       "กรุณาเลือกประเภทพนักงาน",
                   },
                 ]}
               >
                 <Select
-                  disabled={disabled}
+                  disabled={
+                    disabled
+                  }
+
                   options={
                     employeeTypeOptions
                   }
+
                   placeholder="เลือกประเภทพนักงาน"
                 />
               </Form.Item>
             </Col>
+
+            {/* =============================================
+                RUNNING DATE
+            ============================================= */}
 
             <Col
               xs={24}
@@ -306,29 +643,44 @@ export default function EmployeeAccountStep({
               <Form.Item
                 label="วันที่ Running"
                 name="running_date"
+
                 getValueProps={(
                   value
                 ) => ({
                   value:
-                    toDayjs(value),
+                    toDayjs(
+                      value
+                    ),
                 })}
-                normalize={(value) =>
-                  toDayjs(value)
+
+                normalize={(
+                  value
+                ) =>
+                  toDayjs(
+                    value
+                  )
                 }
+
                 rules={[
                   {
                     required:
                       mode ===
                       "create",
+
                     message:
                       "กรุณาเลือกวันที่ Running",
                   },
                 ]}
               >
                 <DatePicker
-                  disabled={disabled}
+                  disabled={
+                    disabled
+                  }
+
                   format="DD/MM/YYYY"
+
                   className="w-full"
+
                   placeholder="เลือกวันที่ Running"
                 />
               </Form.Item>
@@ -337,17 +689,31 @@ export default function EmployeeAccountStep({
         </>
       )}
 
+      {/* =====================================================
+          USER ACCOUNT
+      ===================================================== */}
+
       <Divider
         titlePlacement="left"
         plain
       >
         <Space>
           <SafetyCertificateOutlined />
+
           บัญชีผู้ใช้งานและสิทธิ์
         </Space>
       </Divider>
 
-      <Row gutter={[16, 0]}>
+      <Row
+        gutter={[
+          16,
+          0,
+        ]}
+      >
+        {/* =================================================
+            CREATE ACCOUNT SWITCH
+        ================================================= */}
+
         {mode === "create" ? (
           <Col xs={24}>
             <Form.Item
@@ -356,13 +722,21 @@ export default function EmployeeAccountStep({
               valuePropName="checked"
             >
               <Switch
-                disabled={disabled}
+                disabled={
+                  disabled
+                }
+
                 checkedChildren="สร้างบัญชี"
+
                 unCheckedChildren="ไม่สร้างบัญชี"
               />
             </Form.Item>
           </Col>
         ) : (
+          /* =================================================
+             UPDATE ACCOUNT SWITCH
+          ================================================= */
+
           <Col xs={24}>
             <Form.Item
               label="แก้ไขบัญชีผู้ใช้งาน"
@@ -370,21 +744,34 @@ export default function EmployeeAccountStep({
               valuePropName="checked"
             >
               <Switch
-                disabled={disabled}
+                disabled={
+                  disabled
+                }
+
                 checkedChildren="อัปเดตบัญชี"
+
                 unCheckedChildren="ไม่แก้บัญชี"
               />
             </Form.Item>
           </Col>
         )}
 
-        {(mode === "create"
-          ? createUserAccount
-          : Form.useWatch(
-              "update_user_account",
-              form
-            )) && (
+        {/* =================================================
+            ACCOUNT DETAIL
+
+            ห้ามเรียก Form.useWatch()
+            ใน JSX Conditional
+
+            ใช้ accountEnabled
+            ที่ประกาศด้านบนแทน
+        ================================================= */}
+
+        {accountEnabled && (
           <>
+            {/* =============================================
+                ROLE
+            ============================================= */}
+
             <Col
               xs={24}
               md={8}
@@ -395,6 +782,7 @@ export default function EmployeeAccountStep({
                 rules={[
                   {
                     required: true,
+
                     message:
                       "กรุณาเลือก Role",
                   },
@@ -403,18 +791,30 @@ export default function EmployeeAccountStep({
                 <Select
                   showSearch
                   allowClear
+
                   loading={
                     masterLoading
                   }
-                  disabled={disabled}
+
+                  disabled={
+                    disabled ||
+                    masterLoading
+                  }
+
                   placeholder="เลือก Role"
+
                   options={
                     roleOptions
                   }
+
                   optionFilterProp="label"
                 />
               </Form.Item>
             </Col>
+
+            {/* =============================================
+                AUTH EMAIL
+            ============================================= */}
 
             <Col
               xs={24}
@@ -426,25 +826,36 @@ export default function EmployeeAccountStep({
                 rules={[
                   {
                     required: true,
+
                     message:
                       "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ",
                   },
                   {
-                    type: "email",
+                    type:
+                      "email",
+
                     message:
                       "รูปแบบอีเมลไม่ถูกต้อง",
                   },
                 ]}
               >
                 <Input
-                  disabled={disabled}
+                  disabled={
+                    disabled
+                  }
+
                   prefix={
                     <UserOutlined />
                   }
+
                   placeholder="user@company.com"
                 />
               </Form.Item>
             </Col>
+
+            {/* =============================================
+                ACCOUNT STATUS
+            ============================================= */}
 
             <Col
               xs={24}
@@ -456,8 +867,12 @@ export default function EmployeeAccountStep({
                 valuePropName="checked"
               >
                 <Switch
-                  disabled={disabled}
+                  disabled={
+                    disabled
+                  }
+
                   checkedChildren="ใช้งาน"
+
                   unCheckedChildren="ปิดใช้งาน"
                 />
               </Form.Item>
@@ -466,20 +881,38 @@ export default function EmployeeAccountStep({
         )}
       </Row>
 
+      {/* =====================================================
+          INITIAL LOGIN
+      ===================================================== */}
+
       <Alert
         showIcon
         type="warning"
-        icon={<KeyOutlined />}
+
+        icon={
+          <KeyOutlined />
+        }
+
         title="Username และรหัสผ่านเริ่มต้น"
+
         description="เมื่อสร้างพนักงานสำเร็จ ระบบจะใช้รหัสพนักงานเป็น Username และรหัสผ่านชั่วคราว จากนั้น Hash ด้วย bcrypt ก่อนบันทึกลง user_accounts.password_hash"
       />
+
+      {/* =====================================================
+          ROLE + PERMISSION INFO
+      ===================================================== */}
 
       <div className="mt-4">
         <Alert
           showIcon
           type="info"
-          icon={<LockOutlined />}
+
+          icon={
+            <LockOutlined />
+          }
+
           title="Role และ Permission"
+
           description="บัญชีผู้ใช้งานเก็บ role_id เพียงหนึ่ง Role โดยแต่ละ Role สามารถมีหลาย Permission ผ่านตาราง role_permissions"
         />
       </div>

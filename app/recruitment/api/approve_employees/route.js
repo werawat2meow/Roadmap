@@ -29,7 +29,6 @@ export async function GET(request) {
           first_name,
           last_name,
           position_id,
-
           positions(
             position_name
           )
@@ -39,7 +38,7 @@ export async function GET(request) {
           count: "exact",
         }
       )
-      .in("status", [12, 13]);
+      .in("status", [12, 13, 17]);
 
     // Status Filter
     if (status) {

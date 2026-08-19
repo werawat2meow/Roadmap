@@ -294,6 +294,56 @@ export default function RolesPage() {
             );
         }
 
+        /*
+         * โหลดจำนวน Permission ต่อ Role จาก role_permissions โดยตรง
+         * เพื่อไม่พึ่งว่า /api/admin/roles จะส่ง permission_count มาหรือไม่
+         */
+        if (nextRows.length > 0) {
+          try {
+            const summaryParams =
+              new URLSearchParams();
+
+            summaryParams.set(
+              "summary",
+              "true"
+            );
+
+            summaryParams.set(
+              "role_ids",
+              nextRows
+                .map((item) => item?.id)
+                .filter(Boolean)
+                .join(",")
+            );
+
+            const permissionSummary =
+              await fetchJson(
+                `${ROLE_PERMISSION_API_URL}?${summaryParams.toString()}`
+              );
+
+            const permissionCounts =
+              permissionSummary?.permission_counts ||
+              {};
+
+            nextRows = nextRows.map(
+              (role) => ({
+                ...role,
+                permission_count:
+                  Number(
+                    permissionCounts[
+                      role.id
+                    ] ?? 0
+                  ) || 0,
+              })
+            );
+          } catch (summaryError) {
+            console.error(
+              "LOAD_ROLE_PERMISSION_COUNTS_ERROR:",
+              summaryError
+            );
+          }
+        }
+
         setRows(nextRows);
 
         setTotal(
@@ -357,6 +407,19 @@ export default function RolesPage() {
 
         const permissionRows =
           getRows(payload);
+
+        const expectedTotal = Number(
+          payload?.pagination?.total
+        );
+
+        if (
+          Number.isFinite(expectedTotal) &&
+          permissionRows.length < expectedTotal
+        ) {
+          throw new Error(
+            `Permission โหลดไม่ครบ: ได้ ${permissionRows.length} จาก ${expectedTotal} รายการ`
+          );
+        }
 
         setPermissions(
           permissionRows.filter(

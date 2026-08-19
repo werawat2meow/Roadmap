@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, Pagination, Alert } from "antd";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import {swalConfirm,swalError,swalSuccess} from "../../../components/Swal";
@@ -29,7 +29,6 @@ export default function PositionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [viewItem, setViewItem] = useState(null);
-  const [families, setFamilies] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [showGuide, setShowGuide] = useState(true);
 
@@ -73,43 +72,28 @@ export default function PositionsPage() {
   }
 
   async function loadMasters() {
-    try {
-      const [
-        familyRes,
-        jobRes,
-      ] = await Promise.all([
-        fetch("/api/admin/position-families?all=true"),
-        fetch("/api/admin/jobs?all=true"),
-      ]);
+  try {
+    const jobRes = await fetch(
+      "/api/admin/jobs?all=true"
+    );
 
-      const [
-        familyJson,
-        jobJson,
-      ] = await Promise.all([
-        familyRes.json(),
-        jobRes.json(),
-      ]);
+    const jobJson =
+      await jobRes.json();
 
-      if (familyJson.success) {
-        setFamilies(familyJson.data || []);
-      }
-
-      if (jobJson.success) {
-        setJobs(jobJson.data || []);
-      }
-
-      
-    } catch (err) {
-      console.error(
-        "LOAD_MASTER_ERROR",
-        err
-      );
-
-      swalError(
-        "โหลดข้อมูล Master ไม่สำเร็จ"
-      );
+    if (jobJson.success) {
+      setJobs(jobJson.data || []);
     }
+  } catch (err) {
+    console.error(
+      "LOAD_MASTER_ERROR",
+      err
+    );
+
+    swalError(
+      "โหลดข้อมูล Master ไม่สำเร็จ"
+    );
   }
+}
 
   async function handleSubmit(values) {
     try {
@@ -369,7 +353,6 @@ export default function PositionsPage() {
           disabled={loading}
           onChange={(nextPage, nextPageSize) => {
             if (nextPageSize !== pageSize) {
-              // เปลี่ยนขนาดหน้า -> รีเซ็ตกลับไปหน้า 1
               setPage(1);
               setPageSize(nextPageSize);
             } else {
@@ -383,7 +366,6 @@ export default function PositionsPage() {
         open={modalOpen}
         loading={saving}
         initialValues={editingItem}
-        families={families}
         jobs={jobs}
         onCancel={closeModal}
         onSubmit={handleSubmit}

@@ -23,7 +23,7 @@ export default async function NewJobDescriptionPage() {
     supabaseAdmin.from("units").select("id, unit_name, division_id").order("unit_name", { ascending: true }),
     supabaseAdmin
       .from("positions")
-      .select("id, position_name, position_level")
+      .select("id, position_name")
       .order("position_name", { ascending: true }),
     supabaseAdmin
       .from("unit_positions")

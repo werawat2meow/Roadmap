@@ -298,7 +298,7 @@ export default function JobOpenForm({ editId }) {
           setEndDate("");
           setUrgentMap({});
 
-          // router.push("/recruitment/setting/job_openings");
+          router.push("/recruitment/setting/job_openings");
         } else {
           setMessage({
             type: "error",

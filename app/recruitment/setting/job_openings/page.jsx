@@ -2,9 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import RecruitJobOpenTable from '@/app/recruitment/components/recruit-job-open-table';
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
 
 export default function RecruitmentPage() {
   const router = useRouter();
+
+  const { isChecking, canView, canCreate } = usePageGuard({
+    module: "recruitment.job.openings",
+    unauthorizedRedirect: "/recruitment",
+  });
+
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
 
   return (
       <div className="h-full w-full">
@@ -14,17 +24,19 @@ export default function RecruitmentPage() {
               <h1 className="text-2xl font-bold text-slate-800">  Job Openings </h1>
               <p className="mt-2 text-slate-500"> หน้าจัดการการเปิดรับสมัครงาน </p>
             </div>
-            <div className="justify-self-center md:justify-self-end">
-              <button
-                type="button"
-                onClick={() => router.push("/recruitment/setting/job_openings/create")}
-                className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
-                style={{ backgroundColor: "green" }}
-              >
-                <span>+</span>
-                <span>เปิดรายการรับสมัครพนักงาน</span>
-              </button>
-            </div>
+            { canCreate && (
+              <div className="justify-self-center md:justify-self-end">
+                <button
+                  type="button"
+                  onClick={() => router.push("/recruitment/setting/job_openings/create")}
+                  className="rounded-lg px-4 py-2 text-white font-medium shadow-smtransition-colors cursor-pointer"
+                  style={{ backgroundColor: "green" }}
+                >
+                  <span>+</span>
+                  <span>เปิดรายการรับสมัครพนักงาน</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         

@@ -15,6 +15,9 @@ import {
 } from 'antd';
 import { SearchOutlined, ExclamationCircleFilled } from '@ant-design/icons';
 
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
+
 const { Title, Text } = Typography;
 const { confirm } = Modal;
 
@@ -50,6 +53,11 @@ export default function RecruitJobOpenTable() {
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [divisionOptions, setDivisionOptions] = useState([]);
   const [unitOptions, setUnitOptions] = useState([]);
+
+  const { isChecking, canView, canEdit, canDelete } = usePageGuard({
+    module: "recruitment.job.openings",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -300,11 +308,15 @@ export default function RecruitJobOpenTable() {
       key: 'status',
       width: 90,
       render: (val, row) => (
-        <Switch
-          checked={!!val}
-          disabled={busyId === row.id}
-          onChange={() => toggleStatus(row)}
-        />
+        canEdit ? (
+          <Switch
+            checked={!!val}
+            disabled={busyId === row.id}
+            onChange={() => toggleStatus(row)}
+          />
+        ) : (
+          '-'
+        )
       ),
     },
     {
@@ -313,23 +325,30 @@ export default function RecruitJobOpenTable() {
       width: 130,
       render: (_, row) => (
         <Space size="small">
-          <Link href={`/recruitment/setting/job_openings/${row.id}/edit`}>
-            <Button type="primary" size="small">
-              อัปเดต
+          { canEdit && (
+            <Link href={`/recruitment/setting/job_openings/${row.id}/edit`}>
+              <Button type="primary" size="small">
+                อัปเดต
+              </Button>
+            </Link>
+          )}
+          { canDelete && (
+            <Button
+              danger
+              size="small"
+              loading={busyId === row.id}
+              onClick={() => showDeleteConfirm(row)}
+            >
+              ลบ
             </Button>
-          </Link>
-          <Button
-            danger
-            size="small"
-            loading={busyId === row.id}
-            onClick={() => showDeleteConfirm(row)}
-          >
-            ลบ
-          </Button>
+          )}
         </Space>
       ),
     },
   ];
+
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
 
   return (
     <div

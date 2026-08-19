@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     // 1) ข้อมูลผู้สมัคร
     const { data: applicant, error: applicantError } = await supabaseAdmin
       .from("recruit_job_applications")
-      .select("id,first_name, last_name, positions(position_name)")
+      .select("*,positions(position_name)")
       .eq("id", id)
       .single();
 

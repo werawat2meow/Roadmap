@@ -6,6 +6,10 @@ import Link from 'next/link';
 import DeleteModal from "@/app/recruitment/components/DeleteModal";
 import Pagination from "@/app/recruitment/components/Pagination";
 
+
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
+
 const pageSizeOptions = [10, 20, 50, 100];
 
 export default function LanguageTable() {
@@ -17,6 +21,11 @@ export default function LanguageTable() {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const { isChecking, canView, canEdit, canDelete } = usePageGuard({
+    module: "recruitment.language",
+    unauthorizedRedirect: "/recruitment",
+  });
 
   const loadData = async () => {
     try {
@@ -131,6 +140,9 @@ export default function LanguageTable() {
     return `${start} - ${end} จาก ${count} รายการ`;
   }, [count, from, to]);
 
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between">
@@ -211,39 +223,44 @@ export default function LanguageTable() {
                   </td>
 
                   <td className="px-4 py-4">
-                    <label className="inline-flex items-center gap-3">
-                      <span className="relative inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          className="peer sr-only"
-                          checked={Boolean(row.status)}
-                          disabled={busyId === row.id}
-                          onChange={() => toggleStatus(row)}
-                        />
-                        <span className="h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-green-500" />
-                        <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-                      </span>
-                    </label>
+                    { canEdit ? (
+                      <label className="inline-flex items-center gap-3">
+                        <span className="relative inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={Boolean(row.status)}
+                            disabled={busyId === row.id}
+                            onChange={() => toggleStatus(row)}
+                          />
+                          <span className="h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-green-500" />
+                          <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                        </span>
+                      </label>
+                    ) : ( "-" )}
                   </td>
 
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
-                      <Link
-                        href={`/recruitment/setting/language/${row.id}/edit`}
-                        className="rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
-                      >
-                        แก้ไข
-                      </Link>
-
+                      { canEdit && (
+                        <Link
+                          href={`/recruitment/setting/language/${row.id}/edit`}
+                          className="rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                        >
+                          แก้ไข
+                        </Link>
+                      )}
                       {/* ✅ เปลี่ยนจาก deleteRow(row.id) → setDeleteTarget(row) */}
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(row)}
-                        disabled={busyId === row.id}
-                        className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        ลบ
-                      </button>
+                      { canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(row)}
+                          disabled={busyId === row.id}
+                          className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          ลบ
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

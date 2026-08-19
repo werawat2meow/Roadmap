@@ -7,6 +7,7 @@ import {
 } from "geothai";
 
 export async function GET(request, { params }) {
+
   try {
     const { id } = await params;
 
@@ -21,6 +22,22 @@ export async function GET(request, { params }) {
         positions (
           id,
           position_name
+        ),
+        genders(
+          id,
+          gender_name_th
+        ),
+        nationalities(
+          id,
+          nationality_name_th
+        ),
+        religions(
+          id,
+          religion_name_th
+        ),
+        marital_statuses(
+          id,
+          marital_status_name_th
         )
       `)
       .eq("id", id)

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Form } from "antd";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
@@ -390,25 +390,19 @@ export default function NationalitiesPage() {
         <NationalityTable
           data={rows}
           loading={loading}
+
           page={page}
           pageSize={pageSize}
           total={total}
-          onChange={
-            handleTableChange
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            canEdit
-              ? handleEdit
-              : undefined
-          }
-          onDelete={
-            canDelete
-              ? handleDelete
-              : undefined
-          }
+
+          canView={canView}
+          canEdit={canEdit}
+          canDelete={canDelete}
+
+          onChange={handleTableChange}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       }
       modal={

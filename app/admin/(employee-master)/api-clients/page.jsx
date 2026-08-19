@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {Table,Button,Modal,Form,Input,Switch,Space,Tag,message,Popconfirm,} from "antd";
 import {EditOutlined,PoweroffOutlined,PlusOutlined,DeleteOutlined,} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";
 

@@ -29,7 +29,7 @@ import {
   createLanguageSkillRow,
 } from "@/app/jobs/types/utils";
 
-import { useLanguage } from "@/app/jobs/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Form } from "antd";
 import {swalSuccess,swalError,swalConfirm,} from "@/components/Swal";
-import useAuth from "@/hooks/useAuth";
+import {useAuth} from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import {hasPermission,} from "@/lib/permissions";
 import LoadingOrb from "../../../components/LoadingOrb";

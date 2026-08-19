@@ -1,16 +1,24 @@
 import { Download, Send } from 'lucide-react';
 
-export default function PayrollHeader() {
+// 1. เพิ่ม Interface เพื่อรองรับฟังก์ชันที่ส่งมาจากไฟล์ page.tsx
+interface PayrollHeaderProps {
+  onDownload: () => void;
+}
+
+// 2. รับ onDownload เข้ามาในฟังก์ชัน
+export default function PayrollHeader({ onDownload }: PayrollHeaderProps) {
     return (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 className="text-4xl font-black text-slate-900">Payroll</h1>
+                <h1 className="text-4xl font-black text-slate-900">Send Account</h1>
                 <p className="text-sm text-gray-500">จัดการข้อมูลบัญชีธนาคารสำหรับส่งฝ่ายบัญชี</p>
             </div>
             
             <div className="flex flex-col gap-3 sm:flex-row">
+                {/* 3. ใส่ onClick={onDownload} ที่ปุ่มดาวน์โหลด */}
                 <button
                     type="button"
+                    onClick={onDownload}
                     className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:from-indigo-600 hover:to-blue-700 active:scale-[0.98]"
                 >
                     <Download className="h-4 w-4" />

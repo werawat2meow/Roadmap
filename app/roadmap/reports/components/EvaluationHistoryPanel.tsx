@@ -31,6 +31,7 @@ type EvaluationRecord = {
   score: number | null;
   status: string;
   evaluationCount: number;
+  approvedByName?: string;
   scorePercent: string;
 };
 
@@ -121,6 +122,7 @@ export default function EvaluationHistoryPanel({
     { header: "Level", key: "level", align: "center" },
     { header: "คะแนน", key: "scorePercent", align: "center" },
     { header: "สถานะ", key: "status", align: "center" },
+    { header: "ผู้อนุมัติ", key: "approvedByName", align: "center" },
     { header: "Actions", key: "actions", align: "center" },
   ];
 

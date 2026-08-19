@@ -48,6 +48,7 @@ interface SummarySidebarProps {
   evaluationType?: string;
   onSaveDraft?: () => void;
   onSubmit?: () => void;
+  onPreview?: () => void;
   showSaveDraft?: boolean;
 }
 
@@ -63,8 +64,9 @@ type ManagerUser = {
 type SalaryInputProps = {
   label: string;
   value: number;
-  onRangeChange: (value: number) => void;
-  onTextChange: (value: string) => void;
+  onRangeChange?: (value: number) => void;
+  onTextChange?: (value: string) => void;
+  readOnly?: boolean;
 };
 
 const SalaryInput = ({
@@ -72,6 +74,7 @@ const SalaryInput = ({
   value,
   onRangeChange,
   onTextChange,
+  readOnly = false,
 }: SalaryInputProps) => (
   <div className="mb-4">
     <label className="text-sm text-gray-600 block mb-2">{label}</label>
@@ -81,14 +84,18 @@ const SalaryInput = ({
         min="0"
         max="200000"
         value={value}
-        onChange={(e) => onRangeChange(Number(e.target.value))}
+        disabled={readOnly}
+        onChange={(e) => !readOnly && onRangeChange?.(Number(e.target.value))}
         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
       />
       <input
         type="text"
         value={value.toLocaleString()}
-        onChange={(e) => onTextChange(e.target.value)}
-        className="border rounded-md p-2 text-sm w-28 text-right"
+        readOnly={readOnly}
+        onChange={(e) => !readOnly && onTextChange?.(e.target.value)}
+        className={`border rounded-md p-2 text-sm w-28 text-right ${
+          readOnly ? "bg-gray-100 cursor-not-allowed" : ""
+        }`}
       />
     </div>
   </div>
@@ -117,6 +124,7 @@ export default function SummarySidebar({
   onMaxScoreChange,
   onSaveDraft,
   onSubmit,
+  onPreview,
   isEditing,
   isSaving = false,
   showSaveDraft = true,
@@ -197,10 +205,7 @@ export default function SummarySidebar({
         <SalaryInput
           label="Current Salary"
           value={allFormData.currentSalary ?? 0}
-          onRangeChange={(value) => onCurrentSalaryChange?.(value)}
-          onTextChange={(value) =>
-            onCurrentSalaryChange?.(parseSalaryInput(value))
-          }
+          readOnly
         />
         <SalaryInput
           label="New Salary"
@@ -321,7 +326,13 @@ export default function SummarySidebar({
         )}
 
         <button
-          onClick={() => setIsPreviewOpen(true)}
+          onClick={() => {
+            if (onPreview) {
+              onPreview();
+            } else {
+              setIsPreviewOpen(true);
+            }
+          }}
           className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(225,29,72,0.25)] transition-all duration-200 active:scale-95 cursor-pointer select-none"
         >
           Preview
@@ -381,11 +392,13 @@ export default function SummarySidebar({
       </div>
 
       {/* 3. ส่งข้อมูลผูกตรง (allFormData) ที่รับมาจากฟอร์มกรอกจริง ๆ เข้าไปยัง Component ป๊อปอัป Preview */}
-      <ReportPreviewModal
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        data={{ ...allFormData, evaluationType }}
-      />
+      {!onPreview && (
+        <ReportPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          data={{ ...allFormData, evaluationType }}
+        />
+      )}
     </div>
   );
 }

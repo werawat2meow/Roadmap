@@ -8,11 +8,18 @@ import {
   Tag,
   Tooltip,
   Rate,
+  Typography,
 } from "antd";
+
 import {
   DeleteOutlined,
   EditOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
+
+const {
+  Text,
+} = Typography;
 
 const importanceColor = {
   low: "default",
@@ -28,6 +35,26 @@ const importanceLabel = {
   critical: "Critical",
 };
 
+function shortUuid(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const text =
+    String(value);
+
+  if (
+    text.length <= 20
+  ) {
+    return text;
+  }
+
+  return `${text.slice(
+    0,
+    8
+  )}...${text.slice(-6)}`;
+}
+
 export default function PositionSkillTable({
   data = [],
   loading = false,
@@ -39,56 +66,171 @@ export default function PositionSkillTable({
   const columns = [
     {
       title: "ตำแหน่ง",
-      dataIndex: "position_name",
-      key: "position_name",
-      width: 220,
-      render: (_, record) => (
-        <div>
-          <div className="font-semibold">
-            {record.position_name}
-          </div>
+      dataIndex:
+        "position_name",
+      key:
+        "position_name",
+      width: 250,
 
-          <div className="text-xs text-gray-500">
-            {record.position_code}
+      render: (
+        _,
+        record
+      ) => {
+        if (
+          record.position_name
+        ) {
+          return (
+            <div>
+              <div className="font-semibold">
+                {
+                  record
+                    .position_name
+                }
+              </div>
+
+              <div className="text-xs text-gray-500">
+                {
+                  record
+                    .position_code ||
+                  "-"
+                }
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            <Tag
+              color="error"
+              icon={
+                <WarningOutlined />
+              }
+            >
+              ไม่พบ Position
+            </Tag>
+
+            <div className="mt-1">
+              <Tooltip
+                title={
+                  record
+                    .position_id
+                }
+              >
+                <Text
+                  type="secondary"
+                  className="text-xs"
+                >
+                  {shortUuid(
+                    record
+                      .position_id
+                  )}
+                </Text>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
 
     {
       title: "ทักษะ",
-      dataIndex: "skill_name",
-      key: "skill_name",
-      width: 240,
-      render: (_, record) => (
-        <div>
-          <div className="font-semibold">
-            {record.skill_name}
-          </div>
+      dataIndex:
+        "skill_name",
+      key:
+        "skill_name",
+      width: 250,
 
-          <div className="text-xs text-gray-500">
-            {record.skill_code}
+      render: (
+        _,
+        record
+      ) => {
+        if (
+          record.skill_name
+        ) {
+          return (
+            <div>
+              <div className="font-semibold">
+                {
+                  record
+                    .skill_name
+                }
+              </div>
+
+              <div className="text-xs text-gray-500">
+                {
+                  record
+                    .skill_code ||
+                  "-"
+                }
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            <Tag
+              color="error"
+              icon={
+                <WarningOutlined />
+              }
+            >
+              ไม่พบ Skill
+            </Tag>
+
+            <div className="mt-1">
+              <Tooltip
+                title={
+                  record.skill_id
+                }
+              >
+                <Text
+                  type="secondary"
+                  className="text-xs"
+                >
+                  {shortUuid(
+                    record.skill_id
+                  )}
+                </Text>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
 
     {
-      title: "Required Level",
-      dataIndex: "required_level",
-      key: "required_level",
+      title:
+        "Required Level",
+      dataIndex:
+        "required_level",
+      key:
+        "required_level",
       width: 170,
       align: "center",
+
       render: (value) => (
-        <Space orientation="vertical" size={0}>
+        <Space
+          orientation="vertical"
+          size={0}
+        >
           <Rate
             disabled
             count={5}
-            value={value}
+            value={
+              Number(
+                value ||
+                  0
+              )
+            }
           />
 
           <span className="text-xs text-gray-500">
-            {value} / 5
+            {Number(
+              value || 0
+            )}{" "}
+            / 5
           </span>
         </Space>
       ),
@@ -96,43 +238,61 @@ export default function PositionSkillTable({
 
     {
       title: "Importance",
-      dataIndex: "importance_level",
-      key: "importance_level",
+      dataIndex:
+        "importance_level",
+      key:
+        "importance_level",
       width: 140,
       align: "center",
+
       render: (value) => (
-        <Tag color={importanceColor[value]}>
-          {importanceLabel[value]}
+        <Tag
+          color={
+            importanceColor[
+              value
+            ] ||
+            "default"
+          }
+        >
+          {importanceLabel[
+            value
+          ] ||
+            value ||
+            "-"}
         </Tag>
       ),
     },
 
     {
       title: "Mandatory",
-      dataIndex: "is_mandatory",
-      key: "is_mandatory",
+      dataIndex:
+        "is_mandatory",
+      key:
+        "is_mandatory",
       width: 130,
       align: "center",
+
       render: (value) =>
         value ? (
           <Tag color="green">
             YES
           </Tag>
         ) : (
-          <Tag>
-            NO
-          </Tag>
+          <Tag>NO</Tag>
         ),
     },
 
     {
       title: "Status",
-      dataIndex: "status",
+      dataIndex:
+        "status",
       key: "status",
       width: 120,
       align: "center",
+
       render: (value) =>
-        value === "active" ? (
+        value ===
+        "active" ? (
           <Tag color="success">
             Active
           </Tag>
@@ -145,7 +305,8 @@ export default function PositionSkillTable({
 
     {
       title: "Sort",
-      dataIndex: "sort_order",
+      dataIndex:
+        "sort_order",
       key: "sort_order",
       width: 90,
       align: "center",
@@ -156,14 +317,24 @@ export default function PositionSkillTable({
       key: "action",
       width: 120,
       align: "center",
-      render: (_, record) => (
+
+      render: (
+        _,
+        record
+      ) => (
         <Space>
           {canEdit && (
             <Tooltip title="แก้ไข">
               <Button
                 type="text"
-                icon={<EditOutlined />}
-                onClick={() => onEdit(record)}
+                icon={
+                  <EditOutlined />
+                }
+                onClick={() =>
+                  onEdit?.(
+                    record
+                  )
+                }
               />
             </Tooltip>
           )}
@@ -173,13 +344,19 @@ export default function PositionSkillTable({
               title="ลบข้อมูลนี้ ?"
               okText="ลบ"
               cancelText="ยกเลิก"
-              onConfirm={() => onDelete(record)}
+              onConfirm={() =>
+                onDelete?.(
+                  record
+                )
+              }
             >
               <Tooltip title="ลบ">
                 <Button
                   danger
                   type="text"
-                  icon={<DeleteOutlined />}
+                  icon={
+                    <DeleteOutlined />
+                  }
                 />
               </Tooltip>
             </Popconfirm>
@@ -198,7 +375,7 @@ export default function PositionSkillTable({
       pagination={false}
       bordered
       scroll={{
-        x: 1200,
+        x: 1250,
       }}
     />
   );

@@ -16,7 +16,6 @@ import {
 
 import {
   Button,
-  Drawer,
   Empty,
   Spin,
   Tooltip,
@@ -35,6 +34,7 @@ import {
 import {
   PORTAL_SIDEBAR,
 } from "./portalLayoutConfig";
+import Link from "next/link";
 
 
 /*
@@ -872,7 +872,7 @@ export default function PortalSidebar({
                       }}
                       transition={{
                         duration:
-                          0.2,
+                          0.22,
                       }}
                       className="overflow-hidden"
                     >
@@ -989,6 +989,10 @@ export default function PortalSidebar({
   const renderSidebarContent = ({
     responsive = false,
   } = {}) => {
+
+     const sidebarCollapsed = responsive
+      ? false
+      : collapsed;
     return (
       <div className="flex h-full flex-col bg-gradient-to-b from-[#224a70] via-[#173a5d] to-[#102f50] text-white shadow-xl">
         {/* =================================================
@@ -996,7 +1000,7 @@ export default function PortalSidebar({
         ================================================= */}
 
         <div className="flex h-[92px] items-center justify-between border-b border-white/10 px-5">
-          {!collapsed && (
+          {!sidebarCollapsed && (
             <motion.div
               initial={{
                 opacity: 0,
@@ -1011,22 +1015,47 @@ export default function PortalSidebar({
               }}
               className="flex min-w-0 items-center gap-3"
             >
-              <div className="grid h-12 w-12 shrink-0 grid-cols-2 gap-1 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-900/30">
-                <span className="rounded-sm bg-white" />
-                <span className="rounded-sm bg-white" />
-                <span className="rounded-sm bg-white" />
-                <span className="rounded-sm bg-white" />
-              </div>
-
-              <div className="min-w-0">
-                <div className="truncate text-lg font-bold tracking-wide text-white">
-                  HR System
+              <Link
+                href="/admin"
+                onClick={() =>
+                  setMobileOpen?.(false)
+                }
+                className="
+                  flex
+                  min-w-0
+                  flex-1
+                  items-center
+                  gap-3
+                  transition-opacity
+                  duration-200
+                  hover:opacity-80
+                "
+              >
+                <div className="grid h-12 w-12 shrink-0 grid-cols-2 gap-1 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-900/30">
+                  <span className="rounded-sm bg-white" />
+                  <span className="rounded-sm bg-white" />
+                  <span className="rounded-sm bg-white" />
+                  <span className="rounded-sm bg-white" />
                 </div>
 
-                <div className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100/50">
-                  People Management
+                <div
+                  className="
+                    flex
+                    min-w-0
+                    flex-1
+                    flex-col
+                    justify-center
+                  "
+                >
+                  <div className="truncate text-lg font-bold leading-5 tracking-wide text-white">
+                    HR System
+                  </div>
+
+                  <div className="mt-1 truncate text-[10px] font-semibold uppercase leading-4 tracking-[0.18em] text-blue-100/50">
+                    People Management
+                  </div>
                 </div>
-              </div>
+              </Link>
             </motion.div>
           )}
 
@@ -1064,7 +1093,7 @@ export default function PortalSidebar({
             Workspace
         ================================================= */}
 
-        {!collapsed && (
+        {!sidebarCollapsed && (
           <div className="px-5 pb-2 pt-6">
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200/45">
               Workspace
@@ -1180,8 +1209,7 @@ export default function PortalSidebar({
 
                   if (!hasChildren) {
                     if (
-                      collapsed &&
-                      !responsive
+                      sidebarCollapsed
                     ) {
                       return (
                         <Tooltip
@@ -1554,8 +1582,10 @@ export default function PortalSidebar({
           z-40
           hidden
           h-screen
-          transition-all
+
+          transition-[width]
           duration-300
+          ease-[cubic-bezier(0.22,1,0.36,1)]
           lg:block
           ${
             collapsed
@@ -1582,51 +1612,105 @@ export default function PortalSidebar({
       </aside>
 
       {/* ===================================================
-          Mobile
+        Mobile
       =================================================== */}
 
-      <Drawer
-        title={null}
-        placement="left"
-        open={mobileOpen}
-        onClose={() =>
-          setMobileOpen?.(
-            false
-          )
-        }
-        closable={false}
-        size="default"
-        styles={{
-          header: {
-            display: "none",
-          },
+      {/* <AnimatePresence> */}
+        {mobileOpen && (
+          <>
+            {/* ===============================================
+                Mobile Backdrop
+            =============================================== */}
 
-          body: {
-            padding: 0,
+            <motion.button
+              key="portal-mobile-backdrop"
+              type="button"
+              aria-label="ปิดเมนู"
+              className="
+                fixed
+                inset-0
+                z-[60]
+                bg-slate-950/55
+                
 
-            background:
-              "#173A5D",
-          },
+                lg:hidden
+              "
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 1,
+              }}
+              exit={{
+                opacity: 0,
+              }}
+              transition={{
+                duration: 0.28,
+                ease: [
+                  0.22,
+                  1,
+                  0.36,
+                  1,
+                ],
+              }}
+              onClick={() =>
+                setMobileOpen?.(
+                  false
+                )
+              }
+            />
 
-          wrapper: {
-            boxShadow: "none",
-            width: `min(${PORTAL_SIDEBAR.mobile}px, 92vw)`,
-            maxWidth: "92vw",
-          },
+            {/* ===============================================
+                Mobile Sidebar
+            =============================================== */}
 
-          mask: {
-            background:
-              "rgba(0, 0, 0, 0.55)",
+            <motion.aside
+              key="portal-mobile-sidebar"
+              className="
+                fixed
+                bottom-0
+                left-0
+                top-0
+                z-[70]
 
-            backdropFilter:
-              "blur(3px)",
-          },
-        }}
-      >
-        {renderSidebarContent({
-          responsive: true,
-        })}
-      </Drawer>
+                h-[100dvh]
+
+                overflow-hidden
+
+                shadow-2xl
+
+                lg:hidden
+              "
+              style={{
+                width: `min(${PORTAL_SIDEBAR.mobile}px, 92vw)`,
+                maxWidth: "92vw",
+              }}
+              initial={{
+                x: "-100%",
+              }}
+              animate={{
+                x: 0,
+              }}
+              exit={{
+                x: "-100%",
+              }}
+              transition={{
+                duration: 0.38,
+                ease: [
+                  0.16,
+                  1,
+                  0.3,
+                  1,
+                ],
+              }}
+            >
+              {renderSidebarContent({
+                responsive: true,
+              })}
+            </motion.aside>
+          </>
+        )}
+      {/* </AnimatePresence> */}
     </>
   );
 }

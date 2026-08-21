@@ -42,9 +42,6 @@ import {
 } from "@ant-design/icons";
 
 export const sidebarMenus = [
-  /* =========================================================
-   * MAIN  
-   * ========================================================= */
   {
     title: "MAIN",
     icon: <HomeOutlined />,
@@ -57,10 +54,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-  *  ข้อมูลทั่วไป 
-  * ========================================================= */
   {
     title: "ข้อมูลทั่วไป",
     icon: <IdcardOutlined />,
@@ -103,10 +96,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * ORGANIZATION 
-   * ========================================================= */
   {
     title: "ORGANIZATION",
     icon: <BankOutlined />,
@@ -167,10 +156,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * JOB ARCHITECTURE    กลุ่มสายงานตำแหน่ง ในบริษัท 
-   * ========================================================= */
   {
     title: "JOB ARCHITECTURE",
     icon: <ProfileOutlined />,
@@ -235,10 +220,6 @@ export const sidebarMenus = [
       // },
     ],
   },
-
-  /* =========================================================
-   * SKILL & COMPETENCY    โครงสร้างข้อมูลด้านทักษะ/สมรรถนะของพนักงาน
-   * ========================================================= */
   {
     title: "SKILL & COMPETENCY",
     icon: <StarOutlined />,
@@ -310,10 +291,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * PAYROLL SETUP
-   * ========================================================= */
   {
     title: "PAYROLL SETUP",
     icon: <WalletOutlined />,
@@ -403,10 +380,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * TAX & SOCIAL SECURITY
-   * ========================================================== */
   {
     title: "TAX & SOCIAL SECURITY",
     icon: <SafetyCertificateOutlined />,
@@ -437,11 +410,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * BANKING & COMPENSATION
-   * ========================================================= */
-
   {
     title: "BANKING & COMPENSATION",
     icon: <BankOutlined />,
@@ -460,10 +428,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * COST STRUCTURE
-   * ========================================================= */
   {
     title: "COST STRUCTURE",
     icon: <AccountBookOutlined />,
@@ -494,10 +458,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * EMPLOYEE MASTER
-   * ========================================================= */
   {
     title: "EMPLOYEE MASTER",
     icon: <IdcardOutlined />,
@@ -541,10 +501,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-   /* =========================================================
-   * USER ACCESS
-   * ========================================================= */
   {
     title: "USER ACCESS",
     icon: <SafetyCertificateOutlined />,
@@ -586,10 +542,6 @@ export const sidebarMenus = [
       },
     ],
   },
-
-  /* =========================================================
-   * API MANAGEMENT
-   * ========================================================= */
   {
     title: "API MANAGEMENT",
     icon: <ApiOutlined />,
@@ -614,7 +566,6 @@ export const sidebarMenus = [
       },
     ],
   },
-  
 ];
 
 /*
@@ -658,6 +609,24 @@ export const Menu = [
         title: "ORGANIZATION",
         icon: "BankOutlined",
         items: [
+          {
+            label: "โครงสร้างองค์กรตามแผนก",
+            href: "/admin/divisional-structures",
+            icon: <ShopOutlined />,
+            permission: "ems.org_structure.view",
+          },
+          {
+            label: "การครองตำแหน่งองค์กร",
+            href: "/admin/employee-position-assignments",
+            icon: <ShopOutlined />,
+            permission: "ems.org_structure.view",
+          },
+          {
+            label: "Position Slot",
+            href: "/admin//admin/org-position-slots",
+            icon: <ShopOutlined />,
+            permission: "ems.org_structure.view",
+          },
           { label: "บริษัท", "href": "/admin/companies", "icon": "ShopOutlined", "permission": "ems.companies.view" },
           { label: "กรุ๊ปสังกัด", "href": "/admin/branch-groups", "icon": "AppstoreOutlined", "permission": "ems.branch_groups.view" },
           { label: "สังกัด", "href": "/admin/branches", "icon": "EnvironmentOutlined", "permission": "ems.branches.view" },
@@ -674,7 +643,7 @@ export const Menu = [
           { label: "กลุ่มสายงาน", "href": "/admin/position-families", "icon": "ProfileOutlined", "permission": "ems.position_families.view" },
           { label: "ระดับของกลุ่มสายงาน", "href": "/admin/position-family-levels", "icon": "NodeIndexOutlined", "permission": "ems.position_family_levels.view" },
           { label: "ระดับตำแหน่ง", "href": "/admin/position-levels", "icon": "TagsOutlined", "permission": "ems.position_levels.view" },
-          { label: "แถบเงินเดือนตามระดับตำแหน่ง (Salary Band)", "href": "/admin/position-level-bands", "icon": "DollarOutlined", "permission": "ems.position_level_bands.view" },
+          { label: "ช่วงเงินเดือนตามระดับตำแหน่ง (Salary Band)", "href": "/admin/position-level-bands", "icon": "DollarOutlined", "permission": "ems.position_level_bands.view" },
           { label: "บทบาทงาน / โครงสร้างธุรกิจ", "href": "/admin/jobs", "icon": "ProfileOutlined", "permission": "ems.jobs.view" },
           { label: "ตำแหน่ง", "href": "/admin/positions", "icon": "SolutionOutlined", "permission": "ems.positions.view" },
           { label: "ตำแหน่งตามหน่วย", "href": "/admin/unit-positions", "icon": "PartitionOutlined", "permission": "ems.unit_positions.view" },
@@ -753,7 +722,6 @@ export const Menu = [
         icon: "IdcardOutlined",
         items: [
           { label: "พนักงาน", "href": "/admin/employees", "icon": "IdcardOutlined", "permission": "ems.employees.view" },
-          { label: "สายบังคับบัญชา", "href": "/admin/management-assignments", "icon": "ApartmentOutlined", "permission": "ems.management_assignments.view" },
           { label: "ประเภทการจ้าง", "href": "/admin/employment-types", "icon": "UsergroupAddOutlined", "permission": "ems.employment_types.view" },
           { label: "สถานะพนักงาน", "href": "/admin/employee-statuses", "icon": "SafetyOutlined", "permission": "ems.employee_statuses.view" },
           { label: "ตั้งค่ารหัสพนักงาน", "href": "/admin/employee-code-settings", "icon": "SettingOutlined", "permission": "ems.employee_code_settings.view" },

@@ -19,30 +19,23 @@ import {
 export default function PositionCompetencySearch({
   search,
   setSearch,
-
   positionId,
   setPositionId,
-
   competencyId,
   setCompetencyId,
-
   requiredLevelId,
   setRequiredLevelId,
-
   importance,
   setImportance,
-
   status,
   setStatus,
-
-  positions,
-  competencies,
-  competencyLevels,
-
+  positions = [],
+  competencies = [],
+  competencyLevels = [],
+  loading = false,
   onSearch,
   onReset,
   onAdd,
-
   canCreate,
 }) {
   return (
@@ -51,18 +44,18 @@ export default function PositionCompetencySearch({
       className="mb-4"
     >
       <Row gutter={[16, 16]}>
-        {/* =========================
-              Search
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="ค้นหา"
             className="mb-0"
           >
             <Input
               allowClear
-              placeholder="Position / Competency"
+              placeholder="Position / Competency / Level"
               value={search}
               onChange={(e) =>
                 setSearch(
@@ -76,11 +69,11 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Position
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="ตำแหน่ง"
             className="mb-0"
@@ -88,6 +81,7 @@ export default function PositionCompetencySearch({
             <Select
               allowClear
               showSearch
+              loading={loading}
               value={
                 positionId ||
                 undefined
@@ -96,8 +90,11 @@ export default function PositionCompetencySearch({
               optionFilterProp="label"
               options={positions.map(
                 (item) => ({
-                  value: item.id,
-                  label: `${item.position_code} - ${item.position_name}`,
+                  value:
+                    item.id,
+
+                  label:
+                    `${item.position_code || "-"} - ${item.position_name || "-"}`,
                 })
               )}
               onChange={(value) =>
@@ -109,11 +106,11 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Competency
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="Competency"
             className="mb-0"
@@ -121,6 +118,7 @@ export default function PositionCompetencySearch({
             <Select
               allowClear
               showSearch
+              loading={loading}
               value={
                 competencyId ||
                 undefined
@@ -129,8 +127,11 @@ export default function PositionCompetencySearch({
               optionFilterProp="label"
               options={competencies.map(
                 (item) => ({
-                  value: item.id,
-                  label: `${item.competency_code} - ${item.competency_name}`,
+                  value:
+                    item.id,
+
+                  label:
+                    `${item.competency_code || "-"} - ${item.competency_name || "-"}`,
                 })
               )}
               onChange={(value) =>
@@ -142,17 +143,19 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Level
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="Required Level"
             className="mb-0"
           >
             <Select
               allowClear
+              showSearch
+              loading={loading}
               value={
                 requiredLevelId ||
                 undefined
@@ -161,8 +164,11 @@ export default function PositionCompetencySearch({
               optionFilterProp="label"
               options={competencyLevels.map(
                 (item) => ({
-                  value: item.id,
-                  label: `${item.level_code} - ${item.level_name}`,
+                  value:
+                    item.id,
+
+                  label:
+                    `${item.level_code || "-"} - ${item.level_name || "-"}`,
                 })
               )}
               onChange={(value) =>
@@ -174,11 +180,11 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Importance
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="Importance"
             className="mb-0"
@@ -218,11 +224,11 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Status
-        ========================= */}
-
-        <Col xs={24} md={12} lg={8}>
+        <Col
+          xs={24}
+          md={12}
+          lg={8}
+        >
           <Form.Item
             label="Status"
             className="mb-0"
@@ -247,10 +253,6 @@ export default function PositionCompetencySearch({
           </Form.Item>
         </Col>
 
-        {/* =========================
-              Buttons
-        ========================= */}
-
         <Col span={24}>
           <Form.Item
             label=" "
@@ -262,6 +264,7 @@ export default function PositionCompetencySearch({
                 icon={
                   <SearchOutlined />
                 }
+                loading={loading}
                 onClick={
                   onSearch
                 }
@@ -273,6 +276,7 @@ export default function PositionCompetencySearch({
                 icon={
                   <ReloadOutlined />
                 }
+                disabled={loading}
                 onClick={
                   onReset
                 }

@@ -1288,21 +1288,6 @@ export default function UserAccessAssignmentsPage() {
 
           return;
         }
-
-        const confirmed =
-          await swalConfirm(
-            "ยืนยันการลบ",
-            `ต้องการลบ Assignment "${
-              record.assignment_name ||
-              record.role?.role_name ||
-              "-"
-            }" ใช่หรือไม่`
-          );
-
-        if (!confirmed) {
-          return;
-        }
-
         setDeletingId(
           record.id
         );

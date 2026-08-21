@@ -1,102 +1,270 @@
 "use client";
 
-import { Button, Space, Table, Tag } from "antd";
+import {
+  Button,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 
 import {
   DeleteOutlined,
   EditOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
+
+const {
+  Text,
+} = Typography;
+
+function shortUuid(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const text =
+    String(value);
+
+  if (
+    text.length <= 20
+  ) {
+    return text;
+  }
+
+  return `${text.slice(
+    0,
+    8
+  )}...${text.slice(-6)}`;
+}
+
+function getImportanceColor(
+  level
+) {
+  switch (level) {
+    case "critical":
+      return "red";
+
+    case "high":
+      return "volcano";
+
+    case "medium":
+      return "gold";
+
+    case "low":
+      return "green";
+
+    default:
+      return "default";
+  }
+}
 
 export default function PositionCompetencyTable({
   loading,
-  data,
+  data = [],
   onEdit,
   onDelete,
   canEdit,
   canDelete,
 }) {
-  const getImportanceColor = (
-    level
-  ) => {
-    switch (level) {
-      case "critical":
-        return "red";
-
-      case "high":
-        return "volcano";
-
-      case "medium":
-        return "gold";
-
-      case "low":
-        return "green";
-
-      default:
-        return "default";
-    }
-  };
-
   const columns = [
     {
       title: "Position",
-      dataIndex: "position_name",
-      width: 220,
-      render: (_, record) => (
-        <div>
-          <div className="font-semibold">
-            {record.position_name}
-          </div>
+      dataIndex:
+        "position_name",
+      width: 230,
 
-          <div className="text-xs text-gray-500">
-            {record.position_code}
+      render: (
+        _,
+        record
+      ) => {
+        if (
+          record.position_name
+        ) {
+          return (
+            <div>
+              <div className="font-semibold">
+                {
+                  record
+                    .position_name
+                }
+              </div>
+
+              <div className="text-xs text-gray-500">
+                {
+                  record
+                    .position_code ||
+                  "-"
+                }
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            <Tag
+              color="error"
+              icon={
+                <WarningOutlined />
+              }
+            >
+              ไม่พบ Position
+            </Tag>
+
+            <div className="mt-1">
+              <Tooltip
+                title={
+                  record
+                    .position_id
+                }
+              >
+                <Text
+                  type="secondary"
+                  className="text-xs"
+                >
+                  {shortUuid(
+                    record
+                      .position_id
+                  )}
+                </Text>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
 
     {
       title: "Competency",
-      dataIndex: "competency_name",
-      width: 260,
-      render: (_, record) => (
-        <div>
-          <div className="font-semibold">
-            {record.competency_name}
-          </div>
+      dataIndex:
+        "competency_name",
+      width: 270,
 
-          <div className="text-xs text-gray-500">
-            {record.competency_code}
-          </div>
+      render: (
+        _,
+        record
+      ) => {
+        if (
+          record
+            .competency_name
+        ) {
+          return (
+            <div>
+              <div className="font-semibold">
+                {
+                  record
+                    .competency_name
+                }
+              </div>
 
-          {record.competency_type && (
-            <Tag className="mt-1">
-              {
-                record.competency_type
+              <div className="text-xs text-gray-500">
+                {
+                  record
+                    .competency_code ||
+                  "-"
+                }
+              </div>
+
+              {record
+                .competency_type_name ||
+              record
+                .competency_type ? (
+                <Tag className="mt-1">
+                  {record
+                    .competency_type_name ||
+                    record
+                      .competency_type}
+                </Tag>
+              ) : null}
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            <Tag
+              color="error"
+              icon={
+                <WarningOutlined />
               }
+            >
+              ไม่พบ Competency
             </Tag>
-          )}
-        </div>
-      ),
+
+            <div className="mt-1">
+              <Tooltip
+                title={
+                  record
+                    .competency_id
+                }
+              >
+                <Text
+                  type="secondary"
+                  className="text-xs"
+                >
+                  {shortUuid(
+                    record
+                      .competency_id
+                  )}
+                </Text>
+              </Tooltip>
+            </div>
+          </div>
+        );
+      },
     },
 
     {
-      title: "Required Level",
+      title:
+        "Required Level",
       dataIndex:
         "required_level_name",
-      width: 160,
+      width: 190,
       align: "center",
-      render: (_, record) => (
-        <Tag color="blue">
-          {
-            record.required_level_code
-          }{" "}
-          -
-          {" "}
-          {
-            record.required_level_name
-          }
-        </Tag>
-      ),
+
+      render: (
+        _,
+        record
+      ) => {
+        if (
+          record
+            .required_level_name ||
+          record
+            .required_level_code
+        ) {
+          return (
+            <Tag color="blue">
+              {record
+                .required_level_code ||
+                "-"}{" "}
+              -{" "}
+              {record
+                .required_level_name ||
+                "-"}
+            </Tag>
+          );
+        }
+
+        return (
+          <Tooltip
+            title={
+              record
+                .required_level_id
+            }
+          >
+            <Tag
+              color="error"
+              icon={
+                <WarningOutlined />
+              }
+            >
+              ไม่พบ Level
+            </Tag>
+          </Tooltip>
+        );
+      },
     },
 
     {
@@ -105,11 +273,14 @@ export default function PositionCompetencyTable({
         "importance_level",
       width: 150,
       align: "center",
+
       render: (value) => (
         <Tag
-          color={getImportanceColor(
-            value
-          )}
+          color={
+            getImportanceColor(
+              value
+            )
+          }
         >
           {String(
             value || ""
@@ -123,6 +294,7 @@ export default function PositionCompetencyTable({
       dataIndex: "status",
       width: 120,
       align: "center",
+
       render: (value) => (
         <Tag
           color={
@@ -131,14 +303,17 @@ export default function PositionCompetencyTable({
               : "default"
           }
         >
-          {value}
+          {value === "active"
+            ? "Active"
+            : "Inactive"}
         </Tag>
       ),
     },
 
     {
       title: "Sort",
-      dataIndex: "sort_order",
+      dataIndex:
+        "sort_order",
       width: 90,
       align: "center",
     },
@@ -148,31 +323,43 @@ export default function PositionCompetencyTable({
       width: 140,
       fixed: "right",
       align: "center",
-      render: (_, record) => (
+
+      render: (
+        _,
+        record
+      ) => (
         <Space>
           {canEdit && (
-            <Button
-              type="text"
-              icon={
-                <EditOutlined />
-              }
-              onClick={() =>
-                onEdit(record)
-              }
-            />
+            <Tooltip title="แก้ไข">
+              <Button
+                type="text"
+                icon={
+                  <EditOutlined />
+                }
+                onClick={() =>
+                  onEdit(
+                    record
+                  )
+                }
+              />
+            </Tooltip>
           )}
 
           {canDelete && (
-            <Button
-              danger
-              type="text"
-              icon={
-                <DeleteOutlined />
-              }
-              onClick={() =>
-                onDelete(record)
-              }
-            />
+            <Tooltip title="ลบ">
+              <Button
+                danger
+                type="text"
+                icon={
+                  <DeleteOutlined />
+                }
+                onClick={() =>
+                  onDelete(
+                    record
+                  )
+                }
+              />
+            </Tooltip>
           )}
         </Space>
       ),
@@ -188,7 +375,7 @@ export default function PositionCompetencyTable({
       pagination={false}
       bordered
       scroll={{
-        x: 1200,
+        x: 1250,
       }}
     />
   );

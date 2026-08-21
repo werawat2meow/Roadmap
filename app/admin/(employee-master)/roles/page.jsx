@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -142,6 +143,7 @@ export default function RolesPage() {
   const [page, setPage] = useState(1);
   const [pageSize,setPageSize,] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] =useState(0);
+  const loadRequestIdRef = useRef(0);
 
   const [permissions,setPermissions,] = useState([]);
   const [permissionLoading,setPermissionLoading,] = useState(false);
@@ -168,52 +170,46 @@ export default function RolesPage() {
     };
   }, [search]);
 
-  const fetchJson =
-    useCallback(
-      async (
-        url,
-        options = {}
-      ) => {
-        const response =
-          await fetch(url, {
-            cache: "no-store",
-            ...options,
-          });
+  const fetchJson = useCallback(async (url,options = {}) => {
+    const response = await fetch(url, {
+          cache: "no-store",
+          ...options,
+        });
 
-        const contentType =
-          response.headers.get(
-            "content-type"
-          ) || "";
+      const contentType =
+        response.headers.get(
+          "content-type"
+        ) || "";
 
-        if (
-          !contentType.includes(
-            "application/json"
-          )
-        ) {
-          const text =
-            await response.text();
+      if (
+        !contentType.includes(
+          "application/json"
+        )
+      ) {
+        const text =
+          await response.text();
 
-          throw new Error(
-            text ||
-              "API ไม่ได้ส่งข้อมูล JSON กลับมา"
-          );
-        }
+        throw new Error(
+          text ||
+            "API ไม่ได้ส่งข้อมูล JSON กลับมา"
+        );
+      }
 
-        const payload =
-          await response.json();
+      const payload =
+        await response.json();
 
-        if (!response.ok) {
-          throw new Error(
-            payload?.error ||
-              payload?.message ||
-              "เกิดข้อผิดพลาดจาก API"
-          );
-        }
+      if (!response.ok) {
+        throw new Error(
+          payload?.error ||
+            payload?.message ||
+            "เกิดข้อผิดพลาดจาก API"
+        );
+      }
 
-        return payload;
-      },
-      []
-    );
+      return payload;
+    },
+    []
+  );
 
   /* =======================================================
      Load Roles
@@ -391,65 +387,64 @@ export default function RolesPage() {
     loadData,
   ]);
 
-  const loadPermissions =
-    useCallback(async () => {
-      if (permissionsLoaded) {
-        return;
+  const loadPermissions = useCallback(async () => {
+    if (permissionsLoaded) {
+      return;
+    }
+
+    setPermissionLoading(true);
+
+    try {
+      const payload =
+        await fetchJson(
+          `${PERMISSION_API_URL}?all=true`
+        );
+
+      const permissionRows =
+        getRows(payload);
+
+      const expectedTotal = Number(
+        payload?.pagination?.total
+      );
+
+      if (
+        Number.isFinite(expectedTotal) &&
+        permissionRows.length < expectedTotal
+      ) {
+        throw new Error(
+          `Permission โหลดไม่ครบ: ได้ ${permissionRows.length} จาก ${expectedTotal} รายการ`
+        );
       }
 
-      setPermissionLoading(true);
+      setPermissions(
+        permissionRows.filter(
+          (permission) =>
+            permission?.is_active !==
+            false
+        )
+      );
 
-      try {
-        const payload =
-          await fetchJson(
-            `${PERMISSION_API_URL}?all=true`
-          );
+      setPermissionsLoaded(true);
+    } catch (error) {
+      console.error(
+        "LOAD_PERMISSION_MASTER_ERROR:",
+        error
+      );
 
-        const permissionRows =
-          getRows(payload);
+      await swalError(
+        "โหลด Permission ไม่สำเร็จ",
+        error?.message ||
+          "ไม่สามารถโหลดข้อมูล Permission ได้"
+      );
 
-        const expectedTotal = Number(
-          payload?.pagination?.total
-        );
-
-        if (
-          Number.isFinite(expectedTotal) &&
-          permissionRows.length < expectedTotal
-        ) {
-          throw new Error(
-            `Permission โหลดไม่ครบ: ได้ ${permissionRows.length} จาก ${expectedTotal} รายการ`
-          );
-        }
-
-        setPermissions(
-          permissionRows.filter(
-            (permission) =>
-              permission?.is_active !==
-              false
-          )
-        );
-
-        setPermissionsLoaded(true);
-      } catch (error) {
-        console.error(
-          "LOAD_PERMISSION_MASTER_ERROR:",
-          error
-        );
-
-        await swalError(
-          "โหลด Permission ไม่สำเร็จ",
-          error?.message ||
-            "ไม่สามารถโหลดข้อมูล Permission ได้"
-        );
-
-        throw error;
-      } finally {
-        setPermissionLoading(false);
-      }
-    }, [
-      fetchJson,
-      permissionsLoaded,
-    ]);
+      throw error;
+    } finally {
+      setPermissionLoading(false);
+    }
+  }, [
+    fetchJson,
+    permissionsLoaded,
+  ]);
 
   /* =======================================================
      Load Role Detail
@@ -528,16 +523,15 @@ export default function RolesPage() {
      Close Modal
   ======================================================= */
 
-  const closeModal =
-    useCallback(() => {
-      setModalOpen(false);
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
 
-      setModalMode("create");
+    setModalMode("create");
 
-      setSelectedRecord(null);
+    setSelectedRecord(null);
 
-      form.resetFields();
-    }, [form]);
+    form.resetFields();
+  }, [form]);
 
   /* =======================================================
      Create
@@ -1041,6 +1035,7 @@ export default function RolesPage() {
           nextPageSize !==
           pageSize
         ) {
+          setRows([]);
           setPage(1);
 
           setPageSize(

@@ -36,8 +36,7 @@ import {
 export default function AdminLayout({
   children,
 }) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
   const {
     user,
@@ -59,6 +58,48 @@ export default function AdminLayout({
     loggingOut,
     setLoggingOut,
   ] = useState(false);
+
+  /* =======================================================
+     Mobile Sidebar Responsive
+
+     เมื่อขยายหน้าจอกลับเข้า Desktop (lg >= 1024px)
+     ให้ปิด Mobile Sidebar / Overlay อัตโนมัติ
+  ======================================================= */
+
+  useEffect(() => {
+    const mediaQuery =
+      window.matchMedia(
+        "(min-width: 1024px)"
+      );
+
+    const handleChange = (
+      event
+    ) => {
+      if (event.matches) {
+        setMobileOpen(false);
+      }
+    };
+
+    /*
+     * เช็กทันทีตอน Layout mount
+     * กัน state Mobile Drawer ค้างใน Desktop
+     */
+    if (mediaQuery.matches) {
+      setMobileOpen(false);
+    }
+
+    mediaQuery.addEventListener(
+      "change",
+      handleChange
+    );
+
+    return () => {
+      mediaQuery.removeEventListener(
+        "change",
+        handleChange
+      );
+    };
+  }, []);
 
   /* =======================================================
      Auth Guard
@@ -90,15 +131,16 @@ export default function AdminLayout({
         return;
       }
 
-      const result =
-        await swalConfirm(
-          "ออกจากระบบ?",
-          "คุณต้องการออกจากระบบใช่หรือไม่"
-        );
+      const confirmed =
+        await swalConfirm({
+          title: "ออกจากระบบ?",
+          text: "คุณต้องการออกจากระบบใช่หรือไม่",
+          confirmButtonText: "ออกจากระบบ",
+          cancelButtonText: "ยกเลิก",
+          icon: "warning",
+        });
 
-      if (
-        !result?.isConfirmed
-      ) {
+      if (!confirmed) {
         return;
       }
 
@@ -218,11 +260,21 @@ export default function AdminLayout({
       <PortalSidebar
         user={user}
         collapsed={collapsed}
-        setCollapsed={setCollapsed}
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
-        loggingOut={loggingOut}
-        onLogout={handleLogout}
+        setCollapsed={
+          setCollapsed
+        }
+        mobileOpen={
+          mobileOpen
+        }
+        setMobileOpen={
+          setMobileOpen
+        }
+        loggingOut={
+          loggingOut
+        }
+        onLogout={
+          handleLogout
+        }
       />
 
       {/* ===================================================

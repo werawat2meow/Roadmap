@@ -669,7 +669,7 @@ export default function EmployeeCompensationsPage() {
         <Alert
           type="error"
           showIcon
-          title="คุณไม่มีสิทธิ์เข้าถึงโครงสร้างเงินเดือนพนักงาน"
+          title="คุณไม่มีสิทธิ์เข้าถึงค่าตอบแทนพนักงาน"
           description="ต้องมี Permission ems.employee_compensations.view"
         />
       </div>
@@ -687,7 +687,7 @@ export default function EmployeeCompensationsPage() {
                 <Tag color="purple">ENTERPRISE COMPENSATION</Tag>
               </Space>
               <Title level={2} className="!mb-1">
-                โครงสร้างเงินเดือนพนักงาน
+                ค่าตอบแทนพนักงาน
               </Title>
               <Text type="secondary">
                 เงินเดือนจริง • Compensation Components • Salary Adjustment • Approval Trail

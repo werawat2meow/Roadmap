@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import LoadingOrb from "@/app/components/LoadingOrb";
-import { swalConfirm, swalSuccess, swalError } from "@/app/components/Swal";
+import { swalSuccess, swalError } from "@/app/components/Swal";
 import EmployeeSkillSearch from "./components/EmployeeSkillSearch";
 import EmployeeSkillTable from "./components/EmployeeSkillTable";
 import EmployeeSkillPagination from "./components/EmployeeSkillPagination";
@@ -147,14 +147,6 @@ export default function EmployeeSkillPage() {
 
   const handleDelete = async (row) => {
     if (!canDelete) return swalError("คุณไม่มีสิทธิ์ลบข้อมูล");
-
-    const ok = await swalConfirm({
-      title: "ยืนยันการลบ",
-      text: `ต้องการลบ Skill ของ ${row.employee_name} ใช่หรือไม่?`,
-      confirmButtonText: "ลบ",
-    });
-    if (!ok) return;
-
     try {
       const res = await fetch(`/api/admin/employee-skills/${row.id}`, {
         method: "DELETE",

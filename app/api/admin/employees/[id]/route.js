@@ -409,8 +409,21 @@ function buildEmployeeUpdatePayload(
     unit_id:
       employee.unit_id,
 
+    /* =====================================================
+      Job Architecture
+    ===================================================== */
+
+    position_family_id:
+      employee.position_family_id ||
+      null,
+
+    position_level_id:
+      employee.position_level_id ||
+      null,
+
     position_id:
-      employee.position_id,
+      employee.position_id ||
+      null,
 
     job_id:
       employee.job_id,
@@ -562,8 +575,8 @@ function buildEmployeeUpdatePayload(
     payroll_group_id:
       employee.payroll_group_id,
 
-    salary_structure_id:
-      employee.salary_structure_id,
+    position_level_band_id:
+      employee.position_level_band_id,
 
     employee_photo_path:
       employee.employee_photo_path,
@@ -926,6 +939,13 @@ export async function PATCH(req,{ params }) {
       normalizeEmployeePayload(
         mergedBody
       );
+
+    employee.position_level_band_id =
+      employee.position_level_band_id ||
+      cleanText(
+        mergedBody.position_level_band_id
+      ) ||
+      null;
 
     /* =====================================================
        8. Validate Employee

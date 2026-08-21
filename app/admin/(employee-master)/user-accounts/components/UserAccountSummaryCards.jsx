@@ -12,7 +12,7 @@ export default function UserAccountSummaryCards({
   summary = {},
 }) {
   return (
-    <Row gutter={[16, 16]}>
+    <Row>
       <Col xs={24} sm={12} xl={6}>
         <Card size="small">
           <Statistic

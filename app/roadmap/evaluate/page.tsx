@@ -26,8 +26,8 @@ export default function EvaluatePage() {
 
       <div className="w-full mt-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-sm text-slate-500">
-            กรุณาเลือกพนักงานจากหน้า Employee เพื่อเริ่มประเมิน
+          <p className="text-sm text-red-500 font-bold text-center">
+            *** กรุณาเลือกพนักงานจากเมนู Employee เพื่อทำฟอร์มประเมิน ***
           </p>
         </div>
 

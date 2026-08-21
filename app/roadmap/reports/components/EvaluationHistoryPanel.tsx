@@ -26,6 +26,13 @@ type EvaluationRecord = {
   division: string;
   unit: string;
   level: string;
+  position?: string;
+  requesterName?: string;
+  currentSalary?: number | null;
+  newSalary?: number | null;
+  newDesignation?: string;
+  newLevel?: string;
+  diff?: number;
   evaluationType: string;
   latestDate: string;
   score: number | null;
@@ -238,30 +245,30 @@ export default function EvaluationHistoryPanel({
     filteredRows.forEach((row, index) => {
       worksheet.addRow([
         index + 1,
-        row.employeeId || "H01", // ตัวอย่างรหัส
-        "คุณโอ / ผู้จัดการ", // ตัวอย่างผู้ขอปรับ
+        row.employeeId || "",
+        row.requesterName || "",
         row.department || "",
         row.name || "",
         row.branch || "",
-        "Executive Chef", // ตัวอย่างตำแหน่ง
-        row.level || "P2",
-        "",
-        "",
-        "",
-        "1,000",
-        "",
-        "45,000", // เงินปัจจุบัน
-        "Partition", // ประเภท
-        "",
-        "P7", // ระดับใหม่
+        row.position || "",
+        row.level || "",
+        row.currentSalary ?? "",
         "",
         "",
         "",
         "",
+        row.diff ?? "",
+        row.evaluationType || "",
+        row.newDesignation || "",
+        row.newLevel || "",
+        row.newSalary ?? "",
         "",
-        "46,000", // เงินใหม่
-        index + 1, // ครั้งที่
-        "", // หมายเหตุ
+        "",
+        "",
+        "",
+        row.diff ?? "",
+        index + 1,
+        "",
       ]);
     });
 

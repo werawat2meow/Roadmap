@@ -9,6 +9,8 @@ import {
   Col,
 } from "antd";
 
+import LazyPayrollCompanySelect from "./LazyPayrollCompanySelect";
+
 const { TextArea } = Input;
 
 const frequencyOptions = [
@@ -43,7 +45,7 @@ const statusOptions = [
 
 export default function PayrollGroupForm({
   form,
-  payrollCompanies = [],
+  payrollCompanyInitialOption = null,
   disabled = false,
   onFinish,
 }) {
@@ -116,17 +118,11 @@ export default function PayrollGroupForm({
               },
             ]}
           >
-            <Select
+            <LazyPayrollCompanySelect
               disabled={disabled}
-              showSearch
-              placeholder="เลือกบริษัทเงินเดือน"
-              optionFilterProp="label"
-              options={payrollCompanies.map(
-                (item) => ({
-                  value: item.id,
-                  label: `${item.payroll_company_code} - ${item.payroll_company_name}`,
-                })
-              )}
+              initialOption={
+                payrollCompanyInitialOption
+              }
             />
           </Form.Item>
         </Col>

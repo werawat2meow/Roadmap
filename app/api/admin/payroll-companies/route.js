@@ -149,42 +149,157 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const search =
+      searchParams
+        .get("search")
+        ?.trim() || "";
 
-    const { data, error } = await supabaseAdmin
+    const hasPagination =
+      searchParams.has("page") ||
+      searchParams.has("pageSize");
+
+    const page = Math.max(
+      Number(
+        searchParams.get("page") || 1
+      ) || 1,
+      1
+    );
+
+    const pageSize = Math.min(
+      Math.max(
+        Number(
+          searchParams.get("pageSize") || 20
+        ) || 20,
+        1
+      ),
+      100
+    );
+
+    let query = supabaseAdmin
       .from("payroll_companies")
-      .select(payrollCompanySelect)
-      .order("sort_order", { ascending: true })
-      .order("payroll_company_code", {
+      .select(
+        payrollCompanySelect,
+        {
+          count: "exact",
+        }
+      );
+
+    /* =========================
+       Search
+    ========================= */
+
+    if (search) {
+      const safeSearch = search.replace(
+        /[,%()]/g,
+        ""
+      );
+
+      const {
+        data: companyRows,
+        error: companyError,
+      } = await supabaseAdmin
+        .from("companies")
+        .select("id")
+        .or(
+          [
+            `company_name_th.ilike.%${safeSearch}%`,
+            `company_name_en.ilike.%${safeSearch}%`,
+            `tax_id.ilike.%${safeSearch}%`,
+          ].join(",")
+        );
+
+      if (companyError) {
+        throw companyError;
+      }
+
+      const companyIds =
+        (companyRows || [])
+          .map((item) => item.id)
+          .filter(Boolean);
+
+      const conditions = [
+        `payroll_company_code.ilike.%${safeSearch}%`,
+        `payroll_company_name.ilike.%${safeSearch}%`,
+      ];
+
+      if (companyIds.length > 0) {
+        conditions.push(
+          `company_id.in.(${companyIds.join(",")})`
+        );
+      }
+
+      query = query.or(
+        conditions.join(",")
+      );
+    }
+
+    query = query
+      .order("sort_order", {
         ascending: true,
-      });
+      })
+      .order(
+        "payroll_company_code",
+        {
+          ascending: true,
+        }
+      );
+
+    /* =========================
+       Lazy pagination
+
+       ใช้เฉพาะ request ที่ส่ง
+       page / pageSize มาเท่านั้น
+       เพื่อไม่กระทบหน้าที่ใช้ API เดิม
+    ========================= */
+
+    if (hasPagination) {
+      const from =
+        (page - 1) * pageSize;
+
+      const to =
+        from + pageSize - 1;
+
+      query = query.range(
+        from,
+        to
+      );
+    }
+
+    const {
+      data,
+      count,
+      error,
+    } = await query;
 
     if (error) throw error;
 
-    const mappedData = (data || []).map(mapPayrollCompany);
+    const mappedData =
+      (data || []).map(
+        mapPayrollCompany
+      );
 
-    const filteredData = search
-      ? mappedData.filter((item) => {
-          return (
-            item.payroll_company_code
-              ?.toLowerCase()
-              .includes(search) ||
-            item.payroll_company_name
-              ?.toLowerCase()
-              .includes(search) ||
-            item.company_name
-              ?.toLowerCase()
-              .includes(search) ||
-            item.company_tax_id
-              ?.toLowerCase()
-              .includes(search)
-          );
-        })
-      : mappedData;
+    if (!hasPagination) {
+      return NextResponse.json({
+        success: true,
+        data: mappedData,
+      });
+    }
+
+    const total =
+      Number(count || 0);
 
     return NextResponse.json({
       success: true,
-      data: filteredData,
+      data: mappedData,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages:
+          Math.ceil(
+            total / pageSize
+          ),
+      },
     });
   } catch (error) {
     console.error(

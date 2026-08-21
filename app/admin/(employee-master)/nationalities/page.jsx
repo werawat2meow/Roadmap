@@ -331,16 +331,19 @@ export default function NationalitiesPage() {
   };
    
   const handleSearch = (value) => {
+    setRows([]);
     setPage(1);
     setSearch(value);
   };
 
   const handleStatusChange = (value) => {
+    setRows([]);
     setPage(1);
     setStatus(value);
   };
 
   const handleTableChange = (pagination) => {
+    setRows([]);
     setPage(
       pagination.current
     );

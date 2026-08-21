@@ -2246,6 +2246,17 @@ export async function POST(req) {
         body
       );
 
+    /*
+      Salary Band เป็นส่วนของ Job/Compensation architecture
+      บังคับให้รับค่าจาก Wizard แม้ normalizeEmployeePayload
+      เวอร์ชันเก่ายังไม่ได้ map field นี้
+    */
+    employee.position_level_band_id =
+      employee.position_level_band_id ||
+      cleanNullableText(
+        body.position_level_band_id
+      );
+
     const guard = await requireScopedAccess("ems.employees","create");
     if (!guard.ok) {
       return guard.response;
@@ -2834,8 +2845,9 @@ if (
        6. bcrypt hash employee code
        7. Create Supabase Auth user
        8. Insert employees
-       9. Insert user_accounts
-       10. Write activity log
+       9. Insert employee_compensations (Initial Base Salary)
+       10. Insert user_accounts
+       11. Write activity log
     ----------------------------------------------------- */
 
     const result =
@@ -2845,6 +2857,11 @@ if (
         account,
 
         codeRequest,
+
+        compensation: {
+          base_salary:
+            body.base_salary,
+        },
       });
 
     if (!result.success) {

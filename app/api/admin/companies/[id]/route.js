@@ -374,6 +374,7 @@ export async function PATCH(req,{ params }) {
 
       data,
     });
+
   } catch (error) {
     console.error(
       "UPDATE_COMPANY_ERROR:",
@@ -588,12 +589,26 @@ export async function DELETE(
        8. Response
     ===================================================== */
 
+    // =========================
+    // Activity Log
+    // =========================
+
+    await writeActivityLog({
+      module_name: "companies",
+      action_type: "delete",
+      reference_table: "companies",
+      reference_id: id,
+      description: `ลบบริษัท ${oldData?.company_code} - ${oldData?.company_name_th}`,
+      old_data: oldData,
+    });
+
     return NextResponse.json({
       success: true,
 
       message:
         "ลบข้อมูลบริษัทสำเร็จ",
     });
+
   } catch (error) {
     console.error(
       "DELETE_COMPANY_ERROR:",

@@ -373,47 +373,243 @@ export default function BranchesPage() {
     }
   };
 
-  const handleUploadImage = async (file) => {
-    if (!file) return;
-
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
-      return;
+  const compressImageFile = async (
+    file,
+    {
+      maxWidth = 1200,
+      maxHeight = 1200,
+      quality = 0.8,
+    } = {}
+  ) => {
+    if (!file) {
+      throw new Error(
+        "ไม่พบไฟล์รูปภาพ"
+      );
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
+    const imageBitmap =
+      await createImageBitmap(file);
+
+    let width =
+      imageBitmap.width;
+
+    let height =
+      imageBitmap.height;
+
+    const scale = Math.min(
+      maxWidth / width,
+      maxHeight / height,
+      1
+    );
+
+    width = Math.round(
+      width * scale
+    );
+
+    height = Math.round(
+      height * scale
+    );
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      imageBitmap.close();
+
+      throw new Error(
+        "ไม่สามารถประมวลผลรูปภาพได้"
+      );
+    }
+
+    context.drawImage(
+      imageBitmap,
+      0,
+      0,
+      width,
+      height
+    );
+
+    imageBitmap.close();
+
+    const blob =
+      await new Promise(
+        (resolve, reject) => {
+          canvas.toBlob(
+            (result) => {
+              if (!result) {
+                reject(
+                  new Error(
+                    "ไม่สามารถบีบอัดรูปภาพได้"
+                  )
+                );
+
+                return;
+              }
+
+              resolve(result);
+            },
+            "image/webp",
+            quality
+          );
+        }
+      );
+
+    const originalName =
+      file.name
+        ?.replace(
+          /\.[^.]+$/,
+          ""
+        ) || "branch";
+
+    return new File(
+      [blob],
+      `${originalName}.webp`,
+      {
+        type: "image/webp",
+        lastModified:
+          Date.now(),
+      }
+    );
+  };
+
+
+  const handleUploadImage =
+  async (file) => {
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (
+      !allowedTypes.includes(
+        file.type
+      )
+    ) {
+      swalError(
+        "รองรับเฉพาะไฟล์ JPG, PNG, WEBP"
+      );
+
       return;
     }
 
     try {
       setSaving(true);
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("branchId", editingBranch?.id || "temp");
+      /*
+       * Compress รูปก่อน Upload
+       *
+       * - จำกัด Resolution 1200x1200
+       * - WebP
+       * - Quality 80%
+       */
+      const compressedFile =
+        await compressImageFile(
+          file,
+          {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.8,
+          }
+        );
 
-      const res = await fetch("/api/admin/branches/upload-image", {
-        method: "POST",
-        body: formData,
-      });
+      console.log(
+        "BRANCH_IMAGE_COMPRESSION:",
+        {
+          original: {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          },
 
-      const data = await res.json();
+          compressed: {
+            name:
+              compressedFile.name,
 
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "อัปโหลดรูปไม่สำเร็จ");
+            type:
+              compressedFile.type,
+
+            size:
+              compressedFile.size,
+          },
+        }
+      );
+
+      const formData =
+        new FormData();
+
+      /*
+       * สำคัญ:
+       * ส่ง compressedFile
+       * ไม่ใช่ file ต้นฉบับ
+       */
+      formData.append(
+        "file",
+        compressedFile
+      );
+
+      formData.append(
+        "branchId",
+        editingBranch?.id ||
+          "temp"
+      );
+
+      const res =
+        await fetch(
+          "/api/admin/branches/upload-image",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (
+        !res.ok ||
+        !data?.success
+      ) {
+        throw new Error(
+          data?.error ||
+            "อัปโหลดรูปไม่สำเร็จ"
+        );
       }
 
       setForm((prev) => ({
         ...prev,
-        branch_image_url: data.url,
-        branch_image_path: data.path,
+
+        branch_image_url:
+          data.url,
+
+        branch_image_path:
+          data.path,
       }));
 
-      swalSuccess("อัปโหลดรูปสำเร็จ");
+      swalSuccess(
+        "อัปโหลดรูปสำเร็จ"
+      );
     } catch (err) {
-      swalError(err.message || "อัปโหลดรูปไม่สำเร็จ");
+      console.error(
+        "UPLOAD_BRANCH_IMAGE_ERROR:",
+        err
+      );
+
+      swalError(
+        err?.message ||
+          "อัปโหลดรูปไม่สำเร็จ"
+      );
     } finally {
       setSaving(false);
     }
@@ -425,11 +621,6 @@ export default function BranchesPage() {
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       swalError("รองรับเฉพาะไฟล์ JPG, PNG, WEBP");
-      return;
-    }
-
-    if (file.size > 50 * 1024 * 1024) {
-      swalError("ขนาดไฟล์ต้องไม่เกิน 50MB");
       return;
     }
 
@@ -539,11 +730,11 @@ export default function BranchesPage() {
                       ) : null}
                       
                       {branch.branch_image_url ? (
-                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                           <img
                             src={branch.branch_image_url}
                             alt={branch.name}
-                            className="max-h-full max-w-full object-contain"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                       ) : (
@@ -688,7 +879,8 @@ export default function BranchesPage() {
                   />
 
                   <p className="mt-2 text-xs text-slate-400">
-                    รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 50MB
+                    รองรับ JPG, PNG, WEBP
+                    ระบบจะปรับขนาดและบีบอัดรูปภาพอัตโนมัติก่อนอัปโหลด
                   </p>
                 </div>
               </div>

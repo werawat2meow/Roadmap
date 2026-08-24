@@ -13,7 +13,7 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { SearchOutlined, ExclamationCircleFilled } from '@ant-design/icons';
+import AntIcon from '@/components/AntIcon';
 
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
@@ -156,7 +156,7 @@ export default function RecruitJobOpenTable() {
   function showDeleteConfirm(row) {
     confirm({
       title: 'ยืนยันการลบข้อมูล',
-      icon: <ExclamationCircleFilled />,
+      icon: <AntIcon name="ExclamationCircleFilled" />,
       content: (
         <>
           ต้องการลบรายการนี้หรือไม่
@@ -453,7 +453,7 @@ export default function RecruitJobOpenTable() {
             />
 
             <Input
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              prefix={<AntIcon name="SearchOutlined" style={{ color: '#94a3b8' }} />}
               placeholder="ค้นหาตำแหน่งงาน"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}

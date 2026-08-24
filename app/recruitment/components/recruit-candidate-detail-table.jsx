@@ -15,7 +15,7 @@ import {
   Radio,
   App,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import AntIcon from '@/components/AntIcon';
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
 
@@ -388,7 +388,7 @@ export default function CandidateDetailTable() {
           onChange={(val) => setStatusFilter(val)}
           style={{ width: 200 }}
           options={STATUS_OPTIONS}
-          suffixIcon={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          suffixIcon={<AntIcon name="SearchOutlined"  style={{ color: '#94a3b8' }} />}
         />
 
         <Select

@@ -29,11 +29,7 @@ import {
 
 const { Option } = Select;
 
-import {
-  DeleteOutlined,
-  PlusOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import AntIcon from '@/components/AntIcon';
 
 import type { UploadProps, FormInstance } from "antd";
 
@@ -2055,7 +2051,7 @@ function EducationSection({
     >
       <Button
         type="primary"
-        icon={<PlusOutlined />}
+        icon={<AntIcon name="PlusOutlined" />}
         onClick={addRow}
         style={{ marginBottom: 16 }}
       >
@@ -2071,7 +2067,7 @@ function EducationSection({
           extra={
             <Button
               danger
-              icon={<DeleteOutlined />}
+              icon={<AntIcon name="DeleteOutlined" />}
               onClick={() => removeRow(edu.id)}
             >
               {getUIText(uiText.removeRow, locale)}
@@ -2325,7 +2321,7 @@ function SkillsSection({
       >
         <Button
           type="primary"
-          icon={<PlusOutlined />}
+          icon={<AntIcon name="PlusOutlined" />}
           onClick={addComputer}
           style={{ marginBottom: 16 }}
         >
@@ -2345,7 +2341,7 @@ function SkillsSection({
             extra={
               <Button
                 danger
-                icon={<DeleteOutlined />}
+                icon={<AntIcon name="DeleteOutlined" />}
                 onClick={() =>
                   removeComputer(item.id)
                 }
@@ -2418,7 +2414,7 @@ function SkillsSection({
       >
         <Button
           type="primary"
-          icon={<PlusOutlined />}
+          icon={<AntIcon name="PlusOutlined" />}
           onClick={addLanguage}
           style={{ marginBottom: 16 }}
         >
@@ -2434,7 +2430,7 @@ function SkillsSection({
             extra={
               <Button
                 danger
-                icon={<DeleteOutlined />}
+                icon={<AntIcon name="DeleteOutlined" />}
                 onClick={() =>
                   removeLanguage(item.id)
                 }
@@ -2661,7 +2657,7 @@ function WorkExperienceSection({
     >
       <Button
         type="primary"
-        icon={<PlusOutlined />}
+        icon={<AntIcon name="PlusOutlined" />}
         onClick={addRow}
         style={{ marginBottom: 20 }}
       >
@@ -2681,7 +2677,7 @@ function WorkExperienceSection({
           extra={
             <Button
               danger
-              icon={<DeleteOutlined />}
+              icon={<AntIcon name="DeleteOutlined" />}
               onClick={() => removeRow(work.id)}
             >
               {getUIText(uiText.removeRow, locale)}
@@ -2917,7 +2913,7 @@ function DocumentsSection({
     >
       <Button
         type="primary"
-        icon={<PlusOutlined />}
+        icon={<AntIcon name="PlusOutlined" />}
         onClick={addOtherDocument}
         style={{ marginBottom: 16 }}
       >
@@ -2938,7 +2934,7 @@ function DocumentsSection({
               doc.type === "other" && (
                 <Button
                   danger
-                  icon={<DeleteOutlined />}
+                  icon={<AntIcon name="DeleteOutlined" />}
                   onClick={() =>
                     removeDocument(doc.id)
                   }
@@ -2979,7 +2975,7 @@ function DocumentsSection({
                   showUploadList={false}
                 >
                   <Button
-                    icon={<UploadOutlined />}
+                    icon={<AntIcon name="UploadOutlined" />}
                   >
                     {getUIText(uiText.chooseFile, locale)}
                   </Button>

@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     // /* ---------------------------------------------------------------------- */
 
     try {
-      uploadedFile = await uploadFileToSpaces(file, `job-recruitment/resume/${applicationId}`);
+      uploadedFile = await uploadFileToSpaces(file, `job-recruitment/${applicationId}`);
     } catch (error: any) {
       console.error("Upload file error:", error);
 

@@ -72,8 +72,9 @@ export async function uploadFileToSpaces(
 ) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-
-  const safeFolder = sanitizeSegment(folder);
+  
+  const safeFolder = folder;
+  
   const extension = getExtension(file.name);
 
   const baseName = customFileName

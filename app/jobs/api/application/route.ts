@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import {
   uploadFileToSpaces,
   deleteFileFromSpaces,
-} from "@/app/jobs/lib/spaces";
+} from "@/lib/spaces";
 
 export const runtime = "nodejs";
 
@@ -326,4 +326,146 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+
+
+export async function PUT(request: NextRequest) {
+
+  // try {
+
+    const contentType = request.headers.get("content-type") ?? "";
+
+    let payload: any;
+    let formData: FormData | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      formData = await request.formData();
+      
+      const payloadRaw = formData.get("payload");
+      payload = typeof payloadRaw === "string" ? JSON.parse(payloadRaw) : null;
+    } else {
+      payload = await request.json();
+      payload = payload?.payload ?? payload;
+    }
+
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, message: "Missing application payload." },
+        { status: 400 }
+      );
+    }
+    
+    const personal = payload.personal ?? {};
+    const agreement = payload.agreement ?? {};
+    const positionId = payload.positionId ?? payload.position_id ?? null;
+
+    console.log(payload);
+    
+    // const payload = await request.json();
+
+    const applicationId = payload.application_id;
+
+    if (!applicationId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing application id.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // API เป็นผู้กำหนด status
+    const status = 1;
+
+    const applicationData = {
+      position_id: positionId,
+      other_position: personal.otherPosition ?? "",
+      expected_salary: Number( personal.expectedSalary ?? payload.expected_salary ?? 0),
+      first_name: personal.firstName ?? "",
+      last_name: personal.lastName ?? "",
+      nickname_th: personal.nicknameTH ?? "",
+      nickname_en: personal.nicknameEN ?? "",
+      date_of_birth: personal.dateOfBirth ?? "",
+      age: Number(personal.age ?? 0),
+      gender: personal.gender ?? null,
+      military_status: personal.militaryStatus ?? "",
+      pregnancy_age: personal.pregnancyAge ?? null,
+      height: Number(personal.height ?? 0),
+      weight: Number(personal.weight ?? 0),
+      nationality: personal.nationality ?? "",
+      religion: personal.religion ?? "",
+      identity_no: personal.idCardNo ?? "",
+      current_address_no: personal.addressNo ?? null,
+      village_no: Number(personal.villageNo ?? 0),
+      street: personal.street ?? "",
+      sub_district: personal.subDistrict ?? "",
+      district: personal.district ?? "",
+      province: personal.province ?? "",
+      province_id: personal.provinceId ?? "",
+      district_id: personal.districtId ?? "",
+      subdistrict_id: personal.subDistrictId ?? "",
+      postal_code: personal.postalCode ?? null,
+      line_id: personal.lineId ?? "",
+      email: personal.email ?? "",
+      phone_number: personal.phoneNumber ?? "",
+      residence_type: personal.residenceType ?? "",
+      residence_other: personal.residenceOther ?? "",
+      marital_status: personal.maritalStatus ?? "",
+      children: personal.children ?? null,
+      driver_license: personal.driverLicense ?? null,
+      emergency_name: personal.emergencyContact?.name ?? "",
+      emergency_phone: personal.emergencyContact?.phone ?? "",
+      emergency_relationship: personal.emergencyContact?.relationship ?? "",
+      underlying_disease: personal.underlyingDisease ?? "",
+      serious_crime: personal.criminalRecord ?? null,
+      dishonest: personal.dishonestyRecord ?? null,
+      certify: agreement.certify ?? false,
+      pdpa: agreement.pdpa ?? false,
+      from_social_media: agreement.from_social_media ?? null,
+      self_presentation_url: payload.self_presentation_url ?? null,
+
+      // API เป็นผู้กำหนด status
+      status,
+
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log(applicationData);
+    
+    // const {
+    //   data: application,
+    //   error: applicationError,
+    // } = await supabaseAdmin
+    //   .from("recruit_job_applications")
+    //   .update(applicationData)
+    //   .eq("id", applicationId)
+    //   .select("id")
+    //   .single();
+
+    // if (applicationError) {
+    //   throw applicationError;
+    // }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Application updated successfully.",
+      },
+      { status: 200 }
+    );
+  // } catch (error: any) {
+  //   console.error("Application UPDATE API Error:", error);
+
+  //   return NextResponse.json(
+  //     {
+  //       success: false,
+  //       message:
+  //         error?.message ??
+  //         "Unable to update application.",
+  //     },
+  //     { status: 500 }
+  //   );
+  // }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { uploadFileToSpaces, deleteFileFromSpaces } from "@/app/jobs/lib/spaces";
+import { uploadFileToSpaces, deleteFileFromSpaces } from "@/lib/spaces";
 
 interface UploadedFile {
   fileName: string;

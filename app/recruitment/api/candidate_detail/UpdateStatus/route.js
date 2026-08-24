@@ -4,7 +4,7 @@ import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
 
 export async function PUT(request) {
   try {
-    const { id, status, interview_datetime, interview_type, location, meeting_url } = await request.json();
+    const { id, status, interview_datetime, interview_type, location, meeting_url, position_id } = await request.json();
 
     const userId = await getUserIdFromRequest();
 
@@ -22,12 +22,28 @@ export async function PUT(request) {
       );
     }
 
+    const data_update = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === 18) {
+      if (!position_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "กรุณาระบุตำแหน่ง",
+          },
+          { status: 400 }
+        );
+      }
+
+      data_update.position_id = position_id;
+    }
+
     const { error } = await supabaseAdmin
       .from("recruit_job_applications")
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(data_update)
       .eq("id", id);
 
     if (error) {
@@ -78,6 +94,8 @@ export async function PUT(request) {
         );
       }
     }
+
+    
     return NextResponse.json({
       success: true,
       message: "บันทึกข้อมูลเรียบร้อย",

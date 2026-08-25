@@ -248,10 +248,10 @@ export default function EmployeeReviewStep({
       values.payroll_group_id
     );
 
-  const salaryStructure =
+  const salaryBand =
     findById(
-      masterData.salaryStructures,
-      values.salary_structure_id
+      masterData.positionLevelBands,
+      values.position_level_band_id
     );
 
   /* =========================================================
@@ -714,16 +714,30 @@ export default function EmployeeReviewStep({
         </Descriptions.Item>
 
         <Descriptions.Item
-          label="โครงสร้างเงินเดือน"
+          label="Salary Band"
         >
-          {getValue(
-            salaryStructure,
-            [
-              "structure_name",
-              "salary_structure_name",
-              "structure_code",
-            ]
-          )}
+          {salaryBand
+            ? `${salaryBand.band_code || "-"} - ${salaryBand.band_name || "-"}`
+            : "-"}
+        </Descriptions.Item>
+
+        <Descriptions.Item
+          label="เงินเดือนฐาน"
+        >
+          {values.base_salary !==
+            undefined &&
+          values.base_salary !== null &&
+          values.base_salary !== ""
+            ? `${Number(
+                values.base_salary
+              ).toLocaleString(
+                "th-TH",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )} บาท`
+            : "-"}
         </Descriptions.Item>
       </Descriptions>
 

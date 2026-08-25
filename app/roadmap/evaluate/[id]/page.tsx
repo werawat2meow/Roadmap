@@ -47,6 +47,8 @@ type HistoryRecord = {
   examScore: number | null;
   examMaxScore: number | null;
   maxScore: number | null;
+  currentSalary?: number | null;
+  newSalary?: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
@@ -281,6 +283,8 @@ export default function EvaluateEmployeePage() {
           departmentScore: record.departmentScore ?? prev.departmentScore,
           expectationScore: record.expectationScore ?? prev.expectationScore,
           totalScore: record.totalScore ?? prev.totalScore,
+          currentSalary: record.currentSalary ?? prev.currentSalary,
+          newSalary: record.newSalary ?? prev.newSalary,
           managerComment: record.managerComment ?? prev.managerComment,
           examScore: record.examScore ?? prev.examScore,
           examMaxScore: record.examMaxScore ?? prev.examMaxScore,
@@ -506,6 +510,13 @@ export default function EvaluateEmployeePage() {
         }
 
         setEmployee(employeeJson.data);
+        setFormData((prev) => ({
+          ...prev,
+          currentSalary:
+            employeeJson.data.currentSalary ?? prev.currentSalary,
+          newSalary:
+            employeeJson.data.currentSalary ?? prev.newSalary,
+        }));
         setSettingsCategories(settingsJson.data || []);
         setManagers(
           (userAccessJson.data || []).filter(

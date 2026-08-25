@@ -1120,71 +1120,169 @@ export default function EmployeeOrganizationStep({
   */
 
   const positionOptions =
-    useMemo(() => {
-      let availablePositions =
-        positions.filter(isActive);
+  useMemo(() => {
+    let availablePositions =
+      positions.filter(isActive);
 
-      if (positionFamilyId) {
-        availablePositions =
-          availablePositions.filter(
-            (item) =>
-              item.position_family_id ===
+    /* =====================================================
+       1. Filter Position Family
+    ===================================================== */
+
+    if (positionFamilyId) {
+      availablePositions =
+        availablePositions.filter(
+          (item) =>
+            String(
+              item.position_family_id ||
+                ""
+            ) ===
+            String(
               positionFamilyId
-          );
-      }
-
-      if (unitId) {
-        const allowedPositionIds =
-          new Set(
-            unitPositions
-              .filter(
-                (item) =>
-                  isActive(item) &&
-                  item.unit_id ===
-                    unitId
-              )
-              .map(
-                (item) =>
-                  item.position_id
-              )
-          );
-
-        availablePositions =
-          availablePositions.filter(
-            (item) =>
-              allowedPositionIds.has(
-                item.id
-              )
-          );
-      }
-
-      return availablePositions
-        .sort(
-          (a, b) =>
-            Number(
-              a.sort_order || 0
-            ) -
-            Number(
-              b.sort_order || 0
             )
-        )
-        .map((item) => ({
-          value: item.id,
+        );
+    }
 
-          label: makeLabel(
-            item,
-            "position_code",
-            "position_name"
-          ),
+    /* =====================================================
+       2. Filter Position Level
 
+       positions API คืน:
+       item.levels = [
+         {
+           id,
+           level_code,
+           level_name,
+           is_default
+         }
+       ]
+
+       ดังนั้น Position ต้องรองรับ Level
+       ที่ User เลือกจริง ๆ
+    ===================================================== */
+
+    if (positionLevelId) {
+      availablePositions =
+        availablePositions.filter(
+          (item) => {
+            const levels =
+              Array.isArray(
+                item.levels
+              )
+                ? item.levels
+                : [];
+
+            return levels.some(
+              (level) =>
+                String(
+                  level?.id ||
+                    ""
+                ) ===
+                String(
+                  positionLevelId
+                )
+            );
+          }
+        );
+    }
+
+    /* =====================================================
+       3. Filter Workforce Plan / Unit Position
+
+       หลังปรับ unit_positions ใหม่
+       ให้เช็ค branch_id ด้วย
+    ===================================================== */
+
+    if (unitId) {
+      const allowedPositionIds =
+        new Set(
+          unitPositions
+            .filter(
+              (item) => {
+                if (!isActive(item)) {
+                  return false;
+                }
+
+                if (
+                  String(
+                    item.unit_id ||
+                      ""
+                  ) !==
+                  String(unitId)
+                ) {
+                  return false;
+                }
+
+                /*
+                 * ถ้า Plan มี branch_id
+                 * ต้องตรงกับ Branch ของ Employee
+                 */
+                if (
+                  item.branch_id &&
+                  branchId &&
+                  String(
+                    item.branch_id
+                  ) !==
+                    String(
+                      branchId
+                    )
+                ) {
+                  return false;
+                }
+
+                return true;
+              }
+            )
+            .map(
+              (item) =>
+                String(
+                  item.position_id
+                )
+            )
+        );
+
+      availablePositions =
+        availablePositions.filter(
+          (item) =>
+            allowedPositionIds.has(
+              String(item.id)
+            )
+        );
+    }
+
+    /* =====================================================
+       4. Sort + Map
+    ===================================================== */
+
+    return availablePositions
+      .sort(
+        (a, b) =>
+          Number(
+            a.sort_order || 0
+          ) -
+          Number(
+            b.sort_order || 0
+          )
+      )
+      .map((item) => ({
+        value: item.id,
+
+        label: makeLabel(
           item,
-        }));
-    }, [
-      positions,
-      unitPositions,
-      unitId,
-      positionFamilyId,
-    ]);
+          "position_code",
+          "position_name"
+        ),
+
+        item,
+      }));
+  }, [
+    positions,
+    unitPositions,
+
+    branchId,
+    unitId,
+
+    positionFamilyId,
+    positionLevelId,
+  ]);
 
   const jobOptions =
     useMemo(
@@ -1710,6 +1808,12 @@ export default function EmployeeOrganizationStep({
 
                   job_id:
                     undefined,
+
+                  position_level_band_id:
+                    undefined,
+
+                  base_salary:
+                    undefined,
                 });
               }}
             />
@@ -1762,6 +1866,12 @@ export default function EmployeeOrganizationStep({
 
                   job_id:
                     undefined,
+
+                  position_level_band_id:
+                    undefined,
+
+                  base_salary:
+                    undefined,
                 });
               }}
             />
@@ -1787,19 +1897,43 @@ export default function EmployeeOrganizationStep({
               showSearch
               allowClear
               loading={masterLoading}
+
               disabled={
                 disabled ||
                 !positionFamilyId
               }
+
               options={
                 positionLevelOptions
               }
+
               optionFilterProp="label"
+
               placeholder={
                 positionFamilyId
                   ? "เลือกระดับตำแหน่ง"
                   : "กรุณาเลือกกลุ่มสายงานก่อน"
               }
+
+              onChange={() => {
+                /*
+                * เปลี่ยน Level
+                * Position เดิมอาจไม่รองรับ Level ใหม่
+                */
+                form.setFieldsValue({
+                  position_id:
+                    undefined,
+
+                  job_id:
+                    undefined,
+
+                  position_level_band_id:
+                    undefined,
+
+                  base_salary:
+                    undefined,
+                });
+              }}
             />
           </Form.Item>
         </Col>

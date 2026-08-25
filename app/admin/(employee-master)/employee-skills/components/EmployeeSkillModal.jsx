@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState , useMemo, } from "react";
 
 import {
   Modal,
@@ -19,6 +19,54 @@ import dayjs from "dayjs";
 const { TextArea } = Input;
 const { Option } = Select;
 
+
+function buildEmployeeName(
+  employee
+) {
+  if (!employee) {
+    return "";
+  }
+
+  if (employee.full_name_th) {
+    return employee.full_name_th;
+  }
+
+  return [
+    employee.first_name_th,
+    employee.middle_name_th,
+    employee.last_name_th,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function buildEmployeeLabel(
+  employee
+) {
+  if (!employee) {
+    return "-";
+  }
+
+  const code =
+    employee.employee_code ||
+    "";
+
+  const name =
+    buildEmployeeName(
+      employee
+    );
+
+  if (code && name) {
+    return `${code} - ${name}`;
+  }
+
+  return (
+    name ||
+    code ||
+    "-"
+  );
+}
+
 export default function EmployeeSkillModal({open,editingData,loading,onCancel,onSubmit,}) {
   const [form] = Form.useForm();
   const [employees, setEmployees] =useState([]);
@@ -26,30 +74,177 @@ export default function EmployeeSkillModal({open,editingData,loading,onCancel,on
   const [categories, setCategories] =useState([]);
   const [verifiers, setVerifiers] = useState([]);
 
+  const employeeOptions = useMemo(() => {
+    const options =
+      (employees || []).map(
+        (item) => ({
+          value: item.id,
+          label:
+            buildEmployeeLabel(
+              item
+            ),
+        })
+      );
+
+    /*
+     * ตอน Edit:
+     * ถ้าพนักงานที่เลือกยังไม่อยู่ใน
+     * employees list ให้สร้าง option
+     * จากข้อมูลที่ติดมากับ row ก่อน
+     */
+    if (
+      editingData?.employee_id &&
+      !options.some(
+        (item) =>
+          String(
+            item.value
+          ) ===
+          String(
+            editingData.employee_id
+          )
+      )
+    ) {
+      const employee =
+        editingData.employees ||
+        editingData.employee ||
+        {
+          id:
+            editingData.employee_id,
+
+          employee_code:
+            editingData.employee_code,
+
+          full_name_th:
+            editingData.employee_name ||
+            editingData.full_name_th,
+
+          first_name_th:
+            editingData.first_name_th,
+
+          last_name_th:
+            editingData.last_name_th,
+        };
+
+      const label =
+        buildEmployeeLabel(
+          employee
+        );
+
+      /*
+       * มีข้อมูลชื่อจริงค่อยเพิ่ม
+       * ไม่เอา UUID มาเป็น label
+       */
+      if (label !== "-") {
+        options.unshift({
+          value:
+            editingData.employee_id,
+
+          label,
+        });
+      }
+    }
+
+    return options;
+  }, [
+    employees,
+    editingData,
+  ]);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     loadEmployees();
     loadSkills();
     loadCategories();
     loadVerifiers();
-  }, [open]);
+  }, [
+    open,
+    editingData?.employee_id,
+  ]);
 
   async function loadEmployees() {
-    try {
-      const res = await fetch(
-        "/api/admin/employees?all=true&status=active"
+  try {
+    const res =
+      await fetch(
+        "/api/admin/employees?all=true&status=active",
+        {
+          cache: "no-store",
+        }
       );
 
-      const json = await res.json();
+    const json =
+      await res
+        .json()
+        .catch(
+          () => null
+        );
 
-      if (json.success) {
-        setEmployees(json.data || []);
+    let rows =
+      res.ok &&
+      json?.success &&
+      Array.isArray(
+        json.data
+      )
+        ? json.data
+        : [];
+
+    /*
+     * Edit:
+     * ถ้าพนักงานปัจจุบันไม่อยู่ใน
+     * active list ให้โหลดรายคนมาเติม
+     */
+    const selectedId =
+      editingData?.employee_id;
+
+    if (
+      selectedId &&
+      !rows.some(
+        (item) =>
+          String(item.id) ===
+          String(selectedId)
+      )
+    ) {
+      const selectedRes =
+        await fetch(
+          `/api/admin/employees/${selectedId}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      const selectedJson =
+        await selectedRes
+          .json()
+          .catch(
+            () => null
+          );
+
+      if (
+        selectedRes.ok &&
+        selectedJson?.success &&
+        selectedJson?.data
+      ) {
+        rows = [
+          selectedJson.data,
+          ...rows,
+        ];
       }
-    } catch (err) {
-      console.error(err);
     }
+
+    setEmployees(
+      rows
+    );
+  } catch (err) {
+    console.error(
+      "LOAD_EMPLOYEE_OPTIONS_ERROR:",
+      err
+    );
+
+    setEmployees([]);
   }
+}
 
   async function loadSkills() {
     try {
@@ -233,19 +428,10 @@ export default function EmployeeSkillModal({open,editingData,loading,onCancel,on
                 allowClear
                 optionFilterProp="label"
                 placeholder="เลือกพนักงาน"
-              >
-                {employees.map((item) => (
-                  <Option
-                    key={item.id}
-                    value={item.id}
-                    label={`${item.employee_code} ${item.full_name_th}`}
-                  >
-                    {item.employee_code}
-                    {" - "}
-                    {item.full_name_th}
-                  </Option>
-                ))}
-              </Select>
+                options={
+                  employeeOptions
+                }
+              />
             </Form.Item>
           </Col>
 

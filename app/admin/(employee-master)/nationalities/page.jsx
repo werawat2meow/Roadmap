@@ -331,16 +331,19 @@ export default function NationalitiesPage() {
   };
    
   const handleSearch = (value) => {
+    setRows([]);
     setPage(1);
     setSearch(value);
   };
 
   const handleStatusChange = (value) => {
+    setRows([]);
     setPage(1);
     setStatus(value);
   };
 
   const handleTableChange = (pagination) => {
+    setRows([]);
     setPage(
       pagination.current
     );
@@ -390,25 +393,19 @@ export default function NationalitiesPage() {
         <NationalityTable
           data={rows}
           loading={loading}
+
           page={page}
           pageSize={pageSize}
           total={total}
-          onChange={
-            handleTableChange
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            canEdit
-              ? handleEdit
-              : undefined
-          }
-          onDelete={
-            canDelete
-              ? handleDelete
-              : undefined
-          }
+
+          canView={canView}
+          canEdit={canEdit}
+          canDelete={canDelete}
+
+          onChange={handleTableChange}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       }
       modal={

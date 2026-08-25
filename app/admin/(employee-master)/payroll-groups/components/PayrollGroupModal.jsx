@@ -15,7 +15,7 @@ export default function PayrollGroupModal({
 
   form,
 
-  payrollCompanies = [],
+  payrollCompanyInitialOption = null,
 
   saving = false,
 
@@ -55,7 +55,9 @@ export default function PayrollGroupModal({
         <div className="pt-5">
           <PayrollGroupForm
             form={form}
-            payrollCompanies={payrollCompanies}
+            payrollCompanyInitialOption={
+              payrollCompanyInitialOption
+            }
             disabled
             onFinish={onFinish}
           />
@@ -80,7 +82,9 @@ export default function PayrollGroupModal({
     >
       <PayrollGroupForm
         form={form}
-        payrollCompanies={payrollCompanies}
+        payrollCompanyInitialOption={
+          payrollCompanyInitialOption
+        }
         disabled={false}
         onFinish={onFinish}
       />

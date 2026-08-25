@@ -34,6 +34,8 @@ export default function ExecutivePage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null,
   );
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   // --- ส่วนการดึงข้อมูลจาก API ---
   useEffect(() => {
@@ -129,31 +131,47 @@ export default function ExecutivePage() {
     },
   ];
 
-  const handleStatusUpdate = async (action: "approve" | "reject") => {
+  const handleStatusUpdate = async (
+    action: "approve" | "reject",
+    rejectionNote?: string,
+  ) => {
     if (!selectedEmployee) return;
 
-    const confirmMsg = action === "approve" ? "ยืนยันการอนุมัติผลการประเมินนี้?" : "ยืนยันการไม่อนุมัติผลการประเมินนี้?";
+    if (action === "reject" && !rejectionNote?.trim()) {
+      alert("กรุณากรอกเหตุผลก่อนไม่อนุมัติ");
+      return;
+    }
+
+    const confirmMsg =
+      action === "approve"
+        ? "ยืนยันการอนุมัติผลการประเมินนี้?"
+        : "ยืนยันการไม่อนุมัติผลการประเมินนี้?";
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
       const res = await fetch("/roadmap/api/executive/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           evaluationId: selectedEmployee.id,
-          action: action 
+          action,
+          rejectionNote,
         }),
       });
 
       const result = await res.json();
 
       if (res.ok) {
-        alert(action === "approve" ? "อนุมัติเรียบร้อยแล้ว" : "ปฏิเสธการประเมินเรียบร้อยแล้ว");
-        setSelectedEmployee(null); // ปิด SlideOver
-        
-        // อัปเดตข้อมูลหน้าจอใหม่ (ดึงข้อมูลใหม่จาก API)
-        // หรือใช้วิธีง่ายๆ คือรีโหลดหน้าจอ
-        window.location.reload(); 
+        alert(
+          action === "approve"
+            ? "อนุมัติเรียบร้อยแล้ว"
+            : "ปฏิเสธการประเมินเรียบร้อยแล้ว",
+        );
+        setSelectedEmployee(null);
+        setRejectModalOpen(false);
+        setRejectionReason("");
+        window.location.reload();
       } else {
         alert("เกิดข้อผิดพลาด: " + result.error);
       }
@@ -235,14 +253,73 @@ export default function ExecutivePage() {
         </div>
       </div>
 
+      {rejectModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[28px] bg-white p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">
+                  เหตุผลไม่อนุมัติ
+                </p>
+                <h2 className="text-xl font-bold text-slate-900">
+                  กรุณากรอกเหตุผลก่อนดำเนินการ
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setRejectionReason("");
+                }}
+                className="cursor-pointer rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="ระบุเหตุผลที่ไม่อนุมัติ..."
+              className="w-full min-h-[140px] rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            />
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => handleStatusUpdate("reject", rejectionReason)}
+                className="cursor-pointer flex-1 rounded-2xl bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-600/20 hover:bg-orange-700"
+              >
+                ไม่อนุมัติ พร้อมเหตุผล
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setRejectionReason("");
+                }}
+                className="cursor-pointer flex-1 rounded-2xl bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ส่วนรายละเอียดพนักงานด้านข้าง */}
       <ExecutiveSlideOver
         open={Boolean(selectedEmployee)}
         employee={selectedEmployee}
         evaluationId={selectedEmployee?.id}
-        onClose={() => setSelectedEmployee(null)}
+        onClose={() => {
+          setSelectedEmployee(null);
+          setRejectModalOpen(false);
+          setRejectionReason("");
+        }}
         onApprove={() => handleStatusUpdate("approve")}
-        onReject={() => handleStatusUpdate("reject")}
+        onReject={() => setRejectModalOpen(true)}
       />
     </div>
   );

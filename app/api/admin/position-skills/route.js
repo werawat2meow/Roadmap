@@ -1,199 +1,769 @@
 import { NextResponse } from "next/server";
+
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 
+import {
+  requireScopedAccess,
+} from "@/lib/auth/requireScopedAccess";
+
 /* =========================================================
-   GET: รายการทักษะประจำตำแหน่ง
+   CONSTANTS
 ========================================================= */
-export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
 
-    const search = String(searchParams.get("search") || "").trim();
-    const positionId = String(
-      searchParams.get("position_id") || ""
-    ).trim();
-    const skillId = String(searchParams.get("skill_id") || "").trim();
-    const status = String(searchParams.get("status") || "").trim();
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+const ALL_LIMIT = 5000;
 
-    const all = searchParams.get("all") === "true";
+const ALLOWED_STATUSES = [
+  "active",
+  "inactive",
+];
 
-    const page = Math.max(
-      Number.parseInt(searchParams.get("page") || "1", 10),
-      1
-    );
+const ALLOWED_IMPORTANCE_LEVELS = [
+  "low",
+  "medium",
+  "high",
+  "critical",
+];
 
-    const pageSize = Math.max(
-      Number.parseInt(searchParams.get("pageSize") || "20", 10),
-      1
-    );
+/* =========================================================
+   RESPONSE HELPERS
+========================================================= */
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+function successResponse(
+  data,
+  {
+    status = 200,
+    message = null,
+    pagination = null,
+    meta = null,
+  } = {}
+) {
+  const response = {
+    success: true,
+    data,
+  };
 
-    let query = supabaseAdmin
-      .from("vw_position_skills")
-      .select("*", {
-        count: "exact",
-      })
-      .order("sort_order", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: false,
-    });
-
-    if (positionId) {
-      query = query.eq("position_id", positionId);
-    }
-
-    if (skillId) {
-      query = query.eq("skill_id", skillId);
-    }
-
-    if (status) {
-      query = query.eq("status", status);
-    }
-
-    if (search) {
-      query = query.or(
-        [
-          `description.ilike.%${search}%`,
-          `position_code.ilike.%${search}%`,
-          `position_name.ilike.%${search}%`,
-          `skill_code.ilike.%${search}%`,
-          `skill_name.ilike.%${search}%`,
-          `position_family_name.ilike.%${search}%`,
-          `skill_category_name.ilike.%${search}%`,
-        ].join(",")
-      );
-    }
-
-    if (!all) {
-      query = query.range(from, to);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    const items = (data || []).map((item) => ({
-      id: item.id,
-
-      position_id: item.position_id,
-      position_code: item.position_code,
-      position_name: item.position_name,
-      position_level: item.position_level,
-
-      position_family_id: item.position_family_id,
-      position_family_code: item.position_family_code,
-      position_family_name: item.position_family_name,
-
-      skill_id: item.skill_id,
-      skill_code: item.skill_code,
-      skill_name: item.skill_name,
-
-      skill_category_id: item.category_id,
-      skill_category_code: item.skill_category_code,
-      skill_category_name: item.skill_category_name,
-
-      required_level: Number(item.required_level || 1),
-      importance_level: item.importance_level || "medium",
-      is_mandatory: Boolean(item.is_mandatory),
-      description: item.description || "",
-      status: item.status || "active",
-      sort_order: Number(item.sort_order || 0),
-
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-    }));
-
-    return NextResponse.json({
-      success: true,
-      data: items,
-      pagination: {
-        page: all ? 1 : page,
-        pageSize: all ? items.length : pageSize,
-        total: Number(count || 0),
-        totalPages: all
-          ? 1
-          : Math.max(Math.ceil(Number(count || 0) / pageSize), 1),
-      },
-    });
-  } catch (error) {
-    console.error("GET /api/admin/position-skills error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถโหลดข้อมูลทักษะประจำตำแหน่งได้",
-      },
-      {
-        status: 500,
-      }
-    );
+  if (message) {
+    response.message = message;
   }
+
+  if (pagination) {
+    response.pagination = pagination;
+  }
+
+  if (meta) {
+    response.meta = meta;
+  }
+
+  return NextResponse.json(
+    response,
+    {
+      status,
+    }
+  );
+}
+
+function errorResponse(
+  message,
+  {
+    status = 500,
+    error = null,
+    details = null,
+  } = {}
+) {
+  const response = {
+    success: false,
+
+    // Frontend เดิมอ่าน json.error
+    error: message,
+
+    // เก็บ message ไว้ด้วย
+    message,
+  };
+
+  if (error) {
+    response.details_error = error;
+  }
+
+  if (details) {
+    response.details = details;
+  }
+
+  return NextResponse.json(
+    response,
+    {
+      status,
+    }
+  );
 }
 
 /* =========================================================
-   POST: เพิ่มทักษะให้ตำแหน่ง
+   HELPERS
 ========================================================= */
-export async function POST(req) {
-  try {
-    const body = await req.json();
 
-    const positionId = String(body?.position_id || "").trim();
-    const skillId = String(body?.skill_id || "").trim();
+function cleanText(value) {
+  return String(
+    value ?? ""
+  ).trim();
+}
 
-    const requiredLevel = Math.max(
-      Number.parseInt(body?.required_level || "1", 10),
-      1
-    );
+function cleanNullableText(value) {
+  const cleaned =
+    cleanText(value);
 
-    const importanceLevel = String(
-      body?.importance_level || "medium"
-    )
-      .trim()
-      .toLowerCase();
+  return cleaned || null;
+}
 
-    const isMandatory =
-      body?.is_mandatory === true ||
-      body?.is_mandatory === "true";
+function cleanBoolean(
+  value,
+  fallback = false
+) {
+  if (
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
 
-    const description =
-      String(body?.description || "").trim() || null;
+  if (
+    value === true ||
+    value === "true" ||
+    value === "1" ||
+    value === 1
+  ) {
+    return true;
+  }
 
-    const status = String(body?.status || "active")
-      .trim()
-      .toLowerCase();
+  if (
+    value === false ||
+    value === "false" ||
+    value === "0" ||
+    value === 0
+  ) {
+    return false;
+  }
 
-    const sortOrder = Number.parseInt(
-      body?.sort_order || "0",
+  return fallback;
+}
+
+function parsePositiveInteger(
+  value,
+  fallback,
+  max = null
+) {
+  const parsed =
+    Number.parseInt(
+      String(value ?? ""),
       10
     );
 
-    if (!positionId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "กรุณาเลือกตำแหน่ง",
-        },
-        {
-          status: 400,
-        }
+  if (
+    Number.isNaN(parsed) ||
+    parsed < 1
+  ) {
+    return fallback;
+  }
+
+  if (
+    max !== null &&
+    parsed > max
+  ) {
+    return max;
+  }
+
+  return parsed;
+}
+
+function parseRequiredLevel(
+  value,
+  fallback = 1
+) {
+  const parsed =
+    Number.parseInt(
+      String(value ?? ""),
+      10
+    );
+
+  if (
+    Number.isNaN(parsed)
+  ) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function parseSortOrder(
+  value,
+  fallback = 0
+) {
+  const parsed =
+    Number.parseInt(
+      String(value ?? ""),
+      10
+    );
+
+  if (
+    Number.isNaN(parsed) ||
+    parsed < 0
+  ) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function sanitizeSearch(value) {
+  return cleanText(value)
+    .replaceAll(",", " ")
+    .replaceAll("(", " ")
+    .replaceAll(")", " ")
+    .trim();
+}
+
+function getErrorStatus(error) {
+  if (!error) {
+    return 500;
+  }
+
+  if (error.code === "23505") {
+    return 409;
+  }
+
+  if (
+    error.code === "23503" ||
+    error.code === "23514" ||
+    error.code === "23502" ||
+    error.code === "22P02"
+  ) {
+    return 400;
+  }
+
+  return 500;
+}
+
+function mapDatabaseError(error) {
+  if (!error) {
+    return "เกิดข้อผิดพลาดในฐานข้อมูล";
+  }
+
+  if (error.code === "23505") {
+    return "ตำแหน่งนี้มีทักษะดังกล่าวอยู่แล้ว";
+  }
+
+  if (error.code === "23503") {
+    return "ไม่พบข้อมูลตำแหน่งหรือทักษะที่อ้างอิง";
+  }
+
+  if (error.code === "23514") {
+    return "ข้อมูลไม่ผ่านเงื่อนไขที่ฐานข้อมูลกำหนด";
+  }
+
+  if (error.code === "23502") {
+    return "กรุณากรอกข้อมูลที่จำเป็นให้ครบ";
+  }
+
+  if (error.code === "22P02") {
+    return "รูปแบบ UUID หรือข้อมูลที่ส่งมาไม่ถูกต้อง";
+  }
+
+  return (
+    error.message ||
+    "เกิดข้อผิดพลาดในฐานข้อมูล"
+  );
+}
+
+/* =========================================================
+   VALIDATION
+========================================================= */
+
+function validatePayload(payload) {
+  if (!payload.position_id) {
+    return "กรุณาเลือกตำแหน่ง";
+  }
+
+  if (!payload.skill_id) {
+    return "กรุณาเลือกทักษะ";
+  }
+
+  if (
+    !Number.isInteger(
+      payload.required_level
+    ) ||
+    payload.required_level < 1 ||
+    payload.required_level > 5
+  ) {
+    return "ระดับทักษะต้องอยู่ระหว่าง 1 ถึง 5";
+  }
+
+  if (
+    !ALLOWED_IMPORTANCE_LEVELS.includes(
+      payload.importance_level
+    )
+  ) {
+    return "ระดับความสำคัญไม่ถูกต้อง";
+  }
+
+  if (
+    !ALLOWED_STATUSES.includes(
+      payload.status
+    )
+  ) {
+    return "สถานะไม่ถูกต้อง";
+  }
+
+  if (
+    !Number.isInteger(
+      payload.sort_order
+    ) ||
+    payload.sort_order < 0
+  ) {
+    return "ลำดับต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป";
+  }
+
+  return null;
+}
+
+function normalizePayload(body = {}) {
+  return {
+    position_id:
+      cleanText(
+        body.position_id
+      ),
+
+    skill_id:
+      cleanText(
+        body.skill_id
+      ),
+
+    required_level:
+      parseRequiredLevel(
+        body.required_level,
+        1
+      ),
+
+    importance_level:
+      cleanText(
+        body.importance_level ||
+        "medium"
+      ).toLowerCase(),
+
+    is_mandatory:
+      cleanBoolean(
+        body.is_mandatory,
+        false
+      ),
+
+    description:
+      cleanNullableText(
+        body.description
+      ),
+
+    status:
+      cleanText(
+        body.status ||
+        "active"
+      ).toLowerCase(),
+
+    sort_order:
+      parseSortOrder(
+        body.sort_order,
+        0
+      ),
+  };
+}
+
+/* =========================================================
+   MASTER LOADERS
+
+   หมายเหตุ:
+   ไม่ใช้ PostgREST nested relationship ใน GET หลัก
+   เพื่อไม่ผูก API กับ Schema Cache ของ FK position_id
+========================================================= */
+
+async function loadPositionsByIds(ids = []) {
+  const uniqueIds =
+    [...new Set(
+      ids.filter(Boolean)
+    )];
+
+  if (!uniqueIds.length) {
+    return new Map();
+  }
+
+  const {
+    data,
+    error,
+  } =
+    await supabaseAdmin
+      .from("positions")
+      .select(
+        `
+          id,
+          position_code,
+          position_name,
+          short_name,
+          position_family_id,
+          job_id,
+          is_manager,
+          is_executive,
+          status
+        `
+      )
+      .in(
+        "id",
+        uniqueIds
       );
+
+  if (error) {
+    throw error;
+  }
+
+  return new Map(
+    (data || []).map(
+      (item) => [
+        item.id,
+        item,
+      ]
+    )
+  );
+}
+
+async function loadSkillsByIds(ids = []) {
+  const uniqueIds =
+    [...new Set(
+      ids.filter(Boolean)
+    )];
+
+  if (!uniqueIds.length) {
+    return new Map();
+  }
+
+  const {
+    data,
+    error,
+  } =
+    await supabaseAdmin
+      .from("skills")
+      .select(
+        `
+          id,
+          skill_code,
+          skill_name
+        `
+      )
+      .in(
+        "id",
+        uniqueIds
+      );
+
+  if (error) {
+    throw error;
+  }
+
+  return new Map(
+    (data || []).map(
+      (item) => [
+        item.id,
+        item,
+      ]
+    )
+  );
+}
+
+async function enrichPositionSkills(
+  rows = []
+) {
+  const [
+    positionMap,
+    skillMap,
+  ] =
+    await Promise.all([
+      loadPositionsByIds(
+        rows.map(
+          (item) =>
+            item.position_id
+        )
+      ),
+
+      loadSkillsByIds(
+        rows.map(
+          (item) =>
+            item.skill_id
+        )
+      ),
+    ]);
+
+  return rows.map(
+    (item) => {
+      const position =
+        positionMap.get(
+          item.position_id
+        ) || null;
+
+      const skill =
+        skillMap.get(
+          item.skill_id
+        ) || null;
+
+      return {
+        id:
+          item.id,
+
+        position_id:
+          item.position_id,
+
+        position_code:
+          position
+            ?.position_code ||
+          "",
+
+        position_name:
+          position
+            ?.position_name ||
+          "",
+
+        position_family_id:
+          position
+            ?.position_family_id ||
+          null,
+
+        job_id:
+          position
+            ?.job_id ||
+          null,
+
+        skill_id:
+          item.skill_id,
+
+        skill_code:
+          skill
+            ?.skill_code ||
+          "",
+
+        skill_name:
+          skill
+            ?.skill_name ||
+          "",
+
+        required_level:
+          Number(
+            item.required_level ||
+            1
+          ),
+
+        importance_level:
+          item.importance_level ||
+          "medium",
+
+        is_mandatory:
+          Boolean(
+            item.is_mandatory
+          ),
+
+        description:
+          item.description ||
+          "",
+
+        status:
+          item.status ||
+          "active",
+
+        sort_order:
+          Number(
+            item.sort_order ||
+            0
+          ),
+
+        created_at:
+          item.created_at,
+
+        updated_at:
+          item.updated_at,
+
+        // ช่วยตรวจข้อมูลเก่าที่เป็น orphan
+        position_exists:
+          Boolean(position),
+
+        skill_exists:
+          Boolean(skill),
+      };
+    }
+  );
+}
+
+/* =========================================================
+   SEARCH RESOLVER
+
+   Search ตำแหน่ง/ทักษะจาก Master จริง
+   แล้วนำ ID มากรอง position_skills
+========================================================= */
+
+async function resolveSearchIds(
+  search
+) {
+  if (!search) {
+    return {
+      positionIds: [],
+      skillIds: [],
+    };
+  }
+
+  const pattern =
+    `%${search}%`;
+
+  const [
+    positionResult,
+    skillResult,
+  ] =
+    await Promise.all([
+      supabaseAdmin
+        .from("positions")
+        .select("id")
+        .or(
+          [
+            `position_code.ilike.${pattern}`,
+            `position_name.ilike.${pattern}`,
+          ].join(",")
+        )
+        .limit(500),
+
+      supabaseAdmin
+        .from("skills")
+        .select("id")
+        .or(
+          [
+            `skill_code.ilike.${pattern}`,
+            `skill_name.ilike.${pattern}`,
+          ].join(",")
+        )
+        .limit(500),
+    ]);
+
+  if (positionResult.error) {
+    throw positionResult.error;
+  }
+
+  if (skillResult.error) {
+    throw skillResult.error;
+  }
+
+  return {
+    positionIds:
+      (positionResult.data || [])
+        .map(
+          (item) => item.id
+        )
+        .filter(Boolean),
+
+    skillIds:
+      (skillResult.data || [])
+        .map(
+          (item) => item.id
+        )
+        .filter(Boolean),
+  };
+}
+
+/* =========================================================
+   GET
+   /api/admin/position-skills
+
+   Permission:
+   ems.position_skills.view
+
+   Scope:
+   ไม่ใช้ Organization Scope
+   เพราะเป็น Job Architecture Master
+========================================================= */
+
+export async function GET(req) {
+  try {
+    const guard =
+      await requireScopedAccess(
+        "ems.position_skills",
+        "view"
+      );
+
+    if (!guard.ok) {
+      return guard.response;
     }
 
-    if (!skillId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "กรุณาเลือกทักษะ",
-        },
+    const {
+      searchParams,
+    } =
+      new URL(req.url);
+
+    const search =
+      sanitizeSearch(
+        searchParams.get(
+          "search"
+        )
+      );
+
+    const positionId =
+      cleanText(
+        searchParams.get(
+          "position_id"
+        )
+      );
+
+    const skillId =
+      cleanText(
+        searchParams.get(
+          "skill_id"
+        )
+      );
+
+    const importanceLevel =
+      cleanText(
+        searchParams.get(
+          "importance_level"
+        )
+      ).toLowerCase();
+
+    const status =
+      cleanText(
+        searchParams.get(
+          "status"
+        )
+      ).toLowerCase();
+
+    const all =
+      cleanBoolean(
+        searchParams.get(
+          "all"
+        ),
+        false
+      );
+
+    const page =
+      parsePositiveInteger(
+        searchParams.get(
+          "page"
+        ),
+        DEFAULT_PAGE
+      );
+
+    const pageSize =
+      parsePositiveInteger(
+        searchParams.get(
+          "pageSize"
+        ),
+        DEFAULT_PAGE_SIZE,
+        MAX_PAGE_SIZE
+      );
+
+    if (
+      importanceLevel &&
+      !ALLOWED_IMPORTANCE_LEVELS.includes(
+        importanceLevel
+      )
+    ) {
+      return errorResponse(
+        "ระดับความสำคัญไม่ถูกต้อง",
         {
           status: 400,
         }
@@ -201,88 +771,432 @@ export async function POST(req) {
     }
 
     if (
-      !["low", "medium", "high", "critical"].includes(
-        importanceLevel
+      status &&
+      !ALLOWED_STATUSES.includes(
+        status
       )
     ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ระดับความสำคัญไม่ถูกต้อง",
-        },
+      return errorResponse(
+        "สถานะไม่ถูกต้อง",
         {
           status: 400,
         }
       );
     }
 
-    if (!["active", "inactive"].includes(status)) {
-      return NextResponse.json(
+    let query =
+      supabaseAdmin
+        .from(
+          "position_skills"
+        )
+        .select(
+          `
+            id,
+            position_id,
+            skill_id,
+            required_level,
+            importance_level,
+            is_mandatory,
+            description,
+            status,
+            sort_order,
+            created_at,
+            updated_at
+          `,
+          {
+            count:
+              all
+                ? undefined
+                : "exact",
+          }
+        );
+
+    if (positionId) {
+      query =
+        query.eq(
+          "position_id",
+          positionId
+        );
+    }
+
+    if (skillId) {
+      query =
+        query.eq(
+          "skill_id",
+          skillId
+        );
+    }
+
+    if (
+      importanceLevel
+    ) {
+      query =
+        query.eq(
+          "importance_level",
+          importanceLevel
+        );
+    }
+
+    if (status) {
+      query =
+        query.eq(
+          "status",
+          status
+        );
+    }
+
+    if (search) {
+      const {
+        positionIds,
+        skillIds,
+      } =
+        await resolveSearchIds(
+          search
+        );
+
+      const filters = [
+        `description.ilike.%${search}%`,
+      ];
+
+      if (
+        positionIds.length
+      ) {
+        filters.push(
+          `position_id.in.(${positionIds.join(
+            ","
+          )})`
+        );
+      }
+
+      if (
+        skillIds.length
+      ) {
+        filters.push(
+          `skill_id.in.(${skillIds.join(
+            ","
+          )})`
+        );
+      }
+
+      query =
+        query.or(
+          filters.join(",")
+        );
+    }
+
+    query =
+      query
+        .order(
+          "sort_order",
+          {
+            ascending: true,
+          }
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
+
+    if (all) {
+      query =
+        query.limit(
+          ALL_LIMIT
+        );
+    } else {
+      const from =
+        (page - 1) *
+        pageSize;
+
+      const to =
+        from +
+        pageSize -
+        1;
+
+      query =
+        query.range(
+          from,
+          to
+        );
+    }
+
+    const {
+      data,
+      error,
+      count,
+    } = await query;
+
+    if (error) {
+      console.error(
+        "GET position-skills error:",
+        error
+      );
+
+      return errorResponse(
+        "ไม่สามารถโหลดข้อมูลทักษะประจำตำแหน่งได้",
         {
-          success: false,
-          error: "สถานะไม่ถูกต้อง",
+          status:
+            getErrorStatus(
+              error
+            ),
+
+          error:
+            mapDatabaseError(
+              error
+            ),
+        }
+      );
+    }
+
+    const items =
+      await enrichPositionSkills(
+        data || []
+      );
+
+    if (all) {
+      return successResponse(
+        items,
+        {
+          pagination: {
+            page: 1,
+            pageSize:
+              items.length,
+            total:
+              items.length,
+            totalPages: 1,
+          },
+
+          meta: {
+            all: true,
+          },
+        }
+      );
+    }
+
+    const total =
+      Number(
+        count || 0
+      );
+
+    const totalPages =
+      Math.max(
+        Math.ceil(
+          total /
+          pageSize
+        ),
+        1
+      );
+
+    return successResponse(
+      items,
+      {
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages,
         },
+
+        meta: {
+          search:
+            search || null,
+
+          filters: {
+            position_id:
+              positionId ||
+              null,
+
+            skill_id:
+              skillId ||
+              null,
+
+            importance_level:
+              importanceLevel ||
+              null,
+
+            status:
+              status || null,
+          },
+        },
+      }
+    );
+  } catch (error) {
+    console.error(
+      "GET /api/admin/position-skills exception:",
+      error
+    );
+
+    return errorResponse(
+      "เกิดข้อผิดพลาดในการโหลดข้อมูลทักษะประจำตำแหน่ง",
+      {
+        status: 500,
+
+        error:
+          error?.message ||
+          "Unknown error",
+      }
+    );
+  }
+}
+
+/* =========================================================
+   POST
+   /api/admin/position-skills
+
+   Permission:
+   ems.position_skills.create
+========================================================= */
+
+export async function POST(req) {
+  try {
+    const guard =
+      await requireScopedAccess(
+        "ems.position_skills",
+        "create"
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    let body = null;
+
+    try {
+      body =
+        await req.json();
+    } catch {
+      return errorResponse(
+        "รูปแบบ Request Body ไม่ถูกต้อง",
         {
           status: 400,
         }
       );
     }
 
-    const { data: position, error: positionError } =
-      await supabaseAdmin
-        .from("positions")
-        .select("id, position_code, position_name")
-        .eq("id", positionId)
-        .maybeSingle();
-
-    if (positionError) {
-      throw positionError;
+    if (
+      !body ||
+      typeof body !==
+        "object" ||
+      Array.isArray(body)
+    ) {
+      return errorResponse(
+        "Request Body ต้องเป็น Object",
+        {
+          status: 400,
+        }
+      );
     }
 
-    if (!position) {
-      return NextResponse.json(
+    const payload =
+      normalizePayload(
+        body
+      );
+
+    const validationError =
+      validatePayload(
+        payload
+      );
+
+    if (validationError) {
+      return errorResponse(
+        validationError,
         {
-          success: false,
-          error: "ไม่พบข้อมูลตำแหน่ง",
-        },
+          status: 400,
+        }
+      );
+    }
+
+    const [
+      positionResult,
+      skillResult,
+    ] =
+      await Promise.all([
+        supabaseAdmin
+          .from("positions")
+          .select(
+            `
+              id,
+              position_code,
+              position_name,
+              status
+            `
+          )
+          .eq(
+            "id",
+            payload.position_id
+          )
+          .maybeSingle(),
+
+        supabaseAdmin
+          .from("skills")
+          .select(
+            `
+              id,
+              skill_code,
+              skill_name,
+              status
+            `
+          )
+          .eq(
+            "id",
+            payload.skill_id
+          )
+          .maybeSingle(),
+      ]);
+
+    if (
+      positionResult.error
+    ) {
+      throw positionResult.error;
+    }
+
+    if (
+      skillResult.error
+    ) {
+      throw skillResult.error;
+    }
+
+    if (
+      !positionResult.data
+    ) {
+      return errorResponse(
+        "ไม่พบข้อมูลตำแหน่ง",
         {
           status: 404,
         }
       );
     }
 
-    const { data: skill, error: skillError } =
-      await supabaseAdmin
-        .from("skills")
-        .select("id, skill_code, skill_name")
-        .eq("id", skillId)
-        .maybeSingle();
-
-    if (skillError) {
-      throw skillError;
-    }
-
-    if (!skill) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ไม่พบข้อมูลทักษะ",
-        },
+    if (
+      !skillResult.data
+    ) {
+      return errorResponse(
+        "ไม่พบข้อมูลทักษะ",
         {
           status: 404,
         }
       );
     }
 
-    /*
-      ป้องกันไม่ให้ตำแหน่งเดียวกันมี Skill เดิมซ้ำ
-    */
-    const { data: duplicate, error: duplicateError } =
+    const {
+      data: duplicate,
+      error: duplicateError,
+    } =
       await supabaseAdmin
-        .from("position_skills")
+        .from(
+          "position_skills"
+        )
         .select("id")
-        .eq("position_id", positionId)
-        .eq("skill_id", skillId)
+        .eq(
+          "position_id",
+          payload.position_id
+        )
+        .eq(
+          "skill_id",
+          payload.skill_id
+        )
+        .limit(1)
         .maybeSingle();
 
     if (duplicateError) {
@@ -290,149 +1204,128 @@ export async function POST(req) {
     }
 
     if (duplicate) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `ตำแหน่ง ${position.position_name} มีทักษะ ${skill.skill_name} อยู่แล้ว`,
-        },
+      return errorResponse(
+        `ตำแหน่ง ${positionResult.data.position_name} มีทักษะ ${skillResult.data.skill_name} อยู่แล้ว`,
         {
           status: 409,
         }
       );
     }
 
-    const payload = {
-      position_id: positionId,
-      skill_id: skillId,
-      required_level: requiredLevel,
-      importance_level: importanceLevel,
-      is_mandatory: isMandatory,
-      description,
-      status,
-      sort_order: Number.isNaN(sortOrder) ? 0 : sortOrder,
-      updated_at: new Date().toISOString(),
-    };
+    const {
+      data,
+      error,
+    } =
+      await supabaseAdmin
+        .from(
+          "position_skills"
+        )
+        .insert({
+          ...payload,
 
-    const { data, error } = await supabaseAdmin
-      .from("position_skills")
-      .insert(payload)
-      .select(
-        `
-          id,
-          position_id,
-          skill_id,
-          required_level,
-          importance_level,
-          is_mandatory,
-          description,
-          status,
-          sort_order,
-          created_at,
-          updated_at,
-
-          positions (
-          id,
-          position_code,
-          position_name,
-          position_level_mappings (
-            is_default,
-            sort_order,
-
-            position_level:position_levels (
-              id,
-              level_code,
-              level_name
-            )
-          ),
-
-          skills (
+          updated_at:
+            new Date()
+              .toISOString(),
+        })
+        .select(
+          `
             id,
-            skill_code,
-            skill_name
-          )
-        `
-      )
-      .single();
+            position_id,
+            skill_id,
+            required_level,
+            importance_level,
+            is_mandatory,
+            description,
+            status,
+            sort_order,
+            created_at,
+            updated_at
+          `
+        )
+        .single();
 
     if (error) {
-      /*
-        รองรับกรณีมี Unique Constraint ในฐานข้อมูล
-      */
-      if (error.code === "23505") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "ตำแหน่งนี้มีทักษะดังกล่าวอยู่แล้ว",
-          },
-          {
-            status: 409,
-          }
-        );
-      }
+      console.error(
+        "POST position-skills error:",
+        error
+      );
 
-      throw error;
+      return errorResponse(
+        mapDatabaseError(
+          error
+        ),
+        {
+          status:
+            getErrorStatus(
+              error
+            ),
+
+          error:
+            error.message,
+        }
+      );
     }
+
+    const [
+      createdItem,
+    ] =
+      await enrichPositionSkills(
+        [data]
+      );
 
     try {
       await writeActivityLog({
-        module: "POSITION_SKILLS",
-        action: "CREATE",
-        entityType: "position_skills",
-        entityId: data.id,
-        description: `เพิ่มทักษะ ${skill.skill_name} ให้ตำแหน่ง ${position.position_name}`,
-        newData: payload,
-        req,
+        moduleName:
+          "position_skills",
+
+        actionType:
+          "CREATE",
+
+        referenceTable:
+          "position_skills",
+
+        referenceId:
+          data.id,
+
+        description:
+          `เพิ่มทักษะ ${skillResult.data.skill_name} ให้ตำแหน่ง ${positionResult.data.position_name}`,
+
+        oldData:
+          null,
+
+        newData:
+          createdItem,
       });
     } catch (logError) {
       console.error(
-        "writeActivityLog position-skills error:",
+        "Write position skill activity log error:",
         logError
       );
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "เพิ่มทักษะประจำตำแหน่งสำเร็จ",
-        data: {
-          id: data.id,
-
-          position_id: data.position_id,
-          position_code: data.positions?.position_code || "",
-          position_name: data.positions?.position_name || "",
-          position_level: data.positions?.position_level || "",
-
-          skill_id: data.skill_id,
-          skill_code: data.skills?.skill_code || "",
-          skill_name: data.skills?.skill_name || "",
-
-          required_level: Number(data.required_level || 1),
-          importance_level: data.importance_level || "medium",
-          is_mandatory: Boolean(data.is_mandatory),
-          description: data.description || "",
-          status: data.status || "active",
-          sort_order: Number(data.sort_order || 0),
-
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-        },
-      },
+    return successResponse(
+      createdItem,
       {
         status: 201,
+
+        message:
+          "เพิ่มทักษะประจำตำแหน่งเรียบร้อยแล้ว",
       }
     );
   } catch (error) {
-    console.error("POST /api/admin/position-skills error:", error);
+    console.error(
+      "POST /api/admin/position-skills exception:",
+      error
+    );
 
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "ไม่สามารถเพิ่มทักษะประจำตำแหน่งได้",
-      },
+    return errorResponse(
+      "เกิดข้อผิดพลาดในการเพิ่มทักษะประจำตำแหน่ง",
       {
         status: 500,
+
+        error:
+          error?.message ||
+          "Unknown error",
       }
     );
   }

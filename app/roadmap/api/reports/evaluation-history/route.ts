@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const { data: evalRows, error: evalError } = await supabaseAdmin
     .from("rm_evaluations")
     .select(
-      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id",
+      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level",
     )
     .eq("evaluation_type_id", typeRow.id)
     .eq("status", "Completed")
@@ -46,8 +46,11 @@ export async function GET(req: Request) {
   }
 
   const employeeIds = [
-    ...new Set((evalRows || []).map((r: any) => r.employee_id)),
-  ];
+    ...new Set([
+      ...(evalRows || []).map((r: any) => r.employee_id),
+      ...(evalRows || []).map((r: any) => r.evaluator_id),
+    ]),
+  ].filter(Boolean);
   if (employeeIds.length === 0) {
     return NextResponse.json({ success: true, data: [] });
   }
@@ -57,6 +60,7 @@ export async function GET(req: Request) {
     .select(
       `
     id,
+    employee_code,
     first_name_th,
     last_name_th,
     email,
@@ -90,6 +94,117 @@ export async function GET(req: Request) {
     (employeeRows || []).map((emp: any) => [emp.id, emp]),
   );
 
+  const approverIds = [
+    ...new Set((evalRows || []).map((r: any) => r.approved_by).filter(Boolean)),
+  ];
+
+  const approverNameByUserId = new Map<string, string>();
+  const requesterNameByUserId = new Map<string, string>();
+
+  if (approverIds.length > 0) {
+    const { data: approverUsers, error: approverUserError } =
+      await supabaseAdmin
+        .from("user_accounts")
+        .select("id,employee_id")
+        .in("id", approverIds);
+
+    if (approverUserError) {
+      console.error("Failed to load approvers", approverUserError);
+      return NextResponse.json(
+        { success: false, error: approverUserError.message },
+        { status: 500 },
+      );
+    }
+
+    const approverEmployeeIds = [
+      ...new Set(
+        approverUsers.map((user: any) => user.employee_id).filter(Boolean),
+      ),
+    ];
+
+    const { data: approverEmployees, error: approverEmpError } =
+      await supabaseAdmin
+        .from("employees")
+        .select("id, first_name_th, last_name_th")
+        .in("id", approverEmployeeIds);
+
+    if (approverEmpError) {
+      console.error("Failed to load approver employee info", approverEmpError);
+      return NextResponse.json(
+        { success: false, error: approverEmpError.message },
+        { status: 500 },
+      );
+    }
+
+    const approverEmpMap = new Map(
+      approverEmployees.map((emp: any) => [
+        emp.id,
+        `${emp.first_name_th || ""} ${emp.last_name_th || ""}`.trim(),
+      ]),
+    );
+
+    approverUsers.forEach((user: any) => {
+      const name = approverEmpMap.get(user.employee_id) || "ไม่ระบุ";
+      approverNameByUserId.set(user.id, name);
+    });
+  }
+
+  const requesterIds = [
+    ...new Set(
+      (evalRows || [])
+        .map((r: any) => r.evaluator_id)
+        .filter(Boolean),
+    ),
+  ];
+
+  if (requesterIds.length > 0) {
+    const { data: requesterUsers, error: requesterUserError } =
+      await supabaseAdmin
+        .from("user_accounts")
+        .select("id,employee_id")
+        .in("id", requesterIds);
+
+    if (requesterUserError) {
+      console.error("Failed to load requesters", requesterUserError);
+      return NextResponse.json(
+        { success: false, error: requesterUserError.message },
+        { status: 500 },
+      );
+    }
+
+    const requesterEmployeeIds = [
+      ...new Set(
+        requesterUsers.map((user: any) => user.employee_id).filter(Boolean),
+      ),
+    ];
+
+    const { data: requesterEmployees, error: requesterEmpError } =
+      await supabaseAdmin
+        .from("employees")
+        .select("id, first_name_th, last_name_th")
+        .in("id", requesterEmployeeIds);
+
+    if (requesterEmpError) {
+      console.error("Failed to load requester employee info", requesterEmpError);
+      return NextResponse.json(
+        { success: false, error: requesterEmpError.message },
+        { status: 500 },
+      );
+    }
+
+    const requesterEmpMap = new Map(
+      requesterEmployees.map((emp: any) => [
+        emp.id,
+        `${emp.first_name_th || ""} ${emp.last_name_th || ""}`.trim(),
+      ]),
+    );
+
+    requesterUsers.forEach((user: any) => {
+      const name = requesterEmpMap.get(user.employee_id) || "ไม่ระบุ";
+      requesterNameByUserId.set(user.id, name);
+    });
+  }
+
   const mapped = (evalRows || []).map((item: any) => {
     const employee = employeeMap.get(item.employee_id) || {};
     const totalScore = item.totalScore ?? 0;
@@ -104,7 +219,7 @@ export async function GET(req: Request) {
 
     return {
       id: item.id,
-      employeeId: item.employee_id,
+      employeeId: employee.employee_code || item.employee_id,
       name: `${employee.first_name_th || ""} ${employee.last_name_th || ""}`.trim(),
       email: employee.email || "",
       branch: employee.branches?.branch_name || "",
@@ -112,12 +227,24 @@ export async function GET(req: Request) {
       division: employee.divisions?.division_name || "",
       unit: employee.units?.unit_name || "",
       level: positionLevel?.level_code || positionLevel?.level_name || "",
+      position: employee.positions?.position_name || "",
+      requesterName: item.evaluator_id
+        ? `${employeeMap.get(item.evaluator_id)?.first_name_th || ""} ${employeeMap.get(item.evaluator_id)?.last_name_th || ""}`.trim() || "ไม่ระบุ"
+        : "ไม่ระบุ",
+      currentSalary: item.currentSalary ?? 0,
+      newSalary: item.newSalary ?? 0,
+      newDesignation: item.new_designation || "",
+      newLevel: item.new_level || "",
+      diff: (item.newSalary ?? 0) - (item.currentSalary ?? 0),
       evaluationType,
       latestDate: item.created_at,
       score: totalScore,
       maxScore,
       scorePercent,
       status: item.status,
+      approvedByName: item.approved_by
+        ? approverNameByUserId.get(item.approved_by) || "ไม่ระบุ"
+        : "ไม่ระบุ",
     };
   });
 

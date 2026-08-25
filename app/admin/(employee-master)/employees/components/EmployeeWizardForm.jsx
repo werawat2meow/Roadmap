@@ -159,7 +159,8 @@ export const EMPLOYEE_STEP_FIELDS = {
     "payroll_company_id",
     "payroll_type_id",
     "payroll_group_id",
-    "salary_structure_id",
+    "position_level_band_id",
+    "base_salary",
   ],
 
   6: [
@@ -258,6 +259,7 @@ export default function EmployeeWizardForm({
         return (
           <EmployeePayrollStep
             form={form}
+            mode={mode}
             disabled={disabled}
             masterData={
               masterData

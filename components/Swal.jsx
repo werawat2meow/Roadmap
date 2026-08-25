@@ -2,97 +2,134 @@
 
 import Swal from "sweetalert2";
 
+/* =========================================================
+   Success
+========================================================= */
 
-export function swalSuccess(
+export async function swalSuccess(
   title = "สำเร็จ",
   text = ""
 ) {
-  return Swal.fire({
+  const result = await Swal.fire({
     icon: "success",
     title,
     text,
     timer: 1800,
     showConfirmButton: false,
   });
+
+  return result;
 }
 
+/* =========================================================
+   Error
+========================================================= */
 
-
-export function swalError(
+export async function swalError(
   title = "เกิดข้อผิดพลาด",
   text = ""
 ) {
-  return Swal.fire({
+  const result = await Swal.fire({
     icon: "error",
     title,
     text,
     confirmButtonText: "ตกลง",
   });
+
+  return result;
 }
 
+/* =========================================================
+   Warning
+========================================================= */
 
-export function swalWarning(
+export async function swalWarning(
   title = "แจ้งเตือน",
   text = ""
 ) {
-  return Swal.fire({
+  const result = await Swal.fire({
     icon: "warning",
     title,
     text,
     confirmButtonText: "ตกลง",
   });
+
+  return result;
 }
 
+/* =========================================================
+   Info
+========================================================= */
 
-export function swalInfo(
+export async function swalInfo(
   title = "ข้อมูล",
   text = ""
 ) {
-  return Swal.fire({
+  const result = await Swal.fire({
     icon: "info",
     title,
     text,
     confirmButtonText: "ตกลง",
   });
+
+  return result;
 }
 
+/* =========================================================
+   Confirm
+========================================================= */
 
-export function swalConfirm({
+export async function swalConfirm({
   title = "ยืนยันรายการ",
   text = "",
   confirmButtonText = "ยืนยัน",
   cancelButtonText = "ยกเลิก",
   icon = "warning",
 } = {}) {
-  return Swal.fire({
+  const result = await Swal.fire({
     icon,
     title,
     text,
+
     showCancelButton: true,
     reverseButtons: true,
+
     confirmButtonText,
     cancelButtonText,
+
     confirmButtonColor: "#1677ff",
     cancelButtonColor: "#d9d9d9",
+
+    allowOutsideClick: false,
+    allowEscapeKey: false,
   });
+
+  return result.isConfirmed === true;
 }
 
+/* =========================================================
+   Loading
+========================================================= */
 
-export function swalLoading(
+export async function swalLoading(
   title = "กำลังดำเนินการ..."
 ) {
-  Swal.fire({
+  return Swal.fire({
     title,
     allowEscapeKey: false,
     allowOutsideClick: false,
+    showConfirmButton: false,
+
     didOpen: () => {
       Swal.showLoading();
     },
   });
 }
 
+/* =========================================================
+   Close
+========================================================= */
 
-
-export function swalClose() {
+export async function swalClose() {
   Swal.close();
 }

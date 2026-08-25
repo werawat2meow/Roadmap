@@ -42,7 +42,7 @@ export async function GET(
   `,
     )
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json(
@@ -58,16 +58,33 @@ export async function GET(
   }
 
   const emp = data as any;
-const positionLevel =
-  emp.positions?.position_level_mappings?.find(
-    (mapping: any) => mapping?.is_default,
-  )?.position_levels ||
-  emp.positions?.position_level_mappings?.[0]?.position_levels;
+  const { data: compensationData, error: compensationError } =
+    await supabaseAdmin
+      .from("employee_compensations")
+      .select("base_salary")
+      .eq("employee_id", id)
+      .eq("status", "active")
+      .order("effective_from", { ascending: false })
+      .limit(1);
 
-const level =
-  positionLevel?.level_code ||
-  positionLevel?.level_name ||
-  "";
+  if (compensationError) {
+    return NextResponse.json(
+      { success: false, error: compensationError.message },
+      { status: 500 },
+    );
+  }
+
+  const currentSalary =
+    compensationData?.[0]?.base_salary !== undefined
+      ? Number(compensationData[0].base_salary)
+      : 0;
+  const positionLevel =
+    emp.positions?.position_level_mappings?.find(
+      (mapping: any) => mapping?.is_default,
+    )?.position_levels ||
+    emp.positions?.position_level_mappings?.[0]?.position_levels;
+
+  // const level = positionLevel?.level_code || positionLevel?.level_name || "";
 
   return NextResponse.json({
     success: true,
@@ -93,6 +110,7 @@ const level =
       unit: emp.units?.unit_name || "",
       unitId: emp.unit_id || "",
       role: emp.positions?.position_name || "",
+      currentSalary,
       level: positionLevel?.level_code || "",
       status: emp.status || "Active",
       hireDate: emp.hire_date || null,

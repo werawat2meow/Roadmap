@@ -37,7 +37,7 @@ export default function PayrollGroupsPage() {
       inactive: 0,
     });
 
-  const [payrollCompanies,setPayrollCompanies] =useState([]);
+  // const [payrollCompanies,setPayrollCompanies] =useState([]);
   const [selected,setSelected] =useState(null);
   const [modalOpen,setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
@@ -46,24 +46,24 @@ export default function PayrollGroupsPage() {
   const [total,setTotal] =useState(0);
 
 
-  async function loadPayrollCompanies() {
-    try {
-      const res = await fetch(
-        "/api/admin/payroll-companies?all=true"
-      );
+  // async function loadPayrollCompanies() {
+  //   try {
+  //     const res = await fetch(
+  //       "/api/admin/payroll-companies?all=true"
+  //     );
 
-      const json =
-        await res.json();
+  //     const json =
+  //       await res.json();
 
-      if (json.success) {
-        setPayrollCompanies(
-          json.data || []
-        );
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
+  //     if (json.success) {
+  //       setPayrollCompanies(
+  //         json.data || []
+  //       );
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // }
 
   async function loadData() {
     try {
@@ -136,11 +136,11 @@ export default function PayrollGroupsPage() {
     }
   }, [loadingUser, user, canView, router]);
 
-  useEffect(() => {
-    if (loadingUser || !user || !canView) return;
+  // useEffect(() => {
+  //   if (loadingUser || !user || !canView) return;
 
-    loadPayrollCompanies();
-  }, [loadingUser, user, canView]);
+  //   loadPayrollCompanies();
+  // }, [loadingUser, user, canView]);
 
   useEffect(() => {
     if (loadingUser || !user || !canView) return;
@@ -370,7 +370,6 @@ export default function PayrollGroupsPage() {
         form={form}
         saving={saving}
         disabled={modalMode === "view"}
-        payrollCompanies={payrollCompanies}
         onFinish={handleSave}
         title={
           modalMode === "view"

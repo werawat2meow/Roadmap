@@ -129,7 +129,8 @@ const DEFAULT_FORM_VALUES = {
   payroll_company_id: undefined,
   payroll_type_id: undefined,
   payroll_group_id: undefined,
-  salary_structure_id: undefined,
+  position_level_band_id: undefined,
+  base_salary: undefined,
 
   /* -------------------------------------------------------
      Employee code
@@ -270,6 +271,25 @@ function parseInteger(
   const parsed = Number(value);
 
   return Number.isInteger(parsed)
+    ? parsed
+    : fallback;
+}
+
+function parseDecimal(
+  value,
+  fallback = null
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed)
     ? parsed
     : fallback;
 }
@@ -674,8 +694,14 @@ function createEmployeeFormValues(record) {
       record.payroll_group_id ||
       undefined,
 
-    salary_structure_id:
-      record.salary_structure_id ||
+    position_level_band_id:
+      record.position_level_band_id ||
+      undefined,
+
+    base_salary:
+      record.base_salary ??
+      record.employee_compensations?.[0]
+        ?.base_salary ??
       undefined,
 
     /* -----------------------------------------------------
@@ -1063,10 +1089,17 @@ function buildEmployeePayload(values,{
         values.payroll_group_id
       ),
 
-    salary_structure_id:
+    position_level_band_id:
       cleanNullableUuid(
-        values.salary_structure_id
+        values.position_level_band_id
       ),
+
+    base_salary:
+      isCreate
+        ? parseDecimal(
+            values.base_salary
+          )
+        : undefined,
 
     /* -----------------------------------------------------
        Employee code
@@ -1977,58 +2010,147 @@ export default function EmployeesPage() {
     ]
   );
 
-  const handlePhotoChange =
-    useCallback(
-      async (file) => {
-        if (!file) {
-          return;
+  const handlePhotoChange = useCallback(
+    async (file) => {
+      if (!file) {
+        return;
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
+
+      if (
+        !allowedTypes.includes(
+          file.type
+        )
+      ) {
+        message.warning(
+          "รองรับเฉพาะไฟล์ JPG, PNG, WEBP"
+        );
+
+        return;
+      }
+
+      const maxSize =
+        5 * 1024 * 1024;
+
+      if (
+        file.size >
+        maxSize
+      ) {
+        message.warning(
+          "ไฟล์รูปพนักงานต้องไม่เกิน 5 MB"
+        );
+
+        return;
+      }
+
+      setUploadLoading(true);
+
+      try {
+        /* ================================================
+           Upload ไป DigitalOcean Spaces
+        ================================================ */
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "file",
+          file
+        );
+
+        /*
+         * Edit มี employee id แล้ว
+         * Create ยังไม่มี ให้ API ใช้ temp
+         */
+        if (
+          selectedRecord?.id
+        ) {
+          formData.append(
+            "employeeId",
+            selectedRecord.id
+          );
         }
+
+        const response =
+          await fetch(
+            "/api/admin/employees/upload-photo",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => null
+            );
 
         if (
-          !file.type?.startsWith(
-            "image/"
-          )
+          !response.ok ||
+          !result?.success
         ) {
-          message.warning(
-            "กรุณาเลือกไฟล์รูปภาพ"
+          throw new Error(
+            result?.error ||
+              "ไม่สามารถอัปโหลดรูปพนักงานได้"
           );
-
-          return;
         }
 
-        const maxSize =
-          5 * 1024 * 1024;
-
-        if (file.size > maxSize) {
-          message.warning(
-            "ไฟล์รูปพนักงานต้องไม่เกิน 5 MB"
+        if (!result?.url) {
+          throw new Error(
+            "อัปโหลดรูปสำเร็จ แต่ไม่พบ URL ของรูป"
           );
-
-          return;
         }
 
-        setUploadLoading(true);
+        /* ================================================
+           เก็บ URL จริงจาก DigitalOcean ลง Form
 
-        try {
-          const previewUrl =
-            URL.createObjectURL(file);
+           ห้ามใช้ URL.createObjectURL(file)
+           เพราะ blob URL ใช้ได้แค่ชั่วคราว
+        ================================================ */
 
-          form.setFieldsValue({
-            employee_photo_path:
-              null,
+        form.setFieldsValue({
+          employee_photo_path:
+            result.path ||
+            null,
 
-            employee_photo_url:
-              previewUrl,
+          employee_photo_url:
+            result.url ||
+            null,
+        });
 
-            employee_photo_file:
-              file,
-          });
-        } finally {
-          setUploadLoading(false);
-        }
-      },
-      [form]
-    );
+        message.success(
+          "อัปโหลดรูปพนักงานเรียบร้อยแล้ว"
+        );
+      } catch (error) {
+        console.error(
+          "UPLOAD_EMPLOYEE_PHOTO_ERROR:",
+          error
+        );
+
+        await swalError(
+          "อัปโหลดรูปไม่สำเร็จ",
+          error?.message ||
+            "ไม่สามารถอัปโหลดรูปพนักงานได้"
+        );
+      } finally {
+        setUploadLoading(
+          false
+        );
+      }
+    },
+    [
+      form,
+      selectedRecord,
+    ]
+  );
 
   const handleSubmit = useCallback(async () => {
 
@@ -2173,6 +2295,32 @@ export default function EmployeesPage() {
       }
 
       if (!isEdit) {
+        if (
+          !payload.position_level_band_id
+        ) {
+          message.warning(
+            "กรุณาเลือก Salary Band"
+          );
+
+          setCurrentStep(5);
+
+          return;
+        }
+
+        if (
+          payload.base_salary === null ||
+          payload.base_salary === undefined ||
+          Number(payload.base_salary) < 0
+        ) {
+          message.warning(
+            "กรุณาระบุเงินเดือนฐาน"
+          );
+
+          setCurrentStep(5);
+
+          return;
+        }
+
         if (
           !payload
             .employee_code_setting_id
@@ -2715,7 +2863,7 @@ export default function EmployeesPage() {
           />
           <PageInfoAlert
             title="Employee Wizard"
-            description="ระบบจะสร้างรหัสพนักงานจาก Employee Code Setting และ Running Number แบบ Atomic จากนั้นใช้รหัสพนักงานเป็น Username และรหัสผ่านชั่วคราว พร้อมผูก Role ซึ่งสามารถมีหลาย Permission ผ่าน role_permissions"
+            description="เพิ่มช่องใส่เงินเดือน ระบบจะสร้างรหัสพนักงานจาก Employee Code Setting และ Running Number แบบ Atomic จากนั้นใช้รหัสพนักงานเป็น Username และรหัสผ่านชั่วคราว พร้อมผูก Role ซึ่งสามารถมีหลาย Permission ผ่าน role_permissions"
           />
         </>
       }

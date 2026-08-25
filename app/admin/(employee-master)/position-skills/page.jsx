@@ -1,181 +1,492 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "antd";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import {useAuth} from "@/contexts/AuthContext";
-import { hasPermission } from "@/lib/permissions";
+import {
+  Alert,
+  Card,
+} from "antd";
+
+import {
+  useAuth,
+} from "@/contexts/AuthContext";
+
+import {
+  hasPermission,
+} from "@/lib/permissions";
 
 import PositionSkillSearch from "./components/PositionSkillSearch";
 import PositionSkillTable from "./components/PositionSkillTable";
 import PositionSkillPagination from "./components/PositionSkillPagination";
 import PositionSkillModal from "./components/PositionSkillModal";
 
-import {swalConfirm,swalError,swalSuccess,} from "../../../components/Swal";
+import {
+  swalConfirm,
+  swalError,
+  swalSuccess,
+} from "../../../components/Swal";
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+async function readJsonResponse(
+  response
+) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function getApiError(
+  json,
+  fallback
+) {
+  return (
+    json?.details_error ||
+    json?.error ||
+    json?.message ||
+    fallback
+  );
+}
+
+function normalizeRows(payload) {
+  if (
+    Array.isArray(
+      payload?.data
+    )
+  ) {
+    return payload.data;
+  }
+
+  if (
+    Array.isArray(
+      payload?.rows
+    )
+  ) {
+    return payload.rows;
+  }
+
+  return [];
+}
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function PositionSkillsPage() {
-  const { user, loadingUser } = useAuth();
+  const {
+    user,
+    loadingUser,
+  } = useAuth();
 
-  const canView = hasPermission(user,"ems.position_skills.view");
-  const canCreate = hasPermission(user,"ems.position_skills.create");
-  const canEdit = hasPermission(user,"ems.position_skills.edit");
-  const canDelete = hasPermission(user,"ems.position_skills.delete");
+  const canView =
+    hasPermission(
+      user,
+      "ems.position_skills.view"
+    );
 
-  const [items, setItems] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [skills, setSkills] = useState([]);
+  const canCreate =
+    hasPermission(
+      user,
+      "ems.position_skills.create"
+    );
 
-  const [search, setSearch] = useState("");
-  const [positionId, setPositionId] = useState("");
-  const [skillId, setSkillId] = useState("");
-  const [importance, setImportance] = useState("");
-  const [status, setStatus] = useState("active");
+  const canEdit =
+    hasPermission(
+      user,
+      "ems.position_skills.edit"
+    );
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [total, setTotal] = useState(0);
+  const canDelete =
+    hasPermission(
+      user,
+      "ems.position_skills.delete"
+    );
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    items,
+    setItems,
+  ] = useState([]);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [
+    positions,
+    setPositions,
+  ] = useState([]);
 
-  /* ============================
-        Modal
-  ============================ */
+  const [
+    skills,
+    setSkills,
+  ] = useState([]);
 
-  const [openModal, setOpenModal] =
-    useState(false);
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
-  const [editingItem, setEditingItem] =
-    useState(null);
+  const [
+    positionId,
+    setPositionId,
+  ] = useState("");
 
-  /* ============================
-        API
-  ============================ */
+  const [
+    skillId,
+    setSkillId,
+  ] = useState("");
 
-  const loadData = async (
-    currentPage = page,
-    currentPageSize = pageSize
-  ) => {
-    try {
-      setLoading(true);
+  const [
+    importance,
+    setImportance,
+  ] = useState("");
 
-      const params =
-        new URLSearchParams();
+  const [
+    status,
+    setStatus,
+  ] = useState("active");
 
-      params.set("page", currentPage);
+  const [
+    page,
+    setPage,
+  ] = useState(1);
 
-      params.set(
-        "pageSize",
-        currentPageSize
-      );
+  const [
+    pageSize,
+    setPageSize,
+  ] = useState(20);
 
-      if (search)
-        params.set("search", search);
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
 
-      if (positionId)
-        params.set(
-          "position_id",
-          positionId
-        );
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-      if (skillId)
-        params.set("skill_id", skillId);
+  const [
+    masterLoading,
+    setMasterLoading,
+  ] = useState(false);
 
-      if (importance)
-        params.set(
-          "importance_level",
-          importance
-        );
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
-      if (status)
-        params.set("status", status);
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
 
-      const res = await fetch(
-        `/api/admin/position-skills?${params.toString()}`
-      );
+  const [
+    editingItem,
+    setEditingItem,
+  ] = useState(null);
 
-      const json = await res.json();
+  /* =======================================================
+     LOAD DATA
+  ======================================================= */
 
-      if (!res.ok)
-        throw new Error(
-          json.error || "Load Error"
-        );
+  const loadData =
+    useCallback(
+      async (
+        currentPage = page,
+        currentPageSize =
+          pageSize
+      ) => {
+        if (!canView) {
+          return;
+        }
 
-      setItems(json.data || []);
+        try {
+          setLoading(true);
 
-      setTotal(json.pagination?.total || 0);
-    } catch (err) {
-      console.error(err);
+          const params =
+            new URLSearchParams();
 
-      swalError(
-        err.message ||
-          "โหลดข้อมูลไม่สำเร็จ"
-      );
-    } finally {
-      setLoading(false);
+          params.set(
+            "page",
+            String(
+              currentPage
+            )
+          );
+
+          params.set(
+            "pageSize",
+            String(
+              currentPageSize
+            )
+          );
+
+          if (search) {
+            params.set(
+              "search",
+              search
+            );
+          }
+
+          if (positionId) {
+            params.set(
+              "position_id",
+              positionId
+            );
+          }
+
+          if (skillId) {
+            params.set(
+              "skill_id",
+              skillId
+            );
+          }
+
+          if (importance) {
+            params.set(
+              "importance_level",
+              importance
+            );
+          }
+
+          if (status) {
+            params.set(
+              "status",
+              status
+            );
+          }
+
+          const res =
+            await fetch(
+              `/api/admin/position-skills?${params.toString()}`,
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          const json =
+            await readJsonResponse(
+              res
+            );
+
+          if (!res.ok) {
+            throw new Error(
+              getApiError(
+                json,
+                "ไม่สามารถโหลดข้อมูลทักษะประจำตำแหน่งได้"
+              )
+            );
+          }
+
+          setItems(
+            normalizeRows(
+              json
+            )
+          );
+
+          setTotal(
+            Number(
+              json
+                ?.pagination
+                ?.total ||
+              0
+            )
+          );
+        } catch (err) {
+          console.error(
+            "loadData position-skills:",
+            err
+          );
+
+          swalError(
+            err?.message ||
+              "โหลดข้อมูลไม่สำเร็จ"
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      [
+        canView,
+        importance,
+        page,
+        pageSize,
+        positionId,
+        search,
+        skillId,
+        status,
+      ]
+    );
+
+  /* =======================================================
+     LOAD MASTERS
+  ======================================================= */
+
+  const loadMasters =
+    useCallback(
+      async () => {
+        try {
+          setMasterLoading(
+            true
+          );
+
+          const [
+            positionResponse,
+            skillResponse,
+          ] =
+            await Promise.all([
+              fetch(
+                "/api/admin/positions?all=true&status=active",
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+
+              fetch(
+                "/api/admin/skills?all=true&status=active",
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+            ]);
+
+          const [
+            positionJson,
+            skillJson,
+          ] =
+            await Promise.all([
+              readJsonResponse(
+                positionResponse
+              ),
+
+              readJsonResponse(
+                skillResponse
+              ),
+            ]);
+
+          if (
+            !positionResponse.ok
+          ) {
+            throw new Error(
+              getApiError(
+                positionJson,
+                "ไม่สามารถโหลดตำแหน่งได้"
+              )
+            );
+          }
+
+          if (
+            !skillResponse.ok
+          ) {
+            throw new Error(
+              getApiError(
+                skillJson,
+                "ไม่สามารถโหลดทักษะได้"
+              )
+            );
+          }
+
+          setPositions(
+            normalizeRows(
+              positionJson
+            )
+          );
+
+          setSkills(
+            normalizeRows(
+              skillJson
+            )
+          );
+        } catch (err) {
+          console.error(
+            "loadMasters position-skills:",
+            err
+          );
+
+          swalError(
+            err?.message ||
+              "ไม่สามารถโหลดข้อมูล Master ได้"
+          );
+        } finally {
+          setMasterLoading(
+            false
+          );
+        }
+      },
+      []
+    );
+
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
+
+  useEffect(() => {
+    if (
+      loadingUser ||
+      !canView
+    ) {
+      return;
     }
-  };
-    /* ============================
-        Load Positions
-  ============================ */
 
-  const loadPositions = async () => {
-    try {
-      const res = await fetch(
-        "/api/admin/positions?all=true"
-      );
+    loadMasters();
+  }, [
+    loadingUser,
+    canView,
+    loadMasters,
+  ]);
 
-      const json = await res.json();
-
-      if (!res.ok)
-        throw new Error(
-          json.error || "Load Position Error"
-        );
-
-      setPositions(json.data || []);
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    if (
+      loadingUser ||
+      !canView
+    ) {
+      return;
     }
-  };
 
-  /* ============================
-        Load Skills
-  ============================ */
+    const timer =
+      setTimeout(() => {
+        setPage(1);
 
-  const loadSkills = async () => {
-    try {
-      const res = await fetch(
-        "/api/admin/skills?all=true"
-      );
-
-      const json = await res.json();
-
-      if (!res.ok)
-        throw new Error(
-          json.error || "Load Skill Error"
+        loadData(
+          1,
+          pageSize
         );
+      }, 250);
 
-      setSkills(json.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    return () =>
+      clearTimeout(
+        timer
+      );
+  }, [
+    loadingUser,
+    canView,
+    search,
+    positionId,
+    skillId,
+    importance,
+    status,
+    pageSize,
+  ]);
 
-  /* ============================
-        Search
-  ============================ */
+  /* =======================================================
+     ACTIONS
+  ======================================================= */
 
   const handleSearch = () => {
     setPage(1);
-    loadData(1, pageSize);
-  };
 
-  /* ============================
-        Reset
-  ============================ */
+    loadData(
+      1,
+      pageSize
+    );
+  };
 
   const handleReset = () => {
     setSearch("");
@@ -186,29 +497,34 @@ export default function PositionSkillsPage() {
     setPage(1);
   };
 
-  /* ============================
-        Add
-  ============================ */
-
   const handleAdd = () => {
+    if (!canCreate) {
+      swalError(
+        "คุณไม่มีสิทธิ์เพิ่มทักษะประจำตำแหน่ง"
+      );
+      return;
+    }
+
     setEditingItem(null);
-
     setOpenModal(true);
   };
 
-  /* ============================
-        Edit
-  ============================ */
+  const handleEdit = (
+    record
+  ) => {
+    if (!canEdit) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขทักษะประจำตำแหน่ง"
+      );
+      return;
+    }
 
-  const handleEdit = (record) => {
-    setEditingItem(record);
+    setEditingItem(
+      record
+    );
 
     setOpenModal(true);
   };
-
-  /* ============================
-        Pagination
-  ============================ */
 
   const handlePageChange = (
     current,
@@ -216,7 +532,9 @@ export default function PositionSkillsPage() {
   ) => {
     setPage(current);
 
-    setPageSize(currentPageSize);
+    setPageSize(
+      currentPageSize
+    );
 
     loadData(
       current,
@@ -224,199 +542,287 @@ export default function PositionSkillsPage() {
     );
   };
 
-  /* ============================
-        Init
-  ============================ */
+  const handleSubmit =
+    async (values) => {
+      try {
+        setSaving(true);
 
-  useEffect(() => {
-    if (loadingUser) return;
+        const method =
+          editingItem
+            ? "PATCH"
+            : "POST";
 
-    if (!canView) return;
+        const url =
+          editingItem
+            ? `/api/admin/position-skills/${editingItem.id}`
+            : "/api/admin/position-skills";
 
-    loadPositions();
+        const res =
+          await fetch(
+            url,
+            {
+              method,
 
-    loadSkills();
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-    loadData();
-  }, [loadingUser]);
+              body:
+                JSON.stringify(
+                  values
+                ),
+            }
+          );
 
-  /* ============================
-      Auto Search
-  ============================ */
+        const json =
+          await readJsonResponse(
+            res
+          );
 
-  useEffect(() => {
-    if (loadingUser) return;
-
-    if (!canView) return;
-
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1, pageSize);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [
-    search,
-    positionId,
-    skillId,
-    importance,
-    status,
-  ]);
-
-    /* ============================
-        Save
-  ============================ */
-
-  const handleSubmit = async (values) => {
-    try {
-      setSaving(true);
-
-      const method = editingItem ? "PATCH" : "POST";
-
-      const url = editingItem
-        ? `/api/admin/position-skills/${editingItem.id}`
-        : "/api/admin/position-skills";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Save Error");
-      }
-
-      swalSuccess(
-        editingItem
-          ? "แก้ไขข้อมูลสำเร็จ"
-          : "เพิ่มข้อมูลสำเร็จ"
-      );
-
-      setOpenModal(false);
-      setEditingItem(null);
-
-      loadData(page, pageSize);
-    } catch (err) {
-      console.error(err);
-
-      swalError(
-        err.message || "บันทึกข้อมูลไม่สำเร็จ"
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ============================
-        Delete
-  ============================ */
-
-  const handleDelete = async (record) => {
-    const confirm = await swalConfirm({
-      title: "ยืนยันการลบ",
-      text: `ต้องการลบ ${record.skill_name} ใช่หรือไม่ ?`,
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    try {
-      const res = await fetch(
-        `/api/admin/position-skills/${record.id}`,
-        {
-          method: "DELETE",
+        if (!res.ok) {
+          throw new Error(
+            getApiError(
+              json,
+              "บันทึกข้อมูลไม่สำเร็จ"
+            )
+          );
         }
-      );
 
-      const json = await res.json();
+        swalSuccess(
+          json?.message ||
+            (editingItem
+              ? "แก้ไขข้อมูลสำเร็จ"
+              : "เพิ่มข้อมูลสำเร็จ")
+        );
 
-      if (!res.ok) {
-        throw new Error(json.error || "Delete Error");
+        setOpenModal(
+          false
+        );
+
+        setEditingItem(
+          null
+        );
+
+        await loadData(
+          page,
+          pageSize
+        );
+      } catch (err) {
+        console.error(
+          "save position-skill:",
+          err
+        );
+
+        swalError(
+          err?.message ||
+            "บันทึกข้อมูลไม่สำเร็จ"
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  const handleDelete =
+    async (record) => {
+      if (!canDelete) {
+        swalError(
+          "คุณไม่มีสิทธิ์ลบทักษะประจำตำแหน่ง"
+        );
+        return;
       }
 
-      swalSuccess("ลบข้อมูลสำเร็จ");
+      const confirm =
+        await swalConfirm({
+          title:
+            "ยืนยันการลบ",
 
-      loadData(page, pageSize);
-    } catch (err) {
-      console.error(err);
+          text:
+            `ต้องการลบ ${
+              record.skill_name ||
+              record.skill_id
+            } ใช่หรือไม่ ?`,
+        });
 
-      swalError(
-        err.message || "ลบข้อมูลไม่สำเร็จ"
-      );
-    }
-  };
+      if (
+        !confirm?.isConfirmed
+      ) {
+        return;
+      }
 
-  /* ============================
-        Permission
-  ============================ */
+      try {
+        const res =
+          await fetch(
+            `/api/admin/position-skills/${record.id}`,
+            {
+              method:
+                "DELETE",
+            }
+          );
+
+        const json =
+          await readJsonResponse(
+            res
+          );
+
+        if (!res.ok) {
+          throw new Error(
+            getApiError(
+              json,
+              "ลบข้อมูลไม่สำเร็จ"
+            )
+          );
+        }
+
+        swalSuccess(
+          json?.message ||
+            "ลบข้อมูลสำเร็จ"
+        );
+
+        await loadData(
+          page,
+          pageSize
+        );
+      } catch (err) {
+        console.error(
+          "delete position-skill:",
+          err
+        );
+
+        swalError(
+          err?.message ||
+            "ลบข้อมูลไม่สำเร็จ"
+        );
+      }
+    };
+
+  /* =======================================================
+     PERMISSION
+  ======================================================= */
 
   if (loadingUser) {
     return null;
   }
 
   if (!canView) {
-    return null;
+    return (
+      <Alert
+        type="error"
+        showIcon
+        title="ไม่มีสิทธิ์เข้าถึง"
+        description="คุณไม่มีสิทธิ์ดูข้อมูลทักษะประจำตำแหน่ง"
+      />
+    );
   }
 
-  /* ============================
-        Render
-  ============================ */
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
     <>
       <PositionSkillSearch
         search={search}
-        setSearch={setSearch}
-        positionId={positionId}
-        setPositionId={setPositionId}
+        setSearch={
+          setSearch
+        }
+        positionId={
+          positionId
+        }
+        setPositionId={
+          setPositionId
+        }
         skillId={skillId}
-        setSkillId={setSkillId}
-        importance={importance}
-        setImportance={setImportance}
+        setSkillId={
+          setSkillId
+        }
+        importance={
+          importance
+        }
+        setImportance={
+          setImportance
+        }
         status={status}
-        setStatus={setStatus}
-        positions={positions}
+        setStatus={
+          setStatus
+        }
+        positions={
+          positions
+        }
         skills={skills}
-        loading={loading}
-        onSearch={handleSearch}
-        onReset={handleReset}
-        onAdd={handleAdd}
-        canCreate={canCreate}
+        loading={
+          loading ||
+          masterLoading
+        }
+        onSearch={
+          handleSearch
+        }
+        onReset={
+          handleReset
+        }
+        onAdd={
+          handleAdd
+        }
+        canCreate={
+          canCreate
+        }
       />
 
       <Card>
         <PositionSkillTable
           data={items}
           loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          canEdit={canEdit}
-          canDelete={canDelete}
+          onEdit={
+            handleEdit
+          }
+          onDelete={
+            handleDelete
+          }
+          canEdit={
+            canEdit
+          }
+          canDelete={
+            canDelete
+          }
         />
 
         <PositionSkillPagination
           current={page}
-          pageSize={pageSize}
+          pageSize={
+            pageSize
+          }
           total={total}
-          onChange={handlePageChange}
+          onChange={
+            handlePageChange
+          }
         />
       </Card>
 
       <PositionSkillModal
         open={openModal}
         loading={saving}
-        editingItem={editingItem}
-        positions={positions}
+        masterLoading={
+          masterLoading
+        }
+        editingItem={
+          editingItem
+        }
+        positions={
+          positions
+        }
         skills={skills}
         onCancel={() => {
-          setOpenModal(false);
-          setEditingItem(null);
+          setOpenModal(
+            false
+          );
+
+          setEditingItem(
+            null
+          );
         }}
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );

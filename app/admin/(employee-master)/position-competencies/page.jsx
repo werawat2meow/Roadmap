@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "antd";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import {useAuth} from "@/contexts/AuthContext";
-import { hasPermission } from "@/lib/permissions";
+import {
+  Alert,
+  Card,
+} from "antd";
+
+import {
+  useAuth,
+} from "@/contexts/AuthContext";
+
+import {
+  hasPermission,
+} from "@/lib/permissions";
 
 import {
   swalConfirm,
@@ -17,292 +30,562 @@ import PositionCompetencyTable from "./components/PositionCompetencyTable";
 import PositionCompetencyPagination from "./components/PositionCompetencyPagination";
 import PositionCompetencyModal from "./components/PositionCompetencyModal";
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
+async function readJsonResponse(
+  response
+) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function getApiError(
+  json,
+  fallback
+) {
+  return (
+    json?.details_error ||
+    json?.error ||
+    json?.message ||
+    fallback
+  );
+}
+
+function normalizeRows(
+  payload
+) {
+  if (
+    Array.isArray(
+      payload?.data
+    )
+  ) {
+    return payload.data;
+  }
+
+  if (
+    Array.isArray(
+      payload?.rows
+    )
+  ) {
+    return payload.rows;
+  }
+
+  return [];
+}
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function PositionCompetenciesPage() {
-  const { user, loadingUser } = useAuth();
+  const {
+    user,
+    loadingUser,
+  } = useAuth();
 
-  const canView = hasPermission(user,"ems.position_competencies.view");
-  const canCreate = hasPermission(user,"ems.position_competencies.create");
-  const canEdit = hasPermission(user,"ems.position_competencies.edit");
-  const canDelete = hasPermission(user,"ems.position_competencies.delete");
+  const canView =
+    hasPermission(
+      user,
+      "ems.position_competencies.view"
+    );
 
-  const [items, setItems] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [competencies,setCompetencies,] = useState([]);
-  const [competencyLevels,setCompetencyLevels,] = useState([]);
+  const canCreate =
+    hasPermission(
+      user,
+      "ems.position_competencies.create"
+    );
 
-  /* ============================
-        Search
-  ============================ */
+  const canEdit =
+    hasPermission(
+      user,
+      "ems.position_competencies.edit"
+    );
 
-  const [search, setSearch] = useState("");
-  const [positionId,setPositionId,] = useState("");
-  const [competencyId,setCompetencyId,] = useState("");
-  const [requiredLevelId,setRequiredLevelId,] = useState("");
-  const [importance,setImportance,] = useState("");
-  const [status, setStatus] = useState("active");
+  const canDelete =
+    hasPermission(
+      user,
+      "ems.position_competencies.delete"
+    );
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [total, setTotal] =useState(0);
+  const [
+    items,
+    setItems,
+  ] = useState([]);
 
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [
+    positions,
+    setPositions,
+  ] = useState([]);
 
-  const [openModal,setOpenModal,] = useState(false);
-  const [editingItem,setEditingItem,] = useState(null);
+  const [
+    competencies,
+    setCompetencies,
+  ] = useState([]);
 
-  const loadData = async (
-    currentPage = page,
-    currentPageSize = pageSize
-  ) => {
-    try {
-      setLoading(true);
+  const [
+    competencyLevels,
+    setCompetencyLevels,
+  ] = useState([]);
 
-      const params =
-        new URLSearchParams();
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
-      params.set(
-        "page",
-        currentPage
-      );
+  const [
+    positionId,
+    setPositionId,
+  ] = useState("");
 
-      params.set(
-        "pageSize",
-        currentPageSize
-      );
+  const [
+    competencyId,
+    setCompetencyId,
+  ] = useState("");
 
-      if (search)
-        params.set(
-          "search",
-          search
-        );
+  const [
+    requiredLevelId,
+    setRequiredLevelId,
+  ] = useState("");
 
-      if (positionId)
-        params.set(
-          "position_id",
-          positionId
-        );
+  const [
+    importance,
+    setImportance,
+  ] = useState("");
 
-      if (competencyId)
-        params.set(
-          "competency_id",
-          competencyId
-        );
+  const [
+    status,
+    setStatus,
+  ] = useState("active");
 
-      if (requiredLevelId)
-        params.set(
-          "required_level_id",
-          requiredLevelId
-        );
+  const [
+    page,
+    setPage,
+  ] = useState(1);
 
-      if (importance)
-        params.set(
-          "importance_level",
-          importance
-        );
+  const [
+    pageSize,
+    setPageSize,
+  ] = useState(20);
 
-      if (status)
-        params.set(
-          "status",
-          status
-        );
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
 
-      const res =
-        await fetch(
-          `/api/admin/position-competencies?${params.toString()}`
-        );
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-      const json =
-        await res.json();
+  const [
+    masterLoading,
+    setMasterLoading,
+  ] = useState(false);
 
-      if (!res.ok) {
-        throw new Error(
-          json.error ||
-            "Load Error"
-        );
-      }
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
-      setItems(
-        json.data || []
-      );
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
 
-      setTotal(
-        json.pagination?.total ||
-          0
-      );
-    } catch (err) {
-      console.error(err);
+  const [
+    editingItem,
+    setEditingItem,
+  ] = useState(null);
 
-      swalError(
-        err.message ||
-          "โหลดข้อมูลไม่สำเร็จ"
-      );
-    } finally {
-      setLoading(false);
+  /* =======================================================
+     LOAD LIST
+  ======================================================= */
+
+  const loadData =
+    useCallback(
+      async (
+        currentPage = page,
+        currentPageSize =
+          pageSize
+      ) => {
+        if (!canView) {
+          return;
+        }
+
+        try {
+          setLoading(true);
+
+          const params =
+            new URLSearchParams();
+
+          params.set(
+            "page",
+            String(
+              currentPage
+            )
+          );
+
+          params.set(
+            "pageSize",
+            String(
+              currentPageSize
+            )
+          );
+
+          if (search) {
+            params.set(
+              "search",
+              search
+            );
+          }
+
+          if (positionId) {
+            params.set(
+              "position_id",
+              positionId
+            );
+          }
+
+          if (competencyId) {
+            params.set(
+              "competency_id",
+              competencyId
+            );
+          }
+
+          if (
+            requiredLevelId
+          ) {
+            params.set(
+              "required_level_id",
+              requiredLevelId
+            );
+          }
+
+          if (importance) {
+            params.set(
+              "importance_level",
+              importance
+            );
+          }
+
+          if (status) {
+            params.set(
+              "status",
+              status
+            );
+          }
+
+          const res =
+            await fetch(
+              `/api/admin/position-competencies?${params.toString()}`,
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          const json =
+            await readJsonResponse(
+              res
+            );
+
+          if (!res.ok) {
+            throw new Error(
+              getApiError(
+                json,
+                "ไม่สามารถโหลดข้อมูลสมรรถนะประจำตำแหน่งได้"
+              )
+            );
+          }
+
+          setItems(
+            normalizeRows(
+              json
+            )
+          );
+
+          setTotal(
+            Number(
+              json
+                ?.pagination
+                ?.total ||
+              0
+            )
+          );
+        } catch (error) {
+          console.error(
+            "load position competencies error:",
+            error
+          );
+
+          swalError(
+            error?.message ||
+              "โหลดข้อมูลไม่สำเร็จ"
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      [
+        canView,
+        competencyId,
+        importance,
+        page,
+        pageSize,
+        positionId,
+        requiredLevelId,
+        search,
+        status,
+      ]
+    );
+
+  /* =======================================================
+     LOAD MASTERS
+  ======================================================= */
+
+  const loadMasters =
+    useCallback(
+      async () => {
+        try {
+          setMasterLoading(
+            true
+          );
+
+          const [
+            positionResponse,
+            competencyResponse,
+            levelResponse,
+          ] =
+            await Promise.all([
+              fetch(
+                "/api/admin/positions?all=true&status=active",
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+
+              fetch(
+                "/api/admin/competencies?all=true&status=active",
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+
+              fetch(
+                "/api/admin/competency-levels?all=true&status=active",
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+            ]);
+
+          const [
+            positionJson,
+            competencyJson,
+            levelJson,
+          ] =
+            await Promise.all([
+              readJsonResponse(
+                positionResponse
+              ),
+
+              readJsonResponse(
+                competencyResponse
+              ),
+
+              readJsonResponse(
+                levelResponse
+              ),
+            ]);
+
+          if (
+            !positionResponse.ok
+          ) {
+            throw new Error(
+              getApiError(
+                positionJson,
+                "ไม่สามารถโหลดตำแหน่งได้"
+              )
+            );
+          }
+
+          if (
+            !competencyResponse.ok
+          ) {
+            throw new Error(
+              getApiError(
+                competencyJson,
+                "ไม่สามารถโหลด Competency ได้"
+              )
+            );
+          }
+
+          if (
+            !levelResponse.ok
+          ) {
+            throw new Error(
+              getApiError(
+                levelJson,
+                "ไม่สามารถโหลดระดับ Competency ได้"
+              )
+            );
+          }
+
+          setPositions(
+            normalizeRows(
+              positionJson
+            )
+          );
+
+          setCompetencies(
+            normalizeRows(
+              competencyJson
+            )
+          );
+
+          setCompetencyLevels(
+            normalizeRows(
+              levelJson
+            )
+          );
+        } catch (error) {
+          console.error(
+            "load position competency masters error:",
+            error
+          );
+
+          swalError(
+            error?.message ||
+              "ไม่สามารถโหลดข้อมูล Master ได้"
+          );
+        } finally {
+          setMasterLoading(
+            false
+          );
+        }
+      },
+      []
+    );
+
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
+
+  useEffect(() => {
+    if (
+      loadingUser ||
+      !canView
+    ) {
+      return;
     }
+
+    loadMasters();
+  }, [
+    loadingUser,
+    canView,
+    loadMasters,
+  ]);
+
+  useEffect(() => {
+    if (
+      loadingUser ||
+      !canView
+    ) {
+      return;
+    }
+
+    const timer =
+      setTimeout(() => {
+        setPage(1);
+
+        loadData(
+          1,
+          pageSize
+        );
+      }, 300);
+
+    return () =>
+      clearTimeout(
+        timer
+      );
+  }, [
+    loadingUser,
+    canView,
+    search,
+    positionId,
+    competencyId,
+    requiredLevelId,
+    importance,
+    status,
+    pageSize,
+  ]);
+
+  /* =======================================================
+     ACTIONS
+  ======================================================= */
+
+  const handleSearch = () => {
+    setPage(1);
+
+    loadData(
+      1,
+      pageSize
+    );
   };
 
-  const loadPositions =
-    async () => {
-      try {
-        const res =
-          await fetch(
-            "/api/admin/positions?all=true"
-          );
+  const handleReset = () => {
+    setSearch("");
+    setPositionId("");
+    setCompetencyId("");
+    setRequiredLevelId("");
+    setImportance("");
+    setStatus("active");
+    setPage(1);
+  };
 
-        const json =
-          await res.json();
-
-        if (!res.ok) {
-          throw new Error(
-            json.error
-          );
-        }
-
-        setPositions(
-          json.data || []
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-  /* ============================
-        Load Competencies
-  ============================ */
-
-  const loadCompetencies =
-    async () => {
-      try {
-        const res =
-          await fetch(
-            "/api/admin/competencies?all=true"
-          );
-
-        const json =
-          await res.json();
-
-        if (!res.ok) {
-          throw new Error(
-            json.error
-          );
-        }
-
-        setCompetencies(
-          json.data || []
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-  /* ============================
-        Load Competency Levels
-  ============================ */
-
-  const loadCompetencyLevels =
-    async () => {
-      try {
-        const res =
-          await fetch(
-            "/api/admin/competency-levels?all=true"
-          );
-
-        const json =
-          await res.json();
-
-        if (!res.ok) {
-          throw new Error(
-            json.error
-          );
-        }
-
-        setCompetencyLevels(
-          json.data || []
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-  /* ============================
-        Search
-  ============================ */
-
-  const handleSearch =
-    () => {
-      setPage(1);
-
-      loadData(
-        1,
-        pageSize
+  const handleAdd = () => {
+    if (!canCreate) {
+      swalError(
+        "คุณไม่มีสิทธิ์เพิ่มสมรรถนะประจำตำแหน่ง"
       );
-    };
+      return;
+    }
 
-  /* ============================
-        Reset
-  ============================ */
+    setEditingItem(null);
+    setOpenModal(true);
+  };
 
-  const handleReset =
-    () => {
-      setSearch("");
-
-      setPositionId("");
-
-      setCompetencyId("");
-
-      setRequiredLevelId("");
-
-      setImportance("");
-
-      setStatus(
-        "active"
+  const handleEdit = (
+    record
+  ) => {
+    if (!canEdit) {
+      swalError(
+        "คุณไม่มีสิทธิ์แก้ไขสมรรถนะประจำตำแหน่ง"
       );
+      return;
+    }
 
-      setPage(1);
-    };
+    setEditingItem(
+      record
+    );
 
-  /* ============================
-        Add
-  ============================ */
-
-  const handleAdd =
-    () => {
-      setEditingItem(
-        null
-      );
-
-      setOpenModal(
-        true
-      );
-    };
-
-  /* ============================
-        Edit
-  ============================ */
-
-  const handleEdit =
-    (record) => {
-      setEditingItem(
-        record
-      );
-
-      setOpenModal(
-        true
-      );
-    };
-
-  /* ============================
-        Pagination
-  ============================ */
+    setOpenModal(true);
+  };
 
   const handlePageChange = (
     current,
     currentPageSize
   ) => {
-    setPage(
-      current
-    );
+    setPage(current);
 
     setPageSize(
       currentPageSize
@@ -313,181 +596,300 @@ export default function PositionCompetenciesPage() {
       currentPageSize
     );
   };
-    /* ============================
-        Auto Search
-  ============================ */
 
-  useEffect(() => {
-    if (loadingUser) return;
-    if (!canView) return;
+  const handleSave =
+    async (values) => {
+      try {
+        setSaving(true);
 
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1, pageSize);
-    }, 300);
+        const isEdit =
+          Boolean(
+            editingItem
+          );
 
-    return () => clearTimeout(timer);
-  }, [
-    search,
-    positionId,
-    competencyId,
-    requiredLevelId,
-    importance,
-    status,
-  ]);
+        const res =
+          await fetch(
+            isEdit
+              ? `/api/admin/position-competencies/${editingItem.id}`
+              : "/api/admin/position-competencies",
+            {
+              method:
+                isEdit
+                  ? "PATCH"
+                  : "POST",
 
-  /* ============================
-        Initial Load
-  ============================ */
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-  useEffect(() => {
-    if (loadingUser) return;
-    if (!canView) return;
+              body:
+                JSON.stringify(
+                  values
+                ),
+            }
+          );
 
-    loadPositions();
-    loadCompetencies();
-    loadCompetencyLevels();
-    loadData(1, pageSize);
-  }, [loadingUser]);
+        const json =
+          await readJsonResponse(
+            res
+          );
 
-  /* ============================
-        Save
-  ============================ */
-
-  const handleSave = async (values) => {
-    try {
-      setSaving(true);
-
-      const isEdit = !!editingItem;
-
-      const res = await fetch(
-        isEdit
-          ? `/api/admin/position-competencies/${editingItem.id}`
-          : "/api/admin/position-competencies",
-        {
-          method: isEdit ? "PATCH" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values),
+        if (!res.ok) {
+          throw new Error(
+            getApiError(
+              json,
+              "บันทึกข้อมูลไม่สำเร็จ"
+            )
+          );
         }
-      );
 
-      const json = await res.json();
+        swalSuccess(
+          json?.message ||
+            (isEdit
+              ? "แก้ไขข้อมูลสำเร็จ"
+              : "เพิ่มข้อมูลสำเร็จ")
+        );
 
-      if (!res.ok) {
-        throw new Error(json.error);
+        setOpenModal(false);
+        setEditingItem(null);
+
+        await loadData(
+          page,
+          pageSize
+        );
+      } catch (error) {
+        console.error(
+          "save position competency error:",
+          error
+        );
+
+        swalError(
+          error?.message ||
+            "บันทึกข้อมูลไม่สำเร็จ"
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  const handleDelete =
+    async (record) => {
+      if (!canDelete) {
+        swalError(
+          "คุณไม่มีสิทธิ์ลบสมรรถนะประจำตำแหน่ง"
+        );
+        return;
       }
 
-      swalSuccess(json.message);
+      const result =
+        await swalConfirm(
+          "ยืนยันการลบ",
+          `ต้องการลบ ${
+            record
+              .competency_name ||
+            record
+              .competency_id
+          } ใช่หรือไม่?`
+        );
 
-      setOpenModal(false);
-      setEditingItem(null);
+      if (
+        !result?.isConfirmed
+      ) {
+        return;
+      }
 
-      loadData(page, pageSize);
-    } catch (err) {
-      console.error(err);
-      swalError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+      try {
+        setLoading(true);
 
-  /* ============================
-        Delete
-  ============================ */
+        const res =
+          await fetch(
+            `/api/admin/position-competencies/${record.id}`,
+            {
+              method:
+                "DELETE",
+            }
+          );
 
-  const handleDelete = async (record) => {
-    const result = await swalConfirm(
-      "ยืนยันการลบ",
-      `ต้องการลบ ${record.competency_name} ใช่หรือไม่?`
+        const json =
+          await readJsonResponse(
+            res
+          );
+
+        if (!res.ok) {
+          throw new Error(
+            getApiError(
+              json,
+              "ลบข้อมูลไม่สำเร็จ"
+            )
+          );
+        }
+
+        swalSuccess(
+          json?.message ||
+            "ลบข้อมูลสำเร็จ"
+        );
+
+        await loadData(
+          page,
+          pageSize
+        );
+      } catch (error) {
+        console.error(
+          "delete position competency error:",
+          error
+        );
+
+        swalError(
+          error?.message ||
+            "ลบข้อมูลไม่สำเร็จ"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  /* =======================================================
+     PERMISSION
+  ======================================================= */
+
+  if (loadingUser) {
+    return null;
+  }
+
+  if (!canView) {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        title="ไม่มีสิทธิ์เข้าถึง"
+        description="คุณไม่มีสิทธิ์ดูข้อมูลสมรรถนะประจำตำแหน่ง"
+      />
     );
+  }
 
-    if (!result.isConfirmed) return;
-
-    try {
-      setLoading(true);
-
-      const res = await fetch(
-        `/api/admin/position-competencies/${record.id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error);
-      }
-
-      swalSuccess(json.message);
-
-      loadData(page, pageSize);
-    } catch (err) {
-      console.error(err);
-      swalError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ============================
-        Render
-  ============================ */
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
     <Card variant="outlined">
       <PositionCompetencySearch
         search={search}
-        setSearch={setSearch}
-        positionId={positionId}
-        setPositionId={setPositionId}
-        competencyId={competencyId}
-        setCompetencyId={setCompetencyId}
-        requiredLevelId={requiredLevelId}
-        setRequiredLevelId={setRequiredLevelId}
-        importance={importance}
-        setImportance={setImportance}
+        setSearch={
+          setSearch
+        }
+        positionId={
+          positionId
+        }
+        setPositionId={
+          setPositionId
+        }
+        competencyId={
+          competencyId
+        }
+        setCompetencyId={
+          setCompetencyId
+        }
+        requiredLevelId={
+          requiredLevelId
+        }
+        setRequiredLevelId={
+          setRequiredLevelId
+        }
+        importance={
+          importance
+        }
+        setImportance={
+          setImportance
+        }
         status={status}
-        setStatus={setStatus}
-        positions={positions}
-        competencies={competencies}
-        competencyLevels={competencyLevels}
-        onSearch={handleSearch}
-        onReset={handleReset}
-        onAdd={handleAdd}
-        canCreate={canCreate}
+        setStatus={
+          setStatus
+        }
+        positions={
+          positions
+        }
+        competencies={
+          competencies
+        }
+        competencyLevels={
+          competencyLevels
+        }
+        loading={
+          loading ||
+          masterLoading
+        }
+        onSearch={
+          handleSearch
+        }
+        onReset={
+          handleReset
+        }
+        onAdd={
+          handleAdd
+        }
+        canCreate={
+          canCreate
+        }
       />
 
       <PositionCompetencyTable
         loading={loading}
         data={items}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onEdit={
+          handleEdit
+        }
+        onDelete={
+          handleDelete
+        }
         canEdit={canEdit}
-        canDelete={canDelete}
+        canDelete={
+          canDelete
+        }
       />
 
       <PositionCompetencyPagination
         page={page}
-        pageSize={pageSize}
+        pageSize={
+          pageSize
+        }
         total={total}
-        onChange={handlePageChange}
+        onChange={
+          handlePageChange
+        }
       />
 
       <PositionCompetencyModal
         open={openModal}
         onCancel={() => {
-          setOpenModal(false);
-          setEditingItem(null);
+          setOpenModal(
+            false
+          );
+
+          setEditingItem(
+            null
+          );
         }}
-        onSave={handleSave}
+        onSave={
+          handleSave
+        }
         saving={saving}
-        editingItem={editingItem}
-        positions={positions}
-        competencies={competencies}
-        competencyLevels={competencyLevels}
+        masterLoading={
+          masterLoading
+        }
+        editingItem={
+          editingItem
+        }
+        positions={
+          positions
+        }
+        competencies={
+          competencies
+        }
+        competencyLevels={
+          competencyLevels
+        }
       />
     </Card>
   );

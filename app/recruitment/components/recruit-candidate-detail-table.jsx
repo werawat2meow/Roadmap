@@ -24,6 +24,8 @@ const { RangePicker } = DatePicker;
 
 const API_URL = '/recruitment/api/candidate_detail';
 
+const user = JSON.parse(localStorage.getItem("employee_user") || "null");
+
 /**
  * ปรับ mapping นี้ให้ตรงกับค่า status จริงที่เก็บใน recruit_job_applications
  */
@@ -42,6 +44,17 @@ const STATUS_MAP = {
   0: { label: 'ยกเลิก', color: 'red' },
 };
 
+const status = user?.has_all_scope
+  ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 16, 99]
+  : [2, 3, 4, 5, 6, 7, 8, 9];
+
+const STATUS_OPTIONS = status
+  .filter((value) => STATUS_MAP[value])
+  .map((value) => ({
+    value,
+    label: STATUS_MAP[value].label,
+  }));
+
 // status ที่ต้องกรอกวันเวลานัดสัมภาษณ์ + ประเภทการสัมภาษณ์
 const STATUS_CONFIRMED_INTERVIEW = 4;
 
@@ -51,10 +64,10 @@ const INTERVIEW_TYPE_OPTIONS = [
   { value: 'phone', label: 'Phone (สัมภาษณ์ทางโทรศัพท์)' },
 ];
 
-const STATUS_OPTIONS = Object.entries(STATUS_MAP).map(([value, v]) => ({
-  value: Number(value),
-  label: v.label,
-}));
+// const STATUS_OPTIONS = Object.entries(STATUS_MAP).map(([value, v]) => ({
+//   value: Number(value),
+//   label: v.label,
+// }));
 
 const pageSizeOptions = [
   { value: 10, label: '10 rows' },
@@ -87,7 +100,7 @@ export default function CandidateDetailTable() {
     unauthorizedRedirect: "/recruitment",
   });
 
-  const { modal } = App.useApp();
+  // const { modal } = App.useApp();
 
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
@@ -133,10 +146,10 @@ export default function CandidateDetailTable() {
         const res = await fetch(`${API_URL}?resource=positions`);
         const json = await res.json();
         if (!alive) return;
-        if (!res.ok) {
-          console.error(json?.error);
-          return;
-        }
+        // if (!res.ok) {
+        //   console.error(json?.error);
+        //   return;
+        // }
         setPositionOptions(
           (json.data ?? []).map((p) => ({ value: p.id, label: p.position_name }))
         );
@@ -176,7 +189,7 @@ export default function CandidateDetailTable() {
         if (!alive) return;
 
         if (!res.ok) {
-          modal.error({ title: "เกิดข้อผิดพลาด", content: json?.error || "โหลดข้อมูลไม่สำเร็จ", });
+          Modal.error({ title: "เกิดข้อผิดพลาด", content: json?.error || "โหลดข้อมูลไม่สำเร็จ", });
         }
 
         setCount(json.count ?? 0);
@@ -184,7 +197,7 @@ export default function CandidateDetailTable() {
       } catch (err) {
         if (!alive) return;
         console.error(err);
-        modal.error({ title: 'เกิดข้อผิดพลาด', content: err.message });
+        Modal.error({ title: 'เกิดข้อผิดพลาด', content: err.message });
       } finally {
         if (alive) setLoading(false);
       }

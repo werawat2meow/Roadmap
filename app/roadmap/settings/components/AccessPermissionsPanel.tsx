@@ -156,6 +156,8 @@ export default function AccessPermissionsPanel({
 
   return (
     <div className="space-y-6">
+      <label className="text-sm font-semibold text-red-500">** เลือกรายชื่อฝั่งซ้าย เพื่อกำหนดเมนูการใช้งานให้บุคคลนั้น และเลือกสถานะ เช่น Admin, Manager, Management 
+        สถานะจะมีผลกับการใช้งานของเมนู Admin สร้างฟอร์มประเมิน / Manager ลงคะแนนฟอร์มจาก Admin / Management อนุมัติรายการ</label>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 border-red-100">

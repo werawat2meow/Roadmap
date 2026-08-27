@@ -7,6 +7,7 @@ import CategoryCard from "./components/CategoryCard";
 import AddCategoryModal from "./components/AddCategoryModal";
 import AccessPermissionsPanel from "./components/AccessPermissionsPanel";
 import { swalConfirm, swalError, swalSuccess } from "../../components/Swal";
+import SettingsTour from "./components/SettingsTour";
 
 type Item = {
   id: string;
@@ -62,6 +63,8 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+
+  
 
   const visibleCategories = useMemo(() => {
     if (tab === "ทั้งหมด") return categories;
@@ -473,6 +476,7 @@ export default function SettingsPage() {
           </>
         )}
       </div>
+      <SettingsTour /> 
     </div>
   );
 }

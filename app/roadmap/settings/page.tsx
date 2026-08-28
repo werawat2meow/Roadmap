@@ -53,6 +53,29 @@ type User = {
   menus: string[];
 };
 
+  const LEVEL_ORDER = ["P9", "P8", "P7", "P6", "P5", "P4", "P3", "P2"];
+
+  const getLevelIndex = (level: string) =>
+    LEVEL_ORDER.indexOf(level) >= 0
+      ? LEVEL_ORDER.indexOf(level)
+      : LEVEL_ORDER.length;
+
+  const sortCategories = (items: Category[]) =>
+    [...items].sort((a, b) => {
+      const typeOrder = (type: string) =>
+        type === "Company Common Ground"
+          ? 0
+          : type === "Department Common Ground"
+            ? 1
+            : 2;
+
+      const aType = typeOrder(a.type);
+      const bType = typeOrder(b.type);
+      if (aType !== bType) return aType - bType;
+
+      return getLevelIndex(a.level) - getLevelIndex(b.level);
+    });
+
 export default function SettingsPage() {
   const [tab, setTab] = useState<string>(() => {
     if (typeof window === "undefined") return "ทั้งหมด";
@@ -63,14 +86,31 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
-  
+  const handleTabChange = (nextTab: string) => {
+    setTab(nextTab);
+    setCurrentPage(1);
+  };
 
   const visibleCategories = useMemo(() => {
-    if (tab === "ทั้งหมด") return categories;
+    if (tab === "ทั้งหมด") {
+      return sortCategories(categories);
+    }
+
     const expectedType = tabTypeMap[tab] ?? tab;
-    return categories.filter((cat) => cat.type === expectedType);
+    return sortCategories(
+      categories.filter((cat) => cat.type === expectedType),
+    );
   }, [tab, categories]);
+
+  const totalPages = Math.max(Math.ceil(visibleCategories.length / itemsPerPage), 1);
+
+  const pagedCategories = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return visibleCategories.slice(startIndex, startIndex + itemsPerPage);
+  }, [visibleCategories, currentPage]);
 
   useEffect(() => {
     async function loadCategories() {
@@ -431,7 +471,7 @@ export default function SettingsPage() {
         }
       />
 
-      <SettingsTabs activeTab={tab} onChange={setTab} />
+      <SettingsTabs activeTab={tab} onChange={handleTabChange} />
 
       <div className="space-y-6 mt-6">
         {tab === "สิทธิ์การเข้าถึง" ? (
@@ -455,7 +495,7 @@ export default function SettingsPage() {
         ) : (
           <>
             <div className="space-y-6">
-              {visibleCategories.map((category) => (
+              {pagedCategories.map((category) => (
                 <CategoryCard
                   key={category.id}
                   category={category}
@@ -468,6 +508,51 @@ export default function SettingsPage() {
               ))}
             </div>
 
+            {totalPages > 1 && (
+              <div className="flex flex-col gap-4 mt-6 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-slate-600">
+                  แสดงข้อมูล {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, visibleCategories.length)} จากทั้งหมด {visibleCategories.length} รายการ
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm rounded-md ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white font-bold"
+                            : "text-slate-600 bg-white hover:bg-slate-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
             <AddCategoryModal
               open={modalOpen}
               onClose={() => setModalOpen(false)}
@@ -476,7 +561,7 @@ export default function SettingsPage() {
           </>
         )}
       </div>
-      <SettingsTour /> 
+      <SettingsTour />
     </div>
   );
 }

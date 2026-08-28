@@ -18,9 +18,29 @@ import {
 
 const { Title, Text } = Typography;
 
-export default function CandidateHistoryPage({ params }) {
+const STATUS_MAP = {
+  "รอพิจารณา": { label: 'รอพิจารณา', color: 'default' },
+  "HRD ส่งต่อ HRM": { label: 'HRD ส่งต่อ HRM', color: 'volcano' },
+  "ผ่านการคัดเลือกเข้าสัมภาษณ์": { label: 'ผ่านการคัดเลือกเข้าสัมภาษณ์', color: 'blue' },
+  "นัดสัมภาษณ์": { label: 'นัดสัมภาษณ์', color: 'green' },
+  "ยืนยันการสัมภาษณ์": { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
+  "เลื่อนการสัมภาษณ์": { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
+  "ขาดการสัมภาษณ์": { label: 'ขาดการสัมภาษณ์', color: 'green' },
+  "ส่งต่อการสัมภาษณ์": { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
+  "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน": { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
+  "ยื่น Resume": { label: 'ยื่น Resume', color: 'default' },
+  "backlist": { label: 'backlist', color: 'red' },
+  "ยกเลิก": { label: 'ยกเลิก', color: 'red' },
+};
 
-  const user = JSON.parse(localStorage.getItem("employee_user") || "{}");
+function StatusTag({ value }) { 
+  
+  const meta = STATUS_MAP[value] ?? { label: value ?? '-', color: 'default' };
+
+  return <Tag color={meta.color}>{meta.label}</Tag>;
+}
+
+export default function CandidateHistoryPage({ params }) {
 
   const { isChecking, canView, canEdit } = usePageGuard({
     module: "recruitment.candidate.history",
@@ -75,7 +95,7 @@ export default function CandidateHistoryPage({ params }) {
     {
       title: "Status",
       dataIndex: "display_status",
-      render: (text) => <Tag color="blue">{text}</Tag>,
+      render: (val) => <StatusTag value={val} />,
     },
     {
       title: "Action",

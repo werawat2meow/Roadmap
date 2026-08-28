@@ -19,6 +19,7 @@ export async function GET(request) {
       recruit_job_interviews${reviewerId ? "!inner" : ""} (
         id,
         reviewer,
+        interview_order,
         employees:reviewer (
           id,
           first_name_th,
@@ -31,7 +32,10 @@ export async function GET(request) {
       .from("recruit_job_applications")
       .select(selectQuery)
       .eq("status", 5)
-      .order("created_at", { ascending: false });
+      .order("interview_order", {
+        foreignTable: "recruit_job_interviews",
+        ascending: false,
+      });
 
     if (reviewerId) {      
       query = query.eq("recruit_job_interviews.reviewer", reviewerId);

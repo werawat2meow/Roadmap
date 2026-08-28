@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 import {
   uploadFileToSpaces,
 } from "@/app/jobs/lib/spaces";
+
+/* =========================================================
+   Runtime
+   sharp ต้องทำงานฝั่ง Node.js
+========================================================= */
+
+export const runtime = "nodejs";
 
 /* =========================================================
    Constants
@@ -21,35 +29,17 @@ const MAX_FILE_SIZE =
 const EMPLOYEE_FOLDER =
   "Employees";
 
+/*
+ * Employee Profile Standard
+ */
+const PROFILE_WIDTH = 500;
+const PROFILE_HEIGHT = 500;
+
+const WEBP_QUALITY = 82;
+
 /* =========================================================
    Helpers
 ========================================================= */
-
-function getFileExtension(
-  file
-) {
-  const typeMap = {
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-  };
-
-  if (typeMap[file?.type]) {
-    return typeMap[file.type];
-  }
-
-  const extension =
-    file?.name
-      ?.split(".")
-      ?.pop()
-      ?.toLowerCase();
-
-  return (
-    extension ||
-    "jpg"
-  );
-}
 
 function sanitizeFilePart(
   value
@@ -135,10 +125,7 @@ export async function POST(
     }
 
     /* =====================================================
-       4. Validate File Size
-
-       ไม่ Compress File
-       จำกัดไฟล์ต้นฉบับไม่เกิน 5 MB
+       4. Validate Original File Size
     ===================================================== */
 
     if (
@@ -149,7 +136,7 @@ export async function POST(
         {
           success: false,
           error:
-            "ไฟล์รูปต้องมีขนาดไม่เกิน 5 MB",
+            "ไฟล์รูปต้นฉบับต้องมีขนาดไม่เกิน 5 MB",
         },
         {
           status: 400,
@@ -158,13 +145,51 @@ export async function POST(
     }
 
     /* =====================================================
-       5. Build File Name
+       5. Read Original File
     ===================================================== */
 
-    const ext =
-      getFileExtension(
-        file
+    const originalBuffer =
+      Buffer.from(
+        await file.arrayBuffer()
       );
+
+    /* =====================================================
+       6. Resize + Optimize
+
+       - rotate() แก้ Orientation จาก EXIF
+       - resize 500 × 500
+       - cover ตัดส่วนเกินให้เป็นสี่เหลี่ยม
+       - convert WebP
+       - quality 82
+    ===================================================== */
+
+    const optimizedBuffer =
+      await sharp(
+        originalBuffer
+      )
+        .rotate()
+        .resize(
+          PROFILE_WIDTH,
+          PROFILE_HEIGHT,
+          {
+            fit: "cover",
+            position:
+              "centre",
+          }
+        )
+        .webp({
+          quality:
+            WEBP_QUALITY,
+
+          effort: 4,
+        })
+        .toBuffer();
+
+    /* =====================================================
+       7. File Name
+
+       หลัง Optimize ทุกไฟล์เป็น .webp
+    ===================================================== */
 
     const safeEmployeeId =
       sanitizeFilePart(
@@ -172,39 +197,43 @@ export async function POST(
       ) || "temp";
 
     const fileName =
-      `profile-${safeEmployeeId}-${Date.now()}.${ext}`;
-
-    /*
-     * ตัวอย่าง:
-     *
-     * Employees/
-     *   profile-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-1787....jpg
-     *
-     * หรือถ้ายังไม่มี employeeId:
-     *
-     * Employees/
-     *   profile-temp-1787....jpg
-     */
+      `profile-${safeEmployeeId}-${Date.now()}.webp`;
 
     /* =====================================================
-       6. Upload To DigitalOcean Spaces
+       8. Build File สำหรับ Spaces Helper
 
-       สำคัญ:
-       - ไม่ resize
-       - ไม่ compress
-       - ไม่ convert format
-       - Upload File เดิมตรง ๆ
+       uploadFileToSpaces()
+       ของเดิมรับ File
+    ===================================================== */
+
+    const optimizedFile =
+      new File(
+        [
+          optimizedBuffer,
+        ],
+        fileName,
+        {
+          type:
+            "image/webp",
+        }
+      );
+
+    /* =====================================================
+       9. Upload DigitalOcean Spaces
+
+       Result:
+       Employees/profile-xxx.webp
     ===================================================== */
 
     const uploaded =
       await uploadFileToSpaces(
-        file,
+        optimizedFile,
         EMPLOYEE_FOLDER,
         fileName
       );
 
     /* =====================================================
-       7. Normalize Result
+       10. Normalize Result
     ===================================================== */
 
     const filePath =
@@ -224,23 +253,36 @@ export async function POST(
     }
 
     /* =====================================================
-       8. Response
+       11. Response
     ===================================================== */
 
     return NextResponse.json({
       success: true,
-
       message:
         "อัปโหลดรูปพนักงานสำเร็จ",
-
-      url:
-        publicUrl,
-
-      path:
-        filePath,
-
-      folder:
-        EMPLOYEE_FOLDER,
+      url:publicUrl,
+      path:filePath,
+      folder:EMPLOYEE_FOLDER,
+      image: {
+        width:
+          PROFILE_WIDTH,
+        height:
+          PROFILE_HEIGHT,
+        format:
+          "webp",
+        quality:
+          WEBP_QUALITY,
+        original_size:
+          file.size,
+        optimized_size:
+          optimizedBuffer.length,
+        saved_size:
+          Math.max(
+            file.size -
+              optimizedBuffer.length,
+            0
+          ),
+      },
     });
   } catch (error) {
     console.error(

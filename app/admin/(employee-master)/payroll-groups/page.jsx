@@ -38,6 +38,7 @@ export default function PayrollGroupsPage() {
     });
 
   // const [payrollCompanies,setPayrollCompanies] =useState([]);
+  const [payrollCompanyInitialOption,setPayrollCompanyInitialOption,] = useState(null);
   const [selected,setSelected] =useState(null);
   const [modalOpen,setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
@@ -152,6 +153,9 @@ export default function PayrollGroupsPage() {
     setSelected(null);
     setModalMode("create");
 
+    setPayrollCompanyInitialOption(null);
+
+
     form.resetFields();
 
     form.setFieldsValue({
@@ -197,6 +201,46 @@ export default function PayrollGroupsPage() {
 
       if (!json.success) {
         throw new Error(json.error);
+      }
+
+      const payrollCompany =
+        json.data
+          ?.payroll_companies ||
+        json.data
+          ?.payroll_company ||
+        null;
+
+      if (
+        json.data
+          ?.payroll_company_id
+      ) {
+        setPayrollCompanyInitialOption({
+          value:
+            json.data
+              .payroll_company_id,
+
+          label:
+            payrollCompany
+              ? `${
+                  payrollCompany
+                    .payroll_company_code ||
+                  ""
+                }${
+                  payrollCompany
+                    .payroll_company_code
+                    ? " - "
+                    : ""
+                }${
+                  payrollCompany
+                    .payroll_company_name ||
+                  "บริษัทเงินเดือน"
+                }`
+              : "บริษัทเงินเดือน",
+        });
+      } else {
+        setPayrollCompanyInitialOption(
+          null
+        );
       }
 
       form.resetFields();
@@ -368,6 +412,7 @@ export default function PayrollGroupsPage() {
       <PayrollGroupModal
         open={modalOpen}
         form={form}
+        payrollCompanyInitialOption={payrollCompanyInitialOption}
         saving={saving}
         disabled={modalMode === "view"}
         onFinish={handleSave}

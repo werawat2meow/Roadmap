@@ -161,6 +161,12 @@ export const EMPLOYEE_STEP_FIELDS = {
     "payroll_group_id",
     "position_level_band_id",
     "base_salary",
+
+    "payment_method_id",
+    "bank_id",
+    "bank_account_no",
+    "bank_account_name",
+    "bank_branch_name",
   ],
 
   6: [

@@ -16,6 +16,7 @@ import {
   Tabs,
   Tag,
   Typography,
+  Spin,
   message,
 } from "antd";
 import {
@@ -657,8 +658,18 @@ export default function EmployeeCompensationsPage() {
 
   if (loadingUser) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center text-slate-500">
-        กำลังโหลดสิทธิ์ผู้ใช้งาน...
+      <div className="flex min-h-[420px] items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+        <div className="text-center">
+          <Spin size="large" />
+          <div className="mt-4">
+            <Text type="secondary" strong className="block text-lg">
+              Loading Resources
+            </Text>
+            <Text type="secondary" className="text-xs">
+              กำลังตรวจสอบสิทธิ์การเข้าถึงระบบ...
+            </Text>
+          </div>
+        </div>
       </div>
     );
   }

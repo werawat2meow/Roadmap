@@ -11,12 +11,12 @@ const geistSans = Geist({
 export const metadata = {
   title: "Employee Master systems.",
   description: "Employee Master System",
-  applicationName: "Employee Master",
+  applicationName: "HRMS",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Employee Master",
+    title: "HRMS",
   },
   formatDetection: {
     telephone: false,

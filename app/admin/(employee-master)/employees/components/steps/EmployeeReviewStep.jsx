@@ -254,6 +254,18 @@ export default function EmployeeReviewStep({
       values.position_level_band_id
     );
 
+  const bank =
+    findById(
+      masterData.banks,
+      values.bank_id
+    );
+
+  const paymentMethod =
+    findById(
+      masterData.paymentMethods,
+      values.payment_method_id
+    );
+
   /* =========================================================
      ACCOUNT / ROLE
   ========================================================= */
@@ -739,6 +751,60 @@ export default function EmployeeReviewStep({
               )} บาท`
             : "-"}
         </Descriptions.Item>
+
+        {mode === "create" && (
+          <>
+            <Descriptions.Item
+              label="วิธีการจ่ายเงิน"
+            >
+              {getValue(
+                paymentMethod,
+                [
+                  "payment_method_name",
+                  "method_name",
+                  "payment_method_code",
+                  "code",
+                ]
+              )}
+            </Descriptions.Item>
+
+            <Descriptions.Item
+              label="ธนาคาร"
+            >
+              {getValue(
+                bank,
+                [
+                  "bank_name_th",
+                  "bank_name",
+                  "bank_name_en",
+                  "bank_code",
+                  "code",
+                ]
+              )}
+            </Descriptions.Item>
+
+            <Descriptions.Item
+              label="เลขบัญชี"
+            >
+              {values.bank_account_no ||
+                "-"}
+            </Descriptions.Item>
+
+            <Descriptions.Item
+              label="ชื่อบัญชี"
+            >
+              {values.bank_account_name ||
+                "-"}
+            </Descriptions.Item>
+
+            <Descriptions.Item
+              label="สาขาธนาคาร"
+            >
+              {values.bank_branch_name ||
+                "-"}
+            </Descriptions.Item>
+          </>
+        )}
       </Descriptions>
 
       {/* =====================================================

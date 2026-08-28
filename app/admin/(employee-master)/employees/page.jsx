@@ -132,6 +132,12 @@ const DEFAULT_FORM_VALUES = {
   position_level_band_id: undefined,
   base_salary: undefined,
 
+  payment_method_id: undefined,
+  bank_id: undefined,
+  bank_account_no: "",
+  bank_account_name: "",
+  bank_branch_name: "",
+
   /* -------------------------------------------------------
      Employee code
   ------------------------------------------------------- */
@@ -219,6 +225,10 @@ const MASTER_ENDPOINTS = {
     "/api/admin/payroll-groups?all=true&status=active",
   positionLevelBands:
     "/api/admin/position-level-bands?all=true&status=active",
+  banks:
+    "/api/admin/banks?all=true&status=active",
+  paymentMethods:
+    "/api/admin/payment-methods?all=true&status=active&supports_payroll=true",
   employeeCodeSettings:
     "/api/admin/employee-code-settings?all=true&status=active",
   roles:
@@ -704,6 +714,25 @@ function createEmployeeFormValues(record) {
         ?.base_salary ??
       undefined,
 
+    /*
+     * บัญชีธนาคารแก้ไขผ่านหน้า employee-bank-accounts
+     * ไม่ดึงมาแก้ใน Employee Wizard หลังสร้างแล้ว
+     */
+    payment_method_id:
+      undefined,
+
+    bank_id:
+      undefined,
+
+    bank_account_no:
+      "",
+
+    bank_account_name:
+      "",
+
+    bank_branch_name:
+      "",
+
     /* -----------------------------------------------------
        Employee code
 
@@ -1102,6 +1131,51 @@ function buildEmployeePayload(values,{
         : undefined,
 
     /* -----------------------------------------------------
+       Initial Bank Account
+
+       ไม่บันทึกลง employees
+       API จะนำไป insert employee_bank_accounts
+    ----------------------------------------------------- */
+
+    payment_method_id:
+      isCreate
+        ? cleanNullableUuid(
+            values.payment_method_id
+          )
+        : undefined,
+
+    bank_id:
+      isCreate
+        ? cleanNullableUuid(
+            values.bank_id
+          )
+        : undefined,
+
+    bank_account_no:
+      isCreate
+        ? String(
+            values.bank_account_no ||
+              ""
+          )
+            .replace(/\D/g, "")
+            .trim() || null
+        : undefined,
+
+    bank_account_name:
+      isCreate
+        ? cleanNullableText(
+            values.bank_account_name
+          )
+        : undefined,
+
+    bank_branch_name:
+      isCreate
+        ? cleanNullableText(
+            values.bank_branch_name
+          )
+        : undefined,
+
+    /* -----------------------------------------------------
        Employee code
     ----------------------------------------------------- */
 
@@ -1265,6 +1339,8 @@ export default function EmployeesPage() {
     payrollTypes: [],
     payrollGroups: [],
     positionLevelBands: [],
+    banks: [],
+    paymentMethods: [],
 
     employeeCodeSettings: [],
     roles: [],
@@ -2318,6 +2394,53 @@ export default function EmployeesPage() {
 
           setCurrentStep(5);
 
+          return;
+        }
+
+        const hasInitialBankAccount =
+          Boolean(
+            payload.bank_id ||
+              payload.bank_account_no ||
+              payload.bank_account_name ||
+              payload.bank_branch_name
+          );
+
+        if (
+          hasInitialBankAccount &&
+          !payload.bank_id
+        ) {
+          message.warning(
+            "กรุณาเลือกธนาคาร"
+          );
+
+          setCurrentStep(5);
+          return;
+        }
+
+        if (
+          hasInitialBankAccount &&
+          !/^\d{10}$/.test(
+            payload.bank_account_no ||
+              ""
+          )
+        ) {
+          message.warning(
+            "เลขบัญชีธนาคารต้องมี 10 หลัก"
+          );
+
+          setCurrentStep(5);
+          return;
+        }
+
+        if (
+          hasInitialBankAccount &&
+          !payload.bank_account_name
+        ) {
+          message.warning(
+            "กรุณากรอกชื่อบัญชีธนาคาร"
+          );
+
+          setCurrentStep(5);
           return;
         }
 

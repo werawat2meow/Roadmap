@@ -323,3 +323,76 @@ body {
 .sidebar-scroll.is-scrolling:hover::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.5);
 }
+
+.driver-active-element {
+  position: relative !important;
+}
+
+.driver-active-element::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border: 4px solid #10b981; /* สีเขียว emerald */
+  border-radius: inherit;
+  animation: ro-pulse 1.5s infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@keyframes ro-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* --- 2. ปรับแต่งหน้าต่าง Popup (คงเดิม) --- */
+.driver-popover {
+  border-radius: 16px !important;
+  padding: 20px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1) !important;
+}
+
+.driver-popover-title {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: #1e293b !important;
+}
+
+/* --- 3. ส่วนที่ปรับสีปุ่มตามที่ต้องการ --- */
+
+/* ปุ่มถัดไป / เริ่มใช้งาน (Next & Done Button) -> สีเขียว */
+.driver-popover-next-btn {
+  background-color: #10b981 !important; /* สีเขียว Emerald */
+  color: white !important;
+  border: none !important;
+  text-shadow: none !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+
+.driver-popover-next-btn:hover {
+  background-color: #059669 !important; /* สีเขียวเข้มขึ้นเมื่อชี้ */
+}
+
+/* ปุ่มย้อนกลับ (Previous Button) -> สีส้ม */
+.driver-popover-prev-btn {
+  background-color: #f97316 !important; /* สีส้ม Orange */
+  color: white !important;
+  border: none !important;
+  text-shadow: none !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+
+.driver-popover-prev-btn:hover {
+  background-color: #ea580c !important; /* สีส้มเข้มขึ้นเมื่อชี้ */
+}
+
+/* ปรับสีตัวอักษร Progress (1 of 3) ให้ชัดขึ้น (แถมให้ครับ) */
+.driver-popover-progress-text {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}

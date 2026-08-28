@@ -10,7 +10,7 @@ const tabs = ['ทั้งหมด', 'Company', 'Department', 'สิทธิ
 export default function SettingsTabs({ activeTab, onChange }: Props) {
   return (
     <div className="mt-6 overflow-x-auto">
-      <div className="inline-flex rounded-full bg-slate-200 p-1">
+      <div id="settings-tabs" className="inline-flex rounded-full bg-slate-200 p-1">
         {tabs.map((tab) => {
           const selected = tab === activeTab;
           return (

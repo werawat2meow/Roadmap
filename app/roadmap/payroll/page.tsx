@@ -7,14 +7,36 @@ import PayrollToolbar from "./components/PayrollToolbar";
 import PayrollTable from "./components/PayrollTable";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { useAuth } from "@/contexts/AuthContext";
+import PayrollNotice from "./components/PayrollNotice";
 
 export default function PayrollPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [rows, setRows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    // ใช้ Key ชื่อ 'hide_payroll_guide'
+    const isDismissed = localStorage.getItem("hide_payroll_guide");
+    if (!isDismissed) {
+      const timer = setTimeout(() => setShowGuide(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const closeGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem("hide_payroll_guide", "true");
+  };
+
+  const openGuide = () => {
+    setShowGuide(true);
+  };
 
   // 1. ดึงข้อมูลจริงจาก API
   useEffect(() => {
@@ -155,10 +177,54 @@ export default function PayrollPage() {
       </div>
     );
 
+  const handleUpdate = async () => {
+    const ids = rows.map((r) => r.id);
+    console.log("📢 กำลังส่ง IDs ไปอัปเดต:", ids);
+
+    if (ids.length === 0) {
+      alert("ไม่มีรายการพนักงานที่ต้องอัปเดต");
+      return;
+    }
+
+    if (!user?.id) {
+      alert("ไม่พบผู้ใช้งานที่ล็อกอินอยู่");
+      return;
+    }
+
+    try {
+      const response = await fetch("/roadmap/api/payroll/adjustments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evaluationIds: ids,
+          updatedById: user.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(result.message);
+        // เมื่อสำเร็จให้รีโหลดหน้า เพื่อให้รายการที่อัปเดตแล้วหายไป (เพราะสถานะเปลี่ยน)
+        window.location.reload();
+      } else {
+        alert("เกิดข้อผิดพลาด: " + result.error);
+      }
+    } catch (err) {
+      alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+    }
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-8">
       {/* ส่งฟังก์ชันไปให้ Header */}
-      <PayrollHeader onDownload={handleExportPayrollExcel} />
+      <PayrollHeader
+        onDownload={handleExportPayrollExcel}
+        onUpdate={handleUpdate}
+        onOpenGuide={openGuide}
+      />
+
+      <PayrollNotice isOpen={showGuide} onClose={closeGuide} />
 
       <PayrollSummaryCards cards={summaryCards} />
 

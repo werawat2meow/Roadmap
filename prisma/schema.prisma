@@ -546,6 +546,7 @@ model sessions {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_domains {
   id              String        @id @db.Uuid
   sso_provider_id String        @db.Uuid
@@ -561,6 +562,7 @@ model sso_domains {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -589,6 +591,7 @@ model sso_providers {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -1238,6 +1241,8 @@ model companies {
   branches                      branches[]
   compensation_policies         compensation_policies[]
   compensation_policy_scopes    compensation_policy_scopes[]
+  deduction_types               deduction_types[]
+  earning_types                 earning_types[]
   employee_code_counters        employee_code_counters[]
   employee_code_settings        employee_code_settings[]
   employee_running_numbers      employee_running_numbers[]
@@ -1441,6 +1446,7 @@ model employees {
   benefit_usage_logs                                                                benefit_usage_logs[]
   benefit_usages                                                                    benefit_usages[]
   compensation_policy_assignments                                                   compensation_policy_assignments[]
+  employee_bank_accounts                                                            employee_bank_accounts[]
   employee_compensation_adjustments                                                 employee_compensation_adjustments[]
   employee_compensations                                                            employee_compensations[]
   employee_position_assignments                                                     employee_position_assignments[]
@@ -2018,6 +2024,8 @@ model user_accounts {
   updated_at                                                                                      DateTime                              @default(now()) @db.Timestamptz(6)
   password_hash                                                                                   String?
   role_id                                                                                         String?                               @db.Uuid
+  failed_login_count                                                                              Int                                   @default(0)
+  locked_until                                                                                    DateTime?                             @db.Timestamptz(6)
   benefit_approval_workflows                                                                      benefit_approval_workflows[]
   benefit_audit_logs                                                                              benefit_audit_logs[]
   benefit_request_approvals                                                                       benefit_request_approvals[]
@@ -2025,6 +2033,12 @@ model user_accounts {
   benefit_requests_benefit_requests_approved_byTouser_accounts                                    benefit_requests[]                    @relation("benefit_requests_approved_byTouser_accounts")
   benefit_requests_benefit_requests_created_byTouser_accounts                                     benefit_requests[]                    @relation("benefit_requests_created_byTouser_accounts")
   benefit_usages                                                                                  benefit_usages[]
+  deduction_types_deduction_types_created_byTouser_accounts                                       deduction_types[]                     @relation("deduction_types_created_byTouser_accounts")
+  deduction_types_deduction_types_updated_byTouser_accounts                                       deduction_types[]                     @relation("deduction_types_updated_byTouser_accounts")
+  earning_types_earning_types_created_byTouser_accounts                                           earning_types[]                       @relation("earning_types_created_byTouser_accounts")
+  earning_types_earning_types_updated_byTouser_accounts                                           earning_types[]                       @relation("earning_types_updated_byTouser_accounts")
+  employee_bank_accounts_employee_bank_accounts_created_byTouser_accounts                         employee_bank_accounts[]              @relation("employee_bank_accounts_created_byTouser_accounts")
+  employee_bank_accounts_employee_bank_accounts_updated_byTouser_accounts                         employee_bank_accounts[]              @relation("employee_bank_accounts_updated_byTouser_accounts")
   employee_code_settings_employee_code_settings_created_byTouser_accounts                         employee_code_settings[]              @relation("employee_code_settings_created_byTouser_accounts")
   employee_code_settings_employee_code_settings_updated_byTouser_accounts                         employee_code_settings[]              @relation("employee_code_settings_updated_byTouser_accounts")
   employee_compensation_adjustments_employee_compensation_adjustments_approved_byTouser_accounts  employee_compensation_adjustments[]   @relation("employee_compensation_adjustments_approved_byTouser_accounts")
@@ -2109,121 +2123,122 @@ model branch_groups {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model recruit_job_applications {
-  id                            String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  job_id                        String?                         @db.Uuid
-  position_id                   String?                         @db.Uuid
-  other_position                String?
-  expected_salary               Int?
-  first_name                    String?
-  last_name                     String?
-  nickname_th                   String?
-  nickname_en                   String?
-  date_of_birth                 DateTime?                       @db.Date
-  age                           String?
-  gender                        String?                         @db.Uuid
-  military_status               String?                         @db.VarChar
-  pregnancy_age                 String?
-  height                        Int?                            @db.SmallInt
-  weight                        Decimal?                        @db.Decimal
-  nationality                   String?                         @db.Uuid
-  religion                      String?                         @db.Uuid
-  identity_no                   String?
-  current_address_no            String?
-  village_no                    Int?                            @db.SmallInt
-  street                        String?
-  sub_district                  String?
-  district                      String?
-  province                      String?
-  postal_code                   String?
-  line_id                       String?
-  phone_number                  String?
-  residence_type                String?
-  residence_other               String?
-  marital_status                String?                         @db.Uuid
-  children                      String?
-  driver_license                Json?
-  emergency_name                String?
-  emergency_phone               String?
-  emergency_relationship        String?
-  underlying_disease            String?
-  serious_crime                 Boolean?
-  dishonest                     Boolean?
-  certify                       Boolean?
-  pdpa                          Boolean?
-  created_at                    DateTime                        @default(now()) @db.Timestamptz(6)
-  updated_at                    DateTime?                       @default(now()) @db.Timestamptz(6)
-  status                        Int?                            @db.SmallInt
-  user_approve                  String?                         @db.Uuid
-  emp_code                      String?
-  hire_date                     DateTime?                       @db.Date
-  emp_level                     String?
-  emp_type                      String?
-  email                         String?
-  province_id                   Decimal?                        @db.Decimal
-  district_id                   Decimal?                        @db.Decimal
-  subdistrict_id                Decimal?                        @db.Decimal
-  from_social_media             String?                         @db.VarChar
-  send_mail_status              Int?                            @db.SmallInt
-  self_presentation_url         String?
-  branch_group_id               String?                         @db.Uuid
-  company_id                    String?                         @db.Uuid
-  branch_id                     String?                         @db.Uuid
-  department_id                 String?                         @db.Uuid
-  division_id                   String?                         @db.Uuid
-  unit_id                       String?                         @db.Uuid
-  position_level_id             String?                         @db.Uuid
-  position_family_id            String?                         @db.Uuid
-  last_job_id                   String?                         @db.Uuid
-  employment_type               String?                         @db.VarChar
-  employment_type_id            String?                         @db.Uuid
-  employee_status_id            String?                         @db.Uuid
-  start_date                    DateTime?                       @db.Date
-  base_salary                   Int?                            @db.SmallInt
-  position_allowance            Int?                            @db.SmallInt
-  living_allowance              Int?                            @db.SmallInt
-  special_allowance             Int?                            @db.SmallInt
-  fuel_allowance                Int?                            @db.SmallInt
-  incentive_type                String?                         @db.VarChar
-  incentive_amount              Int?                            @db.SmallInt
-  oc                            Int?                            @db.SmallInt
-  phone_allowance               Int?                            @db.SmallInt
-  additional_cost_id            String?                         @db.Uuid
-  probation_days                Int?                            @db.SmallInt
-  probation_end_date            DateTime?                       @db.Date
-  probation_status              String?                         @db.VarChar
-  payroll_company_id            String?                         @db.Uuid
-  payroll_type_id               String?                         @db.Uuid
-  role_id                       String?                         @db.Uuid
-  emp_id                        String?                         @db.Uuid
-  status_reason                 String?                         @db.VarChar
-  profile_image_url             String?
-  recruit_additional_cost       recruit_additional_cost[]
-  branch_groups                 branch_groups?                  @relation(fields: [branch_group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  branches                      branches?                       @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  companies                     companies?                      @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  departments                   departments?                    @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  divisions                     divisions?                      @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  employees                     employees?                      @relation(fields: [emp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  employee_statuses             employee_statuses?              @relation(fields: [employee_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  employment_types              employment_types?               @relation(fields: [employment_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  genders                       genders?                        @relation(fields: [gender], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  recruit_job_open              recruit_job_open?               @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  jobs                          jobs?                           @relation(fields: [last_job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  marital_statuses              marital_statuses?               @relation(fields: [marital_status], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  nationalities                 nationalities?                  @relation(fields: [nationality], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payroll_companies             payroll_companies?              @relation(fields: [payroll_company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payroll_types                 payroll_types?                  @relation(fields: [payroll_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  position_families             position_families?              @relation(fields: [position_family_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  positions                     positions?                      @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  position_levels               position_levels?                @relation(fields: [position_level_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  religions                     religions?                      @relation(fields: [religion], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  units                         units?                          @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_accounts                 user_accounts?                  @relation(fields: [user_approve], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  recruit_job_documents         recruit_job_documents[] @ignore
-  recruit_job_education_history recruit_job_education_history[]
-  recruit_job_interviews        recruit_job_interviews[]
-  recruit_job_skills            recruit_job_skills[]
-  recruit_job_work_experience   recruit_job_work_experience[]
+  id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id                         String?                          @db.Uuid
+  position_id                    String?                          @db.Uuid
+  other_position                 String?
+  expected_salary                Int?
+  first_name                     String?
+  last_name                      String?
+  nickname_th                    String?
+  nickname_en                    String?
+  date_of_birth                  DateTime?                        @db.Date
+  age                            String?
+  gender                         String?                          @db.Uuid
+  military_status                String?                          @db.VarChar
+  pregnancy_age                  String?
+  height                         Int?                             @db.SmallInt
+  weight                         Decimal?                         @db.Decimal
+  nationality                    String?                          @db.Uuid
+  religion                       String?                          @db.Uuid
+  identity_no                    String?
+  current_address_no             String?
+  village_no                     Int?                             @db.SmallInt
+  street                         String?
+  sub_district                   String?
+  district                       String?
+  province                       String?
+  postal_code                    String?
+  line_id                        String?
+  phone_number                   String?
+  residence_type                 String?
+  residence_other                String?
+  marital_status                 String?                          @db.Uuid
+  children                       String?
+  driver_license                 Json?
+  emergency_name                 String?
+  emergency_phone                String?
+  emergency_relationship         String?
+  underlying_disease             String?
+  serious_crime                  Boolean?
+  dishonest                      Boolean?
+  certify                        Boolean?
+  pdpa                           Boolean?
+  created_at                     DateTime                         @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime?                        @default(now()) @db.Timestamptz(6)
+  status                         Int?                             @db.SmallInt
+  user_approve                   String?                          @db.Uuid
+  emp_code                       String?
+  hire_date                      DateTime?                        @db.Date
+  emp_level                      String?
+  emp_type                       String?
+  email                          String?
+  province_id                    Decimal?                         @db.Decimal
+  district_id                    Decimal?                         @db.Decimal
+  subdistrict_id                 Decimal?                         @db.Decimal
+  from_social_media              String?                          @db.VarChar
+  send_mail_status               Int?                             @db.SmallInt
+  self_presentation_url          String?
+  branch_group_id                String?                          @db.Uuid
+  company_id                     String?                          @db.Uuid
+  branch_id                      String?                          @db.Uuid
+  department_id                  String?                          @db.Uuid
+  division_id                    String?                          @db.Uuid
+  unit_id                        String?                          @db.Uuid
+  position_level_id              String?                          @db.Uuid
+  position_family_id             String?                          @db.Uuid
+  last_job_id                    String?                          @db.Uuid
+  employment_type                String?                          @db.VarChar
+  employment_type_id             String?                          @db.Uuid
+  employee_status_id             String?                          @db.Uuid
+  start_date                     DateTime?                        @db.Date
+  base_salary                    Int?                             @db.SmallInt
+  position_allowance             Int?                             @db.SmallInt
+  living_allowance               Int?                             @db.SmallInt
+  special_allowance              Int?                             @db.SmallInt
+  fuel_allowance                 Int?                             @db.SmallInt
+  incentive_type                 String?                          @db.VarChar
+  incentive_amount               Int?                             @db.SmallInt
+  oc                             Int?                             @db.SmallInt
+  phone_allowance                Int?                             @db.SmallInt
+  additional_cost_id             String?                          @db.Uuid
+  probation_days                 Int?                             @db.SmallInt
+  probation_end_date             DateTime?                        @db.Date
+  probation_status               String?                          @db.VarChar
+  payroll_company_id             String?                          @db.Uuid
+  payroll_type_id                String?                          @db.Uuid
+  role_id                        String?                          @db.Uuid
+  emp_id                         String?                          @db.Uuid
+  status_reason                  String?                          @db.VarChar
+  profile_image_url              String?
+  recruit_additional_cost        recruit_additional_cost[]
+  recruit_candidate_share_tokens recruit_candidate_share_tokens[]
+  branch_groups                  branch_groups?                   @relation(fields: [branch_group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branches                       branches?                        @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  companies                      companies?                       @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departments                    departments?                     @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions                      divisions?                       @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employees                      employees?                       @relation(fields: [emp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employee_statuses              employee_statuses?               @relation(fields: [employee_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employment_types               employment_types?                @relation(fields: [employment_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  genders                        genders?                         @relation(fields: [gender], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recruit_job_open               recruit_job_open?                @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  jobs                           jobs?                            @relation(fields: [last_job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  marital_statuses               marital_statuses?                @relation(fields: [marital_status], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nationalities                  nationalities?                   @relation(fields: [nationality], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payroll_companies              payroll_companies?               @relation(fields: [payroll_company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payroll_types                  payroll_types?                   @relation(fields: [payroll_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position_families              position_families?               @relation(fields: [position_family_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  positions                      positions?                       @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position_levels                position_levels?                 @relation(fields: [position_level_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  religions                      religions?                       @relation(fields: [religion], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  units                          units?                           @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts                  user_accounts?                   @relation(fields: [user_approve], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recruit_job_documents          recruit_job_documents[] @ignore
+  recruit_job_education_history  recruit_job_education_history[]
+  recruit_job_interviews         recruit_job_interviews[]
+  recruit_job_skills             recruit_job_skills[]
+  recruit_job_work_experience    recruit_job_work_experience[]
 
   @@schema("public")
 }
@@ -3072,30 +3087,31 @@ model skills {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model banks {
-  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  bank_code              String   @unique
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bank_code              String                   @unique
   bank_short_name        String
   bank_name_th           String
   bank_name_en           String
   swift_code             String?
   bank_logo_url          String?
   bank_logo_path         String?
-  promptpay_supported    Boolean  @default(true)
-  bank_file_format       String   @default("txt")
-  bank_transfer_type     String   @default("batch")
+  promptpay_supported    Boolean                  @default(true)
+  bank_file_format       String                   @default("txt")
+  bank_transfer_type     String                   @default("batch")
   account_number_length  Int?
-  branch_code_required   Boolean  @default(false)
-  supports_bulk_transfer Boolean  @default(true)
-  supports_api           Boolean  @default(false)
-  supports_payroll       Boolean  @default(true)
-  supports_promptpay_qr  Boolean  @default(false)
+  branch_code_required   Boolean                  @default(false)
+  supports_bulk_transfer Boolean                  @default(true)
+  supports_api           Boolean                  @default(false)
+  supports_payroll       Boolean                  @default(true)
+  supports_promptpay_qr  Boolean                  @default(false)
   api_endpoint           String?
   api_version            String?
   remarks                String?
-  sort_order             Int      @default(0)
-  status                 String   @default("active")
-  created_at             DateTime @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime @default(now()) @db.Timestamptz(6)
+  sort_order             Int                      @default(0)
+  status                 String                   @default("active")
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  employee_bank_accounts employee_bank_accounts[]
 
   @@index([bank_code], map: "idx_banks_code")
   @@index([supports_payroll], map: "idx_banks_payroll")
@@ -3289,6 +3305,7 @@ model employee_code_settings {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model employee_running_numbers {
   id                       String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id               String                 @db.Uuid
@@ -3397,27 +3414,28 @@ model nationalities {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model payment_methods {
-  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  payment_method_code     String   @unique(map: "payment_methods_code_key")
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_method_code     String                   @unique(map: "payment_methods_code_key")
   payment_method_name     String
   payment_method_name_en  String?
   description             String?
-  payment_type            String   @default("bank_transfer")
-  bank_required           Boolean  @default(false)
-  supports_payroll        Boolean  @default(true)
-  supports_expense        Boolean  @default(false)
-  supports_benefit        Boolean  @default(false)
-  supports_vendor         Boolean  @default(false)
-  require_account_name    Boolean  @default(true)
-  require_account_number  Boolean  @default(true)
-  require_promptpay_id    Boolean  @default(false)
-  allow_multiple_accounts Boolean  @default(false)
-  qr_supported            Boolean  @default(false)
-  api_supported           Boolean  @default(false)
-  sort_order              Int      @default(0)
-  status                  String   @default("active")
-  created_at              DateTime @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+  payment_type            String                   @default("bank_transfer")
+  bank_required           Boolean                  @default(false)
+  supports_payroll        Boolean                  @default(true)
+  supports_expense        Boolean                  @default(false)
+  supports_benefit        Boolean                  @default(false)
+  supports_vendor         Boolean                  @default(false)
+  require_account_name    Boolean                  @default(true)
+  require_account_number  Boolean                  @default(true)
+  require_promptpay_id    Boolean                  @default(false)
+  allow_multiple_accounts Boolean                  @default(false)
+  qr_supported            Boolean                  @default(false)
+  api_supported           Boolean                  @default(false)
+  sort_order              Int                      @default(0)
+  status                  String                   @default("active")
+  created_at              DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                 @default(now()) @db.Timestamptz(6)
+  employee_bank_accounts  employee_bank_accounts[]
 
   @@index([supports_payroll], map: "idx_payment_methods_payroll")
   @@index([sort_order], map: "idx_payment_methods_sort")
@@ -3643,6 +3661,7 @@ model salary_components {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model salary_structures {
@@ -4020,6 +4039,145 @@ model recruit_additional_cost {
   amount                   Int?                      @db.SmallInt
   created_at               DateTime?                 @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?                 @default(now()) @db.Timestamptz(6)
+  recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model deduction_types {
+  id                                                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id                                              String         @db.Uuid
+  deduction_code                                          String
+  deduction_name                                          String
+  description                                             String?
+  deduction_category                                      String         @default("other")
+  calculation_method                                      String         @default("fixed")
+  default_amount                                          Decimal?       @db.Decimal(14, 2)
+  is_statutory                                            Boolean        @default(false)
+  reduce_taxable_income                                   Boolean        @default(false)
+  include_in_net_pay                                      Boolean        @default(true)
+  is_recurring                                            Boolean        @default(false)
+  effective_date                                          DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  expire_date                                             DateTime?      @db.Date
+  status                                                  String         @default("active")
+  sort_order                                              Int            @default(0)
+  remark                                                  String?
+  created_by                                              String?        @db.Uuid
+  updated_by                                              String?        @db.Uuid
+  created_at                                              DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at                                              DateTime       @default(now()) @db.Timestamptz(6)
+  companies                                               companies      @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+  user_accounts_deduction_types_created_byTouser_accounts user_accounts? @relation("deduction_types_created_byTouser_accounts", fields: [created_by], references: [id], onUpdate: NoAction)
+  user_accounts_deduction_types_updated_byTouser_accounts user_accounts? @relation("deduction_types_updated_byTouser_accounts", fields: [updated_by], references: [id], onUpdate: NoAction)
+
+  @@index([calculation_method], map: "idx_deduction_types_calculation_method")
+  @@index([deduction_category], map: "idx_deduction_types_category")
+  @@index([company_id], map: "idx_deduction_types_company_id")
+  @@index([effective_date], map: "idx_deduction_types_effective_date")
+  @@index([sort_order], map: "idx_deduction_types_sort_order")
+  @@index([status], map: "idx_deduction_types_status")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model earning_types {
+  id                                                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id                                            String         @db.Uuid
+  earning_code                                          String
+  earning_name                                          String
+  description                                           String?
+  earning_category                                      String         @default("other")
+  calculation_method                                    String         @default("fixed")
+  default_amount                                        Decimal?       @db.Decimal(14, 2)
+  taxable                                               Boolean        @default(true)
+  social_security_applicable                            Boolean        @default(false)
+  provident_fund_applicable                             Boolean        @default(false)
+  include_in_gross_pay                                  Boolean        @default(true)
+  is_recurring                                          Boolean        @default(false)
+  effective_date                                        DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  expire_date                                           DateTime?      @db.Date
+  status                                                String         @default("active")
+  sort_order                                            Int            @default(0)
+  remark                                                String?
+  created_by                                            String?        @db.Uuid
+  updated_by                                            String?        @db.Uuid
+  created_at                                            DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime       @default(now()) @db.Timestamptz(6)
+  companies                                             companies      @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+  user_accounts_earning_types_created_byTouser_accounts user_accounts? @relation("earning_types_created_byTouser_accounts", fields: [created_by], references: [id], onUpdate: NoAction)
+  user_accounts_earning_types_updated_byTouser_accounts user_accounts? @relation("earning_types_updated_byTouser_accounts", fields: [updated_by], references: [id], onUpdate: NoAction)
+
+  @@index([calculation_method], map: "idx_earning_types_calculation_method")
+  @@index([earning_category], map: "idx_earning_types_category")
+  @@index([company_id], map: "idx_earning_types_company_id")
+  @@index([effective_date], map: "idx_earning_types_effective_date")
+  @@index([sort_order], map: "idx_earning_types_sort_order")
+  @@index([status], map: "idx_earning_types_status")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model employee_bank_accounts {
+  id                                                             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id                                                    String           @db.Uuid
+  bank_id                                                        String           @db.Uuid
+  payment_method_id                                              String?          @db.Uuid
+  account_no                                                     String
+  account_name                                                   String
+  branch_name                                                    String?
+  is_primary                                                     Boolean          @default(false)
+  effective_date                                                 DateTime         @default(dbgenerated("CURRENT_DATE")) @db.Date
+  expire_date                                                    DateTime?        @db.Date
+  status                                                         String           @default("active")
+  remark                                                         String?
+  created_by                                                     String?          @db.Uuid
+  updated_by                                                     String?          @db.Uuid
+  created_at                                                     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at                                                     DateTime         @default(now()) @db.Timestamptz(6)
+  banks                                                          banks            @relation(fields: [bank_id], references: [id], onUpdate: NoAction)
+  user_accounts_employee_bank_accounts_created_byTouser_accounts user_accounts?   @relation("employee_bank_accounts_created_byTouser_accounts", fields: [created_by], references: [id], onUpdate: NoAction)
+  employees                                                      employees        @relation(fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payment_methods                                                payment_methods? @relation(fields: [payment_method_id], references: [id], onUpdate: NoAction)
+  user_accounts_employee_bank_accounts_updated_byTouser_accounts user_accounts?   @relation("employee_bank_accounts_updated_byTouser_accounts", fields: [updated_by], references: [id], onUpdate: NoAction)
+
+  @@unique([bank_id, account_no], map: "uq_employee_bank_accounts_bank_account")
+  @@index([bank_id], map: "idx_employee_bank_accounts_bank_id")
+  @@index([employee_id], map: "idx_employee_bank_accounts_employee_id")
+  @@index([employee_id, status], map: "idx_employee_bank_accounts_employee_status")
+  @@index([payment_method_id], map: "idx_employee_bank_accounts_payment_method_id")
+  @@index([status], map: "idx_employee_bank_accounts_status")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model login_attempts {
+  id         BigInt   @id @default(autoincrement())
+  ip_address String
+  username   String?
+  success    Boolean
+  reason     String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([ip_address, created_at], map: "idx_login_attempts_ip_time")
+  @@index([username, created_at], map: "idx_login_attempts_username_time")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_candidate_share_tokens {
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id           String?                   @db.Uuid
+  token                    String?
+  expires_at               DateTime?                 @db.Timestamptz(6)
+  created_by               String?                   @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at               DateTime?                 @default(now()) @db.Timestamptz(6)
+  revoked_at               DateTime?                 @db.Timestamptz(6)
   recruit_job_applications recruit_job_applications? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")

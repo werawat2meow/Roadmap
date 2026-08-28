@@ -41,7 +41,7 @@ export default function EmployeeTable({ employees }: EmployeeTableProps) {
             {/* 🌟 ปรับหัวตารางให้เป็นสีเทาอ่อน มีมิติ และเข้าพวกกับข้อมูลด้านล่าง */}
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">ID</th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee Code</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[20%]">Department</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[15%]">Role</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold text-center w-[15%]">Management</th>

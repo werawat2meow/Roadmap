@@ -5,6 +5,8 @@ import { Search, Award, Users, TrendingUp, Star } from "lucide-react";
 import ExecutiveStatCard from "./components/ExecutiveStatCard";
 import ExecutiveEmployeeCard from "./components/ExecutiveEmployeeCard";
 import ExecutiveSlideOver from "./components/ExecutiveSlideOver";
+import ExecutiveNotice from "./components/ExecutiveNotice";
+import { HelpCircle } from "lucide-react";
 
 // กำหนด Type ให้ตรงกับที่ API ส่งมา
 type Employee = {
@@ -36,6 +38,7 @@ export default function ExecutivePage() {
   );
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [showGuide, setShowGuide] = useState(false);
 
   // --- ส่วนการดึงข้อมูลจาก API ---
   useEffect(() => {
@@ -57,6 +60,15 @@ export default function ExecutivePage() {
       }
     }
     loadData();
+  }, []);
+
+  useEffect(() => {
+    // เช็คว่าเคยปิดไปหรือยัง (เฉพาะตอนโหลดหน้าครั้งแรก)
+    const isDismissed = localStorage.getItem("hide_executive_guide");
+    if (!isDismissed) {
+      const timer = setTimeout(() => setShowGuide(true), 500); // ดีเลย์นิดนึงให้ดูสวยงาม
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // --- ส่วน Filter (ใช้ข้อมูลจริงจาก State) ---
@@ -181,15 +193,36 @@ export default function ExecutivePage() {
     }
   };
 
+  const closeGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem("hide_executive_guide", "true");
+  };
+
+  const openGuide = () => {
+    setShowGuide(true);
+  };
+
   return (
     <div className="space-y-8 p-4 md:p-8">
       {/* ส่วนหัวข้อ */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-black text-slate-900">Management</h1>
-        <p className="mt-2 text-sm text-slate-700">
-          ภาพรวมผลการประเมินพนักงานที่ดำเนินการเสร็จสิ้นแล้ว
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-slate-900 font-display">Management</h1>
+            {/* ปุ่ม Help เล็กๆ ข้างชื่อหน้า */}
+            <button 
+              onClick={openGuide}
+              className="p-1 text-yellow-400 hover:text-yellow-500 transition-colors cursor-pointer"
+              title="วิธีใช้งาน"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-slate-500 mt-1">ภาพรวมผลการประเมินพนักงานที่ดำเนินการเสร็จสิ้นแล้ว</p>
+        </div>
       </div>
+
+      <ExecutiveNotice isOpen={showGuide} onClose={closeGuide} />
 
       {/* ส่วนการ์ดสถิติ */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

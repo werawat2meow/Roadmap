@@ -33,9 +33,9 @@ type Props = {
   };
 
   const getTitleFromLevel = (level: string) => LEVEL_TITLE_MAP[level] ?? '';
+  
 
 export default function AddCategoryModal({ open, onClose, onCreate }: Props) {
-  const [title, setTitle] = useState('');
   const [type, setType] = useState(TYPES[0]);
   const [level, setLevel] = useState(LEVELS[0]);
 
@@ -46,6 +46,7 @@ export default function AddCategoryModal({ open, onClose, onCreate }: Props) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const title = getTitleFromLevel(level);
 
   useEffect(() => {
     if (!open) return;
@@ -102,7 +103,7 @@ export default function AddCategoryModal({ open, onClose, onCreate }: Props) {
     unit_id: unitId || undefined,
   });
 
-    setTitle('');
+    // setTitle('');
     setType(TYPES[0]);
     setLevel(LEVELS[0]);
     setDepartmentId('');
@@ -110,16 +111,14 @@ export default function AddCategoryModal({ open, onClose, onCreate }: Props) {
     setUnitId('');
   };
 
-  useEffect(() => {
-    setTitle(getTitleFromLevel(level));
-  }, [level]);
-
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
       <div className="w-full max-w-lg rounded-[32px] bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-bold text-slate-900">เพิ่มหมวดหมู่ใหม่</h2>
+        <label className="block text-sm font-semibold text-red-500">** หากเลือก Company สามารถเลือก Level และเพิ่มได้เลย **</label>
+        <label className="block text-sm font-semibold text-red-500">** หากเลือก Department ต้องเลือก Department Division Unit ก่อน **</label>
 
         <div className="mt-6 space-y-5">
           <div>

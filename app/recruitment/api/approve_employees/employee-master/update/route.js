@@ -577,8 +577,9 @@ export async function POST(request) {
     //   - next_status 15 (หรือไม่ส่งมา = ค่า default เพื่อ backward compat):
     //     -> ยืนยันเข้าฐานข้อมูลกลาง สร้าง Employee + User Account จริง
     // ========================================================
-
+    
     if (Number(get_data_emp_recrut.status) === 17) {
+      
       const resolvedNextStatus = next_status ? Number(next_status) : 15;
 
       // --------------------------------------------------------
@@ -591,7 +592,7 @@ export async function POST(request) {
             { status: 400 }
           );
         }
-
+  
         if (!start_date) {
           return NextResponse.json(
             { message: "กรุณาระบุวันที่เริ่มงาน" },
@@ -660,6 +661,12 @@ export async function POST(request) {
         // ------------------------------------------------------
         // Get Employee Code Setting
         // ------------------------------------------------------
+
+          const probationDays = 119;
+          const probationEndDate = calculateProbationEndDate(
+            start_date,
+            probationDays
+          );
         const {
           data: get_data_code_setting,
           error: get_data_code_setting_error,
@@ -727,6 +734,7 @@ export async function POST(request) {
           phone: get_data_emp_recrut.phone_number,
           personal_email: get_data_emp_recrut.email,
           employment_type: get_data_emp_recrut.employment_type,
+          tax_id: get_data_emp_recrut.employment_type === "thai" ? get_data_emp_recrut.identity_no : "",
           branch_group_id: get_data_emp_recrut.branch_group_id,
           company_id: get_data_emp_recrut.company_id,
           branch_id: get_data_emp_recrut.branch_id,
@@ -745,7 +753,7 @@ export async function POST(request) {
           birth_date: get_data_emp_recrut.date_of_birth,
           line_id: get_data_emp_recrut.line_id,
           probation_days: get_data_emp_recrut.probation_days,
-          probation_end_date: get_data_emp_recrut.probation_end_date,
+          probation_end_date: probationEndDate,
           probation_status: get_data_emp_recrut.probation_status,
           nickname_th: get_data_emp_recrut.nickname_th,
           nickname_en: get_data_emp_recrut.nickname_en,
@@ -753,25 +761,56 @@ export async function POST(request) {
           marital_status_id: get_data_emp_recrut.marital_status,
           religion_id: get_data_emp_recrut.religion,
           nationality_id: get_data_emp_recrut.nationality,
-          hire_date: get_data_emp_recrut.start_date,
-          start_work_date: get_data_emp_recrut.start_date,
-          confirmation_date: get_data_emp_recrut.start_date,
+          hire_date: start_date,
+          start_work_date: start_date,
+          confirmation_date: start_date,
           employee_type_digit: get_data_code_setting.running_digits,
           employee_year_2d: get_data_code_setting.year_digits,
           employee_running_no: get_data_code_setting.executive_digit,
+          employee_photo_url: get_data_emp_recrut.profile_image_url,
+          position_family_id: get_data_emp_recrut.position_family_id,
+          employee_photo_path: get_data_emp_recrut.profile_image_url,
           status: "active",
           created_by: userId,
           updated_by: userId,
         };
-
+        
         // ------------------------------------------------------
         // 1. Create Employee
         // ------------------------------------------------------
         createdEmployee = await createEmployee({
           employeeData: insertData,
           userId,
-        });
-        
+        });        
+
+        // update to table employee_compensations
+        const data_employee_compensations = {
+          employee_id: createdEmployee.id,
+          position_id: get_data_emp_recrut.position_id,
+          position_level_id: get_data_emp_recrut.position_level_id,
+          payroll_company_id: get_data_emp_recrut.payroll_company_id,
+          payroll_type_id: get_data_emp_recrut.payroll_type_id,
+          currency_code: "THB",
+          base_salary: get_data_emp_recrut.base_salary,
+          source_type: "initial",
+          effective_from: getBangkokDate(),
+          effective_to: null,
+          status: "active",
+          created_by: userId,
+          updated_by: userId,
+        };
+
+        const { error: EmployeeCompensationsError } = await supabaseAdmin
+          .from("employee_compensations")
+          .insert(data_employee_compensations);
+
+        if (EmployeeCompensationsError) {
+          console.error(
+            "INSERT ADDITIONAL COST ERROR:",
+            EmployeeCompensationsError
+          );
+          throw new AppError("ไม่สามารถบันทึกข้อมูลได้");
+        }
 
         // ------------------------------------------------------
         // 2. Create User Account
@@ -785,7 +824,7 @@ export async function POST(request) {
         await updateRecruitJobInterviewStatus({
           applicationId: application_id,
           status: Number(resolvedNextStatus),
-        });
+        });        
 
 
         // ------------------------------------------------------
@@ -795,6 +834,9 @@ export async function POST(request) {
           .from("recruit_job_applications")
           .update({
             emp_id: createdEmployee.id,
+            hire_date: start_date,
+            start_date: start_date,
+            probation_end_date: probationEndDate,
             status: 15,
           })
           .eq("id", application_id);
@@ -867,4 +909,13 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+function getBangkokDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }

@@ -3,17 +3,7 @@
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 
-import {
-  Button,
-  Card,
-  Col,
-  Descriptions,
-  Divider,
-  Row,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+import { Button, Card, Col, Descriptions, Divider, Row, Table, Tag, Typography } from "antd";
 
 const { Title } = Typography;
 
@@ -37,7 +27,6 @@ const statusColor = {
   17: "success",
   99: "error",
   0: "error",
-
 };
 
 const statusText = {
@@ -136,25 +125,6 @@ const getResidenceTypeText = (type) => {
   }
 };
 
-const getMaritalStatusText = (type) => {
-  switch (type) {
-    case "single":
-      return getUIText(uiText.maritalSingle, "TH");
-
-    case "married":
-      return getUIText(uiText.maritalMarried, "TH");
-
-    case "divorced":
-      return getUIText(uiText.maritalDivorced, "TH");
-
-    case "widowed":
-      return getUIText(uiText.maritalWidowed, "TH");
-
-    default:
-      return value(type);
-  }
-};
-
 const getMilitaryStatusText = (type) => {
   switch (type) {
     case "not_served":
@@ -165,22 +135,6 @@ const getMilitaryStatusText = (type) => {
 
     case "exempted":
       return getUIText(uiText.militaryExempt, "TH");
-
-    default:
-      return value(type);
-  }
-};
-
-const getGenderText = (type) => {
-  switch (type) {
-    case "male":
-      return getUIText(uiText.genderMale, "TH");
-
-    case "female":
-      return getUIText(uiText.genderFemale, "TH");
-
-    case "other":
-      return getUIText(uiText.genderOther, "TH");
 
     default:
       return value(type);
@@ -292,7 +246,7 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="เพศ">
-            {application.genders.gender_name_th}
+            {application?.genders?.gender_name_th}
           </Descriptions.Item>
 
           {application.gender !== "female" && (
@@ -316,11 +270,11 @@ export default function CandidateDetail({
           </Descriptions.Item>
 
           <Descriptions.Item label="สัญชาติ">
-            {application.nationalities.nationality_name_th}
+            {application?.nationalities?.nationality_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="ศาสนา">
-            {application.religions.religion_name_th}
+            {application?.religions?.religion_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="เลขบัตรประชาชน">
@@ -408,7 +362,7 @@ export default function CandidateDetail({
           size="middle"
         >
           <Descriptions.Item label="สถานภาพสมรส">
-            {application.marital_statuses.marital_status_name_th}
+            {application?.marital_statuses?.marital_status_name_th}
           </Descriptions.Item>
 
           <Descriptions.Item label="จำนวนบุตร">

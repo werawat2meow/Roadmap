@@ -51,3 +51,4 @@ app/globals_REMOTE_1201.css
 *_BASE_*.js
 *_LOCAL_*.js
 *_REMOTE_*.js
+package-lock.json

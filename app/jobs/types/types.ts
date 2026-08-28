@@ -201,6 +201,24 @@ export interface JobApplicationPayload {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                       Initial / Prefill Data (Partial)                     */
+/* -------------------------------------------------------------------------- */
+// ใช้สำหรับข้อมูลที่โหลดมาจาก API (เช่น /jobs/api/register/resume/[id])
+// ทุก field เป็น optional/partial เพราะฝั่ง API อาจยังส่งข้อมูลมาไม่ครบ
+// (ตามที่บอกว่าจะทยอยเพิ่ม field ทีหลัง) — โค้ดฝั่ง form จะ merge กับค่า default เอง
+
+export interface ApplicationInitialData {
+  self_presentation_url?: string;
+  personal?: Partial<PersonalInformationData>;
+  education?: Partial<EducationHistory>[];
+  workExperience?: Partial<WorkExperience>[];
+  computerSkills?: Partial<ComputerSkill>[];
+  languageSkills?: Partial<LanguageSkill>[];
+  documents?: Partial<ApplicationDocument>[];
+  agreement?: Partial<Agreement>;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                            Component Props                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -210,6 +228,7 @@ export interface ApplicationFormProps {
   saving: boolean;
   position: PositionInfo;
   onSubmit: (payload: JobApplicationPayload) => Promise<void>;
+  initialData?: ApplicationInitialData; // 👈 เพิ่มใหม่
 }
 
 export interface PersonalInformationProps {

@@ -3,14 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Layout, Avatar, Tag, Button, Tooltip, Dropdown } from "antd";
-import {
-  UserOutlined,
-  LogoutOutlined,
-  LoadingOutlined,
-  HomeOutlined,
-  KeyOutlined,
-  MenuOutlined,
-} from "@ant-design/icons";
+
+import AntIcon from '@/components/AntIcon';
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoadingOrb from "@/app/components/LoadingOrb";
@@ -104,7 +98,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
     },
     {
       key: "change-password",
-      icon: <KeyOutlined />,
+      icon: <AntIcon name="KeyOutlined" />,
       label: "เปลี่ยนรหัสผ่าน",
       onClick: () => router.push("/admin/change-password"),
     },
@@ -139,7 +133,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
           <Tooltip title="กลับหน้า Portal">
             <Button
               type="text"
-              icon={<HomeOutlined />}
+              icon={<AntIcon name="HomeOutlined" />}
               onClick={() => router.push("/admin")}
               className="!h-9 !w-9 !text-slate-300 hover:!bg-white/10 hover:!text-white"
             />
@@ -160,7 +154,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
             >
               <Avatar
                 src={user?.employee_photo_url || undefined}
-                icon={!user?.employee_photo_url ? <UserOutlined /> : null}
+                icon={!user?.employee_photo_url ? <AntIcon name="UserOutlined" /> : null}
                 className="!bg-slate-950"
               />
             </button>
@@ -170,7 +164,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
             <Button
               type="text"
               danger
-              icon={loggingOut ? <LoadingOutlined spin /> : <LogoutOutlined />}
+              icon={loggingOut ? <AntIcon name="LoadingOutlined" spin /> : <AntIcon name="LogoutOutlined" />}
               onClick={handleLogout}
               disabled={loggingOut}
               className="!h-9 !text-red-400 hover:!bg-red-500/10 hover:!text-red-500"
@@ -199,7 +193,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
           <Button
             type="text"
             shape="circle"
-            icon={<MenuOutlined />}
+            icon={<AntIcon name="MenuOutlined" />}
             onClick={() => setMobileOpen(true)}
           />
         </div>

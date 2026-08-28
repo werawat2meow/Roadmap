@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { uploadFileToSpaces, deleteFileFromSpaces } from "@/app/jobs/lib/spaces";
+import { uploadFileToSpaces, deleteFileFromSpaces } from "@/lib/spaces";
 
 interface UploadedFile {
   fileName: string;
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     // /* ---------------------------------------------------------------------- */
 
     try {
-      uploadedFile = await uploadFileToSpaces(file, `job-recruitment/resume/${applicationId}`);
+      uploadedFile = await uploadFileToSpaces(file, `job-recruitment/${applicationId}`);
     } catch (error: any) {
       console.error("Upload file error:", error);
 

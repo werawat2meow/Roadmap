@@ -1,66 +1,24 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import {
-  useRouter,
-} from "next/navigation";
-
-import {
-  useAuth,
-} from "@/contexts/AuthContext";
-
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import LoadingOrb from "@/app/components/LoadingOrb";
-
-import {
-  swalConfirm,
-  swalError,
-  swalSuccess,
-} from "@/components/Swal";
+import { swalConfirm, swalError, swalSuccess } from "@/components/Swal";
 
 import PortalSidebar from "@/app/admin/components/portal/PortalSidebar";
 import PortalTopbar from "@/app/admin/components/portal/PortalTopbar";
 import PortalMobileHeader from "@/app/admin/components/portal/PortalMobileHeader";
-
-import {
-  PORTAL_SIDEBAR,
-} from "@/app/admin/components/portal/portalLayoutConfig";
-
-import { App, ConfigProvider } from "antd";
+import { PORTAL_SIDEBAR, } from "@/app/admin/components/portal/portalLayoutConfig";
 
 /* =========================================================
-   PortalLayout
-   ---------------------------------------------------------
-   Layout กลางสำหรับทุกโมดูลที่ต้องใช้ Sidebar/Topbar
-   แบบเดียวกัน (admin, recruitment, ...)
-
-   วิธีใช้:
-   import PortalLayout from "@/app/components/portal/PortalLayout";
-
-   export default function SomeLayout({ children }) {
-     return <PortalLayout>{children}</PortalLayout>;
-   }
+   Component
 ========================================================= */
 
-export default function PortalLayout({
+export default function AdminLayout({
   children,
-
-  // ปรับแต่งได้ต่อโมดูล
-  loginPath = "/login",
-  logoutApiPath = "/api/auth/logout",
-  userStorageKey = "employee_user",
-
-  logoutConfirmTitle = "ออกจากระบบ?",
-  logoutConfirmText = "คุณต้องการออกจากระบบใช่หรือไม่",
-  logoutSuccessText = "ออกจากระบบสำเร็จ",
-  logoutFailTitle = "ออกจากระบบไม่สำเร็จ",
-  logoutFailFallbackText = "ไม่สามารถออกจากระบบได้",
 }) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
   const {
     user,
@@ -84,6 +42,48 @@ export default function PortalLayout({
   ] = useState(false);
 
   /* =======================================================
+     Mobile Sidebar Responsive
+
+     เมื่อขยายหน้าจอกลับเข้า Desktop (lg >= 1024px)
+     ให้ปิด Mobile Sidebar / Overlay อัตโนมัติ
+  ======================================================= */
+
+  useEffect(() => {
+    const mediaQuery =
+      window.matchMedia(
+        "(min-width: 1024px)"
+      );
+
+    const handleChange = (
+      event
+    ) => {
+      if (event.matches) {
+        setMobileOpen(false);
+      }
+    };
+
+    /*
+     * เช็กทันทีตอน Layout mount
+     * กัน state Mobile Drawer ค้างใน Desktop
+     */
+    if (mediaQuery.matches) {
+      setMobileOpen(false);
+    }
+
+    mediaQuery.addEventListener(
+      "change",
+      handleChange
+    );
+
+    return () => {
+      mediaQuery.removeEventListener(
+        "change",
+        handleChange
+      );
+    };
+  }, []);
+
+  /* =======================================================
      Auth Guard
   ======================================================= */
 
@@ -94,14 +94,13 @@ export default function PortalLayout({
 
     if (!user) {
       router.replace(
-        loginPath
+        "/login"
       );
     }
   }, [
     loadingUser,
     router,
     user,
-    loginPath,
   ]);
 
   /* =======================================================
@@ -114,15 +113,16 @@ export default function PortalLayout({
         return;
       }
 
-      const result =
-        await swalConfirm(
-          logoutConfirmTitle,
-          logoutConfirmText
-        );
+      const confirmed =
+        await swalConfirm({
+          title: "ออกจากระบบ?",
+          text: "คุณต้องการออกจากระบบใช่หรือไม่",
+          confirmButtonText: "ออกจากระบบ",
+          cancelButtonText: "ยกเลิก",
+          icon: "warning",
+        });
 
-      if (
-        !result?.isConfirmed
-      ) {
+      if (!confirmed) {
         return;
       }
 
@@ -131,7 +131,7 @@ export default function PortalLayout({
       try {
         const response =
           await fetch(
-            logoutApiPath,
+            "/api/auth/logout",
             {
               method: "POST",
             }
@@ -147,37 +147,35 @@ export default function PortalLayout({
         if (!response.ok) {
           throw new Error(
             payload?.error ||
-              logoutFailFallbackText
+              "ไม่สามารถออกจากระบบได้"
           );
         }
 
-        if (userStorageKey) {
-          localStorage.removeItem(
-            userStorageKey
-          );
-        }
+        localStorage.removeItem(
+          "employee_user"
+        );
 
         setUser?.(null);
 
         await swalSuccess(
-          logoutSuccessText
+          "ออกจากระบบสำเร็จ"
         );
 
         router.replace(
-          loginPath
+          "/login"
         );
 
         router.refresh();
       } catch (error) {
         console.error(
-          "PORTAL_LOGOUT_ERROR:",
+          "ADMIN_LOGOUT_ERROR:",
           error
         );
 
         await swalError(
-          logoutFailTitle,
+          "ออกจากระบบไม่สำเร็จ",
           error?.message ||
-            logoutFailFallbackText
+            "ไม่สามารถออกจากระบบได้"
         );
       } finally {
         setLoggingOut(
@@ -202,6 +200,9 @@ export default function PortalLayout({
 
   /* =======================================================
      Layout Variables
+
+     ใช้ CSS Variables เพื่อให้ Sidebar / Topbar / Content
+     อ้างอิงขนาดชุดเดียวกันจาก portalLayoutConfig.js
   ======================================================= */
 
   const layoutStyle = {
@@ -234,10 +235,13 @@ export default function PortalLayout({
         bg-slate-50
       "
     >
+      {/* ===================================================
+          Sidebar
+      =================================================== */}
+
       <PortalSidebar
-        collapsed={
-          collapsed
-        }
+        user={user}
+        collapsed={collapsed}
         setCollapsed={
           setCollapsed
         }
@@ -247,7 +251,17 @@ export default function PortalLayout({
         setMobileOpen={
           setMobileOpen
         }
+        loggingOut={
+          loggingOut
+        }
+        onLogout={
+          handleLogout
+        }
       />
+
+      {/* ===================================================
+          Desktop Topbar
+      =================================================== */}
 
       <PortalTopbar
         user={user}
@@ -262,6 +276,10 @@ export default function PortalLayout({
         }
       />
 
+      {/* ===================================================
+          Mobile Header
+      =================================================== */}
+
       <PortalMobileHeader
         onOpen={() =>
           setMobileOpen(
@@ -269,6 +287,10 @@ export default function PortalLayout({
           )
         }
       />
+
+      {/* ===================================================
+          Main Content
+      =================================================== */}
 
       <main
         className={`
@@ -298,11 +320,7 @@ export default function PortalLayout({
           }
         `}
       >
-        <ConfigProvider>
-          <App>
-            {children}
-          </App>
-        </ConfigProvider>
+        {children}
       </main>
     </div>
   );

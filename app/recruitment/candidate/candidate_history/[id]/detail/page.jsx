@@ -21,6 +21,8 @@ import {
 const { Text } = Typography;
 
 const APPLICATION_STATUS = [
+  { value: 16, label: "ยื่น Resume" },
+  { value: 18, label: "รออัปเดตข้อมูล resume" },
   { value: 1, label: "รอพิจารณา" },
   { value: 2, label: "HRD ส่งต่อ HRM" },
   { value: 3, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
@@ -30,7 +32,7 @@ const APPLICATION_STATUS = [
   { value: 7, label: "ขาดการสัมภาษณ์" },
   { value: 8, label: "ส่งต่อการสัมภาษณ์" },
   { value: 9, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
-  { value: 16, label: "ยื่น Resume" },
+  { value: 17, label: "รอเริ่มงาน" },    
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
 ];
@@ -61,6 +63,10 @@ export default function Page({ params }) {
 
   const [status, setStatus] = useState(undefined);
 
+  const [positions, setPositions] = useState([]);
+  const [positionId, setPositionId] = useState(undefined);
+  const [loadingPositions, setLoadingPositions] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -87,18 +93,57 @@ export default function Page({ params }) {
 
     setStatus(data?.application?.status);
 
+    setPositionId(data?.application?.position_id);
+
     const firstInterview = data?.interviews?.[0];
+
     setInterviewDateTime(
       firstInterview?.interview_datetime
         ? dayjs(firstInterview.interview_datetime)
         : null
     );
+
     setInterviewType(firstInterview?.interview_type ?? undefined);
+
     setInterviewData({
       location: firstInterview?.location ?? "",
       meeting_url: firstInterview?.meeting_url ?? "",
     });
   }, [data]);
+
+  async function fetchPositions() {
+    try {
+      setLoadingPositions(true);
+
+      const res = await fetch("/recruitment/api/job_description/positions", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Load positions failed");
+      }
+
+      // รองรับทั้งกรณี API คืน array ตรง ๆ
+      // และกรณี API คืน { positions: [...] }
+      const positionList = Array.isArray(result)
+        ? result
+        : result.positions ?? result.data ?? [];
+
+      setPositions(positionList);
+    } catch (err) {
+      console.error("fetchPositions error:", err);
+      setErrorMessage(err.message || "ไม่สามารถโหลดข้อมูลตำแหน่งได้");
+    } finally {
+      setLoadingPositions(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchPositions();
+  }, []);
 
   async function fetchCandidateDetail() {
     try {
@@ -169,6 +214,12 @@ export default function Page({ params }) {
       return;
     }
 
+    // ถ้า status === 18 ต้องเลือกตำแหน่งก่อน
+    if (status === 18 && !positionId) {
+      setErrorMessage("กรุณาเลือกตำแหน่ง");
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -177,6 +228,9 @@ export default function Page({ params }) {
         location: interviewData.location,
         meeting_url: interviewData.meeting_url,
         status,
+        ...(status === 18 && {
+          position_id: positionId,
+        }),
       };
 
       if (requiresInterviewDetails) {
@@ -221,6 +275,38 @@ export default function Page({ params }) {
         documents={data?.documents}
         interviews={data?.interviews?.[0]}
       />
+
+      { ( status === 18 ) && (
+        <div className="p-6" >
+          <Card title="เลือกตำแหน่ง">
+            <div className="flex flex-col gap-2">
+              <Text strong>ตำแหน่งที่ต้องการสมัคร</Text>
+
+              <Select
+                showSearch
+                allowClear
+                placeholder="กรุณาเลือกตำแหน่ง"
+                value={positionId}
+                loading={loadingPositions}
+                style={{ width: "100%" }}
+                optionFilterProp="label"
+                onChange={(value) => {
+                  setPositionId(value);
+                }}
+                options={positions.map((position) => ({
+                  value: position.id,
+                  label:
+                    position.position_name ??
+                    position.name ??
+                    position.title ??
+                    "-",
+                }))}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
+
 
       {APPLICATION_STATUS.some((item) => item.value === status) && (
         <div className="p-6" >
@@ -341,7 +427,7 @@ export default function Page({ params }) {
             </div>
           </Card>
         </div>
-      )}
+      )}      
 
       <div className="px-6 mb-5">
         {errorMessage && (

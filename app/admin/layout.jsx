@@ -24,6 +24,7 @@ import {
 import PortalSidebar from "./components/portal/PortalSidebar";
 import PortalTopbar from "./components/portal/PortalTopbar";
 import PortalMobileHeader from "./components/portal/PortalMobileHeader";
+import PortalGuidedTour from "./components/portal/PortalGuidedTour";
 
 import {
   PORTAL_SIDEBAR,
@@ -253,6 +254,12 @@ export default function AdminLayout({
         bg-slate-50
       "
     >
+      {/* ===================================================
+        Guided Tour
+      =================================================== */}  
+      <PortalGuidedTour />
+
+      
       {/* ===================================================
           Sidebar
       =================================================== */}

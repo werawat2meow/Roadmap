@@ -128,6 +128,151 @@ function cleanNullableText(
   return cleaned || null;
 }
 
+function normalizeBankAccountNo(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .replace(/\D/g, "")
+    .trim();
+}
+
+function normalizeInitialBankAccount(
+  body = {}
+) {
+  return {
+    payment_method_id:
+      cleanNullableText(
+        body.payment_method_id
+      ),
+
+    bank_id:
+      cleanNullableText(
+        body.bank_id
+      ),
+
+    account_no:
+      normalizeBankAccountNo(
+        body.bank_account_no
+      ),
+
+    account_name:
+      cleanNullableText(
+        body.bank_account_name
+      ),
+
+    branch_name:
+      cleanNullableText(
+        body.bank_branch_name
+      ),
+  };
+}
+
+function hasInitialBankAccount(
+  bankAccount
+) {
+  return Boolean(
+    bankAccount?.bank_id ||
+      bankAccount?.account_no ||
+      bankAccount?.account_name ||
+      bankAccount?.branch_name
+  );
+}
+
+function validateInitialBankAccount(
+  bankAccount
+) {
+  if (
+    !hasInitialBankAccount(
+      bankAccount
+    )
+  ) {
+    return null;
+  }
+
+  if (!bankAccount.bank_id) {
+    return "กรุณาเลือกธนาคาร";
+  }
+
+  if (
+    !/^\d{10}$/.test(
+      bankAccount.account_no ||
+        ""
+    )
+  ) {
+    return "เลขบัญชีธนาคารต้องเป็นตัวเลข 10 หลัก";
+  }
+
+  if (!bankAccount.account_name) {
+    return "กรุณากรอกชื่อบัญชีธนาคาร";
+  }
+
+  return null;
+}
+
+async function rollbackCreatedEmployeeAfterBankError(
+  result
+) {
+  const employeeId =
+    result?.data?.employee?.id ||
+    null;
+
+  const authUserId =
+    result?.data?.user_account
+      ?.auth_user_id ||
+    null;
+
+  if (employeeId) {
+    /*
+     * ลบข้อมูลลูกที่ transaction อาจสร้างไว้
+     * ก่อนลบ employees เพื่อกัน FK ที่ไม่ได้ CASCADE
+     */
+    await supabaseAdmin
+      .from(
+        "employee_compensations"
+      )
+      .delete()
+      .eq(
+        "employee_id",
+        employeeId
+      );
+
+    await supabaseAdmin
+      .from(
+        "user_accounts"
+      )
+      .delete()
+      .eq(
+        "employee_id",
+        employeeId
+      );
+
+    await supabaseAdmin
+      .from(
+        "employees"
+      )
+      .delete()
+      .eq(
+        "id",
+        employeeId
+      );
+  }
+
+  if (authUserId) {
+    try {
+      await supabaseAdmin.auth.admin.deleteUser(
+        authUserId
+      );
+    } catch (error) {
+      console.error(
+        "ROLLBACK_EMPLOYEE_AUTH_USER_AFTER_BANK_ERROR:",
+        error
+      );
+    }
+  }
+}
+
 function parsePositiveInteger(
   value,
   fallback,
@@ -2393,6 +2538,32 @@ if (
         body
       );
 
+    const initialBankAccount =
+      normalizeInitialBankAccount(
+        body
+      );
+
+    const initialBankAccountEnabled =
+      hasInitialBankAccount(
+        initialBankAccount
+      );
+
+    const initialBankAccountValidationError =
+      validateInitialBankAccount(
+        initialBankAccount
+      );
+
+    if (
+      initialBankAccountValidationError
+    ) {
+      return errorResponse(
+        initialBankAccountValidationError,
+        {
+          status: 400,
+        }
+      );
+    }
+
     /* -----------------------------------------------------
        VALIDATE CREATE PAYLOAD
     ----------------------------------------------------- */
@@ -2428,6 +2599,213 @@ if (
           status: 403,
         }
       );
+    }
+
+    /* -----------------------------------------------------
+       INITIAL BANK ACCOUNT PERMISSION + MASTER VALIDATION
+
+       ถ้ามีการส่งข้อมูลบัญชีธนาคารมาจาก Employee Wizard
+       ต้องผ่าน ems.employee_bank_accounts.create ด้วย
+    ----------------------------------------------------- */
+
+    let bankAccountGuard =
+      null;
+
+    if (initialBankAccountEnabled) {
+      bankAccountGuard =
+        await requireScopedAccess(
+          "ems.employee_bank_accounts",
+          "create"
+        );
+
+      if (!bankAccountGuard.ok) {
+        return bankAccountGuard.response;
+      }
+
+      if (
+        !bankAccountGuard.canAccessEmployee(
+          employee
+        )
+      ) {
+        return errorResponse(
+          "คุณไม่มีสิทธิ์เพิ่มบัญชีธนาคารให้พนักงานใน Scope องค์กรที่เลือก",
+          {
+            status: 403,
+          }
+        );
+      }
+
+      if (
+        !isUuid(
+          initialBankAccount.bank_id
+        )
+      ) {
+        return errorResponse(
+          "ธนาคารไม่ถูกต้อง",
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (
+        initialBankAccount.payment_method_id &&
+        !isUuid(
+          initialBankAccount.payment_method_id
+        )
+      ) {
+        return errorResponse(
+          "วิธีการจ่ายเงินไม่ถูกต้อง",
+          {
+            status: 400,
+          }
+        );
+      }
+
+      const [
+        bankResult,
+        paymentMethodResult,
+        duplicateBankAccountResult,
+      ] =
+        await Promise.all([
+          supabaseAdmin
+            .from(
+              "banks"
+            )
+            .select(
+              "id, status"
+            )
+            .eq(
+              "id",
+              initialBankAccount.bank_id
+            )
+            .maybeSingle(),
+
+          initialBankAccount.payment_method_id
+            ? supabaseAdmin
+                .from(
+                  "payment_methods"
+                )
+                .select(
+                  "id, status, supports_payroll"
+                )
+                .eq(
+                  "id",
+                  initialBankAccount.payment_method_id
+                )
+                .maybeSingle()
+            : Promise.resolve({
+                data: null,
+                error: null,
+              }),
+
+          supabaseAdmin
+            .from(
+              "employee_bank_accounts"
+            )
+            .select(
+              "id"
+            )
+            .eq(
+              "bank_id",
+              initialBankAccount.bank_id
+            )
+            .eq(
+              "account_no",
+              initialBankAccount.account_no
+            )
+            .maybeSingle(),
+        ]);
+
+      if (bankResult.error) {
+        return errorResponse(
+          "ไม่สามารถตรวจสอบธนาคารได้",
+          {
+            status:
+              getErrorStatus(
+                bankResult.error
+              ),
+            error:
+              bankResult.error.message,
+            details:
+              getDatabaseErrorDetails(
+                bankResult.error
+              ),
+          }
+        );
+      }
+
+      if (
+        !bankResult.data ||
+        bankResult.data.status ===
+          "inactive"
+      ) {
+        return errorResponse(
+          "ธนาคารที่เลือกไม่พร้อมใช้งาน",
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (
+        paymentMethodResult.error
+      ) {
+        return errorResponse(
+          "ไม่สามารถตรวจสอบวิธีการจ่ายเงินได้",
+          {
+            status:
+              getErrorStatus(
+                paymentMethodResult.error
+              ),
+            error:
+              paymentMethodResult.error.message,
+          }
+        );
+      }
+
+      if (
+        initialBankAccount.payment_method_id &&
+        (!paymentMethodResult.data ||
+          paymentMethodResult.data.status ===
+            "inactive" ||
+          paymentMethodResult.data.supports_payroll ===
+            false)
+      ) {
+        return errorResponse(
+          "วิธีการจ่ายเงินที่เลือกไม่รองรับ Payroll",
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (
+        duplicateBankAccountResult.error
+      ) {
+        return errorResponse(
+          "ไม่สามารถตรวจสอบเลขบัญชีธนาคารซ้ำได้",
+          {
+            status:
+              getErrorStatus(
+                duplicateBankAccountResult.error
+              ),
+            error:
+              duplicateBankAccountResult.error.message,
+          }
+        );
+      }
+
+      if (
+        duplicateBankAccountResult.data
+      ) {
+        return errorResponse(
+          "เลขบัญชีนี้มีอยู่ในธนาคารแล้ว",
+          {
+            status: 409,
+          }
+        );
+      }
     }
 
     /* -----------------------------------------------------
@@ -2848,6 +3226,7 @@ if (
        9. Insert employee_compensations (Initial Base Salary)
        10. Insert user_accounts
        11. Write activity log
+       12. Insert employee_bank_accounts (ถ้ามีข้อมูลบัญชีเริ่มต้น)
     ----------------------------------------------------- */
 
     const result =
@@ -2890,6 +3269,147 @@ if (
     }
 
     /* -----------------------------------------------------
+       INSERT INITIAL EMPLOYEE BANK ACCOUNT
+
+       employee_bank_accounts แยกจาก employees
+       และทำหลังได้ employee.id แล้ว
+    ----------------------------------------------------- */
+
+    let insertedBankAccount =
+      null;
+
+    if (initialBankAccountEnabled) {
+      const employeeId =
+        result?.data?.employee?.id ||
+        null;
+
+      if (!employeeId) {
+        await rollbackCreatedEmployeeAfterBankError(
+          result
+        );
+
+        return errorResponse(
+          "สร้างพนักงานแล้วแต่ไม่พบ employee_id สำหรับบันทึกบัญชีธนาคาร ระบบยกเลิกการสร้างพนักงานแล้ว",
+          {
+            status: 500,
+          }
+        );
+      }
+
+      const actorId =
+        bankAccountGuard?.access?.id ||
+        guard?.access?.id ||
+        null;
+
+      const {
+        data: bankAccountData,
+        error: bankAccountError,
+      } =
+        await supabaseAdmin
+          .from(
+            "employee_bank_accounts"
+          )
+          .insert({
+            employee_id:
+              employeeId,
+
+            bank_id:
+              initialBankAccount.bank_id,
+
+            payment_method_id:
+              initialBankAccount.payment_method_id ||
+              null,
+
+            account_no:
+              initialBankAccount.account_no,
+
+            account_name:
+              initialBankAccount.account_name,
+
+            branch_name:
+              initialBankAccount.branch_name,
+
+            is_primary: true,
+
+            effective_date:
+              employee.start_work_date ||
+              new Date()
+                .toISOString()
+                .slice(0, 10),
+
+            expire_date: null,
+
+            status: "active",
+
+            remark:
+              "สร้างจาก Employee Wizard",
+
+            created_by:
+              actorId,
+
+            updated_by:
+              actorId,
+          })
+          .select(
+            `
+              id,
+              employee_id,
+              bank_id,
+              payment_method_id,
+              account_no,
+              account_name,
+              branch_name,
+              is_primary,
+              effective_date,
+              expire_date,
+              status,
+              remark,
+              created_at,
+              updated_at
+            `
+          )
+          .single();
+
+      if (bankAccountError) {
+        console.error(
+          "CREATE_INITIAL_EMPLOYEE_BANK_ACCOUNT_ERROR:",
+          bankAccountError
+        );
+
+        await rollbackCreatedEmployeeAfterBankError(
+          result
+        );
+
+        return errorResponse(
+          "ไม่สามารถบันทึกบัญชีธนาคารเริ่มต้นได้ ระบบยกเลิกการสร้างพนักงานแล้ว",
+          {
+            status:
+              getErrorStatus(
+                bankAccountError
+              ),
+
+            error:
+              bankAccountError.message,
+
+            details:
+              getDatabaseErrorDetails(
+                bankAccountError
+              ),
+          }
+        );
+      }
+
+      insertedBankAccount =
+        bankAccountData;
+
+      result.data = {
+        ...result.data,
+        employee_bank_account:
+          insertedBankAccount,
+      };
+    }
+
+    /* -----------------------------------------------------
        SUCCESS RESPONSE
     ----------------------------------------------------- */
 
@@ -2907,6 +3427,11 @@ if (
             Boolean(
               account
                 .create_user_account
+            ),
+
+          bankAccountCreated:
+            Boolean(
+              insertedBankAccount
             ),
 
           roleId:

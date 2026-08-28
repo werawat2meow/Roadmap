@@ -1,62 +1,155 @@
 "use client";
 
-import { Form, Modal } from "antd";
-import { useEffect } from "react";
-import EarningTypeForm, { INITIAL_EARNING_TYPE_VALUES } from "./EarningTypeForm";
+import {
+  useEffect,
+  useMemo,
+} from "react";
 
-function toFormValues(record) {
-  if (!record) return { ...INITIAL_EARNING_TYPE_VALUES };
+import { Modal } from "antd";
+import dayjs from "dayjs";
+
+import EarningTypeForm from "./EarningTypeForm";
+
+function getInitialValues() {
   return {
-    earning_type_code: record.earning_type_code || "",
-    earning_type_name_th: record.earning_type_name_th || "",
-    earning_type_name_en: record.earning_type_name_en || "",
-    description: record.description || "",
-    earning_category: record.earning_category || "other",
-    is_taxable: Boolean(record.is_taxable),
-    is_social_security_base: Boolean(record.is_social_security_base),
-    is_provident_fund_base: Boolean(record.is_provident_fund_base),
-    is_recurring: Boolean(record.is_recurring),
-    is_proratable: Boolean(record.is_proratable),
-    sort_order: Number(record.sort_order || 0),
-    status: record.status || "active",
+    company_id: undefined,
+    earning_code: "",
+    earning_name: "",
+    description: null,
+    earning_category: "salary",
+    calculation_method: "fixed",
+    default_amount: 0,
+    taxable: true,
+    social_security_applicable: false,
+    provident_fund_applicable: false,
+    include_in_gross_pay: true,
+    is_recurring: true,
+    effective_date: dayjs(),
+    expire_date: null,
+    status: "active",
+    sort_order: 0,
+    remark: null,
   };
 }
 
-export default function EarningTypeModal({ open = false, mode = "create", record = null, saving = false, onCancel, onSubmit }) {
-  const [form] = Form.useForm();
-  const isView = mode === "view";
-  const title = mode === "create" ? "เพิ่มประเภทเงินได้" : mode === "edit" ? "แก้ไขประเภทเงินได้" : "รายละเอียดประเภทเงินได้";
+export default function EarningTypeModal({
+  open,
+  form,
+  mode = "create",
+  selected = null,
+  saving = false,
+  onCancel,
+  onFinish,
+}) {
+  const disabled = mode === "view";
+
+  const companyInitialOption =
+    useMemo(() => {
+      const company = selected?.companies;
+
+      if (!selected?.company_id) {
+        return null;
+      }
+
+      if (!company) {
+        return {
+          value: selected.company_id,
+          label: "บริษัทที่เลือก",
+        };
+      }
+
+      const name =
+        company.company_name_th ||
+        company.company_name_en ||
+        "-";
+
+      return {
+        value: selected.company_id,
+        label: company.company_code
+          ? `${company.company_code} - ${name}`
+          : name,
+      };
+    }, [selected]);
 
   useEffect(() => {
-    if (open) form.setFieldsValue(toFormValues(mode === "create" ? null : record));
-  }, [form, open, mode, record]);
+    if (!open) return;
+
+    if (!selected) {
+      form.resetFields();
+      form.setFieldsValue(
+        getInitialValues()
+      );
+      return;
+    }
+
+    form.resetFields();
+
+    form.setFieldsValue({
+      ...selected,
+
+      effective_date:
+        selected.effective_date
+          ? dayjs(selected.effective_date)
+          : dayjs(),
+
+      expire_date:
+        selected.expire_date
+          ? dayjs(selected.expire_date)
+          : null,
+
+      default_amount:
+        selected.default_amount === null ||
+        selected.default_amount === undefined
+          ? null
+          : Number(selected.default_amount),
+    });
+  }, [open, selected, form]);
+
+  const title =
+    mode === "view"
+      ? "รายละเอียดประเภทเงินได้"
+      : mode === "edit"
+        ? "แก้ไขประเภทเงินได้"
+        : "เพิ่มประเภทเงินได้";
 
   return (
     <Modal
       open={open}
+      forceRender
+      mask={{ closable: false }}
       title={title}
       width={980}
-      confirmLoading={saving}
-      destroyOnHidden
-      mask={{ closable: !saving }}
-      okText={isView ? "ปิด" : mode === "create" ? "บันทึก" : "บันทึกการแก้ไข"}
+      okText={
+        mode === "view"
+          ? "ปิด"
+          : "บันทึก"
+      }
       cancelText="ยกเลิก"
-      cancelButtonProps={{ style: { display: isView ? "none" : undefined }, disabled: saving }}
+      confirmLoading={saving}
+      cancelButtonProps={{
+        style:
+          mode === "view"
+            ? { display: "none" }
+            : undefined,
+      }}
       onCancel={onCancel}
-      onOk={async () => {
-        if (isView) return onCancel?.();
-        try {
-          const values = await form.validateFields();
-          await onSubmit?.({
-            ...values,
-            earning_type_code: String(values.earning_type_code || "").trim().toUpperCase(),
-          });
-        } catch (error) {
-          if (!error?.errorFields) throw error;
+      onOk={() => {
+        if (mode === "view") {
+          onCancel?.();
+          return;
         }
+
+        form.submit();
       }}
     >
-      <EarningTypeForm form={form} mode={mode} disabled={saving} />
+      <EarningTypeForm
+        form={form}
+        disabled={disabled}
+        companyInitialOption={
+          companyInitialOption
+        }
+        onFinish={onFinish}
+      />
     </Modal>
   );
 }

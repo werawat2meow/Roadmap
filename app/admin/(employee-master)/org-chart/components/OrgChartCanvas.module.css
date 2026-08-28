@@ -1,0 +1,105 @@
+.viewport {
+  width: 100%;
+  max-width: 100%;
+  min-height: 520px;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0);
+  background-size: 22px 22px;
+  padding: 28px;
+}
+
+.stage {
+  width: max-content;
+  min-width: 100%;
+  transform-origin: top center;
+  transition: transform 0.18s ease;
+}
+
+.tree {
+  display: flex;
+  justify-content: center;
+}
+
+.tree ul {
+  position: relative;
+  padding-top: 24px;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+.tree li {
+  list-style: none;
+  position: relative;
+  padding: 24px 8px 0;
+  text-align: center;
+}
+
+.tree li::before,
+.tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 24px;
+  border-top: 1px solid #94a3b8;
+}
+
+.tree li::before {
+  right: 50%;
+}
+
+.tree li::after {
+  left: 50%;
+  border-left: 1px solid #94a3b8;
+}
+
+.tree li:only-child::before,
+.tree li:only-child::after {
+  display: none;
+}
+
+.tree li:only-child {
+  padding-top: 0;
+}
+
+.tree li:first-child::before,
+.tree li:last-child::after {
+  border: 0 none;
+}
+
+.tree li:last-child::before {
+  border-right: 1px solid #94a3b8;
+  border-radius: 0 6px 0 0;
+}
+
+.tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.tree ul ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 24px;
+  border-left: 1px solid #94a3b8;
+}
+
+.nodeWrap {
+  display: inline-block;
+  text-align: left;
+  vertical-align: top;
+}
+
+.empty {
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

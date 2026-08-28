@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Col, Row, Tag, Typography, message, Modal, Select } from "antd";
 import AntIcon from '@/components/AntIcon';
 import { useRouter } from "next/navigation";
+import usePageGuard from "@/hooks/usePageGuard";
+import LoadingOrb from "@/app/components/LoadingOrb";
 
 const { Title, Text } = Typography;
 
@@ -20,8 +22,14 @@ const TOKENS = {
 };
 
 export default function InterviewCandidatesPage() {
-  const router = useRouter();
 
+  const { isChecking, canView, canEdit } = usePageGuard({
+    module: "recruitment.schedule.list",
+    unauthorizedRedirect: "/recruitment",
+  });
+
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [reviewers, setReviewers] = useState([]);
   const [selectedReviewer, setSelectedReviewer] = useState(null);
@@ -49,8 +57,10 @@ export default function InterviewCandidatesPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
     loadData(selectedReviewer);
     loadReviewers();
+    setLoading(false);
   }, []);
 
   const handleShare = async (id) => {
@@ -97,6 +107,9 @@ export default function InterviewCandidatesPage() {
     setSelectedImage(null);
     setSelectedName("");
   };
+
+  if (isChecking || loading) return <LoadingOrb />;
+  if (!canView) return null;
 
   return (
     <div

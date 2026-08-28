@@ -164,11 +164,16 @@ export default function RecruitmentApplicationsPage() {
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
 
   // โหลดตัวเลือกตำแหน่งงาน (resource=positions) ครั้งเดียวตอน mount
+  // ใช้ AbortController กัน request ค้างจากรอบแรกตอน React Strict Mode
+  // mount ซ้ำใน dev (mount -> cleanup -> mount)
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadPositions = async () => {
       try {
         const res = await fetch(
-          `/recruitment/api/schedule_interviews?resource=positions`
+          `/recruitment/api/schedule_interviews?resource=positions`,
+          { signal: controller.signal }
         );
         const json = await res.json();
         if (!json.error) {
@@ -181,14 +186,17 @@ export default function RecruitmentApplicationsPage() {
             )
           );
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
         console.error(e);
       }
     };
     loadPositions();
+
+    return () => controller.abort();
   }, []);
 
-  const loadData = async (targetPage: number) => {
+  const loadData = async (targetPage: number, signal?: AbortSignal) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -208,42 +216,80 @@ export default function RecruitmentApplicationsPage() {
       }
 
       const res = await fetch(
-        `/recruitment/api/schedule_interviews?${params.toString()}`
+        `/recruitment/api/schedule_interviews?${params.toString()}`,
+        { signal }
       );
       const json = await res.json();
-      
+
       // API ไม่มี field success, ต้องเช็คจาก error แทน
       if (!json.error) {
         setRows(json.data ?? []);
         setCount(json.count ?? 0);
       } else {
-        console.error(json.error);
+        // console.error(json.error);
+        Modal.error({ title: 'เกิดข้อผิดพลาด', content: json.error });
         setRows([]);
         setCount(0);
       }
-    } catch (e) {
+    } catch (e: any) {
+      // request ถูกยกเลิกเพราะ effect ทำงานซ้ำ (เช่น React Strict Mode ตอน dev,
+      // หรือ user เปลี่ยน filter เร็วๆ) -> ไม่ต้อง log/แจ้ง error ซ้ำ
+      if (e?.name === "AbortError") {
+        return;
+      }
       console.error(e);
     } finally {
-      setLoading(false);
+      // ถ้า request นี้ถูก abort ไปแล้ว ไม่ต้องไปยุ่งกับ loading state
+      // เพราะ request ที่มาแทน (รอบจริง) จะจัดการ loading ของตัวเองอยู่แล้ว
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   };
 
-  // เวลาเปลี่ยน filter ให้ reset ไปหน้า 1 แล้วค่อยยิง fetch ครั้งเดียว
-  // (ป้องกันการยิง loadData ซ้ำซ้อนตอน mount / ตอนเปลี่ยน filter)
+  /**
+   * ===== แก้ไขจุดที่ทำให้ API ถูกเรียกซ้ำ / เรียกไม่ตรงจังหวะ =====
+   *
+   * เดิมมี 2 useEffect แยกกัน:
+   *   1) ฟัง [statusFilter, positionId, dateRange, pageSize] -> ถ้า page != 1 จะ setPage(1) แล้ว return
+   *      (ไม่เรียก API) ถ้า page == 1 อยู่แล้วจะเรียก loadData(1) ทันที
+   *   2) ฟัง [page] -> ถ้า page == 1 จะ return (ไม่เรียก API) ไม่งั้นเรียก loadData(page)
+   *
+   * ปัญหา:
+   *   - ถ้า user แก้ filter ตอนอยู่หน้า 1 พอดี -> effect (1) ยิง loadData(1) ทันที
+   *     แต่ effect (1) ไม่ได้ใส่ page ไว้ใน dependency array ทำให้ eslint disable ไว้
+   *     และพฤติกรรมขึ้นกับ "ค่า page ปัจจุบัน" ที่ closure จับไว้ ณ ตอนนั้น
+   *   - ถ้า user แก้ filter ตอนอยู่หน้าอื่น (เช่นหน้า 3) -> effect (1) แค่ setPage(1) เฉยๆ
+   *     ไม่เรียก API เอง แล้วรอ effect (2) จับ page เปลี่ยนแทน แต่ effect (2) เช็ค
+   *     "if (page === 1) return" ทำให้ "ไม่เรียก API เลย" กลายเป็นบั๊กเรียกน้อยไป
+   *   - ในบาง environment (เช่น React Strict Mode ตอน dev) effect ที่ยิง fetch ตรงๆ
+   *     ตอน mount จะถูกเรียกซ้ำ 2 รอบโดยตั้งใจของ React ทำให้ยิ่งดูเหมือนเรียกซ้ำ
+   *
+   * แก้โดยรวมเป็น useEffect เดียว ให้ loadData ผูกกับทุก dependency ที่เกี่ยวข้อง
+   * ในที่เดียว และ reset page แยกออกมาอีก effect หนึ่งแบบไม่ยิง fetch เอง
+   * เพื่อให้ "มีจุดเดียว" ที่ยิง API ต่อการเปลี่ยนแปลงแต่ละครั้ง
+   */
+
+  // เมื่อ filter เปลี่ยน ให้ reset ไปหน้า 1 เสมอ (ไม่ยิง fetch ตรงนี้)
   useEffect(() => {
-    if (page !== 1) {
-      setPage(1);
-      return;
-    }
-    loadData(1);
+    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, positionId, dateRange, pageSize]);
 
+  // จุดเดียวที่ยิง API: ทำงานตอน mount, ตอน page เปลี่ยน, และตอน filter เปลี่ยน
+  // (ถ้า filter เปลี่ยนตอน page ยังเป็น 1 อยู่แล้ว setPage(1) จะไม่ trigger re-render
+  //  ซ้ำ แต่ effect นี้จะยิงจาก dependency ของ filter ที่เปลี่ยนแทน -> ยิงแค่ครั้งเดียว)
+  //
+  // ใช้ AbortController ยกเลิก request ค้างทุกครั้งที่ effect ทำงานใหม่ก่อนที่จะ
+  // fetch รอบใหม่ ทั้งกรณี dependency เปลี่ยนเร็วๆ ในโค้ดจริง และกรณี React Strict
+  // Mode สั่ง mount effect 2 รอบตอน dev (mount -> cleanup(abort) -> mount)
+  // ผลคือมีแค่ request ล่าสุดเท่านั้นที่ resolve ได้จริง -> Modal.error ไม่ขึ้นซ้ำ
   useEffect(() => {
-    if (page === 1) return; // already handled by the filter effect above
-    loadData(page);
+    const controller = new AbortController();
+    loadData(page, controller.signal);
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, statusFilter, positionId, dateRange, pageSize]);
 
   // ===== เปิด modal อัพเดตข้อมูล (รวมลำดับสัมภาษณ์ + สถานะ) =====
   const openUpdateModal = async (record: Application) => {
@@ -317,7 +363,8 @@ export default function RecruitmentApplicationsPage() {
       const json = await res.json();
 
       if (!json.error) {
-        message.success("อัพเดตข้อมูลเรียบร้อย");
+        // message.success("อัพเดตข้อมูลเรียบร้อย");
+        Modal.success({ title: '', content: "อัพเดตข้อมูลเรียบร้อย" });
 
         // ปิด Modal อัตโนมัติ
         setUpdateModalOpen(false);
@@ -331,11 +378,12 @@ export default function RecruitmentApplicationsPage() {
         // Reload ข้อมูล
         await loadData(page);
       } else {
-        message.error(json.error);
+        Modal.error({ title: 'เกิดข้อผิดพลาด', content: json.error });
+        
       }
     } catch (err) {
       console.error(err);
-      message.error("เกิดข้อผิดพลาด");
+      Modal.error({ title: 'เกิดข้อผิดพลาด', content: err });
     } finally {
       setSavingUpdate(false);
     }

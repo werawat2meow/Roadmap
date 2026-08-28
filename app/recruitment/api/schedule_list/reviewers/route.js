@@ -7,12 +7,14 @@ export async function GET() {
       .from("recruit_job_interviews")
       .select(`
         reviewer,
+        status,
         employees:reviewer (
           id,
           first_name_th,
           last_name_th
         )
       `)
+      .eq("status",5)
       .not("reviewer", "is", null);
 
     if (error) {

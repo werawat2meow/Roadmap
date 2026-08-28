@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getUserAccess } from "@/app/recruitment/lib/getUserId";
 
 /**
  * GET /recruitment/api/candidate
@@ -22,6 +23,29 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
  */
 export async function GET(request) {
   try {
+
+    const user = await getUserAccess();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Not set company Data" },
+        { status: 401 }
+      );
+    }
+
+    const branchArray = user.branchArray ?? [];
+
+    const branchIds = branchArray
+      .map((branch) => branch.id)
+      .filter(Boolean);
+
+    // ---------- ไม่มี branchArray -> return error สำหรับ alert แจ้งเตือน ----------
+    if (branchIds.length === 0) {
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลสาขา" },
+        { status: 400 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // ---------- Lookup mode: ตัวเลือกตำแหน่งงาน ----------
@@ -53,6 +77,45 @@ export async function GET(request) {
       pageSize = Math.min(pageSize, 100); // จำกัด max
     }
 
+    // ---------- หา position_id ที่อยู่ในสาขาที่ user มีสิทธิ์ ----------
+    // positions -> unit_positions -> units -> divisions -> departments -> branch_departments -> branch_id
+    const { data: branchPositions, error: branchPositionsError } = await supabaseAdmin
+      .from('positions')
+      .select(
+        `
+        id,
+        unit_positions!inner (
+          units!inner (
+            divisions!inner (
+              departments!inner (
+                branch_departments!inner ( branch_id )
+              )
+            )
+          )
+        )
+      `
+      )
+      .in(
+        'unit_positions.units.divisions.departments.branch_departments.branch_id',
+        branchIds
+      );
+
+    if (branchPositionsError) {
+      return NextResponse.json(
+        { error: branchPositionsError.message },
+        { status: 500 }
+      );
+    }
+
+    const allowedPositionIds = [
+      ...new Set((branchPositions ?? []).map((p) => p.id)),
+    ];
+
+    // ถ้าไม่มีตำแหน่งที่ตรงกับสาขาที่ user มีสิทธิ์เลย ให้ return ผลลัพธ์ว่างทันที
+    if (allowedPositionIds.length === 0) {
+      return NextResponse.json({ data: [], count: 0 });
+    }
+
     let query = supabaseAdmin
     .from("recruit_job_applications")
     .select(
@@ -72,6 +135,7 @@ export async function GET(request) {
       `,
       { count: "exact" }
     )
+    .in('position_id', allowedPositionIds)
     .order("interview_order", {
       foreignTable: "recruit_job_interviews",
       ascending: false,
@@ -114,8 +178,8 @@ export async function GET(request) {
       query = query.range(from, to);
     }
 
-    const { data, error, count } = await query;   
-    
+    const { data, error, count } = await query;
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

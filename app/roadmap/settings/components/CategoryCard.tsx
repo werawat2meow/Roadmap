@@ -269,6 +269,10 @@ export default function CategoryCard({
                 <h2 className="text-2xl font-bold tracking-tight">
                   {category.title}
                 </h2>
+                {/* 🌟 ตัวแสดงผล Level ที่เพิ่มกลับมา */}
+                <div className="text-[12px] font-bold bg-white/20 text-white px-3 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
+                  Level {category.level}
+                </div>
                 <div
                   className={`text-[10px] uppercase px-2.5 py-1 rounded-lg ${getBadgeClass(category.type)}`}
                 >

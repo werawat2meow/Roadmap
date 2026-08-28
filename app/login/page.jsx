@@ -158,7 +158,21 @@ export default function LoginPage() {
                 </Form.Item>
 
 
-                <Form.Item label={<span className="font-medium text-slate-700">Password</span>} name="password" rules={[{ required: true, message: "Please enter password" }]}>
+                <Form.Item 
+                  label={
+                    <span className="font-medium text-slate-700">
+                      Password
+                    </span>} 
+                  name="password" 
+                  normalize={(value) =>
+                    String(value || "").replace(/\s+/g, "")
+                  } 
+                  rules={[
+                    { 
+                      required: true, 
+                      message: "Please enter password" 
+                    }
+                  ]}>
                   <Input.Password prefix={<LockOutlined className="text-slate-400" />} placeholder="Enter password" autoComplete="current-password"
                     iconRender={(visible) => visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />}
                     className="!rounded-2xl !py-2" />

@@ -5,6 +5,7 @@ import {
   Col,
   Divider,
   Form,
+  Input,
   InputNumber,
   Row,
   Select,
@@ -40,6 +41,79 @@ function sameId(left, right) {
   }
 
   return String(left) === String(right);
+}
+
+function normalizeBankAccountNo(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .replace(/\D/g, "")
+    .slice(0, 10);
+}
+
+function formatBankAccountNo(
+  value
+) {
+  const digits =
+    normalizeBankAccountNo(
+      value
+    );
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  }
+
+  if (digits.length <= 9) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 4)}-${digits.slice(4)}`;
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 4)}-${digits.slice(4, 9)}-${digits.slice(9, 10)}`;
+}
+
+function getBankLabel(
+  item
+) {
+  const code =
+    item?.bank_code ||
+    item?.code ||
+    "";
+
+  const name =
+    item?.bank_name_th ||
+    item?.bank_name ||
+    item?.bank_name_en ||
+    item?.name ||
+    "-";
+
+  return code
+    ? `${code} - ${name}`
+    : name;
+}
+
+function getPaymentMethodLabel(
+  item
+) {
+  const code =
+    item?.payment_method_code ||
+    item?.method_code ||
+    item?.code ||
+    "";
+
+  const name =
+    item?.payment_method_name ||
+    item?.method_name ||
+    item?.name ||
+    "-";
+
+  return code
+    ? `${code} - ${name}`
+    : name;
 }
 
 export default function EmployeePayrollStep({
@@ -78,6 +152,12 @@ export default function EmployeePayrollStep({
       form
     );
 
+  const paymentMethodId =
+    Form.useWatch(
+      "payment_method_id",
+      form
+    );
+
   const positionLevelId =
     Form.useWatch(
       "position_level_id",
@@ -105,6 +185,12 @@ export default function EmployeePayrollStep({
 
   const positionLevelBands =
     masterData.positionLevelBands || [];
+
+  const banks =
+    masterData.banks || [];
+
+  const paymentMethods =
+    masterData.paymentMethods || [];
 
   const payrollCompanyOptions =
     useMemo(
@@ -204,6 +290,78 @@ export default function EmployeePayrollStep({
         })),
     [positionLevelBands, positionLevelId]
   );
+
+  const bankOptions =
+    useMemo(
+      () =>
+        banks.map((item) => ({
+          value: item.id,
+          label: getBankLabel(
+            item
+          ),
+        })),
+      [banks]
+    );
+
+  const paymentMethodOptions =
+    useMemo(
+      () => {
+        const payrollMethods =
+          paymentMethods.filter(
+            (item) =>
+              item?.supports_payroll !==
+              false
+          );
+
+        const bankMethods =
+          payrollMethods.filter(
+            (item) =>
+              item?.bank_required ===
+                true ||
+              item?.payment_type ===
+                "bank_transfer"
+          );
+
+        const rows =
+          bankMethods.length > 0
+            ? bankMethods
+            : payrollMethods;
+
+        return rows.map(
+          (item) => ({
+            value: item.id,
+            label:
+              getPaymentMethodLabel(
+                item
+              ),
+          })
+        );
+      },
+      [paymentMethods]
+    );
+
+  const selectedPaymentMethod =
+    useMemo(
+      () =>
+        paymentMethods.find(
+          (item) =>
+            sameId(
+              item.id,
+              paymentMethodId
+            )
+        ) || null,
+      [
+        paymentMethods,
+        paymentMethodId,
+      ]
+    );
+
+  const paymentMethodRequiresBank =
+    Boolean(
+      selectedPaymentMethod?.bank_required
+    ) ||
+    selectedPaymentMethod?.payment_type ===
+      "bank_transfer";
 
   const selectedSalaryBand =
     useMemo(
@@ -496,6 +654,292 @@ export default function EmployeePayrollStep({
           </Form.Item>
         </Col>
       </Row>
+
+      {mode === "create" ? (
+        <>
+          <Divider
+            titlePlacement="left"
+            plain
+          >
+            <Space>
+              <BankOutlined />
+              บัญชีรับเงินเดือนเริ่มต้น
+            </Space>
+          </Divider>
+
+          <Alert
+            showIcon
+            type="info"
+            title="บัญชีธนาคารพนักงาน"
+            description="หากกำหนดบัญชีในขั้นตอนนี้ ระบบจะสร้างบัญชีหลักใน employee_bank_accounts หลังสร้างพนักงานสำเร็จ โดยเลขบัญชีจะเก็บเป็นตัวเลข 10 หลักและแสดงผลแบบมีขีด"
+            className="mb-4"
+          />
+
+          <Row gutter={[16, 0]}>
+            <Col
+              xs={24}
+              md={12}
+            >
+              <Form.Item
+                label="วิธีการจ่ายเงิน"
+                name="payment_method_id"
+              >
+                <Select
+                  showSearch
+                  allowClear
+                  loading={masterLoading}
+                  disabled={disabled}
+                  placeholder="เลือกวิธีการจ่ายเงิน"
+                  options={
+                    paymentMethodOptions
+                  }
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col
+              xs={24}
+              md={12}
+            >
+              <Form.Item
+                label="ธนาคาร"
+                name="bank_id"
+                dependencies={[
+                  "payment_method_id",
+                  "bank_account_no",
+                  "bank_account_name",
+                  "bank_branch_name",
+                ]}
+                rules={[
+                  ({
+                    getFieldValue,
+                  }) => ({
+                    validator(
+                      _,
+                      value
+                    ) {
+                      const hasBankDetail =
+                        Boolean(
+                          getFieldValue(
+                            "bank_account_no"
+                          ) ||
+                            getFieldValue(
+                              "bank_account_name"
+                            ) ||
+                            getFieldValue(
+                              "bank_branch_name"
+                            )
+                        );
+
+                      if (
+                        !paymentMethodRequiresBank &&
+                        !hasBankDetail
+                      ) {
+                        return Promise.resolve();
+                      }
+
+                      if (!value) {
+                        return Promise.reject(
+                          new Error(
+                            "กรุณาเลือกธนาคาร"
+                          )
+                        );
+                      }
+
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+              >
+                <Select
+                  showSearch
+                  allowClear
+                  loading={masterLoading}
+                  disabled={disabled}
+                  placeholder="เลือกธนาคาร"
+                  options={
+                    bankOptions
+                  }
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col
+              xs={24}
+              md={12}
+            >
+              <Form.Item
+                label="เลขที่บัญชี"
+                name="bank_account_no"
+                dependencies={[
+                  "payment_method_id",
+                  "bank_id",
+                  "bank_account_name",
+                ]}
+                getValueFromEvent={(
+                  event
+                ) =>
+                  formatBankAccountNo(
+                    event?.target?.value
+                  )
+                }
+                rules={[
+                  ({
+                    getFieldValue,
+                  }) => ({
+                    validator(
+                      _,
+                      value
+                    ) {
+                      const digits =
+                        normalizeBankAccountNo(
+                          value
+                        );
+
+                      const required =
+                        paymentMethodRequiresBank ||
+                        Boolean(
+                          getFieldValue(
+                            "bank_id"
+                          ) ||
+                            getFieldValue(
+                              "bank_account_name"
+                            )
+                        );
+
+                      if (
+                        !required &&
+                        !digits
+                      ) {
+                        return Promise.resolve();
+                      }
+
+                      if (!digits) {
+                        return Promise.reject(
+                          new Error(
+                            "กรุณากรอกเลขที่บัญชี"
+                          )
+                        );
+                      }
+
+                      if (
+                        digits.length !==
+                        10
+                      ) {
+                        return Promise.reject(
+                          new Error(
+                            "เลขบัญชีธนาคารต้องมี 10 หลัก"
+                          )
+                        );
+                      }
+
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+              >
+                <Input
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={13}
+                  disabled={disabled}
+                  placeholder="123-4-56789-0"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col
+              xs={24}
+              md={12}
+            >
+              <Form.Item
+                label="ชื่อบัญชี"
+                name="bank_account_name"
+                dependencies={[
+                  "payment_method_id",
+                  "bank_id",
+                  "bank_account_no",
+                ]}
+                rules={[
+                  ({
+                    getFieldValue,
+                  }) => ({
+                    validator(
+                      _,
+                      value
+                    ) {
+                      const required =
+                        paymentMethodRequiresBank ||
+                        Boolean(
+                          getFieldValue(
+                            "bank_id"
+                          ) ||
+                            getFieldValue(
+                              "bank_account_no"
+                            )
+                        );
+
+                      if (
+                        !required &&
+                        !String(
+                          value || ""
+                        ).trim()
+                      ) {
+                        return Promise.resolve();
+                      }
+
+                      if (
+                        !String(
+                          value || ""
+                        ).trim()
+                      ) {
+                        return Promise.reject(
+                          new Error(
+                            "กรุณากรอกชื่อบัญชี"
+                          )
+                        );
+                      }
+
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+              >
+                <Input
+                  disabled={disabled}
+                  autoComplete="off"
+                  placeholder="ชื่อเจ้าของบัญชี"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col
+              xs={24}
+              md={12}
+            >
+              <Form.Item
+                label="สาขาธนาคาร"
+                name="bank_branch_name"
+              >
+                <Input
+                  disabled={disabled}
+                  placeholder="ระบุสาขา (ถ้ามี)"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </>
+      ) : (
+        <Alert
+          showIcon
+          type="info"
+          title="การแก้ไขบัญชีธนาคาร"
+          description="หลังสร้างพนักงานแล้ว ให้จัดการบัญชีหลัก บัญชีสำรอง หรือเปลี่ยนบัญชีรับเงินเดือนที่หน้า บัญชีธนาคารพนักงาน เพื่อเก็บข้อมูลแยกจากตาราง employees"
+          className="mb-5"
+        />
+      )}
 
       <Alert
         showIcon

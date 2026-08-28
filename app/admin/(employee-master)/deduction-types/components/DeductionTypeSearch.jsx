@@ -1,0 +1,86 @@
+"use client";
+
+import {
+  Col,
+  Input,
+  Row,
+  Select,
+} from "antd";
+
+import LazyDeductionTypeCompanySelect from "./LazyDeductionTypeCompanySelect";
+
+const CATEGORY_OPTIONS = [
+  { value: "tax", label: "ภาษี" },
+  { value: "social_security", label: "ประกันสังคม" },
+  { value: "provident_fund", label: "กองทุนสำรองเลี้ยงชีพ" },
+  { value: "loan", label: "เงินกู้ / เงินยืม" },
+  { value: "absence", label: "ขาดงาน / ลางาน / มาสาย" },
+  { value: "other", label: "รายการหักอื่น ๆ" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "active", label: "ใช้งาน" },
+  { value: "inactive", label: "ไม่ใช้งาน" },
+];
+
+export default function DeductionTypeSearch({
+  search = "",
+  companyId,
+  category,
+  status,
+  loading = false,
+  onSearch,
+  onCompanyChange,
+  onCategoryChange,
+  onStatusChange,
+}) {
+  return (
+    <Row>
+      <Col xs={24} lg={10}>
+        <Input.Search
+          allowClear
+          defaultValue={search}
+          loading={loading}
+          placeholder="ค้นหารหัส / ชื่อ / รายละเอียด"
+          enterButton
+          onSearch={onSearch}
+          onChange={(event) => {
+            if (!event.target.value) {
+              onSearch?.("");
+            }
+          }}
+        />
+      </Col>
+
+      <Col xs={24} md={8} lg={6}>
+        <LazyDeductionTypeCompanySelect
+          value={companyId}
+          placeholder="ทุกบริษัทใน Scope"
+          onChange={onCompanyChange}
+        />
+      </Col>
+
+      <Col xs={12} md={8} lg={4}>
+        <Select
+          allowClear
+          value={category}
+          placeholder="ทุกหมวด"
+          options={CATEGORY_OPTIONS}
+          style={{ width: "100%" }}
+          onChange={onCategoryChange}
+        />
+      </Col>
+
+      <Col xs={12} md={8} lg={4}>
+        <Select
+          allowClear
+          value={status}
+          placeholder="ทุกสถานะ"
+          options={STATUS_OPTIONS}
+          style={{ width: "100%" }}
+          onChange={onStatusChange}
+        />
+      </Col>
+    </Row>
+  );
+}

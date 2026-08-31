@@ -26,7 +26,13 @@ export async function GET(_req: NextRequest,
         positions( id, position_name)
       `)
       .eq("id",id)
+      .eq("status",18)
       .single();
+
+    if(error){
+      return NextResponse.json({ error: "Data not found" }, { status: 400 });
+    }
+    
 
     const { data: doc_data, error: doc_error  } = await supabaseAdmin
       .from("recruit_job_documents")
@@ -52,12 +58,8 @@ export async function GET(_req: NextRequest,
     
   } catch (err: any) {
     return NextResponse.json(
-      {
-        message: err.message,
-      },
-      {
-        status: 500,
-      }
+      { message: err.message, },
+      { status: 500, }
     );
   }
 }

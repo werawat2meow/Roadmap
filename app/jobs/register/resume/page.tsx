@@ -263,7 +263,7 @@ export default function ResumeForm() {
           : "Resume submitted successfully."
       );
 
-      // router.push( "/jobs/register/thankyou?type=resume" );
+      router.push( "/jobs/register/thankyou?type=resume" );
 
     } catch (error: any) {
 

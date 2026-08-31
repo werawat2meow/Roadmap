@@ -834,6 +834,7 @@ export async function POST(request) {
           .from("recruit_job_applications")
           .update({
             emp_id: createdEmployee.id,
+            emp_code: createdEmployee.employee_code,
             hire_date: start_date,
             start_date: start_date,
             probation_end_date: probationEndDate,

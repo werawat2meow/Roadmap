@@ -93,7 +93,17 @@ export default function RegisterPage() {
       const applications_data = result.applications_data;
       const documents_data = result.documents;
 
+      if(result.error){
+        setError(result.error);
+        return;
+      }
+      
       if (!data) {
+        setError(getUIText(uiText.jobNotFound, locale));
+        return;
+      }
+
+      if (!data.positions) {
         setError(getUIText(uiText.jobNotFound, locale));
         return;
       }
@@ -240,7 +250,7 @@ export default function RegisterPage() {
           <Alert
             type="error"
             showIcon
-            message={t("error")}
+            title={t("error")}
             description={error}
           />
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Trash2, Pencil, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import CategoryTable from "./CategoryTable";
 
@@ -36,6 +36,9 @@ type Category = {
 
 type Props = {
   category: Category;
+  departments: Department[];
+  divisions: Division[];
+  units: Unit[];
   onUpdate: (
     categoryId: string,
     title: string,
@@ -68,6 +71,9 @@ const getBadgeClass = (type: string) => {
 
 export default function CategoryCard({
   category,
+  departments,
+  divisions,
+  units,
   onUpdate,
   onDelete,
   onAddItem,
@@ -86,37 +92,6 @@ export default function CategoryCard({
   );
   const [editUnitId, setEditUnitId] = useState(category.unit_id ?? "");
 
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [divisions, setDivisions] = useState<Division[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-
-  useEffect(() => {
-    if (category.type !== "Department Common Ground") return;
-
-    async function loadOptions() {
-      try {
-        const [deptRes, divRes, unitRes] = await Promise.all([
-          fetch("/api/admin/departments?all=true"),
-          fetch("/api/admin/divisions?all=true"),
-          fetch("/api/admin/units?all=true"),
-        ]);
-
-        const [deptJson, divJson, unitJson] = await Promise.all([
-          deptRes.json(),
-          divRes.json(),
-          unitRes.json(),
-        ]);
-
-        if (deptRes.ok && deptJson.success) setDepartments(deptJson.data);
-        if (divRes.ok && divJson.success) setDivisions(divJson.data);
-        if (unitRes.ok && unitJson.success) setUnits(unitJson.data);
-      } catch (error) {
-        console.error("Load department/division/unit options failed", error);
-      }
-    }
-
-    loadOptions();
-  }, [category.type]);
 
   const filteredDivisions = useMemo(
     () => divisions.filter((item) => item.department_id === editDepartmentId),

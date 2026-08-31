@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import SearchBar from "@/app/roadmap/components/SearchBar";
 import ReportTable from "./ReportTable";
 import EvaluationPreviewModal from "./EvaluationPreviewModal";
-// 1. Import library สำหรับ Excel
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -42,6 +41,22 @@ type EvaluationRecord = {
   scorePercent: string;
 };
 
+const MONTH_OPTIONS = [
+  { value: "", label: "ทุกเดือน" },
+  { value: "1", label: "ม.ค." },
+  { value: "2", label: "ก.พ." },
+  { value: "3", label: "มี.ค." },
+  { value: "4", label: "เม.ย." },
+  { value: "5", label: "พ.ค." },
+  { value: "6", label: "มิ.ย." },
+  { value: "7", label: "ก.ค." },
+  { value: "8", label: "ส.ค." },
+  { value: "9", label: "ก.ย." },
+  { value: "10", label: "ต.ค." },
+  { value: "11", label: "พ.ย." },
+  { value: "12", label: "ธ.ค." },
+];
+
 export default function EvaluationHistoryPanel({
   evaluationType,
 }: {
@@ -59,7 +74,20 @@ export default function EvaluationHistoryPanel({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  // ... (useMemo ส่วน branches, departments, etc. คงไว้เหมือนเดิม)
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return [
+      { value: "", label: "ทุกปี" },
+      ...Array.from({ length: 6 }, (_, idx) => {
+        const year = currentYear - idx;
+        return { value: String(year), label: String(year) };
+      }),
+    ];
+  }, []);
+
   const branches = useMemo(
     () => [...new Set(rows.map((row) => row.branch).filter(Boolean))],
     [rows],
@@ -94,14 +122,19 @@ export default function EvaluationHistoryPanel({
 
   useEffect(() => {
     async function load() {
+      const params = new URLSearchParams();
+      params.set("type", evaluationType);
+      if (filterMonth) params.set("month", filterMonth);
+      if (filterYear) params.set("year", filterYear);
+
       const res = await fetch(
-        `/roadmap/api/reports/evaluation-history?type=${evaluationType}`,
+        `/roadmap/api/reports/evaluation-history?${params.toString()}`,
       );
       const json = await res.json();
       if (json.success) setRows(json.data || []);
     }
     load();
-  }, [evaluationType]);
+  }, [evaluationType, filterMonth, filterYear]);
 
   const handlePreview = async (record: EvaluationRecord) => {
     setIsLoadingPreview(true);
@@ -156,24 +189,22 @@ export default function EvaluationHistoryPanel({
     });
   }, [rows, searchTerm, filters]);
 
-  // --- ฟังก์ชัน Export เป็น Excel ---
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Roadmap Report");
 
-    // --- 1. เตรียมข้อมูลวันที่ ---
-    const thaiMonth = new Intl.DateTimeFormat("th-TH", {
-      month: "long",
-    }).format(new Date());
-    const thaiYear = new Date().getFullYear() + 543;
+    const thaiMonth = filterMonth
+      ? MONTH_OPTIONS.find((item) => item.value === filterMonth)?.label || ""
+      : new Intl.DateTimeFormat("th-TH", { month: "long" }).format(new Date());
+    const thaiYear = filterYear
+      ? Number(filterYear) + 543
+      : new Date().getFullYear() + 543;
 
-    // --- 2. สร้างหัวข้อใหญ่ (Row 1) ---
     const titleCell = worksheet.getCell("A1");
     titleCell.value = `รายการปรับ Road Map ประจำเดือน${thaiMonth} ${thaiYear}`;
     titleCell.font = { name: "Sarabun", size: 16, bold: true };
-    worksheet.mergeCells("A1:Y1"); // รวมเซลล์ข้ามคอลัมน์ทั้งหมด
+    worksheet.mergeCells("A1:Y1");
 
-    // --- 3. สร้างหัวกลุ่ม (Row 2) ---
     const row2 = worksheet.getRow(2);
     row2.values = [
       "ลำดับ",
@@ -203,7 +234,6 @@ export default function EvaluationHistoryPanel({
       "หมายเหตุ",
     ];
 
-    // --- 4. สร้างหัวย่อย (Row 3) ---
     const row3 = worksheet.getRow(3);
     row3.values = [
       "",
@@ -233,15 +263,13 @@ export default function EvaluationHistoryPanel({
       "",
     ];
 
-    // --- 5. การ Merge เซลล์หัวตาราง ---
-    worksheet.mergeCells("A2:A3"); // ลำดับ
-    worksheet.mergeCells("B2:G2"); // ข้อมูลผู้ขอปรับ
-    worksheet.mergeCells("H2:N2"); // เงินเดือนปัจจุบัน
-    worksheet.mergeCells("O2:W2"); // เงินเดือนใหม่
-    worksheet.mergeCells("X2:X3"); // ครั้งที่
-    worksheet.mergeCells("Y2:Y3"); // หมายเหตุ
+    worksheet.mergeCells("A2:A3");
+    worksheet.mergeCells("B2:G2");
+    worksheet.mergeCells("H2:N2");
+    worksheet.mergeCells("O2:W2");
+    worksheet.mergeCells("X2:X3");
+    worksheet.mergeCells("Y2:Y3");
 
-    // --- 6. ใส่ข้อมูลจาก filteredRows ---
     filteredRows.forEach((row, index) => {
       worksheet.addRow([
         index + 1,
@@ -272,10 +300,8 @@ export default function EvaluationHistoryPanel({
       ]);
     });
 
-    // --- 7. จัดสไตล์ (สี, เส้นขอบ, จัดวาง) ---
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
-        // ใส่เส้นขอบทุกเซลล์
         cell.border = {
           top: { style: "thin" },
           left: { style: "thin" },
@@ -285,16 +311,13 @@ export default function EvaluationHistoryPanel({
         cell.alignment = { vertical: "middle", horizontal: "center" };
         cell.font = { name: "Sarabun", size: 10 };
 
-        // สไตล์สำหรับ Header (Row 2 & 3)
         if (rowNumber === 2 || rowNumber === 3) {
           cell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: "FFE7E6E6" }, // สีเทาอ่อนพื้นฐาน
+            fgColor: { argb: "FFE7E6E6" },
           };
           cell.font = { bold: true, name: "Sarabun" };
-
-          // สีฟ้าอ่อนสำหรับกลุ่มเงินเดือนใหม่
           if (colNumber >= 15 && colNumber <= 23) {
             cell.fill = {
               type: "pattern",
@@ -302,7 +325,6 @@ export default function EvaluationHistoryPanel({
               fgColor: { argb: "FFDDEBF7" },
             };
           }
-          // สีเขียวสำหรับ "ครั้งที่"
           if (colNumber === 24) {
             cell.fill = {
               type: "pattern",
@@ -311,7 +333,6 @@ export default function EvaluationHistoryPanel({
             };
             cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
           }
-          // สีเหลืองสำหรับ "หมายเหตุ"
           if (colNumber === 25) {
             cell.fill = {
               type: "pattern",
@@ -321,7 +342,6 @@ export default function EvaluationHistoryPanel({
           }
         }
 
-        // สีเขียวในคอลัมน์ "ครั้งที่" ของแถวข้อมูล
         if (rowNumber > 3 && colNumber === 24) {
           cell.fill = {
             type: "pattern",
@@ -333,14 +353,15 @@ export default function EvaluationHistoryPanel({
       });
     });
 
-    // กำหนดความกว้างคอลัมน์
-    worksheet.getColumn(5).width = 25; // ชื่อ-สกุล
-    worksheet.getColumn(4).width = 15; // แผนก
-    worksheet.getColumn(25).width = 20; // หมายเหตุ
+    worksheet.getColumn(5).width = 25;
+    worksheet.getColumn(4).width = 15;
+    worksheet.getColumn(25).width = 20;
 
-    // --- 8. บันทึกไฟล์ ---
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Roadmap-Report-${thaiMonth}-${thaiYear}.xlsx`);
+    saveAs(
+      new Blob([buffer]),
+      `Roadmap-Report-${thaiMonth || "all"}-${thaiYear}.xlsx`,
+    );
   };
 
   return (
@@ -354,7 +375,32 @@ export default function EvaluationHistoryPanel({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* เปลี่ยนปุ่มเป็น Export Excel */}
+          <div className="flex gap-2">
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-black"
+            >
+              {MONTH_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-black"
+            >
+              {yearOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={handleExportExcel}

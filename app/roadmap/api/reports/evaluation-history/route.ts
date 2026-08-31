@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const type = url.searchParams.get("type") || "";
+  const month = url.searchParams.get("month") || "";
+  const year = url.searchParams.get("year") || "";
   const evaluationType =
     type === "promote"
       ? "Promote"
@@ -28,14 +30,36 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: [] });
   }
 
-  const { data: evalRows, error: evalError } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
       "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level",
     )
     .eq("evaluation_type_id", typeRow.id)
-    .eq("status", "Completed")
-    .order("created_at", { ascending: false });
+    .in("status", ["Completed", "SalaryUpdated"]);
+
+  if (year) {
+    const yearNum = Number(year);
+    if (!Number.isNaN(yearNum) && yearNum > 0) {
+      if (month) {
+        const monthNum = Number(month);
+        if (monthNum >= 1 && monthNum <= 12) {
+          const from = `${yearNum}-${String(monthNum).padStart(2, "0")}-01`;
+          const lastDay = new Date(yearNum, monthNum, 0).getDate();
+          const to = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+          query = query.gte("created_at", from).lte("created_at", to);
+        }
+      } else {
+        query = query
+          .gte("created_at", `${yearNum}-01-01`)
+          .lte("created_at", `${yearNum}-12-31`);
+      }
+    }
+  }
+
+  const { data: evalRows, error: evalError } = await query.order("created_at", {
+    ascending: false,
+  });
 
   if (evalError) {
     console.error("Failed to load evaluations", evalError);
@@ -44,6 +68,7 @@ export async function GET(req: Request) {
       { status: 500 },
     );
   }
+
 
   const employeeIds = [
     ...new Set([

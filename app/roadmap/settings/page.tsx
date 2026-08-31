@@ -27,6 +27,10 @@ type Category = {
   unit_id?: string;
 };
 
+type Department = { id: string; department_name: string };
+type Division = { id: string; division_name: string; department_id: string };
+type Unit = { id: string; unit_name: string; division_id: string };
+
 const menuOptions = [
   "Overview",
   "Employee",
@@ -82,6 +86,9 @@ export default function SettingsPage() {
     return localStorage.getItem("roadmapSettingsTab") || "ทั้งหมด";
   });
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -128,6 +135,32 @@ export default function SettingsPage() {
     }
 
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    async function loadLookupData() {
+      try {
+        const [deptRes, divRes, unitRes] = await Promise.all([
+          fetch("/api/admin/departments?all=true"),
+          fetch("/api/admin/divisions?all=true"),
+          fetch("/api/admin/units?all=true"),
+        ]);
+
+        const [deptJson, divJson, unitJson] = await Promise.all([
+          deptRes.json(),
+          divRes.json(),
+          unitRes.json(),
+        ]);
+
+        if (deptRes.ok && deptJson.success) setDepartments(deptJson.data);
+        if (divRes.ok && divJson.success) setDivisions(divJson.data);
+        if (unitRes.ok && unitJson.success) setUnits(unitJson.data);
+      } catch (error) {
+        console.error("Failed to load department/division/unit lookups", error);
+      }
+    }
+
+    loadLookupData();
   }, []);
 
   useEffect(() => {
@@ -499,6 +532,9 @@ export default function SettingsPage() {
                 <CategoryCard
                   key={category.id}
                   category={category}
+                  departments={departments}
+                  divisions={divisions}
+                  units={units}
                   onUpdate={handleUpdateCategory}
                   onDelete={() => handleDeleteCategory(category.id)}
                   onAddItem={handleAddItem}

@@ -229,7 +229,10 @@ export default function EmployeePage() {
         matchesLevel &&
         matchesStatus
       );
-    });
+    })
+    .sort((a, b) => {
+        return a.name.localeCompare(b.name, 'th', { sensitivity: 'accent' });
+      });
   }, [searchTerm, filters, employees]);
 
   // --- Logic สำหรับการตัดแบ่งข้อมูล (Pagination) ---

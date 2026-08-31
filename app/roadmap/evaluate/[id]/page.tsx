@@ -391,9 +391,9 @@ export default function EvaluateEmployeePage() {
       evaluationId,
       employeeId: id,
       evaluatorId,
-      evaluationType: activeTab,
       status,
       ...formData,
+      evaluationType: activeTab,
       managerIds: selectedManagerIds,
       scores: createScoresPayload(),
       extra_data: {

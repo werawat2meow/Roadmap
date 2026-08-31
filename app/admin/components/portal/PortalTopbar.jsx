@@ -6,6 +6,7 @@ import {
 } from "antd";
 
 import {
+  AppstoreOutlined,
   DownOutlined,
   KeyOutlined,
   LoadingOutlined,
@@ -44,6 +45,62 @@ function normalizeHref(
   return String(href)
     .split("?")[0]
     .trim();
+}
+
+/* =========================================================
+   Permission Helper
+========================================================= */
+
+function isSuperAdmin(
+  user
+) {
+  const roleCode =
+    String(
+      user?.role_code ||
+        user?.role ||
+        ""
+    )
+      .trim()
+      .toUpperCase();
+
+  return (
+    roleCode ===
+    "SUPER_ADMIN"
+  );
+}
+
+function hasPermission(
+  user,
+  permissionCode
+) {
+  if (
+    !permissionCode
+  ) {
+    return true;
+  }
+
+  /*
+   * SUPER_ADMIN
+   * ใช้ Bypass ได้
+   */
+  if (
+    isSuperAdmin(
+      user
+    )
+  ) {
+    return true;
+  }
+
+  const permissions =
+    Array.isArray(
+      user?.permissions
+    )
+      ? user.permissions
+      : [];
+
+  return permissions.includes(
+    permissionCode
+  );
 }
 
 /* =========================================================
@@ -176,10 +233,38 @@ export default function PortalTopbar({
     "HR System";
 
   /* =======================================================
+     Employee Portal Access
+  ======================================================= */
+
+  const canAccessEmployeePortal =
+    hasPermission(
+      user,
+      "ep.portal.view"
+    );
+
+  /*
+   * ถ้าต้องการเข้มขึ้นในอนาคต
+   * สามารถตรวจ employee_id เพิ่มได้ เช่น:
+   *
+   * const canAccessEmployeePortal =
+   *   Boolean(user?.employee_id) &&
+   *   hasPermission(
+   *     user,
+   *     "ep.portal.view"
+   *   );
+   *
+   * รอบนี้ยึด Permission เป็นหลักก่อน
+   */
+
+  /* =======================================================
      User Dropdown
   ======================================================= */
 
   const userMenuItems = [
+    /* =====================================================
+       Profile
+    ===================================================== */
+
     {
       key: "profile",
 
@@ -198,6 +283,13 @@ export default function PortalTopbar({
               user?.role_code ||
               "User"}
           </div>
+
+          {user?.employee_code ? (
+            <div className="mt-1 truncate text-xs text-slate-400">
+              รหัสพนักงาน{" "}
+              {user.employee_code}
+            </div>
+          ) : null}
         </div>
       ),
     },
@@ -205,6 +297,43 @@ export default function PortalTopbar({
     {
       type: "divider",
     },
+
+    /* =====================================================
+       Employee Portal
+
+       แสดงเฉพาะผู้ที่มี:
+       ep.portal.view
+    ===================================================== */
+
+    ...(canAccessEmployeePortal
+      ? [
+          {
+            key:
+              "employee-portal",
+
+            icon:
+              <AppstoreOutlined />,
+
+            label:
+              "Employee Portal",
+
+            onClick: () => {
+              router.push(
+                "/employee"
+              );
+            },
+          },
+
+          {
+            type:
+              "divider",
+          },
+        ]
+      : []),
+
+    /* =====================================================
+       Change Password
+    ===================================================== */
 
     {
       key:
@@ -225,6 +354,10 @@ export default function PortalTopbar({
     {
       type: "divider",
     },
+
+    /* =====================================================
+       Logout
+    ===================================================== */
 
     {
       key: "logout",
@@ -390,10 +523,16 @@ export default function PortalTopbar({
               py-2
               text-left
               transition
+
               hover:bg-slate-50
+
               sm:px-4
             "
           >
+            {/* ===========================================
+                Avatar
+            =========================================== */}
+
             <Avatar
               size={42}
               src={
@@ -415,6 +554,10 @@ export default function PortalTopbar({
                 !to-indigo-600
               "
             />
+
+            {/* ===========================================
+                User
+            =========================================== */}
 
             <div className="hidden min-w-0 sm:block">
               <div

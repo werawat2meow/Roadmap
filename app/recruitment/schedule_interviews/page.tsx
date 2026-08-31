@@ -18,6 +18,7 @@ import {
   Upload,
   UploadFile, 
   UploadProps,
+  Input, // เพิ่ม
 } from "antd";
 
 import dayjs, { Dayjs } from "dayjs";
@@ -150,6 +151,7 @@ export default function RecruitmentApplicationsPage() {
   const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
+  const [remark, setRemark] = useState<string>(""); // เพิ่ม
   const [interviewErrors, setInterviewErrors] = useState<InterviewErrors>({});
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -297,6 +299,7 @@ export default function RecruitmentApplicationsPage() {
     setSelectedStatus(record.status);
     setSelectedInterviewer(undefined);
     setInterviewErrors({});
+    setRemark(""); // เพิ่ม
 
     // ดึง interviewDateTime ล่าสุดของแถวนี้มา prefill (recruit_job_interviews.interview_datetime)
     const latest = getLatestInterview(record.recruit_job_interviews);
@@ -332,10 +335,20 @@ export default function RecruitmentApplicationsPage() {
     //   return;
     // }
 
+    // ต้องกรอกวันเวลานัด เมื่อ status = 6 (เลื่อนสัมภาษณ์)
     if (selectedStatus === 6 && !interviewDateTime) {
       setInterviewErrors((prev) => ({
         ...prev,
         interviewDateTime: "กรุณาเลือกวันและเวลานัดสัมภาษณ์",
+      }));
+      return;
+    }
+
+    // ต้องกรอกเหตุผล เมื่อ status = 6 (เลื่อน), 7 (ขาดสัมภาษณ์), 11 (ไม่ผ่าน)
+    if ([6, 7, 11].includes(selectedStatus as number) && !remark.trim()) {
+      setInterviewErrors((prev) => ({
+        ...prev,
+        remark: "กรุณาระบุเหตุผล",
       }));
       return;
     }
@@ -356,6 +369,7 @@ export default function RecruitmentApplicationsPage() {
             interviewer_id: selectedInterviewer,
             interview_datetime: interviewDateTime,
             sort_order: sortOrder,
+            remark: remark, // เพิ่ม
           }),
         }
       );
@@ -363,23 +377,19 @@ export default function RecruitmentApplicationsPage() {
       const json = await res.json();
 
       if (!json.error) {
-        // message.success("อัพเดตข้อมูลเรียบร้อย");
         Modal.success({ title: '', content: "อัพเดตข้อมูลเรียบร้อย" });
 
-        // ปิด Modal อัตโนมัติ
         setUpdateModalOpen(false);
 
-        // Reset ค่า
         setSelectedApplication(null);
         setSelectedStatus(undefined);
         setSelectedInterviewer(undefined);
         setInterviewDateTime(null);
+        setRemark(""); // เพิ่ม
 
-        // Reload ข้อมูล
         await loadData(page);
       } else {
         Modal.error({ title: 'เกิดข้อผิดพลาด', content: json.error });
-        
       }
     } catch (err) {
       console.error(err);
@@ -809,6 +819,37 @@ export default function RecruitmentApplicationsPage() {
                 <div>
                   <Text type="danger" style={{ fontSize: 12 }}>
                     {interviewErrors.interviewDateTime}
+                  </Text>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* เพิ่มใหม่: ช่องกรอกเหตุผล เมื่อ status = 6, 7, 11 */}
+          {[6, 7, 11].includes(selectedStatus as number) && (
+            <div>
+              <div style={{ marginBottom: 6 }}>
+                <Text strong>เหตุผล</Text>
+              </div>
+
+              <Input.TextArea
+                rows={3}
+                value={remark}
+                onChange={(e) => {
+                  setRemark(e.target.value);
+                  setInterviewErrors((prev) => ({
+                    ...prev,
+                    remark: undefined,
+                  }));
+                }}
+                status={interviewErrors.remark ? "error" : undefined}
+                placeholder="กรุณาระบุเหตุผล"
+              />
+
+              {interviewErrors.remark && (
+                <div>
+                  <Text type="danger" style={{ fontSize: 12 }}>
+                    {interviewErrors.remark}
                   </Text>
                 </div>
               )}

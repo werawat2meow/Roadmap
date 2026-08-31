@@ -1264,43 +1264,12 @@ export default function Page({ params }) {
                   )}
                 />
               </Col>
-
-              {/* Role */}
-              {/* <Col xs={24} md={12} lg={8}>
-                <Text strong>
-                  Role
-                </Text>
-
-                <Select
-                  style={{
-                    width: "100%",
-                    marginTop: 6,
-                  }}
-                  placeholder="เลือก Role"
-                  value={form.role_id}
-                  onChange={(value) =>
-                    updateForm("role_id", value)
-                  }
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  options={master.roles.map(
-                    (item) => ({
-                      value: item.id,
-                      label: item.role_name,
-                    })
-                  )}
-                />
-              </Col> */}
-
-
             </Row>
           </Card>
 
         </div>
       )}
 
-      
         <div className="px-6 pb-6">
           <Card title="ข้อมูลการเริ่มงาน" >
             <Row gutter={[16, 16]}>

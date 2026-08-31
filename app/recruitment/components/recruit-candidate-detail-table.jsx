@@ -33,7 +33,6 @@ const STATUS_MAP = {
   1: { label: 'รอพิจารณา', color: 'default' },
   2: { label: 'HRD ส่งต่อ HRM', color: 'volcano' },
   3: { label: 'ผ่านการคัดเลือกเข้าสัมภาษณ์', color: 'blue' },
-  4: { label: 'นัดสัมภาษณ์', color: 'green' },
   5: { label: 'ยืนยันการสัมภาษณ์', color: 'green' },
   6: { label: 'เลื่อนการสัมภาษณ์', color: 'volcano' },
   7: { label: 'ขาดการสัมภาษณ์', color: 'green' },
@@ -45,8 +44,8 @@ const STATUS_MAP = {
 };
 
 const status = user?.has_all_scope
-  ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 16, 99]
-  : [2, 3, 4, 5, 6, 7, 8, 9];
+  ? [1, 2, 3, 6, 7, 8, 9, 16, 99]
+  : [2, 3, 6, 7, 8, 9];
 
 const STATUS_OPTIONS = status
   .filter((value) => STATUS_MAP[value])

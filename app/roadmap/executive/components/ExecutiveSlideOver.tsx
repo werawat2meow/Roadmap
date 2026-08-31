@@ -146,7 +146,7 @@ export default function ExecutiveSlideOver({
               <CompactDetailRow icon={ClipboardList} label="ตำแหน่ง" value={title} />
               
               <div className="grid grid-cols-2 gap-3">
-                <CompactDetailRow icon={CalendarDays} label="รอบประเมิน" value={quarter} />
+                <CompactDetailRow icon={CalendarDays} label="ระดับ" value={quarter} />
                 <CompactDetailRow icon={ClipboardList} label="ประเภท" value={typeValue} />
               </div>
 

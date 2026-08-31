@@ -62,13 +62,18 @@ export async function GET(req: Request) {
       return itemMonth === parseInt(month, 10);
     });
 
+    const validBranchData = filteredData.filter(
+      (item: any) =>
+        item.status === "Completed" || item.status === "SalaryUpdated",
+    );
+
     // 5. คำนวณสรุปรายสังกัด (Branch Summary) ตามภาพที่ต้องการ
     const branchSummaryMap: Record<
       string,
       { branch: string; count: number; totalAmount: number }
     > = {};
 
-    filteredData.forEach((item: any) => {
+    validBranchData.forEach((item: any) => {
       const branchName = item.branch;
 
       // คำนวณยอดปรับ: (เงินเดือนใหม่ - เงินเดือนเก่า) + ค่าตอบแทนพิเศษ

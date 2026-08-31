@@ -133,14 +133,14 @@ export default function OverviewPage() {
               <button
                 type="button"
                 onClick={() => setShowPopup(false)}
-                className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white"
+                className="cursor-pointer w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white"
               >
                 ดู Overview ต่อ
               </button>
               <button
                 type="button"
                 onClick={() => router.push("/roadmap/employee")}
-                className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-3 text-sm font-semibold text-white"
+                className="cursor-pointer w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-3 text-sm font-semibold text-white"
               >
                 ไปที่เมนู Employee
               </button>

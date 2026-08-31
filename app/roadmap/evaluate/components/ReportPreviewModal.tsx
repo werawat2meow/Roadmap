@@ -150,10 +150,10 @@ export default function ReportPreviewModal({
           <div className="flex items-center gap-3">
             <ClipboardCheck className="w-6 h-6 text-indigo-600" />
             <div>
-              <h3 className="font-bold text-slate-800 text-lg">
+              <h3 className="font-bold text-slate-900 text-lg">
                 Report Preview
               </h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+              <p className="text-[10px] text-slate-900 uppercase tracking-widest font-bold">
                 Preview ก่อนพิมพ์รายงานจริง
               </p>
             </div>
@@ -169,7 +169,7 @@ export default function ReportPreviewModal({
               onClick={onClose}
               className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
-              <X className="w-6 h-6 text-slate-400" />
+              <X className="w-6 h-6 text-slate-900" />
             </button>
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function ReportPreviewModal({
         {/* Paper Space */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-500/20 space-y-10 custom-scrollbar">
           {/* ==================== หน้าที่ 1 ==================== */}
-          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-800">
+          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-900">
             <header className="flex justify-between items-end border-b-2 border-slate-900 pb-3 mb-4">
               <h1 className="text-xl font-black text-slate-900">
                 แบบประเมิน ROAD MAP (หน้าที่ 1)
@@ -202,11 +202,11 @@ export default function ReportPreviewModal({
                 <InfoCell label="รหัสพนักงาน" value={data?.employeeCode} />
                 <InfoCell label="Name" value={data?.employeeName} />
                 <div className="flex flex-col">
-                  <span className="font-semibold text-slate-500 mb-0.5">
+                  <span className="font-semibold text-slate-900 mb-0.5">
                     Type:
                   </span>
                   <span
-                    className={`inline-flex self-start rounded-full px-2.5 py-0.5 text-[9px] uppercase tracking-wider ${labelStyles[data?.evaluationType || "Probation"] || "bg-slate-100 text-slate-700"}`}
+                    className={`inline-flex self-start rounded-full px-2.5 py-0.5 text-[9px] uppercase tracking-wider ${labelStyles[data?.evaluationType || "Probation"] || "bg-slate-100 text-slate-900"}`}
                   >
                     {data?.evaluationType || "-"}
                   </span>
@@ -276,7 +276,7 @@ export default function ReportPreviewModal({
                 <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide">
                   สรุปคะแนน
                 </div>
-                <div className="p-2 space-y-1 text-[10px] text-slate-600">
+                <div className="p-2 space-y-1 text-[10px] text-slate-900">
                   <div className="flex justify-between items-center border-b border-slate-50 pb-0.5">
                     <span>คะแนนประเมินผลงาน</span>
                     <span className="font-bold text-blue-700">
@@ -285,12 +285,12 @@ export default function ReportPreviewModal({
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-50 pb-0.5">
                     <span>คะแนนเต็ม</span>
-                    <span className="font-bold text-slate-800">
+                    <span className="font-bold text-slate-900">
                       {data?.maxScore ?? 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-0.5">
-                    <span className="font-bold text-slate-800 uppercase text-[9px]">
+                    <span className="font-bold text-slate-900 uppercase text-[9px]">
                       คิดเป็นเปอร์เซ็นต์
                     </span>
                     <span className="font-black text-blue-700 leading-none">
@@ -340,10 +340,10 @@ export default function ReportPreviewModal({
 
             {/* ข้อคิดเห็น */}
             <div className="mt-5 border border-slate-300 rounded-xl p-3 bg-slate-50/20">
-              <p className="text-[10px] font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1">
+              <p className="text-[10px] font-bold text-slate-900 mb-1.5 border-b border-slate-200 pb-1">
                 ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน:
               </p>
-              <div className="min-h-[50px] text-[11px] text-slate-600 leading-relaxed italic">
+              <div className="min-h-[50px] text-[11px] text-slate-900 leading-relaxed italic">
                 {data?.summaryData?.additionalComment ||
                   data?.managerComment ||
                   "-"}
@@ -352,26 +352,26 @@ export default function ReportPreviewModal({
 
             <div className="mt-auto grid grid-cols-2 gap-10">
               <div className="text-center">
-                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-900 text-xs italic mb-2">
                   {data?.summaryData?.evaluatorSignature ||
                     "......................................................................"}
                 </div>
-                <p className="text-xs font-bold text-slate-800">
+                <p className="text-xs font-bold text-slate-900">
                   ลงชื่อผู้ประเมิน
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                <p className="text-[10px] text-slate-900 mt-1 uppercase">
                   วันที่ {data?.summaryData?.evaluatorSignDate}
                 </p>
               </div>
               <div className="text-center">
-                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-900 text-xs italic mb-2">
                   {data?.summaryData?.employeeSignature ||
                     "......................................................................"}
                 </div>
-                <p className="text-xs font-bold text-slate-800">
+                <p className="text-xs font-bold text-slate-900">
                   พนักงานรับทราบ
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                <p className="text-[10px] text-slate-900 mt-1 uppercase">
                   วันที่ {data?.summaryData?.employeeSignDate}
                 </p>
               </div>
@@ -379,7 +379,7 @@ export default function ReportPreviewModal({
           </div>
 
           {/* ==================== หน้าที่ 2 ==================== */}
-          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-800">
+          <div className="print-area bg-white w-full max-w-none mx-auto p-6 shadow-2xl border border-slate-300 relative flex flex-col text-slate-900">
             <header className="flex justify-between items-end border-b-2 border-slate-900 pb-3 mb-4">
               <h1 className="text-xl font-black text-slate-900">
                 แบบประเมิน ROAD MAP (หน้าที่ 2)
@@ -392,7 +392,7 @@ export default function ReportPreviewModal({
               </div>
 
               {/* ส่วนเนื้อหา บีบ Padding และระยะห่างบรรทัด */}
-              <div className="p-2 px-3 bg-white space-y-0.5 text-[10px] text-slate-700">
+              <div className="p-2 px-3 bg-white space-y-0.5 text-[10px] text-slate-900">
                 {/* ข้อมูลสายปกติ */}
                 {(disciplineData?.lateNormal ?? []).map(
                   (m: any, index: number) => (
@@ -408,7 +408,7 @@ export default function ReportPreviewModal({
                           {m.count || 0}
                         </span>{" "}
                         ครั้ง
-                        <span className="mx-2 text-slate-300">|</span>
+                        <span className="mx-2 text-slate-900">|</span>
                         รวม{" "}
                         <span className="font-semibold text-slate-900">
                           {m.minutes || 0}
@@ -439,7 +439,7 @@ export default function ReportPreviewModal({
                           {m.count || 0}
                         </span>{" "}
                         ครั้ง
-                        <span className="mx-2 text-slate-300">|</span>
+                        <span className="mx-2 text-slate-900">|</span>
                         รวม{" "}
                         <span className="font-semibold text-slate-900">
                           {m.minutes || 0}
@@ -453,7 +453,7 @@ export default function ReportPreviewModal({
                 {/* กรณีไม่มีข้อมูล */}
                 {!disciplineData?.lateNormal?.length &&
                   !disciplineData?.lateExtended?.length && (
-                    <div className="text-center py-1 italic text-slate-400 text-[9px]">
+                    <div className="text-center py-1 italic text-slate-900 text-[9px]">
                       ไม่มีประวัติการมาสายในช่วงเวลานี้
                     </div>
                   )}
@@ -508,18 +508,18 @@ export default function ReportPreviewModal({
                           {/* บีบบรรทัดให้ชิดขึ้น */}
                           <td className="py-1 px-2 border-x border-slate-200">
                             <div className="flex items-baseline gap-2">
-                              <span className="font-bold text-slate-800 min-w-[70px]">
+                              <span className="font-bold text-slate-900 min-w-[70px]">
                                 {label.name}
                               </span>
-                              <span className="text-slate-400 text-[8px]">
+                              <span className="text-slate-900 text-[8px]">
                                 {count} {label.unit}
                               </span>
-                              <span className="text-slate-400 font-normal text-[8px] truncate max-w-[150px]">
+                              <span className="text-slate-900 font-normal text-[8px] truncate max-w-[150px]">
                                 หัวข้อ: {item.detail || "-"}
                               </span>
                             </div>
                           </td>
-                          <td className="p-1 text-center border-r border-slate-200 font-medium text-slate-700">
+                          <td className="p-1 text-center border-r border-slate-200 font-medium text-slate-900">
                             {count}
                           </td>
                           <td className="p-1 text-center text-rose-500 font-bold border-r border-slate-200">
@@ -537,7 +537,7 @@ export default function ReportPreviewModal({
                   <tr className="leading-none">
                     <td
                       colSpan={3}
-                      className="py-1 px-3 text-left uppercase text-[8px] text-slate-500 tracking-wider"
+                      className="py-1 px-3 text-left uppercase text-[8px] text-slate-900 tracking-wider"
                     >
                       รวมคะแนนระเบียบวินัยที่ถูกหักสุทธิ
                     </td>
@@ -555,11 +555,11 @@ export default function ReportPreviewModal({
                   <div className="bg-blue-600 px-2.5 py-1 text-white font-bold text-[10px] uppercase tracking-wide">
                     สรุปคะแนนวินัย
                   </div>
-                  <div className="p-2 px-3 flex-1 flex flex-col justify-between text-[10px] text-slate-600">
+                  <div className="p-2 px-3 flex-1 flex flex-col justify-between text-[10px] text-slate-900">
                     <div className="space-y-1">
                       <div className="flex justify-between border-b border-slate-50 pb-0.5">
                         <span>คะแนนเต็มพื้นฐาน</span>
-                        <span className="font-bold text-slate-800">100</span>
+                        <span className="font-bold text-slate-900">100</span>
                       </div>
                       <div className="flex justify-between border-b border-slate-50 pb-0.5">
                         <span>คะแนนที่ถูกหัก</span>
@@ -569,7 +569,7 @@ export default function ReportPreviewModal({
                       </div>
                     </div>
                     <div className="flex justify-between items-center pt-1 mt-auto">
-                      <span className="font-bold text-slate-800 uppercase text-[9px]">
+                      <span className="font-bold text-slate-900 uppercase text-[9px]">
                         คงเหลือสุทธิ
                       </span>
                       <span className="font-black text-blue-700 leading-none">
@@ -612,10 +612,10 @@ export default function ReportPreviewModal({
 
             {/* ข้อคิดเห็น */}
             <div className="mt-5 border border-slate-300 rounded-xl p-3 bg-slate-50/20">
-              <p className="text-[10px] font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1">
+              <p className="text-[10px] font-bold text-slate-900 mb-1.5 border-b border-slate-200 pb-1">
                 ข้อคิดเห็นหรือข้อเสนอแนะเพิ่มเติมจากผู้ประเมิน:
               </p>
-              <div className="min-h-[50px] text-[11px] text-slate-600 leading-relaxed italic">
+              <div className="min-h-[50px] text-[11px] text-slate-900 leading-relaxed italic">
                 {data?.disciplineData?.comment || "-"}
               </div>
             </div>
@@ -623,28 +623,28 @@ export default function ReportPreviewModal({
             {/* ลายเซ็น หน้า 2 */}
             <div className="mt-auto grid grid-cols-2 gap-10">
               <div className="text-center">
-                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-900 text-xs italic mb-2">
                   {data?.disciplineData?.evaluatorSignature ||
                     "......................................................................"}
                 </div>
-                <p className="text-xs font-bold text-slate-800">
+                <p className="text-xs font-bold text-slate-900">
                   ลงชื่อผู้ประเมิน
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                <p className="text-[10px] text-slate-900 mt-1 uppercase">
                   วันที่{" "}
                   {data?.disciplineData?.evaluatorSignDate ||
                     "........../........../..........."}
                 </p>
               </div>
               <div className="text-center">
-                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-400 text-xs italic mb-2">
+                <div className="h-16 border-b border-slate-300 flex items-center justify-center text-slate-900 text-xs italic mb-2">
                   {data?.disciplineData?.employeeSignature ||
                     "......................................................................"}
                 </div>
-                <p className="text-xs font-bold text-slate-800">
+                <p className="text-xs font-bold text-slate-900">
                   พนักงานรับทราบ
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1 uppercase">
+                <p className="text-[10px] text-slate-900 mt-1 uppercase">
                   วันที่{" "}
                   {data?.disciplineData?.employeeSignDate ||
                     "........../........../..........."}
@@ -654,10 +654,10 @@ export default function ReportPreviewModal({
             {/* 🌟 ตารางหลักเกณฑ์การคิดคะแนน (ต่อท้ายลายเซ็น หน้า 2) 🌟 */}
             <div className="mt-8">
               <div className="mb-2">
-                <p className="text-[10px] font-bold text-slate-800">
+                <p className="text-[10px] font-bold text-slate-900">
                   หลักเกณฑ์ในการคิดคะแนนสำหรับข้อมูลระเบียบวินัย
                 </p>
-                <p className="text-[9px] text-slate-500">
+                <p className="text-[9px] text-slate-900">
                   คะแนนเต็มด้านวินัยในการทำงานมี 100 คะแนน
                   พนักงานจะถูกหักคะแนนตามบทลงโทษที่ได้รับตามรายละเอียด ดังนี้
                 </p>
@@ -675,18 +675,18 @@ export default function ReportPreviewModal({
                 </div>
 
                 {/* Body ตาราง */}
-                <div className="text-[9px] text-slate-600 bg-white leading-tight">
+                <div className="text-[9px] text-slate-900 bg-white leading-tight">
                   {/* Row 1 */}
                   <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-slate-200">
                     <div className="p-1.5 px-3 border-r border-slate-200 bg-slate-50/30">
                       1.1 สาย 31 - 60 นาที ได้รับบทลงโทษ ว.91
                     </div>
                     <div className="p-1.5 px-3 border-r border-slate-200">
-                      <span className="font-bold text-slate-800">ว.91</span> :
+                      <span className="font-bold text-slate-900">ว.91</span> :
                       หัก ครั้งละ 5 คะแนน
                     </div>
                     <div className="p-1.5 px-3">
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-900">
                         Warning 1
                       </span>{" "}
                       : หัก ฉบับละ 25 คะแนน
@@ -698,11 +698,11 @@ export default function ReportPreviewModal({
                       1.2 สาย 61 - 90 นาที ได้รับบทลงโทษ ว.92
                     </div>
                     <div className="p-1.5 px-3 border-r border-slate-200">
-                      <span className="font-bold text-slate-800">ว.92</span> :
+                      <span className="font-bold text-slate-900">ว.92</span> :
                       หัก ครั้งละ 10 คะแนน
                     </div>
                     <div className="p-1.5 px-3">
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-900">
                         Warning 2
                       </span>{" "}
                       : หัก ฉบับละ 50 คะแนน
@@ -714,11 +714,11 @@ export default function ReportPreviewModal({
                       1.3 สาย 91 - 100 นาที ได้รับบทลงโทษ ว.93
                     </div>
                     <div className="p-1.5 px-3 border-r border-slate-200">
-                      <span className="font-bold text-slate-800">ว.93</span> :
+                      <span className="font-bold text-slate-900">ว.93</span> :
                       หัก ครั้งละ 15 คะแนน
                     </div>
                     <div className="p-1.5 px-3">
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-900">
                         Last Warning
                       </span>{" "}
                       : หัก ฉบับละ 100 คะแนน
@@ -730,11 +730,11 @@ export default function ReportPreviewModal({
                       1.4 สาย 101 นาทีขึ้นไป ได้รับบทลงโทษ Warning 1
                     </div>
                     <div className="p-1.5 px-3 border-r border-slate-200">
-                      <span className="font-bold text-slate-800">ว.94</span> :
+                      <span className="font-bold text-slate-900">ว.94</span> :
                       หัก ครั้งละ 100 คะแนน
                     </div>
                     <div className="p-1.5 px-3">
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-900">
                         ลาป่วย / ลากิจ
                       </span>{" "}
                       : หัก วันละ 1 คะแนน
@@ -744,7 +744,7 @@ export default function ReportPreviewModal({
               </div>
             </div>
 
-            <footer className="mt-4 border-t border-slate-100 pt-3 text-[8px] text-slate-400 text-center uppercase tracking-widest">
+            <footer className="mt-4 border-t border-slate-100 pt-3 text-[8px] text-slate-900 text-center uppercase tracking-widest">
               Road Map Evaluation System
             </footer>
           </div>
@@ -759,10 +759,10 @@ export default function ReportPreviewModal({
 function InfoCell({ label, value }: { label: string; value: any }) {
   return (
     <div className="flex flex-col">
-      <span className="font-semibold text-slate-500 mb-0.5 whitespace-nowrap">
+      <span className="font-semibold text-slate-900 mb-0.5 whitespace-nowrap">
         {label}:
       </span>
-      <span className="text-slate-800 font-bold leading-tight">
+      <span className="text-slate-900 font-bold leading-tight">
         {value || "-"}
       </span>
     </div>
@@ -772,10 +772,10 @@ function InfoCell({ label, value }: { label: string; value: any }) {
 function GridCell({ label, value }: any) {
   return (
     <>
-      <div className="p-2 font-bold text-slate-700 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
+      <div className="p-2 font-bold text-slate-900 border-b border-slate-300 bg-slate-50/50 whitespace-nowrap">
         {label}:
       </div>
-      <div className="p-2 text-slate-600 border-b border-slate-300 whitespace-nowrap font-medium text-center">
+      <div className="p-2 text-slate-900 border-b border-slate-300 whitespace-nowrap font-medium text-center">
         {value || "-"}
       </div>
     </>
@@ -815,16 +815,16 @@ function EvaluationTable({ title, items, total, isEmerald = false }: any) {
         <tbody className="divide-y divide-slate-200">
           {items?.map((item: any, i: number) => (
             <tr key={i} className="hover:bg-slate-50 leading-tight">
-              <td className="p-1.5 px-2 w-[65%] font-medium text-slate-700 border-r border-slate-100">
+              <td className="p-1.5 px-2 w-[65%] font-medium text-slate-900 border-r border-slate-100">
                 {item.topic}
               </td>
-              <td className="p-1 w-[10%] text-center text-slate-400 border-r border-slate-100">
+              <td className="p-1 w-[10%] text-center text-slate-900 border-r border-slate-100">
                 {item.weight}
               </td>
               <td className="p-1 w-[10%] text-center font-bold text-slate-900 border-r border-slate-100">
                 {item.score}
               </td>
-              <td className="p-1 w-[15%] text-[8px] text-slate-400 italic leading-none px-2">
+              <td className="p-1 w-[15%] text-[8px] text-slate-900 italic leading-none px-2">
                 {item.remark || "-"}
               </td>
             </tr>
@@ -834,7 +834,7 @@ function EvaluationTable({ title, items, total, isEmerald = false }: any) {
           <tr className="leading-none">
             <td
               colSpan={2}
-              className="py-1 px-2 text-right uppercase text-[8px] text-slate-500 tracking-tighter"
+              className="py-1 px-2 text-right uppercase text-[8px] text-slate-900 tracking-tighter"
             >
               Total Score
             </td>
@@ -852,7 +852,7 @@ function EvaluationTable({ title, items, total, isEmerald = false }: any) {
 function MiniGradeRow({ label, value, color }: any) {
   return (
     <div className="flex justify-between px-2 py-1 text-[10px] border-b border-slate-50 last:border-0">
-      <span className="font-medium text-slate-500">{label}</span>
+      <span className="font-medium text-slate-900">{label}</span>
       <span className={`font-bold ${color}`}>{value}</span>
     </div>
   );

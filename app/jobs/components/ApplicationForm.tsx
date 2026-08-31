@@ -1,5 +1,3 @@
-// app/jobs/components/ApplicationForm.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,7 +22,7 @@ import {
   EducationHistory,
   JobApplicationPayload,
   LanguageSkill,
-  PersonalInformationData ,
+  PersonalInformationData,
   WorkExperience,
 } from "@/app/jobs/types/types";
 
@@ -36,6 +34,13 @@ import {
   createLanguageSkillRow,
   createPersonalInformation,
   createWorkRow,
+  mergeAgreement,
+  mergeComputerSkillRows,
+  mergeDocuments,
+  mergeEducationRows,
+  mergeLanguageSkillRows,
+  mergePersonalInformation,
+  mergeWorkExperienceRows,
   validateApplication,
 } from "@/app/jobs/types/utils";
 
@@ -45,12 +50,16 @@ export default function ApplicationForm({
   saving,
   position,
   onSubmit,
+  initialData,
 }: ApplicationFormProps) {
 
   const { locale } = useLanguage();
   const router = useRouter();
 
-  const [selfPresentationUrl, setSelfPresentationUrl] = useState<string>("");
+  const [selfPresentationUrl, setSelfPresentationUrl] = useState<string>(
+    initialData?.self_presentation_url ?? ""
+  );
+
   /* -------------------------------------------------------------------------- */
   /*                                  Antd Form                                */
   /* -------------------------------------------------------------------------- */
@@ -60,52 +69,61 @@ export default function ApplicationForm({
   /* -------------------------------------------------------------------------- */
   /*                                    State                                   */
   /* -------------------------------------------------------------------------- */
+  // ทุก state ด้านล่างจะ prefill จาก initialData ถ้ามีข้อมูลส่งมา
+  // ถ้าไม่มี (เช่น API ยังไม่มี field นั้น) จะ fallback เป็นค่า default เดิมทุกประการ
 
   const [personal, setPersonal] =
-    useState<PersonalInformationData  >(
-      createPersonalInformation()
+    useState<PersonalInformationData>(
+      mergePersonalInformation(initialData?.personal)
     );
 
   const [education, setEducation] =
-    useState<EducationHistory[]>([
-      createEducationRow(),
-    ]);
+    useState<EducationHistory[]>(
+      mergeEducationRows(initialData?.education)
+    );
 
   const [workExperience, setWorkExperience] =
-    useState<WorkExperience[]>([
-      createWorkRow(),
-    ]);
+    useState<WorkExperience[]>(
+      mergeWorkExperienceRows(initialData?.workExperience)
+    );
 
   const [computerSkills, setComputerSkills] =
-    useState<ComputerSkill[]>([
-      createComputerSkillRow(),
-    ]);
+    useState<ComputerSkill[]>(
+      mergeComputerSkillRows(initialData?.computerSkills)
+    );
 
   const [languageSkills, setLanguageSkills] =
-    useState<LanguageSkill[]>([
-      createLanguageSkillRow(),
-    ]);
+    useState<LanguageSkill[]>(
+      mergeLanguageSkillRows(initialData?.languageSkills)
+    );
 
   const [documents, setDocuments] =
     useState<ApplicationDocument[]>(
-      createDefaultDocuments()
+      mergeDocuments(initialData?.documents)
     );
 
   const [agreement, setAgreement] =
     useState<Agreement>(
-      createAgreement()
+      mergeAgreement(initialData?.agreement)
     );
+
+  /* -------------------------------------------------------------------------- */
+  /*                    Sync Antd Form.Item field (URL) ที่ prefill มา          */
+  /* -------------------------------------------------------------------------- */
+  // Form.Item name="self_presentation_url" ผูกกับ antd form internally
+  // ต้อง setFieldsValue ด้วย ไม่งั้น validation/state ภายในของ antd จะไม่รู้ค่าตั้งต้น
+  useEffect(() => {
+    form.setFieldsValue({
+      self_presentation_url: selfPresentationUrl,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* -------------------------------------------------------------------------- */
   /*                              Submit Handler                                */
   /* -------------------------------------------------------------------------- */
 
   const handleSubmit = async () => {
-    // position.positionId is `string | number | undefined` (a position may
-    // not have been resolved/loaded yet), but JobApplicationPayload.positionId
-    // requires `string | number`. Guard here instead of silently coercing
-    // (e.g. with `?? ""`), so we never submit an application with a missing
-    // position, and so TypeScript can narrow the type below.
     if (position.positionId === undefined) {
       message.error(
         language === "TH"
@@ -188,10 +206,6 @@ export default function ApplicationForm({
       layout="vertical"
       autoComplete="off"
     >
-        {/* ---------------------------------------------------------------------- */}
-        {/* Personal Information                                                   */}
-        {/* ---------------------------------------------------------------------- */}
-
         <PersonalInformation
             form={form}
             language={language}
@@ -200,20 +214,12 @@ export default function ApplicationForm({
             onChange={setPersonal}
         />
 
-        {/* ---------------------------------------------------------------------- */}
-        {/* Education Background                                                   */}
-        {/* ---------------------------------------------------------------------- */}
-
         <EducationSection
             form={form}
             language={language}
             value={education}
             onChange={setEducation}
         />
-
-        {/* ---------------------------------------------------------------------- */}
-        {/* Work Experience                                                        */}
-        {/* ---------------------------------------------------------------------- */}
 
         <WorkExperienceSection
             form={form}
@@ -222,22 +228,14 @@ export default function ApplicationForm({
             onChange={setWorkExperience}
         />
 
-        {/* ---------------------------------------------------------------------- */}
-        {/* Skills                                                                 */}
-        {/* ---------------------------------------------------------------------- */}
-
         <SkillsSection
-        form={form}
+            form={form}
             language={language}
             computerSkills={computerSkills}
             languageSkills={languageSkills}
             onComputerChange={setComputerSkills}
             onLanguageChange={setLanguageSkills}
         />
-
-        {/* ---------------------------------------------------------------------- */}
-        {/* Required Documents                                                     */}
-        {/* ---------------------------------------------------------------------- */}
 
         <DocumentsSection
             form={form}
@@ -285,20 +283,12 @@ export default function ApplicationForm({
           </Col>
         </Card>
 
-        {/* ---------------------------------------------------------------------- */}
-        {/* Agreement / PDPA                                                       */}
-        {/* ---------------------------------------------------------------------- */}
-
         <AgreementSection
             form={form}
             language={language}
             value={agreement}
             onChange={setAgreement}
         />
-
-        {/* ---------------------------------------------------------------------- */}
-        {/* Submit Button                                                          */}
-        {/* ---------------------------------------------------------------------- */}
 
         <Form.Item style={{ marginTop: 32 }}>
           <Space style={{ width: "100%" }}>

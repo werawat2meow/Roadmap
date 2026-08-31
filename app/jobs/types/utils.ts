@@ -490,3 +490,168 @@ export function validateApplication(
 
   return errors;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*                    Merge Initial Data With Default Rows                    */
+/* -------------------------------------------------------------------------- */
+// ใช้ตอน prefill ฟอร์มจากข้อมูลที่มีอยู่แล้ว (จาก API)
+// ทุกฟังก์ชันจะ fallback เป็นค่า default เดิมถ้าไม่มีข้อมูลส่งมา
+// เพื่อรองรับกรณี API ยังส่งข้อมูลมาไม่ครบทุก field ในตอนนี้
+
+export function mergePersonalInformation(
+  data?: Partial<PersonalInformationData> | null
+): PersonalInformationData {
+  const base = createPersonalInformation();
+
+  if (!data) return base;
+
+  return {
+    ...base,
+    ...data,
+    driverLicense: {
+      ...base.driverLicense,
+      ...(data.driverLicense ?? {}),
+    },
+    emergencyContact: {
+      ...base.emergencyContact,
+      ...(data.emergencyContact ?? {}),
+    },
+  };
+}
+
+export function mergeEducationRows(
+  data?: Partial<EducationHistory>[] | null
+): EducationHistory[] {
+  if (!data || data.length === 0) {
+    return [createEducationRow()];
+  }
+
+  return data.map((row) => ({
+    ...createEducationRow(),
+    ...row,
+    id: row.id ?? generateId(),
+  }));
+}
+
+export function mergeWorkExperienceRows(
+  data?: Partial<WorkExperience>[] | null
+): WorkExperience[] {
+  if (!data || data.length === 0) {
+    return [createWorkRow()];
+  }
+
+  return data.map((row) => ({
+    ...createWorkRow(),
+    ...row,
+    id: row.id ?? generateId(),
+  }));
+}
+
+export function mergeComputerSkillRows(
+  data?: Partial<ComputerSkill>[] | null
+): ComputerSkill[] {
+  if (!data || data.length === 0) {
+    return [createComputerSkillRow()];
+  }
+
+  return data.map((row) => ({
+    ...createComputerSkillRow(),
+    ...row,
+    id: row.id ?? generateId(),
+  }));
+}
+
+export function mergeLanguageSkillRows(
+  data?: Partial<LanguageSkill>[] | null
+): LanguageSkill[] {
+  if (!data || data.length === 0) {
+    return [createLanguageSkillRow()];
+  }
+
+  return data.map((row) => ({
+    ...createLanguageSkillRow(),
+    ...row,
+    id: row.id ?? generateId(),
+  }));
+}
+
+export function mergeDocuments(
+  data?: Partial<ApplicationDocument>[] | null
+): ApplicationDocument[] {
+  const defaults = createDefaultDocuments();
+
+  if (!data || data.length === 0) {
+    return defaults;
+  }
+
+  const byType = new Map<string, Partial<ApplicationDocument>>();
+  const others: Partial<ApplicationDocument>[] = [];
+
+  data.forEach((doc) => {
+    if (doc.type && doc.type !== "other") {
+      byType.set(doc.type, doc);
+    } else {
+      others.push(doc);
+    }
+  });
+
+  const merged = defaults.map((def) => {
+    const found = byType.get(def.type);
+
+    if (!found) return def;
+
+    // กรอง key ที่เป็น undefined ออกก่อน ไม่ให้ไปทับค่า default โดยไม่ตั้งใจ
+    const cleaned = Object.fromEntries(
+      Object.entries(found).filter(([, v]) => v !== undefined)
+    ) as Partial<ApplicationDocument>;
+
+    return {
+      ...def,
+      ...cleaned,
+      file: null, // ไฟล์จริงต้องอัปโหลดใหม่เสมอ ใช้ fileName/filePath/fileUrl แสดงว่ามีอยู่แล้ว
+    };
+  });
+
+  others.forEach((doc) => {
+    merged.push({
+      id: doc.id ?? generateId(),
+      type: "other",
+      title: doc.title ?? "",
+      file: null,
+      fileName: doc.fileName,
+      filePath: doc.filePath,
+    });
+  });
+
+  return merged;
+}
+
+export function mergeAgreement(
+  data?: Partial<Agreement> | null
+): Agreement {
+  return {
+    ...createAgreement(),
+    ...(data ?? {}),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*              Map API (snake_case) Documents → Form Shape                   */
+/* -------------------------------------------------------------------------- */
+// แปลง document rows จาก API (document_type, file_name, file_path, file_url)
+// เป็น Partial<ApplicationDocument> (camelCase) ก่อนส่งเข้า mergeDocuments
+
+export function mapApiDocuments(
+  apiDocs?: Record<string, any>[] | null
+): Partial<ApplicationDocument>[] {
+  if (!apiDocs || apiDocs.length === 0) return [];
+
+  return apiDocs.map((doc) => ({
+    id: doc.id ?? generateId(),
+    type: (doc.document_type ?? "other") as ApplicationDocument["type"],
+    title: doc.title ?? "",
+    fileName: doc.file_name ?? undefined,
+    filePath: doc.file_path ?? undefined,
+  }));
+}

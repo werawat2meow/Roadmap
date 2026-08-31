@@ -36,6 +36,7 @@ export default function Page({ params }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const [additionalItems, setAdditionalItems] = useState([]);
 
@@ -384,7 +385,9 @@ export default function Page({ params }) {
   }, [applicationStatus]);
 
   async function handleSave() {
+    if (saving) return;
     try {
+      setSaving(true);
       // ฟอร์มตำแหน่ง/เงินเดือนแสดงเฉพาะตอน status = 12 เท่านั้น
       // (ฟิลด์พวกนี้ไม่ได้ sync จาก data ที่โหลดมา ถ้า validate ตอน status อื่น
       // จะติด null ตลอด บันทึกไม่ได้)
@@ -517,6 +520,8 @@ export default function Page({ params }) {
     } catch (error) {
       console.error("SAVE EMPLOYEE ERROR:", error);
       message.error( error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล" );
+    }finally {
+      setSaving(false); // เพิ่มบรรทัดนี้ - reset ไม่ว่าสำเร็จหรือ error
     }
   }
 
@@ -1259,43 +1264,12 @@ export default function Page({ params }) {
                   )}
                 />
               </Col>
-
-              {/* Role */}
-              {/* <Col xs={24} md={12} lg={8}>
-                <Text strong>
-                  Role
-                </Text>
-
-                <Select
-                  style={{
-                    width: "100%",
-                    marginTop: 6,
-                  }}
-                  placeholder="เลือก Role"
-                  value={form.role_id}
-                  onChange={(value) =>
-                    updateForm("role_id", value)
-                  }
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  options={master.roles.map(
-                    (item) => ({
-                      value: item.id,
-                      label: item.role_name,
-                    })
-                  )}
-                />
-              </Col> */}
-
-
             </Row>
           </Card>
 
         </div>
       )}
 
-      
         <div className="px-6 pb-6">
           <Card title="ข้อมูลการเริ่มงาน" >
             <Row gutter={[16, 16]}>
@@ -1391,6 +1365,7 @@ export default function Page({ params }) {
             <Button
               type="primary"
               onClick={handleSave}
+              disabled={saving}
             >
               บันทึก
             </Button>

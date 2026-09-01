@@ -161,77 +161,77 @@ export const sidebarMenus = [
       // },
     ],
   },
-  // {
-  //   title: "SKILL & COMPETENCY",
-  //   icon: <StarOutlined />,
-  //   items: [
-  //     {
-  //       label: "หมวดหมู่ทักษะ",
-  //       href: "/admin/skill-categories",
-  //       icon: <AppstoreOutlined />,
-  //       permission: "ems.skill_categories.view",
-  //     },
-  //     {
-  //       label: "ทักษะทั้งหมด",
-  //       href: "/admin/skills",
-  //       icon: <ToolOutlined />,
-  //       permission: "ems.skills.view",
-  //     },
-  //     {
-  //       label: "ระดับความเชี่ยวชาญทักษะ",
-  //       href: "/admin/skill-levels",
-  //       icon: <TagsOutlined />,
-  //       permission: "ems.skill_levels.view",
-  //     },
+  {
+    title: "SKILL & COMPETENCY",
+    icon: <StarOutlined />,
+    items: [
+      {
+        label: "หมวดหมู่ทักษะ",
+        href: "/admin/skill-categories",
+        icon: <AppstoreOutlined />,
+        permission: "ems.skill_categories.view",
+      },
+      {
+        label: "ทักษะทั้งหมด",
+        href: "/admin/skills",
+        icon: <ToolOutlined />,
+        permission: "ems.skills.view",
+      },
+      {
+        label: "ระดับความเชี่ยวชาญทักษะ",
+        href: "/admin/skill-levels",
+        icon: <TagsOutlined />,
+        permission: "ems.skill_levels.view",
+      },
 
-  //     // ===============================
-  //     // Competency Master   ทักษะเฉพาะทางงง
-  //     // ===============================
+      // ===============================
+      // Competency Master   ทักษะเฉพาะทางงง
+      // ===============================
 
-  //     {
-  //       label: "ประเภทความสามารถ",
-  //       href: "/admin/competency-types",
-  //       icon: <AppstoreOutlined />,
-  //       permission: "ems.competency_types.view",
-  //     },
-  //     {
-  //       label: "Competencies",
-  //       href: "/admin/competencies",
-  //       icon: <StarOutlined />,
-  //       permission: "ems.competencies.view",
-  //     },
-  //     {
-  //       label: "ระดับความสามารถ (1-5)",
-  //       href: "/admin/competency-levels",
-  //       icon: <TagsOutlined />,
-  //       permission: "ems.competency_levels.view",
-  //     },
+      {
+        label: "ประเภทความสามารถ",
+        href: "/admin/competency-types",
+        icon: <AppstoreOutlined />,
+        permission: "ems.competency_types.view",
+      },
+      {
+        label: "Competencies",
+        href: "/admin/competencies",
+        icon: <StarOutlined />,
+        permission: "ems.competencies.view",
+      },
+      {
+        label: "ระดับความสามารถ (1-5)",
+        href: "/admin/competency-levels",
+        icon: <TagsOutlined />,
+        permission: "ems.competency_levels.view",
+      },
 
-  //     // ===============================
-  //     // Mapping กับตำแหน่งในบริษัท
-  //     // ===============================
+      // ===============================
+      // Mapping กับตำแหน่งในบริษัท
+      // ===============================
 
-  //     {
-  //       label: "กำหนดทักษะตามตำแหน่ง *",
-  //       href: "/admin/position-skills",
-  //       icon: <NodeIndexOutlined />,
-  //       permission: "ems.position_skills.view",
-  //     },
-  //     {
-  //       label: "กำหนดสมรรถนะตามตำแหน่ง*",
-  //       href: "/admin/position-competencies",
-  //       icon: <NodeIndexOutlined />,
-  //       permission: "ems.position_competencies.view",
-  //     },
+      {
+        label: "กำหนดทักษะตามตำแหน่ง *",
+        href: "/admin/position-skills",
+        icon: <NodeIndexOutlined />,
+        permission: "ems.position_skills.view",
+      },
+      {
+        label: "กำหนดสมรรถนะตามตำแหน่ง*",
+        href: "/admin/position-competencies",
+        icon: <NodeIndexOutlined />,
+        permission: "ems.position_competencies.view",
+      },
 
-  //     {
-  //       label: "ทักษะรายบุคคล *",
-  //       href: "/admin/employee-skills",
-  //       icon: <ToolOutlined />,
-  //       permission: "ems.employee_skills.view",
-  //     },
-  //   ],
-  // },
+      {
+        label: "ทักษะรายบุคคล *",
+        href: "/admin/employee-skills",
+        icon: <ToolOutlined />,
+        permission: "ems.employee_skills.view",
+      },
+    ],
+  },
   {
     title: "PAYROLL SETUP",
     icon: <WalletOutlined />,
@@ -367,6 +367,7 @@ export const sidebarMenus = [
         icon: <AccountBookOutlined />,
         permission: "ems.payment_methods.view",
       },
+
     ],
   },
   // {
@@ -605,6 +606,7 @@ export const Menu = [
       { label: "โปรไฟล์ภาษี", "href": "/admin/tax-profiles", "icon": "SafetyCertificateOutlined", "permission": "ems.tax_profiles.view" },
       { label: "อัตราภาษี", "href": "/admin/tax-rates", "icon": "BarChartOutlined", "permission": "ems.tax_rates.view" },
       { label: "ประกันสังคม", "href": "/admin/social-security", "icon": "SafetyOutlined", "permission": "ems.social_security.view" },
+      { label: "ภาษีและประกันสังคมพนักงาน", href: "/admin/employee-statutory-profiles", icon: "IdcardOutlined", permission: "ems.employee_statutory_profiles.view",},
       { label: "กองทุนสำรองเลี้ยงชีพ", "href": "/admin/provident-funds", "icon": "WalletOutlined", "permission": "ems.provident_funds.view" }
     ]
   },
@@ -815,50 +817,53 @@ export const MenuHRMS = [
   //   ]
   // },
 
-  // {
-  //   title: "ข้อมูลทั่วไป",
-  //   icon: "IdcardOutlined",
-  //   items: [
-  //     { label: "ประเทศ", href: "/admin/countries", icon: "EnvironmentOutlined", permission: "ems.countries.view" },
-  //     { label: "สัญชาติ", href: "/admin/nationalities", icon: "GlobalOutlined", permission: "ems.nationalities.view" },
-  //     { label: "คำนำหน้า", href: "/admin/titles", icon: "UserOutlined", permission: "ems.titles.view" },
-  //     { label: "ศาสนา", href: "/admin/religions", icon: "SafetyOutlined", permission: "ems.religions.view" },
-  //     { label: "สถานภาพสมรส", href: "/admin/marital-statuses", icon: "TeamOutlined", permission: "ems.marital_statuses.view" },
-  //     { label: "เพศ", href: "/admin/genders", icon: "UsergroupAddOutlined", permission: "ems.genders.view" }
-  //   ]
-  // },
+  {
+    title: "ข้อมูลทั่วไป",
+    icon: "IdcardOutlined",
+    items: [
+      { label: "ประเทศ", href: "/admin/countries", icon: "EnvironmentOutlined", permission: "ems.countries.view" },
+      { label: "สัญชาติ", href: "/admin/nationalities", icon: "GlobalOutlined", permission: "ems.nationalities.view" },
+      { label: "คำนำหน้า", href: "/admin/titles", icon: "UserOutlined", permission: "ems.titles.view" },
+      { label: "ศาสนา", href: "/admin/religions", icon: "SafetyOutlined", permission: "ems.religions.view" },
+      { label: "สถานภาพสมรส", href: "/admin/marital-statuses", icon: "TeamOutlined", permission: "ems.marital_statuses.view" },
+      { label: "เพศ", href: "/admin/genders", icon: "UsergroupAddOutlined", permission: "ems.genders.view" }
+    ]
+  },
 
-  // {
-  //   title: "ORGANIZATION",
-  //   icon: "BankOutlined",
-  //   items: [
-  //     { label: "โครงสร้างองค์กรตามแผนก", href: "/admin/divisional-structures", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-  //     { label: "การครองตำแหน่งองค์กร", href: "/admin/employee-position-assignments", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-  //     { label: "Position Slot", href: "/admin/org-position-slots", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-  //     { label: "ผังโครงสร้างองค์กร (Org Chart)", href: "/admin/org-chart", icon: "ApartmentOutlined", permission: "ems.org_chart.view" },
-  //     { label: "บริษัท", href: "/admin/companies", icon: "ShopOutlined", permission: "ems.companies.view" },
-  //     { label: "กรุ๊ปสังกัด", href: "/admin/branch-groups", icon: "AppstoreOutlined", permission: "ems.branch_groups.view" },
-  //     { label: "สังกัด", href: "/admin/branches", icon: "EnvironmentOutlined", permission: "ems.branches.view" },
-  //     { label: "แผนก", href: "/admin/departments", icon: "ApartmentOutlined", permission: "ems.departments.view" },
-  //     { label: "ฝ่าย", href: "/admin/divisions", icon: "ClusterOutlined", permission: "ems.divisions.view" },
-  //     { label: "หน่วยงาน", href: "/admin/units", icon: "TeamOutlined", permission: "ems.units.view" }
-  //   ]
-  // },
+  {
+    title: "ORGANIZATION",
+    icon: "BankOutlined",
+    items: [
+      { label: "โครงสร้างองค์กรตามแผนก", href: "/admin/divisional-structures", icon: "ShopOutlined", permission: "ems.org_structure.view" },
+      { label: "การครองตำแหน่งองค์กร", href: "/admin/employee-position-assignments", icon: "ShopOutlined", permission: "ems.org_structure.view" },
+      { label: "Position Slot", href: "/admin/org-position-slots", icon: "ShopOutlined", permission: "ems.org_structure.view" },
+      { label: "ผังโครงสร้างองค์กร (Org Chart)", href: "/admin/org-chart", icon: "ApartmentOutlined", permission: "ems.org_chart.view" },
+      { label: "บริษัท", href: "/admin/companies", icon: "ShopOutlined", permission: "ems.companies.view" },
+      { label: "กรุ๊ปสังกัด", href: "/admin/branch-groups", icon: "AppstoreOutlined", permission: "ems.branch_groups.view" },
+      { label: "สังกัด", href: "/admin/branches", icon: "EnvironmentOutlined", permission: "ems.branches.view" },
+      { label: "แผนก", href: "/admin/departments", icon: "ApartmentOutlined", permission: "ems.departments.view" },
+      { label: "ฝ่าย", href: "/admin/divisions", icon: "ClusterOutlined", permission: "ems.divisions.view" },
+      { label: "หน่วยงาน", href: "/admin/units", icon: "TeamOutlined", permission: "ems.units.view" }
+    ]
+  },
 
-  // {
-  //   title: "JOB ARCHITECTURE",
-  //   icon: "ProfileOutlined",
-  //   items: [
-  //     { label: "กลุ่มสายงาน", href: "/admin/position-families", icon: "ProfileOutlined", permission: "ems.position_families.view" },
-  //     { label: "ระดับของกลุ่มสายงาน", href: "/admin/position-family-levels", icon: "NodeIndexOutlined", permission: "ems.position_family_levels.view" },
-  //     { label: "ระดับตำแหน่ง", href: "/admin/position-levels", icon: "TagsOutlined", permission: "ems.position_levels.view" },
-  //     { label: "ช่วงเงินเดือนตามระดับตำแหน่ง (Salary Band)", href: "/admin/position-level-bands", icon: "DollarOutlined", permission: "ems.position_level_bands.view" },
-  //     { label: "บทบาทงาน / โครงสร้างธุรกิจ", href: "/admin/jobs", icon: "ProfileOutlined", permission: "ems.jobs.view" },
-  //     { label: "ตำแหน่ง", href: "/admin/positions", icon: "SolutionOutlined", permission: "ems.positions.view" },
-  //     { label: "ตำแหน่งตามหน่วย", href: "/admin/unit-positions", icon: "PartitionOutlined", permission: "ems.unit_positions.view" },
-  //     { label: "เส้นทางอาชีพ", href: "/admin/career-paths", icon: "ApartmentOutlined", permission: "ems.career_paths.view" }
-  //   ]
-  // },
+
+
+
+  {
+    title: "JOB ARCHITECTURE",
+    icon: "ProfileOutlined",
+    items: [
+      { label: "กลุ่มสายงาน", href: "/admin/position-families", icon: "ProfileOutlined", permission: "ems.position_families.view" },
+      { label: "ระดับของกลุ่มสายงาน", href: "/admin/position-family-levels", icon: "NodeIndexOutlined", permission: "ems.position_family_levels.view" },
+      { label: "ระดับตำแหน่ง", href: "/admin/position-levels", icon: "TagsOutlined", permission: "ems.position_levels.view" },
+      { label: "ช่วงเงินเดือนตามระดับตำแหน่ง (Salary Band)", href: "/admin/position-level-bands", icon: "DollarOutlined", permission: "ems.position_level_bands.view" },
+      { label: "บทบาทงาน / โครงสร้างธุรกิจ", href: "/admin/jobs", icon: "ProfileOutlined", permission: "ems.jobs.view" },
+      { label: "ตำแหน่ง", href: "/admin/positions", icon: "SolutionOutlined", permission: "ems.positions.view" },
+      { label: "ตำแหน่งตามหน่วย", href: "/admin/unit-positions", icon: "PartitionOutlined", permission: "ems.unit_positions.view" },
+      { label: "เส้นทางอาชีพ", href: "/admin/career-paths", icon: "ApartmentOutlined", permission: "ems.career_paths.view" }
+    ]
+  },
 
   // {
   //   title: "SKILL & COMPETENCY",
@@ -928,6 +933,7 @@ export const MenuHRMS = [
       // { label: "โปรไฟล์ภาษี", href: "/admin/tax-profiles", icon: "SafetyCertificateOutlined", permission: "ems.tax_profiles.view" },
       // { label: "อัตราภาษี", href: "/admin/tax-rates", icon: "BarChartOutlined", permission: "ems.tax_rates.view" },
       // { label: "ประกันสังคม", href: "/admin/social-security", icon: "SafetyOutlined", permission: "ems.social_security.view" },
+
       { label: "กองทุนสำรองเลี้ยงชีพ", href: "/admin/provident-funds", icon: "WalletOutlined", permission: "ems.provident_funds.view" }
     ]
   },
@@ -941,15 +947,15 @@ export const MenuHRMS = [
     ]
   },
 
-  // {
-  //   title: "BANKING & COMPENSATION",
-  //   icon: "BankOutlined",
-  //   items: [
-  //     { label: "ธนาคาร", href: "/admin/banks", icon: "BankOutlined", permission: "ems.banks.view" },
-  //     { label: "วิธีการจ่ายเงิน", href: "/admin/payment-methods", icon: "AccountBookOutlined", permission: "ems.payment_methods.view" },
-  //     { label: "บัญชีธนาคารพนักงาน",href : "/admin/employee-bank-accounts" ,icon : "" , permission : "ems.employee_bank_accounts.view"}
-  //   ]
-  // },
+  {
+    title: "BANKING & COMPENSATION",
+    icon: "BankOutlined",
+    items: [
+      { label: "ธนาคาร", href: "/admin/banks", icon: "BankOutlined", permission: "ems.banks.view" },
+      { label: "วิธีการจ่ายเงิน", href: "/admin/payment-methods", icon: "AccountBookOutlined", permission: "ems.payment_methods.view" },
+      { label: "บัญชีธนาคารพนักงาน",href : "/admin/employee-bank-accounts" ,icon : "" , permission : "ems.employee_bank_accounts.view"}
+    ]
+  },
 
   {
     title: "COST STRUCTURE",

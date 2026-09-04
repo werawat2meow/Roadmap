@@ -908,7 +908,7 @@ export default function Page({ params }) {
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <Text strong>หักเงินสำหรับค่าดำเนินการ</Text>
+                <Text strong>หักเงินสำหรับค่าดำเนินการ Workpermit</Text>
 
                 <InputNumber
                   style={{

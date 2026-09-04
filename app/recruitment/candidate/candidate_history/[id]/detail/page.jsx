@@ -334,7 +334,7 @@ export default function Page({ params }) {
   // Layout
   // ============================
   return (
-    <div>
+    <div style={{ background: "linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%)" }}>
       <CandidateDetail
         application={data?.application}
         education={data?.education}
@@ -346,7 +346,7 @@ export default function Page({ params }) {
       />
 
       { ( status === 18 ) && (
-        <div className="p-6" >
+        <div className="p-6 no-print" >
           <Card title="เลือกตำแหน่ง">
             <div className="flex flex-col gap-2">
               <Text strong>ตำแหน่งที่ต้องการสมัคร</Text>
@@ -376,9 +376,8 @@ export default function Page({ params }) {
         </div>
       )}
 
-
       {APPLICATION_STATUS.some((item) => item.value === status) && (
-        <div className="p-6" >
+        <div className="p-6 no-print" >
           <Card title="สถานะการสมัคร">
             <div className="flex flex-col gap-4">
               <div className="flex gap-4 items-center">
@@ -558,7 +557,7 @@ export default function Page({ params }) {
         </div>
       )}      
 
-      <div className="px-6 mb-5">
+      <div className="px-6 mb-5 no-print">
         {errorMessage && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
@@ -571,7 +570,7 @@ export default function Page({ params }) {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-3 p-6">
+      <div className="flex items-center justify-between gap-3 p-6 no-print">
         <div>
           <button
             type="button"

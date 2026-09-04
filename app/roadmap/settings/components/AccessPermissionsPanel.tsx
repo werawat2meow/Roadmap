@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { swalSuccess, swalError } from "../../../components/Swal";
 import { Check, Crown, Banknote, X } from "lucide-react";
 import {
@@ -102,31 +102,19 @@ const getRoleBadgeClass = (role: User["role"]) => {
   }
 };
 
-export default function AccessPermissionsPanel({
-  users,
-  selectedUserId,
+function UserAccessEditor({
   selectedUser,
   menuOptions,
-  onSelectUser,
   onUpdateUser,
-}: Props) {
-  const [draftUser, setDraftUser] = useState<User>(selectedUser);
+  onSelectUser,
+}: {
+  selectedUser: User;
+  menuOptions: string[];
+  onUpdateUser: (user: User) => Promise<User>;
+  onSelectUser: (id: string) => void;
+}) {
+  const [draftUser, setDraftUser] = useState<User>(() => selectedUser);
   const [isSaving, setIsSaving] = useState(false);
-  const itemsPerPage = 6;
-
-  const usersKey = useMemo(
-    () => users.map((user) => user.id).join(","),
-    [users],
-  );
-  const [pageState, setPageState] = useState({ usersKey, page: 1 });
-
-  const currentPage = pageState.usersKey === usersKey ? pageState.page : 1;
-  const totalPages = Math.max(Math.ceil(users.length / itemsPerPage), 1);
-
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return users.slice(startIndex, startIndex + itemsPerPage);
-  }, [users, currentPage]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -143,7 +131,6 @@ export default function AccessPermissionsPanel({
 
       onSelectUser(newUser.id);
 
-      // รีเฟรชหน้าหลัง popup ขึ้น
       setTimeout(() => {
         window.location.reload();
       }, 300);
@@ -152,13 +139,6 @@ export default function AccessPermissionsPanel({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const counts = {
-    Admin: users.filter((user) => user.role === "Admin").length,
-    Manager: users.filter((user) => user.role === "Manager").length,
-    Executive: users.filter((user) => user.role === "Management").length,
-    unassigned: users.filter((user) => user.role === "ยังไม่กำหนด").length,
   };
 
   const handleRoleChange = (role: User["role"]) => {
@@ -172,6 +152,143 @@ export default function AccessPermissionsPanel({
         : [...prev.menus, menu];
       return { ...prev, menus };
     });
+  };
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-8">
+      <div className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-slate-500">ชื่อพนักงาน</p>
+          <h2 className="text-2xl font-semibold text-slate-900">
+            {draftUser.name}
+          </h2>
+          <p className="text-sm text-slate-500">{draftUser.email}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {roleOptions.map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleRoleChange(role)}
+              className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition ${getRoleButtonClass(role, draftUser.role)}`}
+            >
+              {role}
+            </button>
+          ))}
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-slate-500 mb-4">กำหนดเมนู</p>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {menuOptions.map((menu) => {
+              const Icon = menuIconMap[menu] ?? LayoutDashboard;
+              const iconStyle = menuIconStyles[menu] ?? "text-slate-700";
+              const iconBgStyle = menuIconBgStyles[menu] ?? "bg-slate-100";
+              const active = draftUser.menus.includes(menu);
+
+              return (
+                <button
+                  key={menu}
+                  type="button"
+                  onClick={() => handleToggleMenu(menu)}
+                  className={`flex items-center gap-3 rounded-3xl border px-5 py-4 text-left text-sm font-semibold transition ${
+                    active
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                      active
+                        ? `bg-cyan-200 ${iconStyle}`
+                        : `${iconBgStyle} ${iconStyle}`
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+
+                  <span>{menu}</span>
+
+                  <span
+                    className={`ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                      active
+                        ? "border-white/20 bg-white/10 text-white"
+                        : "border-slate-200 bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {active ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`relative z-10 rounded-full px-6 py-3 text-sm font-semibold text-white transition ${
+              isSaving
+                ? "cursor-not-allowed bg-slate-400"
+                : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 cursor-pointer"
+            }`}
+          >
+            {isSaving ? "กำลังบันทึก..." : "บันทึก"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AccessPermissionsPanel({
+  users,
+  selectedUserId,
+  selectedUser,
+  menuOptions,
+  onSelectUser,
+  onUpdateUser,
+}: Props) {
+  const itemsPerPage = 4;
+
+  const usersKey = useMemo(
+    () => users.map((user) => user.id).join(","),
+    [users],
+  );
+  const [pageState, setPageState] = useState({ usersKey, page: 1 });
+
+  const currentPage = pageState.usersKey === usersKey ? pageState.page : 1;
+  const totalPages = Math.max(Math.ceil(users.length / itemsPerPage), 1);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return users.slice(startIndex, startIndex + itemsPerPage);
+  }, [users, currentPage]);
+
+  const pageWindowSize = 3;
+
+  let pageWindowStart = Math.max(currentPage - 1, 1);
+  let pageWindowEnd = Math.min(
+    pageWindowStart + pageWindowSize - 1,
+    totalPages,
+  );
+
+  if (pageWindowEnd - pageWindowStart + 1 < pageWindowSize) {
+    pageWindowStart = Math.max(pageWindowEnd - pageWindowSize + 1, 1);
+  }
+
+  const counts = {
+    Admin: users.filter((user) => user.role === "Admin").length,
+    Manager: users.filter((user) => user.role === "Manager").length,
+    Executive: users.filter((user) => user.role === "Management").length,
+    unassigned: users.filter((user) => user.role === "ยังไม่กำหนด").length,
   };
 
   return (
@@ -296,11 +413,12 @@ export default function AccessPermissionsPanel({
                     onClick={() =>
                       setPageState((prev) => ({
                         ...prev,
+                        usersKey,
                         page: Math.max(prev.page - 1, 1),
                       }))
                     }
                     disabled={currentPage === 1}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                    className="cursor-pointer flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                     title="Previous"
                   >
                     <svg
@@ -319,28 +437,29 @@ export default function AccessPermissionsPanel({
                   </button>
 
                   <div className="flex items-center gap-1.5">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <button
-                          key={page}
-                          type="button"
-                          onClick={() =>
-                            setPageState((prev) => ({
-                              ...prev,
-                              usersKey,
-                              page,
-                            }))
-                          }
-                          className={`flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-sm font-bold transition shadow-sm ${
-                            currentPage === page
-                              ? "bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-1"
-                              : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ),
-                    )}
+                    {Array.from(
+                      { length: pageWindowEnd - pageWindowStart + 1 },
+                      (_, i) => pageWindowStart + i,
+                    ).map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() =>
+                          setPageState((prev) => ({
+                            ...prev,
+                            usersKey,
+                            page,
+                          }))
+                        }
+                        className={`cursor-pointer flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-sm font-bold transition shadow-sm ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-1"
+                            : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
 
                   <button
@@ -348,11 +467,12 @@ export default function AccessPermissionsPanel({
                     onClick={() =>
                       setPageState((prev) => ({
                         ...prev,
+                        usersKey,
                         page: Math.min(prev.page + 1, totalPages),
                       }))
                     }
                     disabled={currentPage === totalPages}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                    className="cursor-pointer flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                     title="Next"
                   >
                     <svg
@@ -375,100 +495,13 @@ export default function AccessPermissionsPanel({
           )}
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-8">
-          <div className="flex flex-col gap-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-500">ชื่อพนักงาน</p>
-              <h2 className="text-2xl font-semibold text-slate-900">
-                {draftUser.name}
-              </h2>
-              <p className="text-sm text-slate-500">{draftUser.email}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {roleOptions.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleRoleChange(role)}
-                  className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition ${getRoleButtonClass(role, draftUser.role)}`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-slate-500 mb-4">
-                กำหนดเมนู
-              </p>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {menuOptions.map((menu) => {
-                  const Icon = menuIconMap[menu] ?? LayoutDashboard;
-                  const iconStyle = menuIconStyles[menu] ?? "text-slate-700";
-                  const iconBgStyle = menuIconBgStyles[menu] ?? "bg-slate-100";
-                  const active = draftUser.menus.includes(menu);
-
-                  return (
-                    <button
-                      key={menu}
-                      type="button"
-                      onClick={() => handleToggleMenu(menu)}
-                      className={`flex items-center gap-3 rounded-3xl border px-5 py-4 text-left text-sm font-semibold transition ${
-                        active
-                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <span
-                        className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                          active
-                            ? `bg-cyan-200 ${iconStyle}`
-                            : `${iconBgStyle} ${iconStyle}`
-                        }`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </span>
-
-                      <span>{menu}</span>
-
-                      <span
-                        className={`ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition ${
-                          active
-                            ? "border-white/20 bg-white/10 text-white"
-                            : "border-slate-200 bg-slate-100 text-slate-500"
-                        }`}
-                      >
-                        {active ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <X className="h-4 w-4" />
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                /* 🎨 ขนาดพิกเซลตัวหนังสือ, ระยะเว้น (px-6 py-3) และฟอนต์คงเดิมเป๊ะ เปลี่ยนแค่เฉดสีพื้นหลัง */
-                className={`relative z-10 rounded-full px-6 py-3 text-sm font-semibold text-white transition 
-                  ${
-                    isSaving
-                      ? "cursor-not-allowed bg-slate-400"
-                      : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 cursor-pointer"
-                  }`}
-              >
-                {isSaving ? "กำลังบันทึก..." : "บันทึก"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <UserAccessEditor
+          key={selectedUser.id}
+          selectedUser={selectedUser}
+          menuOptions={menuOptions}
+          onUpdateUser={onUpdateUser}
+          onSelectUser={onSelectUser}
+        />
       </div>
     </div>
   );

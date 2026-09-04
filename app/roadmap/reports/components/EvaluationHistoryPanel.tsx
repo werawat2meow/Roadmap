@@ -74,8 +74,12 @@ export default function EvaluationHistoryPanel({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  const [filterMonth, setFilterMonth] = useState("");
-  const [filterYear, setFilterYear] = useState("");
+  const [filterMonth, setFilterMonth] = useState(
+    String(new Date().getMonth() + 1),
+  );
+  const [filterYear, setFilterYear] = useState(
+    String(new Date().getFullYear()),
+  );
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();

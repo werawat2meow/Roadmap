@@ -33,6 +33,7 @@ export default function EmployeePage() {
   // --- เพิ่ม State สำหรับ Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+  const [pageWindowStart, setPageWindowStart] = useState<number | null>(null);
   const [probationAlerts, setProbationAlerts] = useState<ProbationAlert[]>([]);
   const [showProbationAlert, setShowProbationAlert] = useState(false);
 
@@ -97,9 +98,40 @@ export default function EmployeePage() {
         const res = await fetch("/roadmap/api/employees");
         const json = await res.json();
         if (json.success) {
-          const loaded = json.data || [];
+          const loaded: Employee[] = json.data || [];
           setEmployees(loaded);
-          checkProbationAlerts(loaded);
+
+          // checkProbationAlerts logic moved here
+          const thresholds = [60, 90, 120];
+          const alerts = loaded
+            .map((employee) => {
+              if (!employee.hireDate) return null;
+              const start = new Date(employee.hireDate);
+              if (Number.isNaN(start.getTime())) return null;
+              const now = new Date();
+              const daysSinceHire = Math.floor(
+                (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+              );
+              if (daysSinceHire < 0) return null;
+
+              const threshold = thresholds.find(
+                (value) => Math.abs(daysSinceHire - value) <= 7,
+              );
+              if (!threshold) return null;
+
+              return {
+                employeeCode: employee.employeeCode,
+                name: employee.name,
+                hireDate: employee.hireDate,
+                threshold,
+                daysSinceHire,
+                daysToThreshold: threshold - daysSinceHire,
+              } as ProbationAlert;
+            })
+            .filter(Boolean) as ProbationAlert[];
+
+          setProbationAlerts(alerts);
+          setShowProbationAlert(alerts.length > 0);
         } else {
           console.error("Employee fetch failed", json.error);
         }
@@ -200,38 +232,41 @@ export default function EmployeePage() {
   );
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
-      const matchesSearch = employee.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const matchesBranch = filters.branch
-        ? employee.branch === filters.branch
-        : true;
-      const matchesDepartment = filters.department
-        ? employee.department === filters.department
-        : true;
-      const matchesDivision = filters.division
-        ? employee.division === filters.division
-        : true;
-      const matchesUnit = filters.unit ? employee.unit === filters.unit : true;
-      const matchesLevel = filters.level
-        ? employee.level === filters.level
-        : true;
-      const matchesStatus = filters.status
-        ? employee.status === filters.status
-        : true;
-      return (
-        matchesSearch &&
-        matchesBranch &&
-        matchesDepartment &&
-        matchesDivision &&
-        matchesUnit &&
-        matchesLevel &&
-        matchesStatus
-      );
-    })
-    .sort((a, b) => {
-        return a.name.localeCompare(b.name, 'th', { sensitivity: 'accent' });
+    return employees
+      .filter((employee) => {
+        const matchesSearch = employee.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const matchesBranch = filters.branch
+          ? employee.branch === filters.branch
+          : true;
+        const matchesDepartment = filters.department
+          ? employee.department === filters.department
+          : true;
+        const matchesDivision = filters.division
+          ? employee.division === filters.division
+          : true;
+        const matchesUnit = filters.unit
+          ? employee.unit === filters.unit
+          : true;
+        const matchesLevel = filters.level
+          ? employee.level === filters.level
+          : true;
+        const matchesStatus = filters.status
+          ? employee.status === filters.status
+          : true;
+        return (
+          matchesSearch &&
+          matchesBranch &&
+          matchesDepartment &&
+          matchesDivision &&
+          matchesUnit &&
+          matchesLevel &&
+          matchesStatus
+        );
+      })
+      .sort((a, b) => {
+        return a.name.localeCompare(b.name, "th", { sensitivity: "accent" });
       });
   }, [searchTerm, filters, employees]);
 
@@ -435,23 +470,59 @@ export default function EmployeePage() {
                   )}{" "}
                   จากทั้งหมด {filteredEmployees.length} รายการ
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex gap-2 items-center">
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(p - 1, 1));
+                      setPageWindowStart(null);
+                    }}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
+
                   <div className="flex items-center gap-1">
-                    {/* แสดงเลขหน้าแบบย่อ (หรือวนลูปแสดงทุกหน้าถ้าหน้าไม่เยอะมาก) */}
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
+                    {(() => {
+                      const visible = 5;
+                      let windowStart =
+                        pageWindowStart ??
+                        Math.max(
+                          1,
+                          Math.min(
+                            currentPage - Math.floor(visible / 2),
+                            Math.max(1, totalPages - visible + 1),
+                          ),
+                        );
+                      windowStart = Math.min(
+                        windowStart,
+                        Math.max(1, totalPages - visible + 1),
+                      );
+                      const windowEnd = Math.min(
+                        windowStart + visible - 1,
+                        totalPages,
+                      );
+
+                      const pages: number[] = [];
+                      for (let p = windowStart; p <= windowEnd; p++)
+                        pages.push(p);
+
+                      return pages.map((page) => (
                         <button
                           key={page}
-                          onClick={() => setCurrentPage(page)}
+                          onClick={() => {
+                            setCurrentPage(page);
+                            if (
+                              (page === windowEnd && page < totalPages) ||
+                              (page === windowStart && page > 1)
+                            ) {
+                              // center the clicked page (make it the middle)
+                              setPageWindowStart(Math.max(1, page - 1));
+                            } else {
+                              setPageWindowStart(null);
+                            }
+                          }}
                           className={`px-3 py-1 text-sm rounded-md cursor-pointer ${
                             currentPage === page
                               ? "bg-blue-600 text-white font-bold"
@@ -460,15 +531,17 @@ export default function EmployeePage() {
                         >
                           {page}
                         </button>
-                      ),
-                    )}
+                      ));
+                    })()}
                   </div>
+
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                    }
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(p + 1, totalPages));
+                      setPageWindowStart(null);
+                    }}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>

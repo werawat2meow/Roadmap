@@ -16,6 +16,7 @@ type HistoryRecord = {
   evaluationType?: string | null;
   extra_data?: any;
   employeeName?: string;
+  rejection_note?: string | null;
 };
 
 type EvaluationHistoryModalProps = {
@@ -64,7 +65,14 @@ export default function EvaluationHistoryModal({
             </div>
           ) : (
             records.map((record) => {
-              const isDraft = record.status?.toLowerCase() === "draft";
+              const statusKey = record.status?.toLowerCase();
+
+              const statusBadgeClass =
+                statusKey === "draft"
+                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/10"
+                  : statusKey === "returned"
+                    ? "bg-orange-50 text-orange-700 ring-1 ring-orange-600/10"
+                    : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10";
 
               return (
                 <div
@@ -83,11 +91,7 @@ export default function EvaluationHistoryModal({
                         สถานะ:
                       </span>
                       <span
-                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${
-                          isDraft
-                            ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/10"
-                            : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10"
-                        }`}
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${statusBadgeClass}`}
                       >
                         {record.status}
                       </span>
@@ -102,6 +106,13 @@ export default function EvaluationHistoryModal({
                       </span>
                     </div>
                   </div>
+
+                  {record.status === "Returned" && record.rejection_note && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      <p className="font-semibold">ถูกตีกลับให้แก้ไข</p>
+                      <p className="mt-1">{record.rejection_note}</p>
+                    </div>
+                  )}
 
                   {/* แถวกลาง: แสดงผลคะแนน */}
                   <div className="grid grid-cols-3 gap-3">

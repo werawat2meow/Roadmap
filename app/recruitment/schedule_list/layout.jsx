@@ -8,8 +8,6 @@ function LanguageAuthGuard({ children }) {
   const { user, loadingUser } = useAuth();
   const router = useRouter();
 
-  // console.log(user.allowed_company_ids);
-
   useEffect(() => {
     if (loadingUser) return;
 

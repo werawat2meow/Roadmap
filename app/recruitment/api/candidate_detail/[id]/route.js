@@ -23,6 +23,10 @@ export async function GET(request, { params }) {
           id,
           position_name
         ),
+        titles (
+          id,
+          title_name_th
+        ),
         genders(
           id,
           gender_name_th

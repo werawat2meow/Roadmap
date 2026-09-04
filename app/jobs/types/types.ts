@@ -20,7 +20,11 @@ export interface PositionInfo {
 /*                                  Personal                                  */
 /* -------------------------------------------------------------------------- */
 
-export type Gender = "male" | "female" | "other";
+// NOTE: despite the name, this field does NOT hold a "male"/"female"
+// literal. The Gender Radio.Group stores `option.id` (from /jobs/api/gender)
+// as the value, and `selectedGenderOption` looks it up by id — same pattern
+// as `nationality` / `religion` below. Kept as `string` to match.
+export type Gender = string;
 
 export type ResidenceType =
   | "own_house"
@@ -64,6 +68,13 @@ export interface AddressValue {
 export interface PersonalInformationData  {
   otherPosition: string;
   expectedSalary: number;
+  // NOTE: fixed from `number | null`. Title ids come from
+  // /jobs/api/title_name, which — like nationality/religion below — is a
+  // Supabase-backed lookup table whose ids are strings (commonly UUIDs),
+  // not sequential numbers. Forcing this through Number(...) silently
+  // produces NaN for non-numeric ids, and JSON.stringify(NaN) silently
+  // becomes `null` on submit — which is why title was arriving as null.
+  title: string | null;
   firstName: string;
   lastName: string;
   nicknameTH: string;

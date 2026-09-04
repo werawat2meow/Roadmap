@@ -122,13 +122,24 @@ export function createPersonalInformation(): PersonalInformationData {
   return {
     otherPosition: "",
     expectedSalary: null,
+    // NOTE: fixed from `0`. `0` is falsy in JS, so any `value.title ? x : y`
+    // or `value.title || null` check elsewhere would silently treat a
+    // genuinely selected title (if its id ever were 0) as "not selected".
+    // `null` is the correct "nothing selected" sentinel, and matches the
+    // `string | null` type in types.ts.
+    title: null,
     firstName: "",
     lastName: "",
     nicknameTH: "",
     nicknameEN: "",
     dateOfBirth: "",
     age: null,
-    gender: "male",
+    // NOTE: fixed from "male". gender stores a gender option id (see
+    // types.ts), not a "male"/"female" literal, so "male" was never a real
+    // id — and being truthy, it silently prevented the "auto-select default
+    // gender from the API" effect in PersonalInformation.tsx from ever
+    // running (`if (value.gender) return;`). "" matches nationality/religion.
+    gender: "",
     pregnancyAge: "",
     militaryStatus: "",
     height: null,

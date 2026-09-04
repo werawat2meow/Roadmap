@@ -379,6 +379,16 @@ export default function RegisterPage() {
 /*                              Gender Types                              */
 /* ---------------------------------------------------------------------- */
 
+interface TitleOption {
+  id: number | string;
+  title_name_th: string;
+  title_name_en: string;
+  gender?: string | null;
+  status?: string;
+  sort_order?: number;
+  is_default?: boolean;
+}
+
 type GenderCode = "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED";
 
 interface GenderOption {
@@ -442,8 +452,6 @@ function PersonalInformation({
   /* ---------------------------------------------------------------------- */
   /*                          Fetch Position Options                        */
   /* ---------------------------------------------------------------------- */
-
-  
 
   const [positions, setPositions] = useState<PositionOption[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(false);
@@ -524,6 +532,70 @@ function PersonalInformation({
         : null,
     });
   }, [form, value]);
+
+  /* ---------------------------------------------------------------------- */
+  /*                          Fetch Title Options                           */
+  /* ---------------------------------------------------------------------- */
+  // NOTE: this used to accidentally write into setGenderOptions (copy/paste
+  // bug) which clobbered the real gender list. It now has its own state.
+
+  const [titleOptions, setTitleOptions] = useState<TitleOption[]>([]);
+  const [titleLoading, setTitleLoading] = useState<boolean>(true);
+  const [titleError, setTitleError] = useState<boolean>(false);
+
+  useEffect(() => {
+      let isMounted = true;
+
+      const fetchTitles = async () => {
+      try {
+          setTitleLoading(true);
+          setTitleError(false);
+
+          const res = await fetch("/jobs/api/title_name");
+
+          if (!res.ok) {
+          throw new Error(`Failed to fetch titles: ${res.status}`);
+          }
+
+          const json = await res.json();
+
+          // API route responds with { data: [...] } on success,
+          // or { message: string } on error (see app/jobs/api/title_name/route.ts).
+          const list: TitleOption[] = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+
+          if (list.length === 0) {
+          console.warn("Titles API did not return any options:", json);
+          }
+
+          const sorted = [...list].sort(
+            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+          );
+
+          if (isMounted) {
+          setTitleOptions(sorted);
+          }
+      } catch (err) {
+          console.error("Error fetching titles:", err);
+          if (isMounted) {
+          setTitleError(true);
+          }
+      } finally {
+          if (isMounted) {
+          setTitleLoading(false);
+          }
+      }
+      };
+
+      fetchTitles();
+
+      return () => {
+      isMounted = false;
+      };
+  }, []);
 
   /* ---------------------------------------------------------------------- */
   /*                          Fetch Gender Options                          */
@@ -819,6 +891,61 @@ function PersonalInformation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [genderOptions]);
 
+  /* ---------------------------------------------------------------------- */
+  /*                        Title -> Gender Handling                        */
+  /* ---------------------------------------------------------------------- */
+  // When the user picks a title (คำนำหน้า), derive gender from it:
+  // selectedTitle.gender comes back lowercase (e.g. "male" / "female"), so
+  // it's matched case-insensitively against genderOptions[i].gender_code
+  // (which is uppercase, e.g. "MALE" / "FEMALE") to find the matching
+  // gender id. Gender updates in the SAME onChange call as title, so both
+  // values land together in the parent form state that gets submitted/saved.
+  //
+  // Downstream, isFemale / isMale (used to show the Pregnancy and Military
+  // fields) are derived reactively from `value.gender` on every render —
+  // see `selectedGenderOption` above. So once gender is set here, the
+  // Pregnancy / Military conditional fields update automatically, exactly
+  // as if the user had picked Gender by hand. No extra wiring needed.
+  const handleTitleChange = (titleId: number | string | undefined) => {
+    if (titleId === undefined) {
+      updateField("title", null);
+      return;
+    }
+
+    const selectedTitle = Array.isArray(titleOptions)
+      ? titleOptions.find((t) => String(t.id) === String(titleId))
+      : undefined;
+
+    const newValue: typeof value = {
+      ...value,
+      // PersonalInformationData.title is `string | null`, but titleId can
+      // come through as a number if the API ever returns numeric ids —
+      // stringify it explicitly so this always satisfies the field's type.
+      title: String(titleId),
+    };
+
+    if (selectedTitle?.gender) {
+      const matchedGender = Array.isArray(genderOptions)
+        ? genderOptions.find(
+            (g) =>
+              g.gender_code?.toLowerCase() ===
+              selectedTitle.gender!.toLowerCase()
+          )
+        : undefined;
+
+      if (matchedGender) {
+        // Assign the id as-is — do NOT stringify with .toLowerCase() (that
+        // was wrong). Gender stores the raw id from genderOptions (same as
+        // what the Gender Radio.Group stores via `value={option.id}`), just
+        // stringified to satisfy the `Gender = string` field type since
+        // ids can come back as number | string.
+        newValue.gender = String(matchedGender.id);
+      }
+    }
+
+    onChange(newValue);
+  };
+
 
   const updateDriverLicense = (
     key: keyof typeof value.driverLicense,
@@ -1000,8 +1127,54 @@ function PersonalInformation({
         {/* ---------------------------------------------------------------------- */}
         <Card title={getUIText(uiText.personalInfoSection, locale)} >
           <Row gutter={[16, 16]}>
+            {/* Title (คำนำหน้า) */}
+            <Col xs={24} md={6}>
+                <Form.Item
+                    label={
+                        uiText.title
+                            ? getUIText(uiText.title, locale)
+                            : language === "TH"
+                            ? "คำนำหน้า"
+                            : "Title"
+                    }
+                    required
+                >
+                    {titleLoading ? (
+                        <Spin size="small" />
+                    ) : titleError ? (
+                        <Typography.Text type="danger">
+                            {language === "TH"
+                                ? "ไม่สามารถโหลดคำนำหน้าได้"
+                                : "Failed to load titles"}
+                        </Typography.Text>
+                    ) : (
+                        <Select
+                            showSearch
+                            allowClear
+                            placeholder={
+                                language === "TH"
+                                ? "เลือกคำนำหน้า"
+                                : "Select title"
+                            }
+                            style={{ width: "100%" }}
+                            value={value.title || undefined}
+                            onChange={handleTitleChange}
+                            optionFilterProp="label"
+                            options={(Array.isArray(titleOptions) ? titleOptions : []).map(
+                                (option) => ({
+                                    value: option.id,
+                                    label:
+                                        locale === "TH"
+                                            ? option.title_name_th
+                                            : option.title_name_en,
+                                })
+                            )}
+                        />
+                    )}
+                </Form.Item>
+            </Col>
             {/* First Name */}
-            <Col xs={24} md={12}>
+            <Col xs={24} md={6}>
               <Form.Item label={getUIText(uiText.firstName, locale)} required >
                 <Input
                   required
@@ -1013,7 +1186,7 @@ function PersonalInformation({
             </Col>
 
             {/* Last Name */}
-            <Col xs={24} md={12}>
+            <Col xs={24} md={6}>
               <Form.Item label={getUIText(uiText.lastName, locale)} required >
                 <Input
                   required
@@ -2686,29 +2859,6 @@ function WorkExperienceSection({
         >
           <Row gutter={[16, 16]}>
             {/* Period */}
-
-            {/* <Col xs={24} md={12}>
-              <Form.Item
-                label={getUIText(uiText.workPeriod, locale)}
-              >
-                <Input
-                  placeholder={
-                    language === "TH"
-                      ? "เช่น ม.ค. 2565 - ธ.ค. 2566"
-                      : "Example: Jan 2022 - Dec 2023"
-                  }
-                  value={work.period}
-                  onChange={(e) =>
-                    updateRow(
-                      work.id,
-                      "period",
-                      e.target.value
-                    )
-                  }
-                />
-              </Form.Item>
-            </Col> */}
-
             <Col xs={24} md={12}>
               <Form.Item label={getUIText(uiText.workPeriod, locale)}>
                 <RangePicker

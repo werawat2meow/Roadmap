@@ -202,7 +202,7 @@ export default function InterviewCandidatesPage() {
         onChange={handleReviewerChange}
         options={reviewers.map((r) => ({
           value: r.id,
-          label: `${r.first_name_th} ${r.last_name_th}`,
+          label: `${r.titles?.title_name_th ?? ""} ${r.first_name_th} ${r.last_name_th}`,
         }))}
       />
 

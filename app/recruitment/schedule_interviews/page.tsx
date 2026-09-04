@@ -40,6 +40,9 @@ interface Application {
   id: number;
   first_name: string;
   last_name: string;
+  titles?: {
+    title_name_th: string;
+  } | null;
   created_at: string;
   status: number;
   position_id: number;
@@ -165,6 +168,9 @@ export default function RecruitmentApplicationsPage() {
   const numericPageSize = isAll ? undefined : pageSize;
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
 
+  const [exporting, setExporting] = useState(false);
+  const [exportingImage, setExportingImage] = useState(false); 
+
   // โหลดตัวเลือกตำแหน่งงาน (resource=positions) ครั้งเดียวตอน mount
   // ใช้ AbortController กัน request ค้างจากรอบแรกตอน React Strict Mode
   // mount ซ้ำใน dev (mount -> cleanup -> mount)
@@ -246,6 +252,88 @@ export default function RecruitmentApplicationsPage() {
       if (!signal?.aborted) {
         setLoading(false);
       }
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", String(statusFilter));
+      if (positionId) params.set("position_id", String(positionId));
+      if (dateRange) {
+        params.set("date_from", dateRange.format("YYYY-MM-DD"));
+        params.set("date_to", dateRange.format("YYYY-MM-DD"));
+      }
+
+      const res = await fetch(
+        `/recruitment/api/schedule_interviews/export?${params.toString()}`
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        Modal.error({
+          title: "เกิดข้อผิดพลาด",
+          content: json?.error || "ไม่สามารถ export ข้อมูลได้",
+        });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `schedule_interviews_${dayjs().format("YYYYMMDD_HHmm")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      Modal.error({ title: "เกิดข้อผิดพลาด", content: "ไม่สามารถ export ข้อมูลได้" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportImage = async () => {
+    setExportingImage(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", String(statusFilter));
+      if (positionId) params.set("position_id", String(positionId));
+      if (dateRange) {
+        params.set("date_from", dateRange.format("YYYY-MM-DD"));
+        params.set("date_to", dateRange.format("YYYY-MM-DD"));
+      }
+
+      const res = await fetch(
+        `/recruitment/api/schedule_interviews/export_image?${params.toString()}`
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        Modal.error({
+          title: "เกิดข้อผิดพลาด",
+          content: json?.error || "ไม่สามารถ export รูปภาพได้",
+        });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `schedule_interviews_${dayjs().format("YYYYMMDD_HHmm")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      Modal.error({ title: "เกิดข้อผิดพลาด", content: "ไม่สามารถ export รูปภาพได้" });
+    } finally {
+      setExportingImage(false);
     }
   };
 
@@ -430,7 +518,7 @@ export default function RecruitmentApplicationsPage() {
         title: "Name",
         key: "first_name",
         render: (_: unknown, record: Application) =>
-          `${record.first_name} ${record.last_name}`,
+          `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`,
       },
       {
         title: "Interview Date",
@@ -650,6 +738,22 @@ export default function RecruitmentApplicationsPage() {
                 </Title>
               </div>
               <Space wrap>
+                <Button
+                  icon={<AntIcon name="FileExcelOutlined" />}
+                  loading={exporting}
+                  onClick={handleExportExcel}
+                >
+                  Export Excel
+                </Button>
+
+                <Button
+                  icon={<AntIcon name="FileImageOutlined" />}
+                  loading={exportingImage}
+                  onClick={handleExportImage}
+                >
+                  Export Image
+                </Button>
+
                 <Space size="small">
                   <Text style={{ fontSize: 13, color: "#475569" }}>
                     แสดง

@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       position_id: positionId,
       other_position: personal.otherPosition ?? "",
       expected_salary: Number(personal.expectedSalary ?? payload.expected_salary ?? 0),
+      title_id: personal.title ?? "",
       first_name: personal.firstName ?? "",
       last_name: personal.lastName ?? "",
       nickname_th: personal.nicknameTH ?? "",

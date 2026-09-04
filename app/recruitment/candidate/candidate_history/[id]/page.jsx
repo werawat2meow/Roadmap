@@ -95,7 +95,17 @@ export default function CandidateHistoryPage({ params }) {
     {
       title: "Status",
       dataIndex: "display_status",
-      render: (val) => <StatusTag value={val} />,
+      render: (val, row) => (
+        <Space orientation="vertical" size={4}>
+          <StatusTag value={val} />
+
+          {val === "backlist" && row.status_reason && (
+            <Text type="secondary">
+              เหตุผล: {row.status_reason}
+            </Text>
+          )}
+        </Space>
+      ),
     },
     {
       title: "Action",

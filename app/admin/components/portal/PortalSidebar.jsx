@@ -994,7 +994,7 @@ export default function PortalSidebar({
       ? false
       : collapsed;
     return (
-      <div className="flex h-full flex-col bg-gradient-to-b from-[#224a70] via-[#173a5d] to-[#102f50] text-white shadow-xl">
+      <div className="flex h-full flex-col bg-gradient-to-b from-[#224a70] via-[#173a5d] to-[#102f50] text-white shadow-xl no-print">
         {/* =================================================
             Brand
         ================================================= */}

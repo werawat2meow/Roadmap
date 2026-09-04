@@ -13,7 +13,7 @@ export default function PortalMobileHeader({
   onOpen,
 }) {
   return (
-    <div className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#224a70] via-[#173a5d] to-[#102f50] px-4 text-white shadow-lg lg:hidden">
+    <div className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#224a70] via-[#173a5d] to-[#102f50] px-4 text-white shadow-lg lg:hidden no-print">
       {/* =================================================
           Brand
       ================================================= */}

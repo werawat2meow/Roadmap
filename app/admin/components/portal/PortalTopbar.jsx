@@ -464,13 +464,14 @@ export default function PortalTopbar({
               2xl:left-[var(--portal-sidebar-xxl)]
             `
         }
+        no-print
       `}
     >
       {/* =================================================
           Left
       ================================================= */}
 
-      <div className="min-w-0 flex-1 pr-4">
+      <div className="min-w-0 flex-1 pr-4 no-print">
         <div
           className="
             truncate

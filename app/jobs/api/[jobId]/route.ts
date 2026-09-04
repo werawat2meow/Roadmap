@@ -84,6 +84,7 @@ export async function GET(
     const { data: languages } = await supabase
     .from("recruit_language")
     .select("language_slug")
+    .eq("status", true)
     .order("id");
 
     const slugs: string[] = (languages ?? []).map((l) => l.language_slug);

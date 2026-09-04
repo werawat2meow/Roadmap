@@ -31,6 +31,7 @@ export default async function NewJobDescriptionPage() {
     supabaseAdmin
       .from("recruit_language")
       .select("id, language_slug, language_name")
+      .eq("status", true)
       .order("id", { ascending: true }),
     supabaseAdmin
       .from("employment_types")

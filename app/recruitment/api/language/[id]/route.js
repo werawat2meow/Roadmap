@@ -7,6 +7,7 @@ export async function GET(_request, { params }) {
   const { data, error } = await supabaseAdmin
     .from("recruit_language")
     .select("id, language_name, language_slug, language_img, status, created_at, updated_at")
+    .eq("status", true)
     .eq("id", id)
     .single();
 

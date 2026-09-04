@@ -76,8 +76,9 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
   7: { label: "ขาดการสัมภาษณ์", color: "volcano" },
   8: { label: "ส่งต่อการสัมภาษณ์", color: "green" },
   9: { label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน", color: "volcano" },
-  10: { label: "ผ่านการคัดเลือก", color: "volcano" },
-  11: { label: "ไม่ผ่านการคัดเลือก", color: "volcano" },
+  10: { label: "ผ่านการสัมภาษณ์", color: "volcano" },
+  11: { label: "ไม่ผ่านการสัมภาษณ์", color: "volcano" },
+  19: { label: "รอพิจารณาอีกครั้ง", color: "volcano" },
   12: { label: "นัดวันเริ่มทำงาน", color: "volcano" },
 };
 

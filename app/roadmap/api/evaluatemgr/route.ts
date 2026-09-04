@@ -17,12 +17,21 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,employee_id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,currentSalary,newSalary,evaluation_period,evaluation_period_continued,special_compensation,new_designation,new_level,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers!inner(manager_id)`,
+      `id,employee_id,status,rejection_note,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,currentSalary,newSalary,evaluation_period,evaluation_period_continued,special_compensation,new_designation,new_level,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers!inner(manager_id)`,
     )
     .eq("rm_evaluation_reviewers.manager_id", reviewerId);
 
   if (status) {
-    query = query.eq("status", status);
+    const statuses = status
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (statuses.length === 1) {
+      query = query.eq("status", statuses[0]);
+    } else if (statuses.length > 1) {
+      query = query.in("status", statuses);
+    }
   }
 
   if (evaluationId) {

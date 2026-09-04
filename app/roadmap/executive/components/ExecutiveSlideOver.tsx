@@ -29,6 +29,7 @@ type ExecutiveSlideOverProps = {
   onClose: () => void;
   onApprove?: () => void;
   onReject?: () => void;
+  onReturn?: () => void;
 };
 
 export default function ExecutiveSlideOver({
@@ -38,6 +39,7 @@ export default function ExecutiveSlideOver({
   onClose,
   onApprove,
   onReject,
+  onReturn,
 }: ExecutiveSlideOverProps) {
   const name = employee?.name ?? "";
   const title = employee?.title ?? "";
@@ -181,6 +183,14 @@ export default function ExecutiveSlideOver({
             className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-sm font-bold shadow-xl shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-600 active:scale-95 transition-all"
           >
             อนุมัติ
+          </button>
+
+          <button
+            type="button"
+            onClick={onReturn}
+            className="cursor-pointer flex-1 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white text-sm font-bold shadow-xl shadow-amber-500/20 hover:from-amber-500 hover:to-orange-600 active:scale-95 transition-all"
+          >
+            ตีกลับแก่ไข
           </button>
 
           <button

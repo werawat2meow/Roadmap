@@ -43,7 +43,7 @@ export default function EmployeeTable({ employees }: EmployeeTableProps) {
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee Code</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[20%]">Department</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[15%]">Role</th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[15%]">Position</th>
               <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold text-center w-[15%]">Management</th>
             </tr>
           </thead>

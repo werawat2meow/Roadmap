@@ -38,6 +38,9 @@ export default function ExecutivePage() {
   );
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [pendingAction, setPendingAction] = useState<
+    "reject" | "return" | null
+  >(null);
   const [showGuide, setShowGuide] = useState(false);
 
   // --- ส่วนการดึงข้อมูลจาก API ---
@@ -144,20 +147,25 @@ export default function ExecutivePage() {
   ];
 
   const handleStatusUpdate = async (
-    action: "approve" | "reject",
+    action: "approve" | "reject" | "return",
     rejectionNote?: string,
   ) => {
     if (!selectedEmployee) return;
 
-    if (action === "reject" && !rejectionNote?.trim()) {
-      alert("กรุณากรอกเหตุผลก่อนไม่อนุมัติ");
+    if (
+      (action === "reject" || action === "return") &&
+      !rejectionNote?.trim()
+    ) {
+      alert("กรุณากรอกเหตุผลก่อนดำเนินการ");
       return;
     }
 
     const confirmMsg =
       action === "approve"
         ? "ยืนยันการอนุมัติผลการประเมินนี้?"
-        : "ยืนยันการไม่อนุมัติผลการประเมินนี้?";
+        : action === "reject"
+          ? "ยืนยันการไม่อนุมัติผลการประเมินนี้? (จบการประเมิน ไม่สามารถแก้ไขได้อีก)"
+          : "ยืนยันการตีกลับให้แก้ไข? (จะกลับไปที่คิวของผู้ประเมิน)";
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -178,10 +186,13 @@ export default function ExecutivePage() {
         alert(
           action === "approve"
             ? "อนุมัติเรียบร้อยแล้ว"
-            : "ปฏิเสธการประเมินเรียบร้อยแล้ว",
+            : action === "reject"
+              ? "ไม่อนุมัติเรียบร้อยแล้ว"
+              : "ตีกลับให้แก้ไขเรียบร้อยแล้ว",
         );
         setSelectedEmployee(null);
         setRejectModalOpen(false);
+        setPendingAction(null);
         setRejectionReason("");
         window.location.reload();
       } else {
@@ -208,9 +219,11 @@ export default function ExecutivePage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-slate-900 font-display">Management</h1>
+            <h1 className="text-3xl font-bold text-slate-900 font-display">
+              Management
+            </h1>
             {/* ปุ่ม Help เล็กๆ ข้างชื่อหน้า */}
-            <button 
+            <button
               onClick={openGuide}
               className="p-1 text-yellow-400 hover:text-yellow-500 transition-colors cursor-pointer"
               title="วิธีใช้งาน"
@@ -218,7 +231,9 @@ export default function ExecutivePage() {
               <HelpCircle className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-slate-500 mt-1">ภาพรวมผลการประเมินพนักงานที่ดำเนินการเสร็จสิ้นแล้ว</p>
+          <p className="text-slate-500 mt-1">
+            ภาพรวมผลการประเมินพนักงานที่ดำเนินการเสร็จสิ้นแล้ว
+          </p>
         </div>
       </div>
 
@@ -292,7 +307,9 @@ export default function ExecutivePage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">
-                  เหตุผลไม่อนุมัติ
+                  {pendingAction === "return"
+                    ? "เหตุผลตีกลับแก้ไข"
+                    : "เหตุผลไม่อนุมัติ"}
                 </p>
                 <h2 className="text-xl font-bold text-slate-900">
                   กรุณากรอกเหตุผลก่อนดำเนินการ
@@ -313,23 +330,37 @@ export default function ExecutivePage() {
             <textarea
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="ระบุเหตุผลที่ไม่อนุมัติ..."
+              placeholder={
+                pendingAction === "return"
+                  ? "ระบุเหตุผลที่ตีกลับให้แก้ไข..."
+                  : "ระบุเหตุผลที่ไม่อนุมัติ..."
+              }
               className="w-full min-h-[140px] rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
             />
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={() => handleStatusUpdate("reject", rejectionReason)}
-                className="cursor-pointer flex-1 rounded-2xl bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-600/20 hover:bg-orange-700"
+                onClick={() =>
+                  pendingAction &&
+                  handleStatusUpdate(pendingAction, rejectionReason)
+                }
+                className={`cursor-pointer flex-1 rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-lg ${
+                  pendingAction === "return"
+                    ? "bg-amber-500 shadow-amber-500/20 hover:bg-amber-600"
+                    : "bg-orange-600 shadow-orange-600/20 hover:bg-orange-700"
+                }`}
               >
-                ไม่อนุมัติ พร้อมเหตุผล
+                {pendingAction === "return"
+                  ? "ตีกลับ พร้อมเหตุผล"
+                  : "ไม่อนุมัติ พร้อมเหตุผล"}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
                   setRejectModalOpen(false);
+                  setPendingAction(null);
                   setRejectionReason("");
                 }}
                 className="cursor-pointer flex-1 rounded-2xl bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600"
@@ -349,10 +380,18 @@ export default function ExecutivePage() {
         onClose={() => {
           setSelectedEmployee(null);
           setRejectModalOpen(false);
+          setPendingAction(null);
           setRejectionReason("");
         }}
         onApprove={() => handleStatusUpdate("approve")}
-        onReject={() => setRejectModalOpen(true)}
+        onReject={() => {
+          setPendingAction("reject");
+          setRejectModalOpen(true);
+        }}
+        onReturn={() => {
+          setPendingAction("return");
+          setRejectModalOpen(true);
+        }}
       />
     </div>
   );

@@ -9,6 +9,7 @@ type EmployeeInfoCardProps = {
   evaluationType?: string;
   historyCount?: number;
   onHistoryClick?: () => void;
+  onCompareClick?: () => void;
   showChangeEmployee?: boolean;
   showHistoryButton?: boolean;
 };
@@ -32,6 +33,7 @@ export default function EmployeeInfoCard({
   evaluationType = "Probation",
   historyCount = 0,
   onHistoryClick,
+  onCompareClick,
   showChangeEmployee = true,
   showHistoryButton = true,
 }: EmployeeInfoCardProps) {
@@ -142,6 +144,7 @@ export default function EmployeeInfoCard({
 
         <div className="flex flex-col items-center lg:items-end justify-between gap-4 min-w-[170px]">
           <div className="text-right">
+            {/* ส่วนของ Badge ด้านบน */}
             <div className="flex items-center justify-end gap-2 mb-3">
               <span
                 className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeClass}`}
@@ -149,16 +152,32 @@ export default function EmployeeInfoCard({
                 {evaluationType}
               </span>
             </div>
-            {showHistoryButton && (
-              <button
-                type="button"
-                onClick={onHistoryClick}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-400 px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:from-yellow-400 hover:to-amber-500 hover:border-amber-400 transition cursor-pointer"
-              >
-                <History size={14} />
-                ประวัติ {historyCount > 0 ? `(${historyCount})` : ""}
-              </button>
-            )}
+
+            {/* ส่วนของปุ่ม ประวัติ และ เปรียบเทียบ (เพิ่ม div flex เข้ามาครอบตรงนี้) */}
+            <div className="flex items-center justify-end gap-2 mb-3">
+              {showHistoryButton && (
+                <button
+                  type="button"
+                  onClick={onHistoryClick}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-400 px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:from-yellow-400 hover:to-amber-500 hover:border-amber-400 transition cursor-pointer"
+                >
+                  <History size={14} />
+                  ประวัติ {historyCount > 0 ? `(${historyCount})` : ""}
+                </button>
+              )}
+
+              {onCompareClick && (
+                <button
+                  type="button"
+                  onClick={onCompareClick}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-300 bg-gradient-to-b from-blue-300 to-indigo-400 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:from-blue-400 hover:to-indigo-500 transition cursor-pointer"
+                >
+                  เปรียบเทียบ
+                </button>
+              )}
+            </div>
+
+            {/* ปุ่ม Change Employee ก็น่าจะอยู่ต่อลงมาด้านล่าง */}
           </div>
           {showChangeEmployee && (
             <Link

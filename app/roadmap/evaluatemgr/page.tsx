@@ -14,6 +14,7 @@ import SelectionModal from "@/app/roadmap/evaluatemgr/components/SelectionModal"
 import { Employee } from "@/app/roadmap/types";
 import { useSearchParams } from "next/navigation";
 import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
+import EmployeeEvaluationCompareModal from "@/app/roadmap/evaluate/components/EmployeeEvaluationCompareModal";
 
 type SettingsCategory = {
   id: string;
@@ -31,6 +32,7 @@ type EvaluatemgrRecord = {
   employee_id: string;
   status: string;
   created_at: string;
+  rejection_note?: string | null;
   totalScore: number | null;
   companyScore: number | null;
   departmentScore: number | null;
@@ -139,13 +141,18 @@ export default function EvaluateMgrPage() {
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [compareYear, setCompareYear] = useState(
+    String(new Date().getFullYear()),
+  );
+  const [compareRecords, setCompareRecords] = useState<EvaluatemgrRecord[]>([]);
 
   const fetchPendingEvaluations = useCallback(async () => {
     if (!reviewerId) return;
     const res = await fetch(
       `/roadmap/api/evaluatemgr?reviewerId=${encodeURIComponent(
         reviewerId,
-      )}&status=Draft`,
+      )}&status=Draft,Returned`,
     );
     const data = await res.json();
     if (res.ok && data?.success) {
@@ -154,6 +161,23 @@ export default function EvaluateMgrPage() {
       console.error("load evaluatemgr list failed", data);
     }
   }, [reviewerId]);
+  const fetchCompareRecords = useCallback(async () => {
+    if (!selectedEvaluation) return [];
+
+    const response = await fetch(
+      `/roadmap/api/evaluations?employeeId=${encodeURIComponent(
+        selectedEvaluation.employee_id,
+      )}&year=${compareYear}`,
+    );
+    const data = await response.json();
+
+    if (!response.ok || !data?.success) {
+      console.error("Failed to load comparison data", data);
+      return [];
+    }
+
+    return data.data || [];
+  }, [selectedEvaluation, compareYear]);
 
   const fetchEmployee = useCallback(async (employeeId: string) => {
     const res = await fetch(`/roadmap/api/employees/${employeeId}`);
@@ -220,7 +244,7 @@ export default function EvaluateMgrPage() {
       const res = await fetch(
         `/roadmap/api/evaluatemgr?reviewerId=${encodeURIComponent(
           reviewerId,
-        )}&status=Draft`,
+        )}&status=Draft,Returned`,
       );
       const data = await res.json();
       if (canceled) return;
@@ -519,6 +543,23 @@ export default function EvaluateMgrPage() {
           )}
           {!isReadOnly && (
             <button
+              onClick={async () => {
+                if (!selectedEvaluation) {
+                  window.alert("กรุณาเลือกพนักงานก่อน");
+                  return;
+                }
+
+                const records = await fetchCompareRecords();
+                setCompareRecords(records as any[]);
+                setIsCompareOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-cyan-600 hover:to-blue-700 transition-all duration-150 active:scale-95 cursor-pointer"
+            >
+              เปรียบเทียบ
+            </button>
+          )}
+          {!isReadOnly && (
+            <button
               onClick={() => setIsSelectOpen(true)}
               className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-150 active:scale-95 cursor-pointer"
             >
@@ -561,6 +602,14 @@ export default function EvaluateMgrPage() {
             showChangeEmployee={false}
             showHistoryButton={false}
           />
+
+          {selectedEvaluation?.status === "Returned" &&
+            selectedEvaluation.rejection_note && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <p className="font-semibold">รายการนี้ถูกตีกลับเพื่อแก้ไข</p>
+                <p className="mt-1">{selectedEvaluation.rejection_note}</p>
+              </div>
+            )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">{renderForm()}</div>
@@ -630,6 +679,11 @@ export default function EvaluateMgrPage() {
         onDelete={(record) =>
           handleDeleteEvaluation(record as EvaluatemgrRecord)
         }
+      />
+      <EmployeeEvaluationCompareModal
+        open={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        records={compareRecords as any[]}
       />
     </div>
   );

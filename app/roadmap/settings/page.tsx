@@ -57,28 +57,28 @@ type User = {
   menus: string[];
 };
 
-  const LEVEL_ORDER = ["P9", "P8", "P7", "P6", "P5", "P4", "P3", "P2"];
+const LEVEL_ORDER = ["P9", "P8", "P7", "P6", "P5", "P4", "P3", "P2"];
 
-  const getLevelIndex = (level: string) =>
-    LEVEL_ORDER.indexOf(level) >= 0
-      ? LEVEL_ORDER.indexOf(level)
-      : LEVEL_ORDER.length;
+const getLevelIndex = (level: string) =>
+  LEVEL_ORDER.indexOf(level) >= 0
+    ? LEVEL_ORDER.indexOf(level)
+    : LEVEL_ORDER.length;
 
-  const sortCategories = (items: Category[]) =>
-    [...items].sort((a, b) => {
-      const typeOrder = (type: string) =>
-        type === "Company Common Ground"
-          ? 0
-          : type === "Department Common Ground"
-            ? 1
-            : 2;
+const sortCategories = (items: Category[]) =>
+  [...items].sort((a, b) => {
+    const typeOrder = (type: string) =>
+      type === "Company Common Ground"
+        ? 0
+        : type === "Department Common Ground"
+          ? 1
+          : 2;
 
-      const aType = typeOrder(a.type);
-      const bType = typeOrder(b.type);
-      if (aType !== bType) return aType - bType;
+    const aType = typeOrder(a.type);
+    const bType = typeOrder(b.type);
+    if (aType !== bType) return aType - bType;
 
-      return getLevelIndex(a.level) - getLevelIndex(b.level);
-    });
+    return getLevelIndex(a.level) - getLevelIndex(b.level);
+  });
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<string>(() => {
@@ -94,7 +94,7 @@ export default function SettingsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 4;
 
   const handleTabChange = (nextTab: string) => {
     setTab(nextTab);
@@ -112,7 +112,10 @@ export default function SettingsPage() {
     );
   }, [tab, categories]);
 
-  const totalPages = Math.max(Math.ceil(visibleCategories.length / itemsPerPage), 1);
+  const totalPages = Math.max(
+    Math.ceil(visibleCategories.length / itemsPerPage),
+    1,
+  );
 
   const pagedCategories = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -441,6 +444,11 @@ export default function SettingsPage() {
       setLoading(true);
 
       try {
+        await fetch("/roadmap/api/user-access/sync-from-portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+
         const [employeesRes, accessRes] = await Promise.all([
           fetch("/roadmap/api/employees"),
           fetch("/roadmap/api/user-access"),
@@ -474,15 +482,20 @@ export default function SettingsPage() {
                     menus: access?.menus ?? [],
                   } as User;
                 })
-                .filter((user: User) => user.menus.length > 0) // แสดงเฉพาะพนักงานที่มี access เมนู
+                .filter((user: User) => Boolean(user.accessId))
             : [];
 
         setUsers(mappedUsers);
+
         if (mappedUsers.length > 0) {
           setSelectedUserId(mappedUsers[0].id);
+        } else {
+          setSelectedUserId("");
         }
       } catch (error) {
         console.error("Failed to load users", error);
+        setUsers([]);
+        setSelectedUserId("");
       } finally {
         setLoading(false);
       }
@@ -509,7 +522,6 @@ export default function SettingsPage() {
       <div className="space-y-6 mt-6">
         {tab === "สิทธิ์การเข้าถึง" ? (
           <AccessPermissionsPanel
-            key={selectedUser?.id}
             users={users}
             selectedUserId={selectedUserId}
             selectedUser={
@@ -547,13 +559,20 @@ export default function SettingsPage() {
             {totalPages > 1 && (
               <div className="flex flex-col gap-4 mt-6 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-slate-600">
-                  แสดงข้อมูล {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, visibleCategories.length)} จากทั้งหมด {visibleCategories.length} รายการ
+                  แสดงข้อมูล {(currentPage - 1) * itemsPerPage + 1} -{" "}
+                  {Math.min(
+                    currentPage * itemsPerPage,
+                    visibleCategories.length,
+                  )}{" "}
+                  จากทั้งหมด {visibleCategories.length} รายการ
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                     className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -561,25 +580,29 @@ export default function SettingsPage() {
                   </button>
 
                   <div className="flex flex-wrap items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 text-sm rounded-md ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white font-bold"
-                            : "text-slate-600 bg-white hover:bg-slate-100"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 text-sm rounded-md ${
+                            currentPage === page
+                              ? "bg-blue-600 text-white font-bold"
+                              : "text-slate-600 bg-white hover:bg-slate-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ),
+                    )}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
                     disabled={currentPage === totalPages}
                     className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

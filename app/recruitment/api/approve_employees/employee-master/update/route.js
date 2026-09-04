@@ -723,6 +723,39 @@ export async function POST(request) {
         }
 
         // ------------------------------------------------------
+        // get nationality
+        // ------------------------------------------------------
+        const {
+          data: get_nationality,
+          error: get_nationality_error,
+        } = await supabaseAdmin
+          .from("nationalities")
+          .select("id, nationality_code")
+          .eq("id", get_data_emp_recrut.nationality)
+          .single();
+
+        if (get_nationality_error) {
+          console.error(
+            "GET NATIONALITY ERROR:",
+            get_nationality_error
+          );
+
+          throw new AppError("ไม่สามารถดึงข้อมูลสัญชาติของผู้สมัครได้");
+        }
+
+        const identityData = get_nationality?.nationality_code === "TH"
+            ? {
+                citizen_id: get_data_emp_recrut.identity_no,
+                tax_id: get_data_emp_recrut.identity_no,
+                passport_no: null,
+              }
+            : {
+                citizen_id: null,
+                tax_id: null,
+                passport_no: get_data_emp_recrut.identity_no,
+              };
+
+        // ------------------------------------------------------
         // Prepare Employee Data
         // ------------------------------------------------------
         const insertData = {
@@ -734,7 +767,6 @@ export async function POST(request) {
           phone: get_data_emp_recrut.phone_number,
           personal_email: get_data_emp_recrut.email,
           employment_type: get_data_emp_recrut.employment_type,
-          tax_id: get_data_emp_recrut.employment_type === "thai" ? get_data_emp_recrut.identity_no : "",
           branch_group_id: get_data_emp_recrut.branch_group_id,
           company_id: get_data_emp_recrut.company_id,
           branch_id: get_data_emp_recrut.branch_id,
@@ -748,8 +780,9 @@ export async function POST(request) {
           payroll_type_id: get_data_emp_recrut.payroll_type_id,
           employee_status_id: get_data_emp_recrut.employee_status_id,
           employment_type_id: get_data_emp_recrut.employment_type_id,
-          citizen_id: get_data_emp_recrut.identity_no,
-          passport_no: get_data_emp_recrut.identity_no,
+
+          ...identityData,
+
           birth_date: get_data_emp_recrut.date_of_birth,
           line_id: get_data_emp_recrut.line_id,
           probation_days: get_data_emp_recrut.probation_days,
@@ -838,6 +871,7 @@ export async function POST(request) {
             hire_date: start_date,
             start_date: start_date,
             probation_end_date: probationEndDate,
+            user_approve: userId,
             status: 15,
           })
           .eq("id", application_id);

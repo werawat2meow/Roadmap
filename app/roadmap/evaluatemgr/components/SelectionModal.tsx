@@ -12,6 +12,7 @@ type EvaluatemgrRecord = {
   examScore: number | null;
   maxScore: number | null;
   managerComment: string | null;
+  rejection_note?: string | null;
   evaluationType?: string | null;
   extra_data?: any;
   rm_evaluation_scores?: Array<{
@@ -85,11 +86,26 @@ export default function SelectionModal({
                         ? `${record.employee.first_name_th} ${record.employee.last_name_th}`
                         : record.employee_id}
                     </p>
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] ${labelStyles[record.evaluationType || "Probation"]}`}
-                    >
-                      {record.evaluationType || "Probation"}
-                    </span>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] ${labelStyles[record.evaluationType || "Probation"]}`}
+                      >
+                        {record.evaluationType || "Probation"}
+                      </span>
+
+                      {record.status === "Returned" && (
+                        <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700">
+                          Returned
+                        </span>
+                      )}
+                    </div>
+
+                    {record.status === "Returned" && record.rejection_note && (
+                      <p className="mt-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">
+                        {record.rejection_note}
+                      </p>
+                    )}
                   </div>
                   <span className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
                     {new Date(record.created_at).toLocaleDateString("th-TH", {

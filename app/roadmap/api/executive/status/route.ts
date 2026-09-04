@@ -9,23 +9,32 @@ export async function POST(req: Request) {
     if (!auth?.user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const body = await req.json();
     const { evaluationId, action, rejectionNote } = body;
 
-    if (!evaluationId || !action || !["approve", "reject"].includes(action)) {
+    if (
+      !evaluationId ||
+      !action ||
+      !["approve", "reject", "return"].includes(action)
+    ) {
       return NextResponse.json(
         { success: false, error: "ข้อมูลไม่ครบหรือ action ไม่ถูกต้อง" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const now = new Date().toISOString();
     const updatePayload: any = {
-      status: action === "approve" ? "Completed" : "Rejected",
+      status:
+        action === "approve"
+          ? "Completed"
+          : action === "reject"
+            ? "Rejected"
+            : "Returned",
       completedAt: action === "approve" ? now : null,
     };
 
@@ -55,13 +64,15 @@ export async function POST(req: Request) {
       message:
         action === "approve"
           ? "อนุมัติเรียบร้อยแล้ว"
-          : "ปฏิเสธการอนุมัติเรียบร้อยแล้ว",
+          : action === "reject"
+            ? "ไม่อนุมัติเรียบร้อยแล้ว"
+            : "ตีกลับให้แก้ไขเรียบร้อยแล้ว",
     });
   } catch (error: any) {
     console.error("Executive status update failed:", error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

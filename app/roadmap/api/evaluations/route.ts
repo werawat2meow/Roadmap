@@ -8,6 +8,7 @@ const isUuid = (value: string) =>
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const employeeId = url.searchParams.get("employeeId");
+  const year = url.searchParams.get("year");
 
   if (!employeeId) {
     return NextResponse.json(
@@ -16,13 +17,20 @@ export async function GET(req: Request) {
     );
   }
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
+      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,currentSalary,newSalary,evaluation_period,evaluation_period_continued,special_compensation,new_designation,new_level,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id)`,
     )
-    .eq("employee_id", employeeId)
-    .order("created_at", { ascending: false });
+    .eq("employee_id", employeeId);
+
+  if (year) {
+    query = query
+      .gte("created_at", `${year}-01-01T00:00:00.000Z`)
+      .lt("created_at", `${Number(year) + 1}-01-01T00:00:00.000Z`);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("Failed to load evaluation history", error, employeeId);

@@ -14,6 +14,7 @@ import EvaluationForm, {
   defaultDisciplineData,
 } from "@/app/roadmap/evaluate/components/EvaluationForm";
 import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
+import EmployeeEvaluationCompareModal from "@/app/roadmap/evaluate/components/EmployeeEvaluationCompareModal";
 import { Employee } from "@/app/roadmap/types";
 
 type SettingsCategory = {
@@ -130,6 +131,11 @@ export default function EvaluateEmployeePage() {
     [],
   );
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [compareYear, setCompareYear] = useState(
+    String(new Date().getFullYear()),
+  );
+  const [compareRecords, setCompareRecords] = useState<HistoryRecord[]>([]);
   const [editingEvaluationId, setEditingEvaluationId] = useState<string | null>(
     null,
   );
@@ -154,6 +160,26 @@ export default function EvaluateEmployeePage() {
 
     setEvaluationHistory(data.data || []);
   }, [id]);
+
+  const fetchEvaluationCompare = useCallback(async () => {
+    if (!id) return;
+
+    const employeeId =
+      typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+    if (!employeeId) return;
+
+    const response = await fetch(
+      `/roadmap/api/evaluations?employeeId=${encodeURIComponent(employeeId)}&year=${compareYear}`,
+    );
+    const data = await response.json();
+
+    if (!response.ok || !data?.success) {
+      console.error("Failed to load comparison data", data);
+      return [];
+    }
+
+    return data.data || [];
+  }, [id, compareYear]);
 
   const handleHistoryEdit = useCallback(
     (record: HistoryRecord) => {
@@ -512,10 +538,8 @@ export default function EvaluateEmployeePage() {
         setEmployee(employeeJson.data);
         setFormData((prev) => ({
           ...prev,
-          currentSalary:
-            employeeJson.data.currentSalary ?? prev.currentSalary,
-          newSalary:
-            employeeJson.data.currentSalary ?? prev.newSalary,
+          currentSalary: employeeJson.data.currentSalary ?? prev.currentSalary,
+          newSalary: employeeJson.data.currentSalary ?? prev.newSalary,
         }));
         setSettingsCategories(settingsJson.data || []);
         setManagers(
@@ -661,6 +685,11 @@ export default function EvaluateEmployeePage() {
         evaluationType={activeTab}
         historyCount={evaluationHistory.length}
         onHistoryClick={handleOpenHistory}
+        onCompareClick={async () => {
+          const records = await fetchEvaluationCompare();
+          setCompareRecords(records as HistoryRecord[]);
+          setIsCompareOpen(true);
+        }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -697,7 +726,7 @@ export default function EvaluateEmployeePage() {
             }
             onMaxScoreChange={(value) => handleFormChange({ maxScore: value })}
             onSaveDraft={handleSaveDraft}
-            onSubmit={handleSubmit}
+            // onSubmit={handleSubmit}
           />
         </div>
       </div>
@@ -707,6 +736,11 @@ export default function EvaluateEmployeePage() {
         records={evaluationHistory}
         onEdit={handleHistoryEdit}
         onDelete={handleDeleteHistory}
+      />
+      <EmployeeEvaluationCompareModal
+        open={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        records={compareRecords}
       />
     </div>
   );

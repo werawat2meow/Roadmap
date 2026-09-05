@@ -279,6 +279,7 @@ export async function POST(request) {
       oc,
       phone_allowance,
       additional_cost,
+      additional_compensation,
       employment_type,
       employment_type_id,
       role_id,
@@ -547,26 +548,55 @@ export async function POST(request) {
         );
       }
 
-      // กัน additional_cost undefined / ไม่ใช่ array
-      if (Array.isArray(additional_cost) && additional_cost.length > 0) {
-        const additionalCostRows = additional_cost.map((element) => ({
-          application_id,
-          topic: element.name,
-          amount: element.amount,
-        }));
+      const compensationRows = [];
 
-        const { error: additionalCostError } = await supabaseAdmin
-          .from("recruit_additional_cost")
-          .insert(additionalCostRows);
-
-        if (additionalCostError) {
-          console.error(
-            "INSERT ADDITIONAL COST ERROR:",
-            additionalCostError
-          );
-          throw new AppError("ไม่สามารถบันทึกค่าใช้จ่ายเพิ่มเติมได้");
+      for (const item of additional_compensation ?? []) {
+        for (const [topic, amount] of Object.entries(item)) {
+          compensationRows.push({
+            application_id,
+            cost_type: "compensation",
+            topic,
+            amount: Number(amount || 0),
+          });
         }
       }
+
+      const additionalRows = [];
+
+      for (const item of additional_cost ?? []) {
+        if (!item.name?.trim()) continue;
+        additionalRows.push({
+          application_id,
+          cost_type: "additional",
+          topic: item.name.trim(),
+          amount: Number(item.amount || 0),
+        });
+      }      
+
+      await supabaseAdmin
+      .from("recruit_additional_cost")
+      .delete()
+      .eq("application_id", application_id)
+      .eq("cost_type", "additional");
+
+      await supabaseAdmin
+      .from("recruit_additional_cost")
+      .delete()
+      .eq("application_id", application_id)
+      .eq("cost_type", "compensation");
+
+      if (additionalRows.length > 0) {
+        await supabaseAdmin
+          .from("recruit_additional_cost")
+          .insert(additionalRows);
+      }
+
+      if (compensationRows.length > 0) {
+        await supabaseAdmin
+          .from("recruit_additional_cost")
+          .insert(compensationRows);
+      }
+
     }
 
     // ========================================================
@@ -662,11 +692,12 @@ export async function POST(request) {
         // Get Employee Code Setting
         // ------------------------------------------------------
 
-          const probationDays = 119;
-          const probationEndDate = calculateProbationEndDate(
-            start_date,
-            probationDays
-          );
+        const probationDays = 119;
+        const probationEndDate = calculateProbationEndDate(
+          start_date,
+          probationDays
+        );
+
         const {
           data: get_data_code_setting,
           error: get_data_code_setting_error,

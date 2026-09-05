@@ -39,6 +39,7 @@ export default function Page({ params }) {
   const [saving, setSaving] = useState(false);
 
   const [additionalItems, setAdditionalItems] = useState([]);
+  const [compensationItems, setCompensationItems] = useState([]);
 
   // ใช้เฉพาะตอน applicationStatus === 17: เลือกว่าจะเลื่อนวันเริ่มงาน (13)
   // ไม่มาทำงาน (14) หรือยืนยันเข้าฐานข้อมูลกลาง (15)
@@ -73,6 +74,9 @@ export default function Page({ params }) {
     incentive_type: null,
     incentive_amount: 0,
     oc: 0,
+    deposit: 0,
+    deduct_processing: 0,
+    deduct_resign_within_one_year: 0,
     phone_allowance: 0,
     employment_type: null,
     employment_type_id: null,
@@ -122,12 +126,38 @@ export default function Page({ params }) {
 
       setData(result ?? null);
 
+      const application = result?.application || {};
+
       setForm((prev) => ({
         ...prev,
         start_date:
-          result?.application?.start_date ||
+          application.start_date ||
           dayjs().format("YYYY-MM-DD"),
       }));
+
+      // status 17/19 (และสถานะอื่นที่ไม่ใช่ 12) อาจมีข้อมูลตำแหน่ง/เงินเดือน
+      // ที่เคยกรอกไว้ตั้งแต่ตอน status 12 อยู่แล้ว -> ถ้ามีข้อมูลให้ดึงมาแสดงผล
+      await populateFormFromApplication(application);
+
+      if (Array.isArray(application.additional_cost) && application.additional_cost.length > 0) {
+        setAdditionalItems(
+          application.additional_cost.map((item, index) => ({
+            id: Date.now() + index,
+            name: item?.name || "",
+            amount: Number(item?.amount || 0),
+          }))
+        );
+      }
+
+      if ( Array.isArray(application.additional_compensation) && application.additional_compensation.length > 0) {
+        setCompensationItems(
+          application.additional_compensation.map((item, index) => ({
+            id: Date.now() + index,
+            name: item?.name || "",
+            amount: Number(item?.amount || 0),
+          }))
+        );
+      }
 
     } catch (err) {
       console.error(err);
@@ -135,6 +165,76 @@ export default function Page({ params }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  // เติมข้อมูลฟอร์ม (ตำแหน่ง/เงินเดือน/การจ้างงาน) จากข้อมูลใบสมัครที่โหลดมา
+  // พร้อมทั้งไล่โหลด master ข้อมูลแบบ cascading (department -> division -> unit -> position -> position_level)
+  // ให้ตรงกับค่าที่เคยเลือกไว้ เพื่อให้ Select แสดงผล label ได้ถูกต้อง
+  async function populateFormFromApplication(application) {
+    if (!application) return;
+
+    setForm((prev) => ({
+      ...prev,
+      base_salary: application.base_salary ?? prev.base_salary,
+      position_allowance: application.position_allowance ?? prev.position_allowance,
+      living_allowance: application.living_allowance ?? prev.living_allowance,
+      special_allowance: application.special_allowance ?? prev.special_allowance,
+      fuel_allowance: application.fuel_allowance ?? prev.fuel_allowance,
+      incentive_type: application.incentive_type ?? prev.incentive_type,
+      incentive_amount: application.incentive_amount ?? prev.incentive_amount,
+      oc: application.oc ?? prev.oc,
+      phone_allowance: application.phone_allowance ?? prev.phone_allowance,
+      employment_type: application.employment_type ?? prev.employment_type,
+      employment_type_id: application.employment_type_id ?? prev.employment_type_id,
+      role_id: application.role_id ?? prev.role_id,
+      payroll_types: application.payroll_type_id ?? prev.payroll_types,
+      position_family_id: application.position_family_id ?? prev.position_family_id,
+      job_id: application.job_id ?? prev.job_id,
+    }));
+
+    if (!application.branch_id) return;
+
+    setForm((prev) => ({ ...prev, branch_id: application.branch_id }));
+
+    const departments = await fetchMaster("departments", { branch_id: application.branch_id });
+    setMaster((prev) => ({ ...prev, departments }));
+
+    if (!application.department_id) return;
+
+    setForm((prev) => ({ ...prev, department_id: application.department_id }));
+
+    const divisions = await fetchMaster("divisions", { department_id: application.department_id });
+    setMaster((prev) => ({ ...prev, divisions }));
+
+    if (!application.division_id) return;
+
+    setForm((prev) => ({ ...prev, division_id: application.division_id }));
+
+    const units = await fetchMaster("units", { division_id: application.division_id });
+    setMaster((prev) => ({ ...prev, units }));
+
+    if (!application.unit_id) return;
+
+    setForm((prev) => ({ ...prev, unit_id: application.unit_id }));
+
+    const positions = await fetchMaster("positions", { unit_id: application.unit_id });
+    setMaster((prev) => ({ ...prev, positions }));
+
+    if (!application.position_id) return;
+
+    setForm((prev) => ({ ...prev, position_id: application.position_id }));
+
+    const positionLevelResult = await fetchMaster("position_levels", { position_id: application.position_id });
+    const position_levels = positionLevelResult?.position_levels ?? positionLevelResult ?? [];
+
+    setMaster((prev) => ({ ...prev, position_levels }));
+
+    setForm((prev) => ({
+      ...prev,
+      position_family_id: positionLevelResult?.position_family_id ?? prev.position_family_id,
+      job_id: positionLevelResult?.job_id ?? prev.job_id,
+      position_level_id: application.position_level_id ?? prev.position_level_id,
+    }));
   }
 
   async function fetchMaster(type, params = {}) {
@@ -375,9 +475,46 @@ export default function Page({ params }) {
     setAdditionalItems((prev) => prev.filter((item) => item.id !== id) );
   }
 
+  function addCompensationItem() {
+    setCompensationItems((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        name: "",
+        amount: 0,
+      },
+    ]);
+  }
+
+  function updateCompensationItem(id, field, value) {
+    setCompensationItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
+      )
+    );
+  }
+
+  function removeCompensationItem(id) {
+    setCompensationItems((prev) =>
+      prev.filter((item) => item.id !== id)
+    );
+  }
+
   // สถานะของใบสมัคร ณ ตอนที่โหลดหน้านี้ (ใช้ทั้งเช็คแสดงผล UI
   // และแนบไปกับ payload ตอนบันทึก เพื่อให้ backend เช็คว่าสถานะยังตรงกันอยู่)
   const applicationStatus = Number(data?.application?.status);
+
+  // แสดงข้อมูลตำแหน่ง/เงินเดือน/การจ้างงาน ตอน status 12 (กรอกใหม่)
+  // รวมถึง 17 และ 19 (แสดงข้อมูลที่เคยกรอกไว้ ถ้ามี)
+  const showsPositionSection =
+    applicationStatus === 12 ||
+    applicationStatus === 17 ||
+    applicationStatus === 19;
 
   useEffect(() => {
     setActionChoice(null);
@@ -388,9 +525,8 @@ export default function Page({ params }) {
     if (saving) return;
     try {
       setSaving(true);
-      // ฟอร์มตำแหน่ง/เงินเดือนแสดงเฉพาะตอน status = 12 เท่านั้น
-      // (ฟิลด์พวกนี้ไม่ได้ sync จาก data ที่โหลดมา ถ้า validate ตอน status อื่น
-      // จะติด null ตลอด บันทึกไม่ได้)
+      // ฟอร์มตำแหน่ง/เงินเดือนบังคับกรอกเฉพาะตอน status = 12 เท่านั้น
+      // (ตอน 17/19 เป็นการแสดงข้อมูลเดิมเฉยๆ ไม่บังคับ validate ซ้ำ)
       const showsPositionFields = applicationStatus === 12;
 
       // status = 17: รอเลือกว่าจะเลื่อนวันเริ่มงาน (13) / ไม่มาทำงาน (14)
@@ -489,8 +625,33 @@ export default function Page({ params }) {
         incentive_type: form.incentive_type,
         incentive_amount: Number(form.incentive_amount || 0),
         oc: form.oc || 0,
+
+        deposit: Number(form.deposit || 0),
+        deduct_processing: Number( form.deduct_processing || 0),
+        deduct_resign_within_one_year: Number( form.deduct_resign_within_one_year || 0),
+
         phone_allowance: Number(form.phone_allowance || 0),
-        additional_cost: additionalItems.map((item) => ({ name: item.name, amount: Number(item.amount || 0),})),
+
+        // additional_cost: additionalItems.map((item) => ({ name: item.name, amount: Number(item.amount || 0),})),
+        // additional_compensation: compensationItems.map((item) => ({ name: item.name, amount: Number(item.amount || 0),})),
+
+        // ข้อมูลเพิ่มเติมเดิม
+        additional_cost: additionalItems
+          .filter((item) => item.name?.trim())
+          .map((item) => ({
+            name: item.name.trim(),
+            amount: Number(item.amount || 0),
+          })),
+
+        // ค่าตอบแทนเพิ่มเติม
+        additional_compensation: compensationItems
+          .filter((item) => item.name?.trim())
+          .map((item) => ({
+            [item.name.trim()]: Number(
+              item.amount || 0
+            ),
+          })),
+
         employment_type: form.employment_type,
         employment_type_id: form.employment_type_id,
         role_id: form.role_id,
@@ -515,7 +676,7 @@ export default function Page({ params }) {
       message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
 
       // ถ้าต้องการกลับหน้ารายการ
-      router.push("/recruitment/approve_employees");
+      // router.push("/recruitment/approve_employees");
 
     } catch (error) {
       console.error("SAVE EMPLOYEE ERROR:", error);
@@ -554,7 +715,8 @@ export default function Page({ params }) {
           interviews={data?.interviews?.[0]}
         />
       </div>
-      { applicationStatus === 12 && (
+      
+      { showsPositionSection && (
         <div className="px-6">
           <Card
             title="ข้อมูลตำแหน่ง"
@@ -701,6 +863,14 @@ export default function Page({ params }) {
           <Card
             title="ข้อมูลค่าตอบแทน"
             style={{ marginBottom: 16 }}
+            extra={
+              <Button
+                type="dashed"
+                onClick={addCompensationItem}
+              >
+                + เพิ่มค่าตอบแทน
+              </Button>
+            }
           >
             <Row gutter={[16, 16]}>
 
@@ -870,7 +1040,81 @@ export default function Page({ params }) {
                   }
                 />
               </Col>
+              
+              {compensationItems.map((item, index) => (
+                <Col xs={24} key={item.id}>
+                  <Row gutter={[16, 16]} align="bottom">
 
+                    {/* ชื่อค่าตอบแทน */}
+                    <Col xs={24} md={12} lg={8}>
+                      <Text strong>
+                        ค่าตอบแทน #{index + 1}
+                      </Text>
+
+                      <Input
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                        }}
+                        placeholder="เช่น ค่าที่พัก"
+                        value={item.name}
+                        onChange={(e) =>
+                          updateCompensationItem(
+                            item.id,
+                            "name",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </Col>
+
+                    {/* จำนวนค่าตอบแทน */}
+                    <Col xs={24} md={8} lg={6}>
+                      <Text strong>
+                        จำนวนค่าตอบแทน
+                      </Text>
+
+                      <InputNumber
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                        }}
+                        min={0}
+                        precision={2}
+                        value={item.amount}
+                        onChange={(value) =>
+                          updateCompensationItem(
+                            item.id,
+                            "amount",
+                            value || 0
+                          )
+                        }
+                        formatter={(value) =>
+                          `${value}`.replace(
+                            /\B(?=(\d{3})+(?!\d))/g,
+                            ","
+                          )
+                        }
+                        parser={(value) =>
+                          value?.replace(/,/g, "") || 0
+                        }
+                      />
+                    </Col>
+
+                    {/* ปุ่มลบ */}
+                    <Col xs={24} md={4} lg={4}>
+                      <Button
+                        danger
+                        onClick={() =>
+                          removeCompensationItem(item.id)
+                        }
+                      >
+                        ลบ
+                      </Button>
+                    </Col>
+                  </Row>
+                </Col>
+              ))}
             </Row>
           </Card>
           
@@ -889,7 +1133,7 @@ export default function Page({ params }) {
                   }}
                   min={0}
                   precision={2}
-                  value={form.oc}
+                  value={form.deposit}
                   onChange={(value) =>
                     updateForm(
                       "deposit",
@@ -917,7 +1161,7 @@ export default function Page({ params }) {
                   }}
                   min={0}
                   precision={2}
-                  value={form.oc}
+                  value={form.deduct_processing}
                   onChange={(value) =>
                     updateForm(
                       "deduct_processing",
@@ -945,7 +1189,7 @@ export default function Page({ params }) {
                   }}
                   min={0}
                   precision={2}
-                  value={form.oc}
+                  value={form.deduct_resign_within_one_year}
                   onChange={(value) =>
                     updateForm(
                       "deduct_resign_within_one_year",

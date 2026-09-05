@@ -44,12 +44,19 @@ export async function POST(request: NextRequest) {
     const agreement = payload.agreement ?? {};
     const positionId = payload.positionId ?? payload.position_id ?? null;
 
+    const get_branch_id = await supabaseAdmin
+      .from("recruit_jobs")
+      .select("branch_id")
+      .eq("id", payload.jobId)
+      .single();
+
     /* ------------------------------------------------------------ */
     /*         1) Insert recruit_job_applications ก่อนอันดับแรก         */
     /* ------------------------------------------------------------ */
 
     const applicationData = {
       job_id: payload.jobId,
+      source_branch_id: get_branch_id.data?.branch_id ?? null,
       position_id: positionId,
       other_position: personal.otherPosition ?? "",
       expected_salary: Number(personal.expectedSalary ?? payload.expected_salary ?? 0),

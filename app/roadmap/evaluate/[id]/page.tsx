@@ -53,7 +53,11 @@ type HistoryRecord = {
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
-  rm_evaluation_reviewers?: { manager_id: string }[];
+  rm_evaluation_reviewers?: Array<{
+    id?: string;
+    manager_id: string;
+    status?: string;
+  }>;
 };
 
 export default function EvaluateEmployeePage() {
@@ -462,6 +466,15 @@ export default function EvaluateEmployeePage() {
   };
 
   const handleSaveDraft = async () => {
+    if (selectedManagerIds.length === 0) {
+      if (
+        !window.confirm(
+          "คุณยังไม่ได้เลือกผู้ประเมิน ต้องการบันทึกแบบร่างต่อหรือไม่?",
+        )
+      ) {
+        return;
+      }
+    }
     await sendEvaluationPayload("Draft");
   };
 

@@ -49,7 +49,7 @@ type EvaluatemgrRecord = {
     remark: string | null;
     is_included: boolean;
   }>;
-  rm_evaluation_reviewers?: { manager_id: string }[];
+    rm_evaluation_reviewers?: { id?: string; manager_id: string; status?: string }[];
   employee?: {
     id: string;
     first_name_th: string;
@@ -361,10 +361,22 @@ export default function EvaluateMgrPage() {
       return;
     }
 
-    setSaveNotification(
-      status === "Draft" ? "Save Draft เรียบร้อยแล้ว" : "Submit เรียบร้อยแล้ว",
-    );
-    setTimeout(() => setSaveNotification(null), 2500);
+    if (status === "Submitted") {
+      if (data.isFullyCompleted) {
+        setSaveNotification(
+          "ประเมินครบทุกคนแล้ว! ระบบรวมคะแนนเฉลี่ยและส่งผลไปยัง Management เรียบร้อยแล้ว",
+        );
+      } else {
+        setSaveNotification(
+          data.message ||
+            `บันทึกคะแนนของคุณเรียบร้อยแล้ว (รอผู้ประเมินท่านอื่น ${data.submittedCount}/${data.totalReviewers})`,
+        );
+      }
+    } else {
+      setSaveNotification("Save Draft เรียบร้อยแล้ว");
+    }
+
+    setTimeout(() => setSaveNotification(null), 3500);
     await fetchPendingEvaluations();
   };
 

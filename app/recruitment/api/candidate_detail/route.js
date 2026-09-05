@@ -41,13 +41,13 @@ export async function GET(request) {
     
     const branchIds = branchArray
       .map((branch) => branch.id)
-      .filter(Boolean);
+      .filter(Boolean);      
 
     const all_scrop = Boolean(user.all_scrop);
 
     let status = all_scrop
       ? [1, 2, 3, 6, 7, 8, 9, 16, 99]
-      : [2, 3, 6, 7, 8, 9];
+      : [1, 2, 3, 6, 7, 8, 9];
 
     // ---------- List mode: รายการผู้สมัคร ----------
     const ch_status = searchParams.get("status");

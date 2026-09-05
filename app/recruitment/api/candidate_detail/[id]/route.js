@@ -64,6 +64,7 @@ export async function GET(request, { params }) {
       skillsResult,
       documentResult,
       interviewResult,
+      additionalCosts,
     ] = await Promise.all([
       supabaseAdmin
         .from("recruit_job_education_history")
@@ -95,6 +96,12 @@ export async function GET(request, { params }) {
         .eq("application_id", id)
         .order("interview_round", { ascending: false })
         .limit(1),
+
+      supabaseAdmin
+        .from("recruit_additional_cost")
+        .select("id, cost_type, topic, amount")
+        .eq("application_id", id)
+        .order("id", { ascending: true }),
     ]);
 
     application.province_name =
@@ -106,10 +113,30 @@ export async function GET(request, { params }) {
     application.subdistrict_name =
       getSubdistrictByCode(application.subdistrict_id)?.name_th;
 
-    const skills = skillsResult.data || [];  
+    const skills = skillsResult.data || [];
+
+    const additional_cost = (additionalCosts.data ?? [])
+      .filter((item) => item.cost_type === "additional")
+      .map((item) => ({
+        id: item.id,
+        name: item.topic,
+        amount: Number(item.amount || 0),
+      }));
+
+    const additional_compensation = (additionalCosts.data ?? [])
+      .filter((item) => item.cost_type === "compensation")
+      .map((item) => ({
+        id: item.id,
+        name: item.topic,
+        amount: Number(item.amount || 0),
+      }));
 
     return NextResponse.json({
-      application,
+      application: {
+        ...application,
+        additional_cost,
+        additional_compensation,
+      },
       education: educationResult.data || [],
       workExperience: workResult.data || [],
       skills,

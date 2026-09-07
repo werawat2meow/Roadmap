@@ -14,6 +14,7 @@ export async function PUT(request) {
       meeting_url,
       position_id,
       postpone_date,
+      interviewer_id,
     } = await request.json();
 
     const userId = await getUserIdFromRequest();
@@ -194,7 +195,7 @@ export async function PUT(request) {
           location,
           meeting_url,
           created_by: userId,
-          reviewer: null,
+          reviewer: interviewer_id,
           status,
         });
 

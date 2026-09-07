@@ -76,7 +76,7 @@ export function validateThaiCitizenId(
 export function validatePassport(
   passport: string
 ): boolean {
-  return /^[A-Za-z0-9]{6,15}$/.test(passport.trim());
+  return /^[A-Z]{2}\d{7}$/.test(passport.trim().toUpperCase());
 }
 
 /* -------------------------------------------------------------------------- */
@@ -84,8 +84,7 @@ export function validatePassport(
 /* -------------------------------------------------------------------------- */
 
 export function validatePhone(phone: string): boolean {
-  const value = phone.trim().replace(/[\s-]/g, "");
-  return /^(06|08|09)\d{8}$/.test(value);
+  return /^(06|08|09)\d{8}$/.test(phone);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,7 +94,17 @@ export function validatePhone(phone: string): boolean {
 export function validateEmail(
   email: string
 ): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(
+    email
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         Plain Text Validation                              */
+/* -------------------------------------------------------------------------- */
+
+export function validatePlainText(value: string): boolean {
+  return /^[\p{L}\p{N}\s]*$/u.test(value);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -313,6 +322,33 @@ export function validateApplication(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
+  const plainTextFields: Array<keyof PersonalInformationData> = [
+    "otherPosition",
+    "firstName",
+    "lastName",
+    "nicknameTH",
+    "nicknameEN",
+    "addressNo",
+    "villageNo",
+    "street",
+    "lineId",
+    "residenceOther",
+    "underlyingDisease",
+  ];
+
+  for (const field of plainTextFields) {
+    const value = payload.personal[field];
+    if (typeof value === "string" && !validatePlainText(value)) {
+      errors.push({
+        field,
+        message:
+          locale === "TH"
+            ? "กรุณากรอกข้อมูลโดยไม่ใช้อักขระพิเศษ"
+            : "Please do not use special characters",
+      });
+    }
+  }
+
   if (isEmpty(payload.personal.otherPosition)) {
     errors.push({
       field: "otherPosition",
@@ -324,6 +360,20 @@ export function validateApplication(
     errors.push({
       field: "expectedSalary",
       message: `${getUIText(uiText.expectedSalary, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.title)) {
+    errors.push({
+      field: "title",
+      message: `${getUIText(uiText.title, locale)} ${getUIText(uiText.requiredField, locale)}`,
+    });
+  }
+
+  if (isEmpty(payload.personal.gender)) {
+    errors.push({
+      field: "gender",
+      message: `${getUIText(uiText.gender, locale)} ${getUIText(uiText.requiredField, locale)}`,
     });
   }
 
@@ -404,6 +454,31 @@ export function validateApplication(
     });
   }
 
+  if (payload.personal.email && !validateEmail(payload.personal.email)) {
+    errors.push({
+      field: "email",
+      message: `${getUIText(uiText.email, locale)} ${getUIText(uiText.invalidEmail, locale)}`,
+    });
+  }
+
+  if (payload.personal.idCardNo) {
+    const validIdentity =
+      locale === "TH"
+        ? /^\d{13}$/.test(payload.personal.idCardNo) &&
+          validateThaiCitizenId(payload.personal.idCardNo)
+        : validatePassport(payload.personal.idCardNo);
+
+    if (!validIdentity) {
+      errors.push({
+        field: "idCardNo",
+        message:
+          locale === "TH"
+            ? "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลักและถูกต้อง"
+            : "Invalid passport number",
+      });
+    }
+  }
+
     
   if (payload.personal.residenceType.length == 0) {
     errors.push({
@@ -482,6 +557,16 @@ export function validateApplication(
     errors.push({
       field: "phoneNumber",
       message: `${getUIText(uiText.phoneNumber, locale)} ${getUIText(uiText.invalidPhone, locale)}`,
+    });
+  }
+
+  if (
+    payload.personal.emergencyContact.phone &&
+    !validatePhone(payload.personal.emergencyContact.phone)
+  ) {
+    errors.push({
+      field: "emergencyPhone",
+      message: `${getUIText(uiText.emergencyPhone, locale)} ${getUIText(uiText.invalidPhone, locale)}`,
     });
   }
 

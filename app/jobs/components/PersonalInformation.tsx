@@ -466,6 +466,13 @@ export default function PersonalInformation({
     onChange(newValue);
   };
 
+    const updatePlainTextField = (
+        field: keyof typeof value,
+        fieldValue: string
+    ) => {
+        updateField(field, fieldValue.replace(/[^\p{L}\p{N}\s]/gu, ""));
+    };
+
   // Auto-select the default gender (is_default = true) once options have
   // loaded, but only if the user hasn't already picked one (e.g. editing
   // an existing application) — never override an existing selection.
@@ -666,7 +673,7 @@ export default function PersonalInformation({
                                     : "Other Position"
                                 }
                                 value={value.otherPosition}
-                                onChange={(e) => updateField( "otherPosition", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("otherPosition", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -761,7 +768,7 @@ export default function PersonalInformation({
                                 required
                                 name="firstName"
                                 value={value.firstName}
-                                onChange={(e) => updateField("firstName", e.target.value) }
+                                onChange={(e) => updatePlainTextField("firstName", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -774,7 +781,7 @@ export default function PersonalInformation({
                                 required
                                 name="lastName"
                                 value={value.lastName}
-                                onChange={(e) => updateField("lastName", e.target.value) }
+                                onChange={(e) => updatePlainTextField("lastName", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -784,7 +791,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.nicknameTh, locale)} >
                             <Input
                                 value={value.nicknameTH}
-                                onChange={(e) => updateField("nicknameTH", e.target.value) }
+                                onChange={(e) => updatePlainTextField("nicknameTH", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -794,7 +801,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.nicknameEn, locale)} >
                             <Input
                                 value={value.nicknameEN}
-                                onChange={(e) => updateField("nicknameEN", e.target.value) }
+                                onChange={(e) => updatePlainTextField("nicknameEN", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -863,7 +870,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.pregnancyAge, locale)} >
                             <Input
                                 value={value.pregnancyAge}
-                                onChange={(e) => updateField( "pregnancyAge", e.target.value ) }
+                                onChange={(e) => updateField("pregnancyAge", e.target.value.replace(/\D/g, ""))}
                                 suffix={ 
                                     language === "TH"
                                     ? "เดือน"
@@ -1029,8 +1036,11 @@ export default function PersonalInformation({
                             <Input
                                 value={value.idCardNo}
                                 onChange={(e) => {
-                                updateField("idCardNo", e.target.value);
-                                form.setFieldValue("idCardNo", e.target.value);
+                                const idCardNo = language === "TH"
+                                    ? e.target.value.replace(/\D/g, "")
+                                    : e.target.value.replace(/[^A-Za-z0-9]/g, "");
+                                updateField("idCardNo", idCardNo);
+                                form.setFieldValue("idCardNo", idCardNo);
                                 }}
                                 maxLength={language === "TH" ? 13 : 20}
                             />
@@ -1052,7 +1062,7 @@ export default function PersonalInformation({
                                 required
                                 name="addressNo"
                                 value={value.addressNo}
-                                onChange={(e) => updateField( "addressNo", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("addressNo", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -1062,7 +1072,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.villageNo, locale)} >
                             <Input
                                 value={value.villageNo}
-                                onChange={(e) => updateField( "villageNo", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("villageNo", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -1072,7 +1082,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.street, locale)} >
                             <Input
                                 value={value.street}
-                                onChange={(e) => updateField( "street", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("street", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -1129,7 +1139,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.lineId, locale)} >
                             <Input
                                 value={value.lineId}
-                                onChange={(e) => updateField( "lineId", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("lineId", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -1156,7 +1166,8 @@ export default function PersonalInformation({
                                 name="phoneNumber"
                                 value={value.phoneNumber}
                                 placeholder={ language === "TH" ? "08xxxxxxxx" : "Phone Number" }
-                                onChange={(e) => updateField( "phoneNumber", e.target.value ) }
+                                onChange={(e) => updateField("phoneNumber", e.target.value.replace(/\D/g, ""))}
+                                maxLength={10}
                             />
                         </Form.Item>
                     </Col>
@@ -1211,7 +1222,7 @@ export default function PersonalInformation({
                             <Form.Item label={getUIText(uiText.residenceOther, locale)} >
                             <Input
                                 value={value.residenceOther}
-                                onChange={(e) => updateField( "residenceOther", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("residenceOther", e.target.value)}
                                 placeholder={
                                     language === "TH"
                                     ? "กรุณาระบุ"
@@ -1350,7 +1361,7 @@ export default function PersonalInformation({
                                         ? "กรุณาระบุ"
                                         : "Please specify"
                                     }
-                                    onChange={(e) => updateDriverLicense( "otherText", e.target.value ) }
+                                    onChange={(e) => updateDriverLicense("otherText", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
                                 />
                             </Form.Item>
                         </Col>
@@ -1377,7 +1388,7 @@ export default function PersonalInformation({
                                     ? "ชื่อผู้ติดต่อ"
                                     : "Contact Name"
                                 }
-                                onChange={(e) => updateEmergencyContact( "name", e.target.value ) }
+                                onChange={(e) => updateEmergencyContact("name", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
                             />
                         </Form.Item>
                     </Col>
@@ -1410,7 +1421,8 @@ export default function PersonalInformation({
                                     ? "08xxxxxxxx"
                                     : "Phone Number"
                                 }
-                                onChange={(e) => updateEmergencyContact( "phone", e.target.value ) }
+                                onChange={(e) => updateEmergencyContact("phone", e.target.value.replace(/\D/g, ""))}
+                                maxLength={10}
                             />
                         </Form.Item>
                     </Col>
@@ -1427,7 +1439,7 @@ export default function PersonalInformation({
                                     ? "เช่น บิดา, มารดา, พี่ชาย"
                                     : "Relationship"
                                 }
-                                onChange={(e) => updateEmergencyContact( "relationship", e.target.value ) }
+                                onChange={(e) => updateEmergencyContact("relationship", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
                             />
                         </Form.Item>
                     </Col>
@@ -1461,7 +1473,7 @@ export default function PersonalInformation({
                                     ? "หากไม่มีให้พิมพ์ 'ไม่มี'"
                                     : "If none, please enter 'None'"
                                 }
-                                onChange={(e) => updateField( "underlyingDisease", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("underlyingDisease", e.target.value)}
                             />
                         </Form.Item>
                     </Col>

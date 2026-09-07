@@ -8,6 +8,10 @@ import {
 
 export const runtime = "nodejs";
 
+function emptyToNull(value: unknown) {
+  return value === "" || value === undefined ? null : value;
+}
+
 export async function POST(request: NextRequest) {
   // ประกาศไว้นอก try เพื่อให้ catch ชั้นนอกสุดเข้าถึงได้ ถ้าจำเป็น
   let applicationId: string | null = null;
@@ -42,7 +46,9 @@ export async function POST(request: NextRequest) {
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
-    const positionId = payload.positionId ?? payload.position_id ?? null;
+    const positionId = emptyToNull(
+      payload.positionId ?? payload.position_id
+    );
 
     const get_branch_id = await supabaseAdmin
       .from("recruit_jobs")
@@ -60,20 +66,20 @@ export async function POST(request: NextRequest) {
       position_id: positionId,
       other_position: personal.otherPosition ?? "",
       expected_salary: Number(personal.expectedSalary ?? payload.expected_salary ?? 0),
-      title_id: personal.title ?? "",
+      title_id: emptyToNull(personal.title),
       first_name: personal.firstName ?? "",
       last_name: personal.lastName ?? "",
       nickname_th: personal.nicknameTH ?? "",
       nickname_en: personal.nicknameEN ?? "",
       date_of_birth: personal.dateOfBirth ?? "",
       age: Number(personal.age ?? 0),
-      gender: personal.gender ?? null,
+      gender: emptyToNull(personal.gender),
       military_status: personal.militaryStatus ?? "",
-      pregnancy_age: personal.pregnancyAge ?? null,
+      pregnancy_age: emptyToNull(personal.pregnancyAge),
       height: Number(personal.height ?? 0),
       weight: Number(personal.weight ?? 0),
-      nationality: personal.nationality ?? "",
-      religion: personal.religion ?? "",
+      nationality: emptyToNull(personal.nationality),
+      religion: emptyToNull(personal.religion),
       identity_no: personal.idCardNo ?? "",
       current_address_no: personal.addressNo ?? null,
       village_no: Number(personal.villageNo ?? 0),
@@ -81,9 +87,9 @@ export async function POST(request: NextRequest) {
       sub_district: personal.subDistrict ?? "",
       district: personal.district ?? "",
       province: personal.province ?? "",
-      province_id : personal.provinceId ?? "",
-      district_id : personal.districtId ?? "",
-      subdistrict_id : personal.subDistrictId ?? "",
+      province_id: emptyToNull(personal.provinceId),
+      district_id: emptyToNull(personal.districtId),
+      subdistrict_id: emptyToNull(personal.subDistrictId),
       postal_code: personal.postalCode ?? null,
       line_id: personal.lineId ?? "",
       email: personal.email ?? "",
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
       residence_type: personal.residenceType ?? "",
       residence_other: personal.residenceOther ?? "",
       marital_status: personal.maritalStatus ?? "",
-      children: personal.children ?? null,
+      children: emptyToNull(personal.children),
       driver_license: personal.driverLicense ?? null,
       emergency_name: personal.emergencyContact?.name ?? "",
       emergency_phone: personal.emergencyContact?.phone ?? "",
@@ -368,7 +374,9 @@ export async function PUT(request: NextRequest) {
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
-    const positionId = payload.positionId ?? payload.position_id ?? null;
+    const positionId = emptyToNull(
+      payload.positionId ?? payload.position_id
+    );
 
     const applicationId = payload.application_id;
 
@@ -395,13 +403,13 @@ export async function PUT(request: NextRequest) {
       nickname_en: personal.nicknameEN ?? "",
       date_of_birth: personal.dateOfBirth ?? "",
       age: Number(personal.age ?? 0),
-      gender: personal.gender ?? null,
+      gender: emptyToNull(personal.gender),
       military_status: personal.militaryStatus ?? "",
-      pregnancy_age: personal.pregnancyAge ?? null,
+      pregnancy_age: emptyToNull(personal.pregnancyAge),
       height: Number(personal.height ?? 0),
       weight: Number(personal.weight ?? 0),
-      nationality: personal.nationality ?? "",
-      religion: personal.religion ?? "",
+      nationality: emptyToNull(personal.nationality),
+      religion: emptyToNull(personal.religion),
       identity_no: personal.idCardNo ?? "",
       current_address_no: personal.addressNo ?? null,
       village_no: Number(personal.villageNo ?? 0),
@@ -409,9 +417,9 @@ export async function PUT(request: NextRequest) {
       sub_district: personal.subDistrict ?? "",
       district: personal.district ?? "",
       province: personal.province ?? "",
-      province_id: personal.provinceId ?? "",
-      district_id: personal.districtId ?? "",
-      subdistrict_id: personal.subDistrictId ?? "",
+      province_id: emptyToNull(personal.provinceId),
+      district_id: emptyToNull(personal.districtId),
+      subdistrict_id: emptyToNull(personal.subDistrictId),
       postal_code: personal.postalCode ?? null,
       line_id: personal.lineId ?? "",
       email: personal.email ?? "",
@@ -419,7 +427,7 @@ export async function PUT(request: NextRequest) {
       residence_type: personal.residenceType ?? "",
       residence_other: personal.residenceOther ?? "",
       marital_status: personal.maritalStatus ?? "",
-      children: personal.children ?? null,
+      children: emptyToNull(personal.children),
       driver_license: personal.driverLicense ?? null,
       emergency_name: personal.emergencyContact?.name ?? "",
       emergency_phone: personal.emergencyContact?.phone ?? "",

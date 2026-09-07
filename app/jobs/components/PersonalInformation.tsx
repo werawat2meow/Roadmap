@@ -470,7 +470,7 @@ export default function PersonalInformation({
         field: keyof typeof value,
         fieldValue: string
     ) => {
-        updateField(field, fieldValue.replace(/[^\p{L}\p{N}\s]/gu, ""));
+        updateField(field, fieldValue.replace(/[^\p{L}\p{M}\p{N}\s]/gu, ""));
     };
 
   // Auto-select the default gender (is_default = true) once options have
@@ -1361,7 +1361,7 @@ export default function PersonalInformation({
                                         ? "กรุณาระบุ"
                                         : "Please specify"
                                     }
-                                    onChange={(e) => updateDriverLicense("otherText", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
+                                    onChange={(e) => updateDriverLicense("otherText", e.target.value)}
                                 />
                             </Form.Item>
                         </Col>
@@ -1388,7 +1388,7 @@ export default function PersonalInformation({
                                     ? "ชื่อผู้ติดต่อ"
                                     : "Contact Name"
                                 }
-                                onChange={(e) => updateEmergencyContact("name", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
+                                onChange={(e) => updateEmergencyContact( "name", e.target.value ) }
                             />
                         </Form.Item>
                     </Col>
@@ -1439,7 +1439,7 @@ export default function PersonalInformation({
                                     ? "เช่น บิดา, มารดา, พี่ชาย"
                                     : "Relationship"
                                 }
-                                onChange={(e) => updateEmergencyContact("relationship", e.target.value.replace(/[^\p{L}\p{N}\s]/gu, ""))}
+                                onChange={(e) => updateEmergencyContact("relationship", e.target.value )}
                             />
                         </Form.Item>
                     </Col>

@@ -70,7 +70,6 @@ interface InterviewErrors {
 }
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  4: { label: "นัดสัมภาษณ์", color: "green" },
   5: { label: "ยืนยันการสัมภาษณ์", color: "green" },
   6: { label: "เลื่อนการสัมภาษณ์", color: "volcano" },
   7: { label: "ขาดการสัมภาษณ์", color: "volcano" },

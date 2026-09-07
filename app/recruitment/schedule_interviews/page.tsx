@@ -34,6 +34,7 @@ interface RecruitJobInterview {
   interview_order?: number;
   interview_type?: string;
   status?: number;
+  reviewer?: string | null;
 }
 
 interface Application {
@@ -150,7 +151,7 @@ export default function RecruitmentApplicationsPage() {
   const [savingUpdate, setSavingUpdate] = useState(false);
 
   const [interviewerOptions, setInterviewerOptions] = useState<InterviewerOption[]>([]);
-  const [selectedInterviewer, setSelectedInterviewer] = useState<number>();
+  const [selectedInterviewer, setSelectedInterviewer] =  useState<string | undefined>();
   const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
@@ -385,15 +386,25 @@ export default function RecruitmentApplicationsPage() {
   const openUpdateModal = async (record: Application) => {
     setSelectedApplication(record);
     setSelectedStatus(record.status);
-    setSelectedInterviewer(undefined);
     setInterviewErrors({});
-    setRemark(""); // เพิ่ม
+    setRemark("");
 
-    // ดึง interviewDateTime ล่าสุดของแถวนี้มา prefill (recruit_job_interviews.interview_datetime)
+    // ดึง interview ล่าสุด
     const latest = getLatestInterview(record.recruit_job_interviews);
-    setInterviewDateTime(latest ? dayjs(latest.interview_datetime) : null);
 
-    // logic เดิมจาก openOrderModal: คำนวณลำดับสัมภาษณ์ถัดไปจาก latest_order API
+    // วันที่สัมภาษณ์
+    setInterviewDateTime(
+      latest ? dayjs(latest.interview_datetime) : null
+    );
+
+    // ผู้สัมภาษณ์เดิม
+    setSelectedInterviewer(
+      latest?.reviewer != null
+        ? String(latest.reviewer)
+        : undefined
+    );
+
+    // logic เดิม...
     if (latest) {
       try {
         const res = await fetch(
@@ -401,7 +412,9 @@ export default function RecruitmentApplicationsPage() {
             latest.interview_datetime
           )}`
         );
+
         const json = await res.json();
+
         setSortOrder(json.latest_order ?? 0);
       } catch (err) {
         console.error(err);

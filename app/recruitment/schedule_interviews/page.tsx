@@ -34,12 +34,16 @@ interface RecruitJobInterview {
   interview_order?: number;
   interview_type?: string;
   status?: number;
+  reviewer?: string | null;
 }
 
 interface Application {
   id: number;
   first_name: string;
   last_name: string;
+  titles?: {
+    title_name_th: string;
+  } | null;
   created_at: string;
   status: number;
   position_id: number;
@@ -67,14 +71,14 @@ interface InterviewErrors {
 }
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  4: { label: "นัดสัมภาษณ์", color: "green" },
   5: { label: "ยืนยันการสัมภาษณ์", color: "green" },
   6: { label: "เลื่อนการสัมภาษณ์", color: "volcano" },
   7: { label: "ขาดการสัมภาษณ์", color: "volcano" },
   8: { label: "ส่งต่อการสัมภาษณ์", color: "green" },
   9: { label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน", color: "volcano" },
-  10: { label: "ผ่านการคัดเลือก", color: "volcano" },
-  11: { label: "ไม่ผ่านการคัดเลือก", color: "volcano" },
+  10: { label: "ผ่านการสัมภาษณ์", color: "volcano" },
+  11: { label: "ไม่ผ่านการสัมภาษณ์", color: "volcano" },
+  19: { label: "รอพิจารณาอีกครั้ง", color: "volcano" },
   12: { label: "นัดวันเริ่มทำงาน", color: "volcano" },
 };
 
@@ -147,7 +151,7 @@ export default function RecruitmentApplicationsPage() {
   const [savingUpdate, setSavingUpdate] = useState(false);
 
   const [interviewerOptions, setInterviewerOptions] = useState<InterviewerOption[]>([]);
-  const [selectedInterviewer, setSelectedInterviewer] = useState<number>();
+  const [selectedInterviewer, setSelectedInterviewer] =  useState<string | undefined>();
   const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
@@ -164,6 +168,9 @@ export default function RecruitmentApplicationsPage() {
   const isAll = pageSize === "all";
   const numericPageSize = isAll ? undefined : pageSize;
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
+
+  const [exporting, setExporting] = useState(false);
+  const [exportingImage, setExportingImage] = useState(false); 
 
   // โหลดตัวเลือกตำแหน่งงาน (resource=positions) ครั้งเดียวตอน mount
   // ใช้ AbortController กัน request ค้างจากรอบแรกตอน React Strict Mode
@@ -249,6 +256,88 @@ export default function RecruitmentApplicationsPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", String(statusFilter));
+      if (positionId) params.set("position_id", String(positionId));
+      if (dateRange) {
+        params.set("date_from", dateRange.format("YYYY-MM-DD"));
+        params.set("date_to", dateRange.format("YYYY-MM-DD"));
+      }
+
+      const res = await fetch(
+        `/recruitment/api/schedule_interviews/export?${params.toString()}`
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        Modal.error({
+          title: "เกิดข้อผิดพลาด",
+          content: json?.error || "ไม่สามารถ export ข้อมูลได้",
+        });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `schedule_interviews_${dayjs().format("YYYYMMDD_HHmm")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      Modal.error({ title: "เกิดข้อผิดพลาด", content: "ไม่สามารถ export ข้อมูลได้" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportImage = async () => {
+    setExportingImage(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", String(statusFilter));
+      if (positionId) params.set("position_id", String(positionId));
+      if (dateRange) {
+        params.set("date_from", dateRange.format("YYYY-MM-DD"));
+        params.set("date_to", dateRange.format("YYYY-MM-DD"));
+      }
+
+      const res = await fetch(
+        `/recruitment/api/schedule_interviews/export_image?${params.toString()}`
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        Modal.error({
+          title: "เกิดข้อผิดพลาด",
+          content: json?.error || "ไม่สามารถ export รูปภาพได้",
+        });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `schedule_interviews_${dayjs().format("YYYYMMDD_HHmm")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      Modal.error({ title: "เกิดข้อผิดพลาด", content: "ไม่สามารถ export รูปภาพได้" });
+    } finally {
+      setExportingImage(false);
+    }
+  };
+
   /**
    * ===== แก้ไขจุดที่ทำให้ API ถูกเรียกซ้ำ / เรียกไม่ตรงจังหวะ =====
    *
@@ -297,15 +386,25 @@ export default function RecruitmentApplicationsPage() {
   const openUpdateModal = async (record: Application) => {
     setSelectedApplication(record);
     setSelectedStatus(record.status);
-    setSelectedInterviewer(undefined);
     setInterviewErrors({});
-    setRemark(""); // เพิ่ม
+    setRemark("");
 
-    // ดึง interviewDateTime ล่าสุดของแถวนี้มา prefill (recruit_job_interviews.interview_datetime)
+    // ดึง interview ล่าสุด
     const latest = getLatestInterview(record.recruit_job_interviews);
-    setInterviewDateTime(latest ? dayjs(latest.interview_datetime) : null);
 
-    // logic เดิมจาก openOrderModal: คำนวณลำดับสัมภาษณ์ถัดไปจาก latest_order API
+    // วันที่สัมภาษณ์
+    setInterviewDateTime(
+      latest ? dayjs(latest.interview_datetime) : null
+    );
+
+    // ผู้สัมภาษณ์เดิม
+    setSelectedInterviewer(
+      latest?.reviewer != null
+        ? String(latest.reviewer)
+        : undefined
+    );
+
+    // logic เดิม...
     if (latest) {
       try {
         const res = await fetch(
@@ -313,7 +412,9 @@ export default function RecruitmentApplicationsPage() {
             latest.interview_datetime
           )}`
         );
+
         const json = await res.json();
+
         setSortOrder(json.latest_order ?? 0);
       } catch (err) {
         console.error(err);
@@ -430,7 +531,7 @@ export default function RecruitmentApplicationsPage() {
         title: "Name",
         key: "first_name",
         render: (_: unknown, record: Application) =>
-          `${record.first_name} ${record.last_name}`,
+          `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`,
       },
       {
         title: "Interview Date",
@@ -650,6 +751,22 @@ export default function RecruitmentApplicationsPage() {
                 </Title>
               </div>
               <Space wrap>
+                <Button
+                  icon={<AntIcon name="FileExcelOutlined" />}
+                  loading={exporting}
+                  onClick={handleExportExcel}
+                >
+                  Export Excel
+                </Button>
+
+                <Button
+                  icon={<AntIcon name="FileImageOutlined" />}
+                  loading={exportingImage}
+                  onClick={handleExportImage}
+                >
+                  Export Image
+                </Button>
+
                 <Space size="small">
                   <Text style={{ fontSize: 13, color: "#475569" }}>
                     แสดง

@@ -16,6 +16,7 @@ import {
   Radio,
   Input,
   Typography,
+  message,
 } from "antd";
 
 const { Text } = Typography;
@@ -28,12 +29,6 @@ const APPLICATION_STATUS = [
   { value: 2, label: "HRD ส่งต่อ HRM" },
   { value: 3, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
   { value: 4, label: "นัดสัมภาษณ์" },
-  { value: 5, label: "ยืนยันการสัมภาษณ์" },
-  { value: 6, label: "เลื่อนการสัมภาษณ์" },
-  { value: 7, label: "ขาดการสัมภาษณ์" },
-  { value: 8, label: "ส่งต่อการสัมภาษณ์" },
-  { value: 9, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
-  { value: 17, label: "รอเริ่มงาน" },    
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
 ];
@@ -86,6 +81,10 @@ export default function Page({ params }) {
     location: "",
     meeting_url: "",
   });
+
+  const [interviewerOptions, setInterviewerOptions] = useState([]);
+  const [selectedInterviewer, setSelectedInterviewer] = useState(undefined);
+  const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
   const [interviewErrors, setInterviewErrors] = useState({});
 
@@ -197,6 +196,56 @@ export default function Page({ params }) {
     }
   }
 
+  const loadInterviewers = async () => {
+    try {
+      setLoadingInterviewer(true);
+
+      const res = await fetch(
+        "/recruitment/api/schedule_interviews/getInterviewer",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          json?.message || "ไม่สามารถโหลดข้อมูลผู้สัมภาษณ์ได้"
+        );
+      }
+
+      const interviewerList = Array.isArray(json)
+        ? json
+        : json?.data ?? json?.interviewers ?? [];
+
+      setInterviewerOptions(
+        interviewerList.map((item) => ({
+          value: item.value ?? item.id,
+          label: item.label ?? item.name ?? "-",
+        }))
+      );
+    } catch (err) {
+      console.error("loadInterviewers error:", err);
+      setInterviewerOptions([]);
+      message.error(
+        err?.message || "ไม่สามารถโหลดข้อมูลผู้สัมภาษณ์ได้"
+      );
+    } finally {
+      setLoadingInterviewer(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status === 4) {
+      loadInterviewers();
+    } else {
+      setSelectedInterviewer(undefined);
+      setInterviewerOptions([]);
+    }
+  }, [status]);
+
   useEffect(() => {
     if (!isChecking && !canEdit) {
       router.replace("/recruitment/candidate");
@@ -300,6 +349,9 @@ export default function Page({ params }) {
         ...(requiresPostponeDate && {
           postpone_date: postponeDate.toISOString(),
         }),
+        ...(requiresInterviewDetails && {
+          interviewer_id: selectedInterviewer,
+        }),
       };
 
       if (requiresInterviewDetails) {
@@ -334,7 +386,7 @@ export default function Page({ params }) {
   // Layout
   // ============================
   return (
-    <div>
+    <div style={{ background: "linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%)" }}>
       <CandidateDetail
         application={data?.application}
         education={data?.education}
@@ -346,7 +398,7 @@ export default function Page({ params }) {
       />
 
       { ( status === 18 ) && (
-        <div className="p-6" >
+        <div className="p-6 no-print" >
           <Card title="เลือกตำแหน่ง">
             <div className="flex flex-col gap-2">
               <Text strong>ตำแหน่งที่ต้องการสมัคร</Text>
@@ -376,9 +428,8 @@ export default function Page({ params }) {
         </div>
       )}
 
-
       {APPLICATION_STATUS.some((item) => item.value === status) && (
-        <div className="p-6" >
+        <div className="p-6 no-print" >
           <Card title="สถานะการสมัคร">
             <div className="flex flex-col gap-4">
               <div className="flex gap-4 items-center">
@@ -392,6 +443,7 @@ export default function Page({ params }) {
 
               {requiresInterviewDetails && (
                 <div className="flex-wrap gap-6 p-4 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] grid grid-cols-1 md:grid-cols-1">
+                  {/* วันเวลานัดสัมภาษณ์ */}
                   <div>
                     <div>
                       <Text strong>วันเวลานัดสัมภาษณ์</Text>
@@ -419,7 +471,7 @@ export default function Page({ params }) {
                       </div>
                     )}
                   </div>
-
+                  {/* ประเภทการสัมภาษณ์ */}
                   <div>
                     <div>
                       <Text strong>ประเภทการสัมภาษณ์</Text>
@@ -455,6 +507,7 @@ export default function Page({ params }) {
                       </div>
                     )}
                   </div>
+                  {/* สถานที่สัมภาษณ์ */}
                   <div>
                     <div>
                       <Text strong>สถานที่สัมภาษณ์</Text>
@@ -472,6 +525,31 @@ export default function Page({ params }) {
                       />
                     </div>
                   </div>
+
+                  {/* ผู้สัมภาษณ์ */}
+                  <div>
+                    <div>
+                      <Text strong>ผู้สัมภาษณ์</Text>
+                    </div>
+                    <div className="mt-1">
+                      <Select
+                        showSearch
+                        allowClear
+                        placeholder="เลือกผู้สัมภาษณ์"
+                        loading={loadingInterviewer}
+                        value={selectedInterviewer}
+                        onChange={setSelectedInterviewer}
+                        options={interviewerOptions}
+                        style={{ width: "100%" }}
+                        filterOption={(input, option) =>
+                          (option?.label ?? "")
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                      />
+                    </div>
+                  </div>
+
                   {interviewType === "online" && (
                     <div>
                       <div>
@@ -558,7 +636,7 @@ export default function Page({ params }) {
         </div>
       )}      
 
-      <div className="px-6 mb-5">
+      <div className="px-6 mb-5 no-print">
         {errorMessage && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
@@ -571,7 +649,7 @@ export default function Page({ params }) {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-3 p-6">
+      <div className="flex items-center justify-between gap-3 p-6 no-print">
         <div>
           <button
             type="button"

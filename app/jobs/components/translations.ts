@@ -110,6 +110,11 @@ export const uiText = {
     TH: "ประวัติส่วนตัว",
   },
 
+  title: {
+    TH: "คำนำหน้า",
+    EN: "Title",
+  },
+
   firstName: {
     EN: "First Name",
     TH: "ชื่อ",

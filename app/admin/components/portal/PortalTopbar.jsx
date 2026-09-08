@@ -27,6 +27,8 @@ import {
   PORTAL_SIDEBAR,
 } from "./portalLayoutConfig";
 
+import NotificationBell from "./NotificationBell";
+
 /* =========================================================
    Helpers
 ========================================================= */
@@ -464,13 +466,14 @@ export default function PortalTopbar({
               2xl:left-[var(--portal-sidebar-xxl)]
             `
         }
+        no-print
       `}
     >
       {/* =================================================
           Left
       ================================================= */}
 
-      <div className="min-w-0 flex-1 pr-4">
+      <div className="min-w-0 flex-1 pr-4 no-print">
         <div
           className="
             truncate
@@ -499,7 +502,9 @@ export default function PortalTopbar({
           Right
       ================================================= */}
 
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 items-center gap-2">
+        <NotificationBell />
+
         <Dropdown
           menu={{
             items:

@@ -1,0 +1,598 @@
+@media print {
+  /* ========================================
+     Print Page
+  ======================================== */
+
+  @page {
+    size: A4 portrait;
+    margin: 5mm; 
+  }
+
+  @page {
+    size: A4 var(--print-orientation, portrait);
+  }
+
+  /* ========================================
+     Hide elements
+  ======================================== */
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* ========================================
+     Print area
+  ======================================== */
+
+  .print-area,
+  .print-content {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ========================================
+     Prevent unnecessary layout issues
+  ======================================== */
+
+  html,
+  body {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ========================================
+     Ant Design
+  ======================================== */
+
+  .ant-layout,
+  .ant-layout-content {
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ========================================
+     Table
+  ======================================== */
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* ========================================
+     Cards
+  ======================================== */
+
+  .ant-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* ========================================
+     Images
+  ======================================== */
+
+  img {
+    max-width: 100% !important;
+  }
+
+  /* ========================================
+     Links
+  ======================================== */
+
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  /* ลด font size โดยรวม */
+  body {
+    font-size: 12px !important;
+  }
+
+  /* บีบระยะห่างระหว่าง Card (เดิม marginBottom: 24 แบบ inline) */
+  .ant-card {
+    margin-bottom: 8px !important;
+  }
+
+  .ant-card-body {
+    padding: 10px 12px !important;
+  }
+
+  .ant-card-head {
+    min-height: auto !important;
+    padding: 4px 12px !important;
+  }
+
+  .ant-card-head-title {
+    padding: 4px 0 !important;
+    font-size: 13px !important;
+  }
+
+  /* บีบ Descriptions ให้กระชับ */
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* บีบ Table ให้กระชับ */
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* ลดระยะ Divider */
+  .ant-divider {
+    margin: 8px 0 !important;
+  }
+
+  /* ลดระยะ Row/Col gutter ที่มักมี margin ติดมา */
+  .ant-row {
+    margin-bottom: 4px !important;
+  }
+
+  /* Title ให้เล็กลงตอนพิมพ์ */
+  h1.ant-typography,
+  h2.ant-typography,
+  h3.ant-typography,
+  .ant-typography h3 {
+    font-size: 16px !important;
+    margin: 0 0 4px 0 !important;
+  }
+
+  /* Tag ให้กระชับขึ้น (จากเดิม fontSize:16, padding:'6px 14px' inline) */
+  .ant-tag {
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+    line-height: 1.6 !important;
+  }
+
+   /* อนุญาตให้ตารางยาวตัดข้ามหน้าได้ เพื่อประหยัดพื้นที่ (แลกกับที่ตารางอาจขาดกลางแถว) */
+  .ant-table-wrapper {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+}
+
+/* ============================================================== */
+/* Design tokens (scoped to the dossier root)                     */
+/* ============================================================== */
+.dossier {
+  --ink: #1e2a32;
+  --text-tertiary: #837c6d;
+  --paper: #f0f1ec;
+  --paper-raised: #ffffff;
+  --paper-hover: #f7f6f2;
+  --line: #d9d5c9;
+  --line-faint: #e8e5db;
+  --accent-teal: #295c52;
+  --accent-amber: #b8863b;
+  --status-red: #a23b3b;
+  --status-blue: #3a5a78;
+  --font-sans: var(--font-plex-sans-thai), "IBM Plex Sans Thai", "IBM Plex Sans", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  font-family: var(--font-sans);
+  background: var(--paper);
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--ink);
+}
+
+/* ============================================================== */
+/* Field / FieldGrid                                               */
+/* ============================================================== */
+.dossier .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+.dossier .field--wide {
+  grid-column: 1 / -1;
+}
+.dossier .field-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+.dossier .field-value {
+  font-size: 14.5px;
+  color: var(--ink);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.dossier .grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+@media (max-width: 860px) {
+  .dossier .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .dossier .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================== */
+/* SubHeading                                                      */
+/* ============================================================== */
+.dossier .sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-teal);
+  margin: 28px 0 10px;
+}
+.dossier .sub:first-child {
+  margin-top: 0;
+}
+
+/* ============================================================== */
+/* SectionCard                                                     */
+/* ============================================================== */
+.dossier .section {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin-bottom: 20px;
+  scroll-margin-top: 24px;
+  overflow: hidden;
+}
+.dossier .section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%);
+}
+.dossier .section-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-amber);
+  border: 1px solid var(--accent-amber);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+.dossier .section-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+.dossier .section-body {
+  padding: 4px 0;
+}
+
+/* ============================================================== */
+/* EmptyRow                                                         */
+/* ============================================================== */
+.dossier .empty {
+  padding: 28px 20px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ============================================================== */
+/* DataTable                                                        */
+/* ============================================================== */
+.dossier .table-wrap {
+  overflow-x: auto;
+  padding: 0 4px;
+}
+.dossier .table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.dossier .table-wrap thead th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.dossier .table-wrap tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-faint);
+  color: var(--ink);
+  vertical-align: top;
+}
+.dossier .table-wrap tbody tr:last-child td {
+  border-bottom: none;
+}
+.dossier .table-wrap tbody tr:hover {
+  background: var(--paper-hover);
+}
+
+/* ============================================================== */
+/* Hero                                                              */
+/* ============================================================== */
+.dossier .hero {
+  margin: 0 auto 24px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  position: relative;
+}
+.dossier .hero-photo {
+  width: 108px;
+  height: 108px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dossier .hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dossier .hero-photo span {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  color: var(--accent-teal);
+}
+.dossier .hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.dossier .hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  margin-bottom: 6px;
+}
+.dossier .hero-name {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+.dossier .hero-nick {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+.dossier .hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.dossier .hero-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dossier .tag-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.dossier .tag-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--accent-teal);
+}
+
+/* ============================================================== */
+/* Status stamp                                                     */
+/* ============================================================== */
+.dossier .stamp {
+  flex-shrink: 0;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 2px dashed currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: rotate(-8deg);
+  padding: 10px;
+}
+.dossier .stamp-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.dossier .stamp--default { color: #7a7364; }
+.dossier .stamp--progress { color: var(--status-blue); }
+.dossier .stamp--approved { color: var(--accent-teal); }
+.dossier .stamp--rejected { color: var(--status-red); }
+
+/* ============================================================== */
+/* Layout / Nav / Content                                           */
+/* ============================================================== */
+.dossier .layout {
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.dossier .nav {
+  position: sticky;
+  top: 24px;
+}
+.dossier .nav-inner {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dossier .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line-faint);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: background 0.15s ease;
+}
+.dossier .nav-item:last-child {
+  border-bottom: none;
+}
+.dossier .nav-item:hover {
+  background: var(--paper-hover);
+}
+.dossier .nav-item.is-active {
+  background: var(--accent-teal);
+}
+.dossier .nav-item.is-active .nav-num,
+.dossier .nav-item.is-active .nav-label {
+  color: #fff;
+}
+.dossier .nav-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-amber);
+}
+.dossier .nav-label {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.dossier .content {
+  min-width: 0;
+}
+
+/* ============================================================== */
+/* Documents / download / presentation                              */
+/* ============================================================== */
+.dossier .download-link {
+  color: var(--accent-teal);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 13px;
+  border-bottom: 1px solid var(--accent-teal);
+}
+.dossier .download-link:hover {
+  opacity: 0.75;
+}
+
+.dossier .presentation {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-hover);
+}
+.dossier .presentation-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.dossier .presentation-link {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-teal);
+  padding: 7px 16px;
+  border-radius: 3px;
+  text-decoration: none;
+}
+.dossier .presentation-link:hover {
+  opacity: 0.88;
+}
+
+/* ============================================================== */
+/* Responsive                                                        */
+/* ============================================================== */
+@media (max-width: 860px) {
+  .dossier .layout {
+    grid-template-columns: 1fr;
+  }
+  .dossier .nav {
+    position: static;
+  }
+  .dossier .nav-inner {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .dossier .nav-item {
+    border-bottom: none;
+    border-right: 1px solid var(--line-faint);
+    white-space: nowrap;
+  }
+  .dossier .hero {
+    flex-wrap: wrap;
+  }
+  .dossier .stamp {
+    margin: 0 auto;
+  }
+}
+@media (max-width: 560px) {
+  .dossier {
+    padding: 16px 12px 60px;
+  }
+  .dossier .hero {
+    padding: 20px;
+  }
+  .dossier .hero-name {
+    font-size: 22px;
+  }
+}

@@ -14,6 +14,7 @@ export async function PUT(request) {
       meeting_url,
       position_id,
       postpone_date,
+      interviewer_id,
     } = await request.json();
 
     const userId = await getUserIdFromRequest();
@@ -59,7 +60,7 @@ export async function PUT(request) {
       currentApplication.status === 4 || currentApplication.status === 6;
 
     const data_update = {
-      status,
+      status: status === 4 ? 5:status,
       status_reason: remark ?? null,
       updated_at: new Date().toISOString(),
     };
@@ -194,8 +195,8 @@ export async function PUT(request) {
           location,
           meeting_url,
           created_by: userId,
-          reviewer: null,
-          status,
+          reviewer: interviewer_id,
+          status: 5, // สถานะ 5 = รอสัมภาษณ์
         });
 
       if (insertError) {

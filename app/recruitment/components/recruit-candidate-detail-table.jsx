@@ -39,12 +39,13 @@ const STATUS_MAP = {
   8: { label: 'ส่งต่อการสัมภาษณ์', color: 'green' },
   9: { label: 'ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน', color: 'volcano' },
   16: { label: 'ยื่น Resume', color: 'default' },
+  19: { label: 'รอพิจารณาอีกครั้ง', color: 'volcano' },
   99: { label: 'backlist', color: 'red' },
   0: { label: 'ยกเลิก', color: 'red' },
 };
 
 const status = user?.has_all_scope
-  ? [1, 2, 3, 6, 7, 8, 9, 16, 99]
+  ? [1, 2, 3, 6, 7, 8, 9, 16, 19, 99]
   : [2, 3, 6, 7, 8, 9];
 
 const STATUS_OPTIONS = status

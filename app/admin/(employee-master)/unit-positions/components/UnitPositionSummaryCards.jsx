@@ -10,7 +10,7 @@ import {
 
 export default function UnitPositionSummaryCards({ summary = {} }) {
   return (
-    <Row gutter={[12, 12]}>
+    <Row>
       <Col xs={24} sm={12} xl={6}>
         <Card className="shadow-sm">
           <Statistic

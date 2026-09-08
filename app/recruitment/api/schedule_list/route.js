@@ -16,6 +16,10 @@ export async function GET(request) {
         id,
         position_name
       ),
+      titles ( 
+        id,
+        title_name_th
+      ),
       recruit_job_interviews${reviewerId ? "!inner" : ""} (
         id,
         reviewer,

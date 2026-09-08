@@ -27,6 +27,7 @@ const STATUS_TEXT = {
   16: "ยื่น Resume",
   17: "รอเริ่มงาน",
   18: "รออัปเดตข้อมูล resume",
+  19: "รอพิจารณาอีกครั้ง",
   99: "Backlist",
   0: "ยกเลิก",
 };
@@ -125,81 +126,16 @@ function Field({ label, children, wide }) {
     <div className={`field ${wide ? "field--wide" : ""}`}>
       <span className="field-label">{label}</span>
       <span className="field-value">{children}</span>
-      <style jsx>{`
-        .field {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          padding: 14px 18px;
-          border-bottom: 1px solid var(--line);
-          border-right: 1px solid var(--line);
-        }
-        .field--wide {
-          grid-column: 1 / -1;
-        }
-        .field-label {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          letter-spacing: 0.06em;
-          color: var(--text-tertiary);
-          text-transform: uppercase;
-        }
-        .field-value {
-          font-size: 14.5px;
-          color: var(--ink);
-          line-height: 1.5;
-          word-break: break-word;
-        }
-      `}</style>
     </div>
   );
 }
 
 function FieldGrid({ children }) {
-  return (
-    <div className="grid">
-      {children}
-      <style jsx>{`
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          border-top: 1px solid var(--line);
-          border-left: 1px solid var(--line);
-        }
-        @media (max-width: 860px) {
-          .grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-        @media (max-width: 560px) {
-          .grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
-    </div>
-  );
+  return <div className="grid">{children}</div>;
 }
 
 function SubHeading({ children }) {
-  return (
-    <div className="sub">
-      {children}
-      <style jsx>{`
-        .sub {
-          font-family: var(--font-mono);
-          font-size: 12px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          color: var(--accent-teal);
-          margin: 28px 0 10px;
-        }
-        .sub:first-child {
-          margin-top: 0;
-        }
-      `}</style>
-    </div>
-  );
+  return <div className="sub">{children}</div>;
 }
 
 function SectionCard({ id, num, title, children }) {
@@ -210,60 +146,12 @@ function SectionCard({ id, num, title, children }) {
         <h2 className="section-title">{title}</h2>
       </div>
       <div className="section-body">{children}</div>
-      <style jsx>{`
-        .section {
-          background: var(--paper-raised);
-          border: 1px solid var(--line);
-          border-radius: 4px;
-          margin-bottom: 20px;
-          scroll-margin-top: 24px;
-          overflow: hidden;
-        }
-        .section-head {
-          display: flex;
-          align-items: baseline;
-          gap: 12px;
-          padding: 18px 20px;
-          border-bottom: 1px solid var(--line);
-          background: linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%);
-        }
-        .section-num {
-          font-family: var(--font-mono);
-          font-size: 12px;
-          color: var(--accent-amber);
-          border: 1px solid var(--accent-amber);
-          border-radius: 3px;
-          padding: 2px 7px;
-        }
-        .section-title {
-          font-size: 17px;
-          font-weight: 600;
-          color: var(--ink);
-          margin: 0;
-        }
-        .section-body {
-          padding: 4px 0;
-        }
-      `}</style>
     </section>
   );
 }
 
 function EmptyRow({ children = "ไม่มีข้อมูล" }) {
-  return (
-    <div className="empty">
-      {children}
-      <style jsx>{`
-        .empty {
-          padding: 28px 20px;
-          text-align: center;
-          font-size: 13.5px;
-          color: var(--text-tertiary);
-          font-style: italic;
-        }
-      `}</style>
-    </div>
-  );
+  return <div className="empty">{children}</div>;
 }
 
 function DataTable({ columns, rows, rowKey }) {
@@ -292,40 +180,6 @@ function DataTable({ columns, rows, rowKey }) {
           ))}
         </tbody>
       </table>
-      <style jsx>{`
-        .table-wrap {
-          overflow-x: auto;
-          padding: 0 4px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 13.5px;
-        }
-        thead th {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          color: var(--text-tertiary);
-          text-align: left;
-          padding: 10px 16px;
-          border-bottom: 1px solid var(--line);
-          white-space: nowrap;
-        }
-        tbody td {
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--line-faint);
-          color: var(--ink);
-          vertical-align: top;
-        }
-        tbody tr:last-child td {
-          border-bottom: none;
-        }
-        tbody tr:hover {
-          background: var(--paper-hover);
-        }
-      `}</style>
     </div>
   );
 }
@@ -373,7 +227,7 @@ export default function CandidateProfile({
   const tone = STATUS_TONE[application.status] ?? "default";
   const statusLabel = STATUS_TEXT[application.status] ?? "—";
 
-  const fullName = `${value(application.first_name)} ${value(application.last_name)}`;
+  const fullName = `${application.titles?.title_name_th ?? ""} ${value(application.first_name)} ${value(application.last_name)}`;
   const nickname = `${value(application.nickname_th)} / ${value(application.nickname_en)}`;
 
   return (
@@ -472,15 +326,11 @@ export default function CandidateProfile({
               <Field label="อำเภอ">{value(application.district_name)}</Field>
               <Field label="จังหวัด">{value(application.province_name)}</Field>
               <Field label="รหัสไปรษณีย์">{value(application.postal_code)}</Field>
-              { application.residence_type === "other" ? (
-                <Field label="อื่น ๆ">
-                    {value(application.residence_other)}
-                </Field>
-                ) : (
-                <Field label="ลักษณะที่อยู่อาศัย">
-                    {getResidenceTypeText(application.residence_type)}
-                </Field>
-              )}              
+              {application.residence_type === "other" ? (
+                <Field label="อื่น ๆ">{value(application.residence_other)}</Field>
+              ) : (
+                <Field label="ลักษณะที่อยู่อาศัย">{getResidenceTypeText(application.residence_type)}</Field>
+              )}
               <Field label="เบอร์โทรศัพท์">{value(application.phone_number)}</Field>
               <Field label="LINE ID">{value(application.line_id)}</Field>
               <Field label="E-mail">{value(application.email)}</Field>
@@ -642,279 +492,6 @@ export default function CandidateProfile({
           </SectionCard>
         </main>
       </div>
-
-      {/* ============================================================ */}
-      {/* Global styles / tokens                                       */}
-      {/* ============================================================ */}
-      <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
-      `}</style>
-
-      <style jsx>{`
-        .dossier {
-          --ink: #1e2a32;
-          --text-tertiary: #837c6d;
-          --paper: #f0f1ec;
-          --paper-raised: #ffffff;
-          --paper-hover: #f7f6f2;
-          --line: #d9d5c9;
-          --line-faint: #e8e5db;
-          --accent-teal: #295c52;
-          --accent-amber: #b8863b;
-          --status-red: #a23b3b;
-          --status-blue: #3a5a78;
-          --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", sans-serif;
-          --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-
-          font-family: var(--font-sans);
-          background: var(--paper);
-          min-height: 100vh;
-          padding: 32px 24px 80px;
-          color: var(--ink);
-        }
-
-        /* ---------- Hero ---------- */
-        .hero {
-          max-width: 1180px;
-          margin: 0 auto 24px;
-          background: var(--paper-raised);
-          border: 1px solid var(--line);
-          border-radius: 4px;
-          padding: 28px 32px;
-          display: flex;
-          align-items: center;
-          gap: 28px;
-          position: relative;
-        }
-        .hero-photo {
-          width: 108px;
-          height: 108px;
-          flex-shrink: 0;
-          border-radius: 4px;
-          overflow: hidden;
-          border: 1px solid var(--line);
-          background: var(--paper);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .hero-photo img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        .hero-photo span {
-          font-family: var(--font-mono);
-          font-size: 30px;
-          color: var(--accent-teal);
-        }
-        .hero-info {
-          flex: 1;
-          min-width: 0;
-        }
-        .hero-eyebrow {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--accent-amber);
-          margin-bottom: 6px;
-        }
-        .hero-name {
-          font-size: 28px;
-          font-weight: 700;
-          margin: 0 0 4px;
-          color: var(--ink);
-        }
-        .hero-nick {
-          font-size: 14px;
-          color: var(--text-tertiary);
-          margin-bottom: 16px;
-        }
-        .hero-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 24px;
-        }
-        .hero-tag {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-        .tag-label {
-          font-family: var(--font-mono);
-          font-size: 10.5px;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          color: var(--text-tertiary);
-        }
-        .tag-value {
-          font-size: 14.5px;
-          font-weight: 600;
-          color: var(--accent-teal);
-        }
-
-        .stamp {
-          flex-shrink: 0;
-          width: 108px;
-          height: 108px;
-          border-radius: 50%;
-          border: 2px dashed currentColor;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          transform: rotate(-8deg);
-          padding: 10px;
-        }
-        .stamp-text {
-          font-family: var(--font-mono);
-          font-size: 12px;
-          font-weight: 600;
-          line-height: 1.3;
-        }
-        .stamp--default { color: #7a7364; }
-        .stamp--progress { color: var(--status-blue); }
-        .stamp--approved { color: var(--accent-teal); }
-        .stamp--rejected { color: var(--status-red); }
-
-        /* ---------- Layout ---------- */
-        .layout {
-          max-width: 1180px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 220px 1fr;
-          gap: 24px;
-          align-items: start;
-        }
-
-        .nav {
-          position: sticky;
-          top: 24px;
-        }
-        .nav-inner {
-          display: flex;
-          flex-direction: column;
-          background: var(--paper-raised);
-          border: 1px solid var(--line);
-          border-radius: 4px;
-          overflow: hidden;
-        }
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 13px 16px;
-          background: none;
-          border: none;
-          border-bottom: 1px solid var(--line-faint);
-          cursor: pointer;
-          text-align: left;
-          font-family: var(--font-sans);
-          transition: background 0.15s ease;
-        }
-        .nav-item:last-child {
-          border-bottom: none;
-        }
-        .nav-item:hover {
-          background: var(--paper-hover);
-        }
-        .nav-item.is-active {
-          background: var(--accent-teal);
-        }
-        .nav-item.is-active .nav-num,
-        .nav-item.is-active .nav-label {
-          color: #fff;
-        }
-        .nav-num {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          color: var(--accent-amber);
-        }
-        .nav-label {
-          font-size: 13.5px;
-          color: var(--ink);
-        }
-
-        .content {
-          min-width: 0;
-        }
-
-        .download-link {
-          color: var(--accent-teal);
-          font-weight: 600;
-          text-decoration: none;
-          font-size: 13px;
-          border-bottom: 1px solid var(--accent-teal);
-        }
-        .download-link:hover {
-          opacity: 0.75;
-        }
-
-        .presentation {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 16px 20px;
-          border-top: 1px solid var(--line);
-          background: var(--paper-hover);
-        }
-        .presentation-label {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          color: var(--text-tertiary);
-        }
-        .presentation-link {
-          font-size: 13.5px;
-          font-weight: 600;
-          color: #fff;
-          background: var(--accent-teal);
-          padding: 7px 16px;
-          border-radius: 3px;
-          text-decoration: none;
-        }
-        .presentation-link:hover {
-          opacity: 0.88;
-        }
-
-        /* ---------- Responsive ---------- */
-        @media (max-width: 860px) {
-          .layout {
-            grid-template-columns: 1fr;
-          }
-          .nav {
-            position: static;
-          }
-          .nav-inner {
-            flex-direction: row;
-            overflow-x: auto;
-          }
-          .nav-item {
-            border-bottom: none;
-            border-right: 1px solid var(--line-faint);
-            white-space: nowrap;
-          }
-          .hero {
-            flex-wrap: wrap;
-          }
-          .stamp {
-            margin: 0 auto;
-          }
-        }
-        @media (max-width: 560px) {
-          .dossier {
-            padding: 16px 12px 60px;
-          }
-          .hero {
-            padding: 20px;
-          }
-          .hero-name {
-            font-size: 22px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

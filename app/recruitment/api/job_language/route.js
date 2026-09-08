@@ -24,6 +24,7 @@ export async function GET() {
     supabaseAdmin
       .from("recruit_language")
       .select("id, language_name , language_slug")
+      .eq("status", true)
       .order("id", { ascending: true }),
     supabaseAdmin
       .from("recruit_job_mix_language")

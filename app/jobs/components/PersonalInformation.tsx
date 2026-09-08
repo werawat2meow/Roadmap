@@ -59,6 +59,23 @@ interface GenderOption {
   is_default?: boolean;
 }
 
+/* ---------------------------------------------------------------------- */
+/*                              Title Types                               */
+/* ---------------------------------------------------------------------- */
+// Title (คำนำหน้า) options come back from /jobs/api/title_name. Each row
+// also carries the gender it implies as a plain lowercase string, e.g.
+// "male" / "female" (NOT the uppercase GenderCode used by /jobs/api/gender,
+// e.g. "MALE" / "FEMALE") — so it's matched case-insensitively below.
+interface TitleOption {
+  id: number | string;
+  title_name_th: string;
+  title_name_en: string;
+  gender?: string | null;
+  status?: string;
+  sort_order?: number;
+  is_default?: boolean;
+}
+
 interface MaritalStatusOption {
   id: number | string;
   marital_status_name_th: string;
@@ -105,6 +122,70 @@ export default function PersonalInformation({
         : null,
     });
   }, [form, value]);
+
+    /* ---------------------------------------------------------------------- */
+    /*                          Fetch Title Options                           */
+    /* ---------------------------------------------------------------------- */
+    // NOTE: this used to accidentally write into setGenderOptions (copy/paste
+    // bug) which clobbered the real gender list. It now has its own state.
+
+    const [titleOptions, setTitleOptions] = useState<TitleOption[]>([]);
+    const [titleLoading, setTitleLoading] = useState<boolean>(true);
+    const [titleError, setTitleError] = useState<boolean>(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchTitles = async () => {
+        try {
+            setTitleLoading(true);
+            setTitleError(false);
+
+            const res = await fetch("/jobs/api/title_name");
+
+            if (!res.ok) {
+            throw new Error(`Failed to fetch titles: ${res.status}`);
+            }
+
+            const json = await res.json();
+
+            // API route responds with { data: [...] } on success,
+            // or { message: string } on error (see app/jobs/api/title_name/route.ts).
+            const list: TitleOption[] = Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json)
+            ? json
+            : [];
+
+            if (list.length === 0) {
+            console.warn("Titles API did not return any options:", json);
+            }
+
+            const sorted = [...list].sort(
+              (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+            );
+
+            if (isMounted) {
+            setTitleOptions(sorted);
+            }
+        } catch (err) {
+            console.error("Error fetching titles:", err);
+            if (isMounted) {
+            setTitleError(true);
+            }
+        } finally {
+            if (isMounted) {
+            setTitleLoading(false);
+            }
+        }
+        };
+
+        fetchTitles();
+
+        return () => {
+        isMounted = false;
+        };
+    }, []);
 
   /* ---------------------------------------------------------------------- */
   /*                          Fetch Gender Options                          */
@@ -385,6 +466,13 @@ export default function PersonalInformation({
     onChange(newValue);
   };
 
+    const updatePlainTextField = (
+        field: keyof typeof value,
+        fieldValue: string
+    ) => {
+        updateField(field, fieldValue.replace(/[^\p{L}\p{M}\p{N}\s]/gu, ""));
+    };
+
   // Auto-select the default gender (is_default = true) once options have
   // loaded, but only if the user hasn't already picked one (e.g. editing
   // an existing application) — never override an existing selection.
@@ -400,6 +488,60 @@ export default function PersonalInformation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [genderOptions]);
 
+  /* ---------------------------------------------------------------------- */
+  /*                        Title -> Gender Handling                        */
+  /* ---------------------------------------------------------------------- */
+  // When the user picks a title (คำนำหน้า), derive gender from it:
+  // selectedTitle.gender comes back lowercase (e.g. "male" / "female"), so
+  // it's matched case-insensitively against genderOptions[i].gender_code
+  // (which is uppercase, e.g. "MALE" / "FEMALE") to find the matching
+  // gender id. Gender updates in the SAME onChange call as title, so both
+  // values land together in the parent form state that gets submitted/saved.
+  //
+  // Downstream, isFemale / isMale (used to show the Pregnancy and Military
+  // fields) are derived reactively from `value.gender` on every render —
+  // see `selectedGenderOption` above. So once gender is set here, the
+  // Pregnancy / Military conditional fields update automatically, exactly
+  // as if the user had picked Gender by hand. No extra wiring needed.
+  const handleTitleChange = (titleId: number | string | undefined) => {
+    if (titleId === undefined) {
+      updateField("title", null);
+      return;
+    }
+
+    const selectedTitle = Array.isArray(titleOptions)
+      ? titleOptions.find((t) => String(t.id) === String(titleId))
+      : undefined;
+
+    const newValue: typeof value = {
+      ...value,
+      // PersonalInformationData.title is `string | null`, but titleId can
+      // come through as a number if the API ever returns numeric ids —
+      // stringify it explicitly so this always satisfies the field's type.
+      title: String(titleId),
+    };
+
+    if (selectedTitle?.gender) {
+      const matchedGender = Array.isArray(genderOptions)
+        ? genderOptions.find(
+            (g) =>
+              g.gender_code?.toLowerCase() ===
+              selectedTitle.gender!.toLowerCase()
+          )
+        : undefined;
+
+      if (matchedGender) {
+        // Assign the id as-is — do NOT stringify with .toLowerCase() (that
+        // was wrong). Gender stores the raw id from genderOptions (same as
+        // what the Gender Radio.Group stores via `value={option.id}`), just
+        // stringified to satisfy the `Gender = string` field type since
+        // ids can come back as number | string.
+        newValue.gender = String(matchedGender.id);
+      }
+    }
+
+    onChange(newValue);
+  };
 
   const updateDriverLicense = (
     key: keyof typeof value.driverLicense,
@@ -531,7 +673,7 @@ export default function PersonalInformation({
                                     : "Other Position"
                                 }
                                 value={value.otherPosition}
-                                onChange={(e) => updateField( "otherPosition", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("otherPosition", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -572,27 +714,74 @@ export default function PersonalInformation({
             {/* ---------------------------------------------------------------------- */}
             <Card title={getUIText(uiText.personalInfoSection, locale)} >
                 <Row gutter={[16, 16]}>
+                    {/* Title (คำนำหน้า) */}
+                    <Col xs={24} md={6}>
+                        <Form.Item
+                            label={
+                                uiText.title
+                                    ? getUIText(uiText.title, locale)
+                                    : language === "TH"
+                                    ? "คำนำหน้า"
+                                    : "Title"
+                            }
+                            required
+                        >
+                            {titleLoading ? (
+                                <Spin size="small" />
+                            ) : titleError ? (
+                                <Typography.Text type="danger">
+                                    {language === "TH"
+                                        ? "ไม่สามารถโหลดคำนำหน้าได้"
+                                        : "Failed to load titles"}
+                                </Typography.Text>
+                            ) : (
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    placeholder={
+                                        language === "TH"
+                                        ? "เลือกคำนำหน้า"
+                                        : "Select title"
+                                    }
+                                    style={{ width: "100%" }}
+                                    value={value.title || undefined}
+                                    onChange={handleTitleChange}
+                                    optionFilterProp="label"
+                                    options={(Array.isArray(titleOptions) ? titleOptions : []).map(
+                                        (option) => ({
+                                            value: option.id,
+                                            label:
+                                                locale === "TH"
+                                                    ? option.title_name_th
+                                                    : option.title_name_en,
+                                        })
+                                    )}
+                                />
+                            )}
+                        </Form.Item>
+                    </Col>
+
                     {/* First Name */}
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={9}>
                         <Form.Item label={getUIText(uiText.firstName, locale)} required >
                             <Input
                                 required
                                 name="firstName"
                                 value={value.firstName}
-                                onChange={(e) => updateField("firstName", e.target.value) }
+                                onChange={(e) => updatePlainTextField("firstName", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
 
                     {/* Last Name */}
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={9}>
                         <Form.Item label={getUIText(uiText.lastName, locale)} required
                         >
                             <Input
                                 required
                                 name="lastName"
                                 value={value.lastName}
-                                onChange={(e) => updateField("lastName", e.target.value) }
+                                onChange={(e) => updatePlainTextField("lastName", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -602,7 +791,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.nicknameTh, locale)} >
                             <Input
                                 value={value.nicknameTH}
-                                onChange={(e) => updateField("nicknameTH", e.target.value) }
+                                onChange={(e) => updatePlainTextField("nicknameTH", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -612,7 +801,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.nicknameEn, locale)} >
                             <Input
                                 value={value.nicknameEN}
-                                onChange={(e) => updateField("nicknameEN", e.target.value) }
+                                onChange={(e) => updatePlainTextField("nicknameEN", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -681,7 +870,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.pregnancyAge, locale)} >
                             <Input
                                 value={value.pregnancyAge}
-                                onChange={(e) => updateField( "pregnancyAge", e.target.value ) }
+                                onChange={(e) => updateField("pregnancyAge", e.target.value.replace(/\D/g, ""))}
                                 suffix={ 
                                     language === "TH"
                                     ? "เดือน"
@@ -847,8 +1036,11 @@ export default function PersonalInformation({
                             <Input
                                 value={value.idCardNo}
                                 onChange={(e) => {
-                                updateField("idCardNo", e.target.value);
-                                form.setFieldValue("idCardNo", e.target.value);
+                                const idCardNo = language === "TH"
+                                    ? e.target.value.replace(/\D/g, "")
+                                    : e.target.value.replace(/[^A-Za-z0-9]/g, "");
+                                updateField("idCardNo", idCardNo);
+                                form.setFieldValue("idCardNo", idCardNo);
                                 }}
                                 maxLength={language === "TH" ? 13 : 20}
                             />
@@ -870,7 +1062,7 @@ export default function PersonalInformation({
                                 required
                                 name="addressNo"
                                 value={value.addressNo}
-                                onChange={(e) => updateField( "addressNo", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("addressNo", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -880,7 +1072,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.villageNo, locale)} >
                             <Input
                                 value={value.villageNo}
-                                onChange={(e) => updateField( "villageNo", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("villageNo", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -890,7 +1082,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.street, locale)} >
                             <Input
                                 value={value.street}
-                                onChange={(e) => updateField( "street", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("street", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -947,7 +1139,7 @@ export default function PersonalInformation({
                         <Form.Item label={getUIText(uiText.lineId, locale)} >
                             <Input
                                 value={value.lineId}
-                                onChange={(e) => updateField( "lineId", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("lineId", e.target.value)}
                             />
                         </Form.Item>
                     </Col>
@@ -974,7 +1166,8 @@ export default function PersonalInformation({
                                 name="phoneNumber"
                                 value={value.phoneNumber}
                                 placeholder={ language === "TH" ? "08xxxxxxxx" : "Phone Number" }
-                                onChange={(e) => updateField( "phoneNumber", e.target.value ) }
+                                onChange={(e) => updateField("phoneNumber", e.target.value.replace(/\D/g, ""))}
+                                maxLength={10}
                             />
                         </Form.Item>
                     </Col>
@@ -1029,7 +1222,7 @@ export default function PersonalInformation({
                             <Form.Item label={getUIText(uiText.residenceOther, locale)} >
                             <Input
                                 value={value.residenceOther}
-                                onChange={(e) => updateField( "residenceOther", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("residenceOther", e.target.value)}
                                 placeholder={
                                     language === "TH"
                                     ? "กรุณาระบุ"
@@ -1168,7 +1361,7 @@ export default function PersonalInformation({
                                         ? "กรุณาระบุ"
                                         : "Please specify"
                                     }
-                                    onChange={(e) => updateDriverLicense( "otherText", e.target.value ) }
+                                    onChange={(e) => updateDriverLicense("otherText", e.target.value)}
                                 />
                             </Form.Item>
                         </Col>
@@ -1228,7 +1421,8 @@ export default function PersonalInformation({
                                     ? "08xxxxxxxx"
                                     : "Phone Number"
                                 }
-                                onChange={(e) => updateEmergencyContact( "phone", e.target.value ) }
+                                onChange={(e) => updateEmergencyContact("phone", e.target.value.replace(/\D/g, ""))}
+                                maxLength={10}
                             />
                         </Form.Item>
                     </Col>
@@ -1245,7 +1439,7 @@ export default function PersonalInformation({
                                     ? "เช่น บิดา, มารดา, พี่ชาย"
                                     : "Relationship"
                                 }
-                                onChange={(e) => updateEmergencyContact( "relationship", e.target.value ) }
+                                onChange={(e) => updateEmergencyContact("relationship", e.target.value )}
                             />
                         </Form.Item>
                     </Col>
@@ -1279,7 +1473,7 @@ export default function PersonalInformation({
                                     ? "หากไม่มีให้พิมพ์ 'ไม่มี'"
                                     : "If none, please enter 'None'"
                                 }
-                                onChange={(e) => updateField( "underlyingDisease", e.target.value ) }
+                                onChange={(e) => updatePlainTextField("underlyingDisease", e.target.value)}
                             />
                         </Form.Item>
                     </Col>

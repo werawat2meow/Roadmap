@@ -126,6 +126,7 @@ export async function GET(request) {
         created_at,
         status,
         position_id,
+        titles (title_name_th),
         positions (position_name),
         recruit_job_interviews!inner (
           interview_datetime,

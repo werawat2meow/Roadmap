@@ -41,6 +41,14 @@ export default function UserAccessAssignmentModal({
 
   userAccounts = [],
 
+  userAccountLoading = false,
+
+  userAccountHasMore = false,
+
+  onUserAccountSearch,
+
+  onLoadMoreUserAccounts,
+
   roles = [],
 
   companies = [],
@@ -89,6 +97,18 @@ export default function UserAccessAssignmentModal({
         }
         userAccounts={
           userAccounts
+        }
+        userAccountLoading={
+          userAccountLoading
+        }
+        userAccountHasMore={
+          userAccountHasMore
+        }
+        onUserAccountSearch={
+          onUserAccountSearch
+        }
+        onLoadMoreUserAccounts={
+          onLoadMoreUserAccounts
         }
         roles={roles}
         companies={companies}

@@ -5,6 +5,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("recruit_language")
     .select("id, language_name, language_slug, language_img, status, created_at, updated_at")
+    .eq("status", true)
     .order("id", { ascending: false });
 
   if (error) {

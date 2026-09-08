@@ -32,7 +32,8 @@ export async function GET(request, { params }) {
         position_id,
         positions (
           position_name
-        )
+        ),
+        status_reason
       `)
       .eq("first_name", applicant.first_name)
       .eq("last_name", applicant.last_name)
@@ -59,6 +60,7 @@ export async function GET(request, { params }) {
         item.created_at === item.updated_at
           ? "สมัครเข้ามาใหม่"
           : getStatusText(item.status),
+      status_reason: item.status_reason,
     }));
 
     return NextResponse.json({
@@ -113,6 +115,12 @@ function getStatusText(status) {
       return "อัพเดตเข้าฐานข้อมูลกลาง";
     case 16 :
       return "ฝาก resume";
+    case 17 :
+      return "รอเริ่มงาน";
+    case 18 :
+      return "รออัปเดตข้อมูล resume";
+    case 19 :
+      return "รอพิจารณาอีกครั้ง";
     case 0 :
       return "ยกเลิก";
     case 99 :
@@ -121,5 +129,3 @@ function getStatusText(status) {
       return "ไม่ทราบสถานะ";
   }
 }
-
-

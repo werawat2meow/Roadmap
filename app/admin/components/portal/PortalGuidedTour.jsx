@@ -933,10 +933,10 @@ export default function PortalGuidedTour() {
           return;
         }
 
-        console.log(
-          "GUIDED_TOUR_STATUS:",
-          json
-        );
+        // console.log(
+        //   "GUIDED_TOUR_STATUS:",
+        //   json
+        // );
 
         /*
         * completed / skipped

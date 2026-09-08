@@ -43,6 +43,21 @@ const normalizeLocalizedObject = (data, languages = [], textField = "") => {
   return { ...base, ...(typeof source === "object" && !Array.isArray(source) ? source : {}) };
 };
 
+// Convert benefit_center records (from recruit_benefit_center) into the
+// same shape used by the benefits SectionList in the form.
+const buildBenefitFromRecords = (records = [], languages = []) =>
+  records.length > 0
+    ? records.map((r) => ({
+        id: r.id,
+        text: {
+          ...buildLocalizedRow(languages),
+          ...(r.text || r.benefit_name || {}),
+        },
+        sort_order: r.sort_order ?? 1,
+        showpage: r.showpage ?? false,
+      }))
+    : [buildSectionRow(languages)];
+
 const createEmptyForm = (languages = []) => ({
   branch_id: [],
   department_id: "",
@@ -128,6 +143,11 @@ export default function JobDescriptionForm({
   const emptyForm = useMemo(() => createEmptyForm(languages), [languages]);
   const [form, setForm] = useState(() => emptyForm); 
 
+  // ── Benefit center (recruit_benefit_center) ────────────────────────────────
+  const [benefitBranchGroups, setBenefitBranchGroups] = useState([]); // [{branch_id, branch_name, items}]
+  const [benefitLoading, setBenefitLoading] = useState(false);
+  const [showBenefitPicker, setShowBenefitPicker] = useState(false);
+
   const languageKey = useMemo(
     () => languages.map((lang) => lang.language_slug).join("|"),
     [languages]
@@ -158,7 +178,36 @@ export default function JobDescriptionForm({
     }));
   }
 
-  function handleBranchChange(values) {
+  // Fetch recruit_benefit_center rows for the given branch ids.
+  async function fetchBenefitCenter(branchIds) {
+    if (!branchIds || branchIds.length === 0) return [];
+    setBenefitLoading(true);
+    try {
+      const qs = branchIds.map((id) => `branch_id=${encodeURIComponent(id)}`).join("&");
+      const res = await fetch(`/recruitment/api/benefit?${qs}`);
+      if (!res.ok) throw new Error("โหลดข้อมูลสวัสดิการไม่สำเร็จ");
+      const data = await res.json();
+      return Array.isArray(data) ? data : data?.benefits ?? [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    } finally {
+      setBenefitLoading(false);
+    }
+  }
+
+  // Apply the chosen branch's benefit_center group into form.benefits
+  function applyBenefitGroup(branchId) {
+    const group = benefitBranchGroups.find((g) => g.branch_id === branchId);
+    if (!group) return;
+    setForm((prev) => ({
+      ...prev,
+      benefits: buildBenefitFromRecords(group.items, languages),
+    }));
+    setShowBenefitPicker(false);
+  }
+
+  async function handleBranchChange(values) {
     setForm((prev) => {
       if (mode === "edit" && values.length > 1) {
         return {
@@ -175,6 +224,57 @@ export default function JobDescriptionForm({
         positions_id: "",
       };
     });
+
+    if (!values || values.length === 0) {
+      setBenefitBranchGroups([]);
+      setShowBenefitPicker(false);
+      // เคลียร์ข้อมูลสวัสดิการ
+      setForm((prev) => ({
+        ...prev,
+        benefits: [buildSectionRow(languages)],
+      }));
+
+      return;
+    }
+
+    // ดึงข้อมูล recruit_benefit_center ตาม branch_id ที่เลือก
+    const records = await fetchBenefitCenter(values);   
+
+    const groupsMap = {};
+    records.forEach((r) => {
+      const bId = (r.branches_id ?? r.branch_id)?.toString();
+      if (!bId) return;
+      if (!groupsMap[bId]) groupsMap[bId] = [];
+      groupsMap[bId].push(r);
+    });
+
+    const groups = Object.entries(groupsMap).map(([branchId, items]) => ({
+      branch_id: branchId,
+      branch_name:
+        branches.find((b) => b.id?.toString() === branchId)?.branch_name || branchId,
+      items,
+    }));  
+
+    setBenefitBranchGroups(groups);
+
+    if (values.length === 1) {
+      // เลือก branch เดียว -> เติม benefit ให้อัตโนมัติ
+      setShowBenefitPicker(false);
+      if (groups.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          benefits: buildBenefitFromRecords(groups[0].items, languages),
+        }));
+      }
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        benefits: [buildSectionRow(languages)],
+      }));
+
+      // เลือกหลาย branch -> ให้ผู้ใช้เลือก 1 รายการ เพื่อนำไปบันทึก
+      setShowBenefitPicker(groups.length > 0);
+    }
   }
 
   function handleDepartmentChange(value) {
@@ -271,6 +371,8 @@ export default function JobDescriptionForm({
   function handleReset() {
     setErrorMessage("");
     setLoading(false);
+    setBenefitBranchGroups([]);
+    setShowBenefitPicker(false);
     setForm(mode === "edit" && initialData ? buildFormData(initialData, languages) : createEmptyForm(languages));
   }
 
@@ -433,6 +535,9 @@ export default function JobDescriptionForm({
                   },
                 }}
               />
+              {benefitLoading && (
+                <p className="mt-1 text-xs text-gray-400">กำลังโหลดข้อมูลสวัสดิการ...</p>
+              )}
             </div>
 
             {/* Department */}
@@ -697,6 +802,28 @@ export default function JobDescriptionForm({
               onRemove={(index) => removeRow("responsibilities", index)}
               onChange={(index, langSlug, value) => updateSection("responsibilities", index, langSlug, value)}
             />
+
+            {/* เลือกชุด benefit จาก recruit_benefit_center เมื่อเลือกหลาย Company */}
+            {showBenefitPicker && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p className="mb-3 text-sm font-medium text-gray-800">
+                  พบข้อมูลสวัสดิการจากหลาย Company กรุณาเลือก 1 รายการเพื่อนำไปใช้บันทึก
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {benefitBranchGroups.map((g) => (
+                    <button
+                      key={g.branch_id}
+                      type="button"
+                      onClick={() => applyBenefitGroup(g.branch_id)}
+                      className="rounded-xl border border-blue-400 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                      {g.branch_name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <SectionList
               title="สวัสดิการ"
               sectionKey="benefits"

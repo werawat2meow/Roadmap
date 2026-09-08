@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "LeaveKind" ADD VALUE 'ANNUAL_HOLIDAY';

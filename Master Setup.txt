@@ -1,0 +1,49 @@
+1.Master Setup
+├── Benefit Types
+├── Categories
+├── Policies
+├── Rules
+├── Matrix
+├── Workflow
+├── Running Number
+└── Fiscal Year
+2. Entitlement Engine
+├── Generate
+├── Recalculate
+├── Carry Forward
+├── Expire
+└── Balance
+3. Request Management
+├── Create Request
+├── Validation
+├── Attachment
+└── Tracking
+4. Approval Engine
+├── Multi-Level Workflow
+├── Role Approval
+├── Amount Approval
+├── Delegate
+└── Escalation
+5. Usage Management
+├── Deduction
+├── Actual Usage
+├── Reverse
+└── Adjustment
+6. Reports & Dashboard
+├── Employee
+├── Department
+├── Benefit
+├── Budget
+├── KPI
+└── Analytics
+7. Integration
+├── Payroll
+├── ERP
+├── SSO
+├── Email
+└── API
+8. Administration
+├── Audit Log
+├── Notification
+├── Import/Export
+└── System Setting

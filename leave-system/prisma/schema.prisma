@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---- Enums ----
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveKind {
+  ANNUAL
+  SICK
+  BUSINESS
+  UNPAID
+  BIRTHDAY
+  ORDAIN
+  MATERNITY
+  ANNUAL_HOLIDAY
+  SHIFT_CHANGE
+  HOLIDAY_CHANGE
+  OT
+}
+
+enum LeaveSession {
+  FULL
+  AM
+  PM
+}
+
+enum BlackoutTargetType {
+  ORG
+  DEPARTMENT
+  DIVISION
+  UNIT
+}
+
+// ---- Models ----
+// employees, user_accounts, departments, divisions, units, branches
+// อยู่ใน Supabase แล้ว → เก็บแค่ UUID string ไม่ทำ Prisma relation
+
+model LeaveRequest {
+  id         Int    @id @default(autoincrement())
+  employeeId String @db.Uuid // → employees.id (Supabase)
+
+  approverId Int?
+  approver   LeaveApprover? @relation(fields: [approverId], references: [id])
+
+  kind              LeaveKind
+  startDate         DateTime
+  endDate           DateTime
+  session           LeaveSession?
+  reason            String?
+  approverReason    String?
+  approverSignature String?
+  contact           String?
+  handoverTo        String?
+  attachmentUrl     String?
+  requestedDays     Decimal     @default(0.0) @db.Decimal(5, 2)
+  reservation       Json?
+  status            LeaveStatus @default(PENDING)
+  approvedAt        DateTime?
+  hrConfirmed       Boolean     @default(false)
+  hrConfirmedAt     DateTime?
+  hrConfirmedBy     String?     // employee_id (UUID) ของ HR ที่ยืนยัน
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leave_requests")
+  @@index([employeeId])
+  @@index([approverId])
+  @@index([status, createdAt])
+  @@index([kind, startDate, endDate])
+  @@index([hrConfirmed])
+}
+
+model LeaveApprover {
+  id            Int     @id @default(autoincrement())
+  employeeId    String  @unique @db.Uuid // → employees.id (Supabase)
+  empNo         String  @unique
+  prefix        String?
+  firstNameTh   String
+  lastNameTh    String
+  firstNameEn   String?
+  lastNameEn    String?
+  citizenId     String? @unique
+  email         String? @unique
+  allowCrossOrg Boolean @default(false)
+
+  // Org unit IDs จาก Supabase (UUID string ไม่ทำ Prisma FK)
+  branchId     String? @db.Uuid
+  departmentId String? @db.Uuid
+  divisionId   String? @db.Uuid
+  unitId       String? @db.Uuid
+
+  approvedLeaves LeaveRequest[]
+  assignments    LeaveEmployeeApprover[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leave_approvers")
+}
+
+// M2M: พนักงานคนนี้ใช้ approver คนไหน
+model LeaveEmployeeApprover {
+  id         Int    @id @default(autoincrement())
+  employeeId String @db.Uuid // → employees.id (Supabase)
+  approverId Int
+  approver   LeaveApprover @relation(fields: [approverId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, approverId])
+  @@map("leave_employee_approvers")
+  @@index([employeeId])
+  @@index([approverId])
+}
+
+model LeaveRights {
+  id         Int    @id @default(autoincrement())
+  employeeId String @db.Uuid // → employees.id (Supabase)
+  year       Int
+
+  annualLeave               Decimal   @default(0.0) @db.Decimal(5, 1)
+  carryForwardAnnual        Decimal   @default(0.0) @db.Decimal(5, 1)
+  carryForwardAnnualExpiry  DateTime?
+  holidayLeave              Decimal   @default(0.0) @db.Decimal(5, 1)
+  carryForwardHoliday       Decimal   @default(0.0) @db.Decimal(5, 1)
+  carryForwardHolidayExpiry DateTime?
+  vacationLeave             Decimal   @default(0.0) @db.Decimal(5, 1)
+  businessLeave             Decimal   @default(0.0) @db.Decimal(5, 1)
+  sickLeave                 Decimal   @default(0.0) @db.Decimal(5, 1)
+  ordainLeave               Decimal   @default(0.0) @db.Decimal(5, 1)
+  maternityLeave            Decimal   @default(0.0) @db.Decimal(5, 1)
+  unpaidLeave               Decimal   @default(0.0) @db.Decimal(5, 1)
+  birthdayLeave             Decimal   @default(0.0) @db.Decimal(5, 1)
+
+  @@unique([employeeId, year], name: "employeeId_year")
+  @@map("leave_rights")
+}
+
+model LeaveRightsTemplate {
+  id                 Int    @id @default(autoincrement())
+  prefix             String
+  annualLeaveDays    Int
+  holidayLeaveDays   Int
+  vacationLeaveDays  Int
+  businessLeaveDays  Int
+  sickLeaveDays      Int
+  ordainLeaveDays    Int
+  maternityLeaveDays Int
+  unpaidLeaveDays    Int
+  birthdayLeaveDays  Int
+
+  @@map("leave_rights_templates")
+}
+
+model LeaveCarryForwardBucket {
+  id         Int      @id @default(autoincrement())
+  employeeId String   @db.Uuid // → employees.id (Supabase)
+  originYear Int
+  remaining  Decimal  @default(0.0) @db.Decimal(5, 1)
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, originYear])
+  @@map("leave_carry_forward_buckets")
+  @@index([employeeId, expiresAt])
+  @@index([expiresAt])
+}
+
+model LeaveHoliday {
+  id        Int      @id @default(autoincrement())
+  title     String
+  date      DateTime
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, title])
+  @@map("leave_holidays")
+  @@index([date])
+}
+
+model LeaveBlackout {
+  id        Int      @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  active    Boolean  @default(true)
+  allKinds  Boolean  @default(true)
+
+  targets LeaveBlackoutTarget[]
+  kinds   LeaveBlackoutKind[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leave_blackouts")
+  @@index([active, startDate, endDate])
+}
+
+model LeaveBlackoutTarget {
+  id         Int           @id @default(autoincrement())
+  blackoutId Int
+  blackout   LeaveBlackout @relation(fields: [blackoutId], references: [id], onDelete: Cascade)
+
+  targetType BlackoutTargetType
+  targetId   String @db.Uuid // UUID ของ branch/dept/division/unit ใน Supabase
+
+  @@unique([blackoutId, targetType, targetId], name: "uniq_blackout_target")
+  @@map("leave_blackout_targets")
+  @@index([blackoutId])
+  @@index([targetType, targetId])
+}
+
+model LeaveBlackoutKind {
+  id         Int           @id @default(autoincrement())
+  blackoutId Int
+  blackout   LeaveBlackout @relation(fields: [blackoutId], references: [id], onDelete: Cascade)
+
+  kind LeaveKind
+
+  @@unique([blackoutId, kind], name: "uniq_blackout_kind")
+  @@map("leave_blackout_kinds")
+  @@index([blackoutId])
+}
+
+model LeaveEmployeeConfig {
+  id                  Int      @id @default(autoincrement())
+  employeeId          String   @unique @db.Uuid
+  weeklyHoliday       String?
+  carryForwardAnnual  Decimal  @default(0.0) @db.Decimal(5, 1)
+  carryForwardHoliday Decimal  @default(0.0) @db.Decimal(5, 1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("leave_employee_configs")
+}

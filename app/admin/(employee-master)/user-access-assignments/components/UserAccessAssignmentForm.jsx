@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Col,
@@ -164,6 +168,14 @@ export default function UserAccessAssignmentForm({
 
   userAccounts = [],
 
+  userAccountLoading = false,
+
+  userAccountHasMore = false,
+
+  onUserAccountSearch,
+
+  onLoadMoreUserAccounts,
+
   roles = [],
 
   companies = [],
@@ -180,10 +192,81 @@ export default function UserAccessAssignmentForm({
 }) {
 
   const [saving, setSaving] = useState(false);
+
+  const [
+    userAccountSearch,
+    setUserAccountSearch,
+  ] = useState("");
+
+  const userAccountSearchTimerRef =
+    useRef(null);
+
   const selectedUserAccountId = Form.useWatch("user_account_id",form);
   const status = Form.useWatch("status",form);
   const userAccountOptions = makeUserAccountOptions(userAccounts);
   const roleOptions = makeRoleOptions(roles);
+
+  /* =======================================================
+     User Account Lazy Search
+  ======================================================= */
+
+  useEffect(() => {
+    return () => {
+      if (
+        userAccountSearchTimerRef.current
+      ) {
+        window.clearTimeout(
+          userAccountSearchTimerRef.current
+        );
+      }
+    };
+  }, []);
+
+  const handleUserAccountSearch = (value) => {
+    const nextValue =
+      String(value || "");
+
+    setUserAccountSearch(
+      nextValue
+    );
+
+    if (
+      userAccountSearchTimerRef.current
+    ) {
+      window.clearTimeout(
+        userAccountSearchTimerRef.current
+      );
+    }
+
+    userAccountSearchTimerRef.current =
+      window.setTimeout(() => {
+        onUserAccountSearch?.(
+          nextValue.trim()
+        );
+      }, 300);
+  };
+
+  const handleUserAccountPopupScroll = (event) => {
+    const target =
+      event?.currentTarget;
+
+    if (
+      !target ||
+      userAccountLoading ||
+      !userAccountHasMore
+    ) {
+      return;
+    }
+
+    const distanceToBottom =
+      target.scrollHeight -
+      target.scrollTop -
+      target.clientHeight;
+
+    if (distanceToBottom <= 48) {
+      onLoadMoreUserAccounts?.();
+    }
+  };
 
   /* =======================================================
      Inactive Assignment cannot be Primary
@@ -201,6 +284,19 @@ export default function UserAccessAssignmentForm({
   };
 
   const handleUserAccountChange = (userAccountId) => {
+    setUserAccountSearch("");
+
+    if (
+      userAccountSearchTimerRef.current
+    ) {
+      window.clearTimeout(
+        userAccountSearchTimerRef.current
+      );
+
+      userAccountSearchTimerRef.current =
+        null;
+    }
+
     if (!userAccountId) {
       form.setFieldValue(
         "role_id",
@@ -266,12 +362,27 @@ export default function UserAccessAssignmentForm({
             <Select
               showSearch
               allowClear
-              optionFilterProp="label"
-              placeholder="เลือกผู้ใช้งานระบบ"
-              loading={masterLoading}
+              filterOption={false}
+              placeholder="ค้นหา Username / รหัสพนักงาน / ชื่อพนักงาน"
+              loading={userAccountLoading}
               options={userAccountOptions}
+              searchValue={userAccountSearch}
+              onSearch={
+                handleUserAccountSearch
+              }
+              onClear={() => {
+                handleUserAccountSearch("");
+              }}
+              onPopupScroll={
+                handleUserAccountPopupScroll
+              }
               onChange={
                 handleUserAccountChange
+              }
+              notFoundContent={
+                userAccountLoading
+                  ? "กำลังโหลด..."
+                  : "ไม่พบผู้ใช้งานระบบ"
               }
             />
           </Form.Item>

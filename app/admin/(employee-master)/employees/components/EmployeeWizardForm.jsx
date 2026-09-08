@@ -35,7 +35,7 @@ export const EMPLOYEE_WIZARD_STEPS = [
     icon: <IdcardOutlined />,
   },
   {
-    title: "ข้อมูลติดต่อ",
+    title: "ข้อมูลติดต่อ / ภาษี",
     icon: <ContactsOutlined />,
   },
   {
@@ -112,11 +112,21 @@ export const EMPLOYEE_STEP_FIELDS = {
 
     "line_id",
 
-    "tax_id",
+    "tax_identity_type",
+    "tax_identification_no",
+    "tax_filing_form_code",
+    "tax_resident_status",
+    "tax_withholding_company_id",
+    "statutory_effective_from",
+
+    "social_security_registered",
     "social_security_no",
+    "insured_type",
+    "social_security_company_id",
   ],
 
   2: [
+    "use_tax_company_for_organization",
     "company_id",
     "branch_group_id",
     "branch_id",
@@ -221,7 +231,10 @@ export default function EmployeeWizardForm({
         return (
           <EmployeeContactStep
             form={form}
+            mode={mode}
             disabled={disabled}
+            masterData={masterData}
+            masterLoading={masterLoading}
           />
         );
 
@@ -229,6 +242,7 @@ export default function EmployeeWizardForm({
         return (
           <EmployeeOrganizationStep
             form={form}
+            mode={mode}
             disabled={disabled}
             masterData={
               masterData

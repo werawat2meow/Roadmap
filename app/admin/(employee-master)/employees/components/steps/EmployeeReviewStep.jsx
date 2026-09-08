@@ -266,6 +266,18 @@ export default function EmployeeReviewStep({
       values.payment_method_id
     );
 
+  const taxWithholdingCompany =
+    findById(
+      masterData.companies,
+      values.tax_withholding_company_id
+    );
+
+  const socialSecurityCompany =
+    findById(
+      masterData.companies,
+      values.social_security_company_id
+    );
+
   /* =========================================================
      ACCOUNT / ROLE
   ========================================================= */
@@ -425,25 +437,64 @@ export default function EmployeeReviewStep({
           lg: 3,
         }}
       >
-        <Descriptions.Item
-          label="โทรศัพท์มือถือ"
-        >
-          {values.mobile_phone ||
-            "-"}
+        <Descriptions.Item label="โทรศัพท์มือถือ">
+          {values.mobile_phone || "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label="อีเมลส่วนตัว"
-        >
-          {values.personal_email ||
-            "-"}
+        <Descriptions.Item label="อีเมลส่วนตัว">
+          {values.personal_email || "-"}
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label="อีเมลบริษัท"
-        >
-          {values.work_email ||
-            "-"}
+        <Descriptions.Item label="อีเมลบริษัท">
+          {values.work_email || "-"}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="Tax Identity">
+          {values.tax_identity_type === "passport"
+            ? `Passport: ${values.passport_no || "-"}`
+            : values.tax_identity_type === "tax_id"
+              ? `Tax ID: ${values.tax_identification_no || "-"}`
+              : `Citizen ID: ${values.citizen_id || "-"}`}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="แบบภาษี / ภ.ง.ด.">
+          {values.tax_filing_form_code || "-"}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="บริษัทนำส่งภาษี">
+          {getValue(
+            taxWithholdingCompany,
+            [
+              "company_name_th",
+              "company_name_en",
+              "company_code",
+            ]
+          )}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="ประกันสังคม">
+          {values.social_security_registered
+            ? values.social_security_no || "ขึ้นทะเบียน"
+            : "ไม่ขึ้นทะเบียน"}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="ประเภทผู้ประกันตน">
+          {values.social_security_registered
+            ? values.insured_type || "-"
+            : "-"}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="บริษัทประกันสังคม">
+          {values.social_security_registered
+            ? getValue(
+                socialSecurityCompany,
+                [
+                  "company_name_th",
+                  "company_name_en",
+                  "company_code",
+                ]
+              )
+            : "-"}
         </Descriptions.Item>
       </Descriptions>
 
@@ -730,7 +781,9 @@ export default function EmployeeReviewStep({
         >
           {salaryBand
             ? `${salaryBand.band_code || "-"} - ${salaryBand.band_name || "-"}`
-            : "-"}
+            : values.position_level_id
+              ? "ค่าตอบแทนรายบุคคล / ไม่ใช้ Salary Band"
+              : "-"}
         </Descriptions.Item>
 
         <Descriptions.Item

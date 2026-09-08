@@ -76,6 +76,94 @@ function toDayjs(value) {
     : null;
 }
 
+function normalizeTypeToken(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_-]+/g, "");
+}
+
+function isPartTimeEmploymentType(item) {
+  if (!item) {
+    return false;
+  }
+
+  const code = normalizeTypeToken(
+    item.type_code ||
+      item.employment_type_code
+  );
+
+  const name = String(
+    item.type_name ||
+      item.employment_type_name ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return (
+    code === "PARTTIME" ||
+    code === "PT" ||
+    /part[\s_-]*time/i.test(name) ||
+    /พาร์[ทต][\s_-]*ไทม์/i.test(name)
+  );
+}
+
+function resolveNationalityEmployeeType(item) {
+  if (!item) {
+    return null;
+  }
+
+  const code = normalizeTypeToken(
+    item.nationality_code
+  );
+
+  const name = [
+    item.nationality_name_th,
+    item.nationality_name_en,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+    .toLowerCase();
+
+  if (
+    ["MM", "MMR", "MYANMAR", "BURMA"].includes(code) ||
+    /myanmar|burmese|เมียนมา|พม่า/i.test(name)
+  ) {
+    return "myanmar";
+  }
+
+  if (
+    ["TH", "THA", "THAI", "THAILAND"].includes(code) ||
+    /thai|thailand|ไทย/i.test(name)
+  ) {
+    return "thai";
+  }
+
+  return "non_b";
+}
+
+function resolveEmployeeType({
+  position,
+  employmentType,
+  nationality,
+}) {
+  if (position?.is_executive === true) {
+    return "executive";
+  }
+
+  if (isPartTimeEmploymentType(employmentType)) {
+    return "parttime";
+  }
+
+  return (
+    resolveNationalityEmployeeType(
+      nationality
+    ) || "thai"
+  );
+}
+
 export default function EmployeeAccountStep({
   form,
 
@@ -185,6 +273,105 @@ export default function EmployeeAccountStep({
 
   const roles =
     masterData.roles || [];
+
+  const positions =
+    masterData.positions || [];
+
+  const employmentTypes =
+    masterData.employmentTypes || [];
+
+  const nationalities =
+    masterData.nationalities || [];
+
+  const positionId =
+    Form.useWatch(
+      "position_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  const employmentTypeId =
+    Form.useWatch(
+      "employment_type_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  const nationalityId =
+    Form.useWatch(
+      "nationality_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  const resolvedEmployeeType =
+    useMemo(() => {
+      const selectedPosition =
+        positions.find(
+          (item) =>
+            String(item?.id || "") ===
+            String(positionId || "")
+        ) || null;
+
+      const selectedEmploymentType =
+        employmentTypes.find(
+          (item) =>
+            String(item?.id || "") ===
+            String(employmentTypeId || "")
+        ) || null;
+
+      const selectedNationality =
+        nationalities.find(
+          (item) =>
+            String(item?.id || "") ===
+            String(nationalityId || "")
+        ) || null;
+
+      return resolveEmployeeType({
+        position: selectedPosition,
+        employmentType:
+          selectedEmploymentType,
+        nationality:
+          selectedNationality,
+      });
+    }, [
+      positions,
+      positionId,
+      employmentTypes,
+      employmentTypeId,
+      nationalities,
+      nationalityId,
+    ]);
+
+  useEffect(() => {
+    if (mode !== "create") {
+      return;
+    }
+
+    const current =
+      form.getFieldValue(
+        "employee_type"
+      );
+
+    if (current === resolvedEmployeeType) {
+      return;
+    }
+
+    form.setFieldValue(
+      "employee_type",
+      resolvedEmployeeType
+    );
+  }, [
+    mode,
+    resolvedEmployeeType,
+    form,
+  ]);
 
   /* =========================================================
      EMPLOYEE CODE SETTINGS
@@ -620,14 +807,15 @@ export default function EmployeeAccountStep({
               >
                 <Select
                   disabled={
-                    disabled
+                    disabled ||
+                    mode === "create"
                   }
 
                   options={
                     employeeTypeOptions
                   }
 
-                  placeholder="เลือกประเภทพนักงาน"
+                  placeholder="ระบบกำหนดอัตโนมัติ"
                 />
               </Form.Item>
             </Col>

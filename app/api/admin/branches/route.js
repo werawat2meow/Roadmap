@@ -62,7 +62,8 @@ export async function GET(req) {
             id,
             group_code,
             group_name,
-            group_color
+            group_color,
+            sort_order
           )
         `)
         .order(
@@ -149,6 +150,12 @@ export async function GET(req) {
             branch.branch_groups
               ?.group_color ||
             "#E2E8F0",
+            
+          group_sort_order:
+            Number(
+              branch.branch_groups
+                ?.sort_order ?? 0
+            ),
         })
       );
 

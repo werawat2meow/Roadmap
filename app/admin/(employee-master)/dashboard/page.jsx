@@ -21,6 +21,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloudDownloadOutlined,
+  CompassOutlined,
   DollarOutlined,
   IdcardOutlined,
   ReloadOutlined,
@@ -39,6 +40,10 @@ import EnterpriseDistributionList from "./components/EnterpriseDistributionList"
 import EnterpriseKpiCard from "./components/EnterpriseKpiCard";
 import EnterpriseMetricGrid from "./components/EnterpriseMetricGrid";
 import EnterpriseQualityRow from "./components/EnterpriseQualityRow";
+import DashboardWorkHub from "./components/DashboardWorkHub";
+import DashboardGuidedTour from "./components/DashboardGuidedTour";
+import DashboardNotificationBell from "./components/DashboardNotificationBell";
+import DashboardProbationAlert from "./components/DashboardProbationAlert";
 
 const { Title, Text } = Typography;
 
@@ -163,6 +168,7 @@ export default function EmployeeMasterDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
+  const [tourOpenSignal, setTourOpenSignal] = useState(0);
 
   useEffect(() => {
     if (loadingUser) return;
@@ -172,19 +178,24 @@ export default function EmployeeMasterDashboardPage() {
       return;
     }
 
-    if (!canViewDashboard || !canViewEmployees) {
-      router.replace("/admin/employees");
+    if (!canViewDashboard) {
+      router.replace("/admin");
     }
   }, [
     user,
     loadingUser,
     canViewDashboard,
-    canViewEmployees,
     router,
   ]);
 
   const loadDashboard = useCallback(async () => {
-    if (!user || !canViewDashboard || !canViewEmployees) return;
+    if (!user || !canViewDashboard) return;
+
+    if (!canViewEmployees) {
+      setLoading(false);
+      setError("");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -371,22 +382,45 @@ export default function EmployeeMasterDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
-      <div className="mx-auto max-w-[1800px] space-y-5">
-        <Card className="rounded-2xl border-slate-200 shadow-sm">
+      <div className="mx-auto max-w-[1800px] space-y-7">
+        <DashboardGuidedTour
+          user={user}
+          canViewEmployees={canViewEmployees}
+          openSignal={tourOpenSignal}
+        />
+
+        <Card
+          data-dashboard-tour="overview"
+          className="rounded-2xl border-slate-200 shadow-sm"
+        >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                 Employee Master / Enterprise Overview
               </div>
               <Title level={2} className="!mb-1 !text-slate-900">
-                Workforce Command Center
+                HR Workspace Overview
               </Title>
               <Text className="text-slate-500">
-                ภาพรวมกำลังคน โครงสร้างองค์กร Job Architecture, Cost Structure, Payroll Readiness และ Data Quality
+                จุดเริ่มต้นสำหรับงาน HR: งานประจำตาม Role, ทางลัดไปหน้าที่มีสิทธิ์ และภาพรวม Workforce
               </Text>
             </div>
 
-            <Space wrap>
+            <Space wrap size={10}>
+              <DashboardNotificationBell
+                dashboard={dashboard}
+                canViewEmployees={canViewEmployees}
+              />
+
+              <Button
+                icon={<CompassOutlined />}
+                onClick={() =>
+                  setTourOpenSignal((current) => current + 1)
+                }
+              >
+                แนะนำการใช้งาน
+              </Button>
+
               <Button
                 icon={<ReloadOutlined />}
                 onClick={loadDashboard}
@@ -395,7 +429,7 @@ export default function EmployeeMasterDashboardPage() {
                 Refresh
               </Button>
 
-              {canExportDashboard ? (
+              {canExportDashboard && canViewEmployees ? (
                 <Button
                   type="primary"
                   icon={<CloudDownloadOutlined />}
@@ -424,26 +458,46 @@ export default function EmployeeMasterDashboardPage() {
           />
         ) : null}
 
-        <Alert
-          type={scopeInfo.type}
-          showIcon
-          title={scopeInfo.title}
-          description={scopeInfo.description}
+        <DashboardProbationAlert
+          dashboard={dashboard}
+          canViewEmployees={canViewEmployees}
         />
 
-        {loading ? (
+        <DashboardWorkHub user={user} />
+
+        {/* <div data-dashboard-tour="scope">
+          {canViewEmployees ? (
+            <Alert
+              type={scopeInfo.type}
+              showIcon
+              title={scopeInfo.title}
+              description={scopeInfo.description}
+            />
+          ) : (
+            <Alert
+              type="info"
+              showIcon
+              title="Dashboard Navigation Mode"
+              description="User นี้เข้า Dashboard เพื่อใช้งานทางลัดตาม Role และ Permission ได้ แต่ไม่มี ems.employees.view จึงไม่โหลดตัวเลข Workforce"
+            />
+          )}
+        </div> */}
+
+        {/* {!canViewEmployees ? null : loading ? (
           <Card className="rounded-2xl border-slate-200">
             <Skeleton active paragraph={{ rows: 10 }} />
           </Card>
         ) : (
           <>
-            <Row gutter={[16, 16]}>
-              {kpiCards.map((item) => (
-                <Col xs={24} sm={12} xl={8} xxl={4} key={item.title}>
-                  <EnterpriseKpiCard {...item} />
-                </Col>
-              ))}
-            </Row>
+            <div data-dashboard-tour="workforce-summary">
+              <Row gutter={[16, 16]}>
+                {kpiCards.map((item) => (
+                  <Col xs={24} sm={12} xl={8} xxl={4} key={item.title}>
+                    <EnterpriseKpiCard {...item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
 
             <Row gutter={[16, 16]}>
               <Col xs={24} xl={10}>
@@ -607,7 +661,7 @@ export default function EmployeeMasterDashboardPage() {
               />
             </Card>
           </>
-        )}
+        )} */}
       </div>
     </div>
   );

@@ -167,6 +167,15 @@ export default function EmployeePayrollStep({
       }
     );
 
+  const positionId =
+    Form.useWatch(
+      "position_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
   const positionLevelBandId =
     Form.useWatch(
       "position_level_band_id",
@@ -185,6 +194,9 @@ export default function EmployeePayrollStep({
 
   const positionLevelBands =
     masterData.positionLevelBands || [];
+
+  const positions =
+    masterData.positions || [];
 
   const banks =
     masterData.banks || [];
@@ -401,13 +413,58 @@ export default function EmployeePayrollStep({
           .join(" / ")
       : null;
 
+  const hasSalaryBandOptions =
+    salaryBandOptions.length > 0;
+
+  const selectedPosition =
+    useMemo(
+      () =>
+        positions.find(
+          (item) =>
+            sameId(
+              item?.id,
+              positionId
+            )
+        ) || null,
+      [positions, positionId]
+    );
+
+  /*
+    Executive สามารถมี Salary Band ได้ แต่ไม่บังคับ
+    เพื่อรองรับค่าตอบแทนรายบุคคล / Executive Contract
+  */
+  const isExecutivePosition =
+    selectedPosition?.is_executive ===
+    true;
+
+  const isConfirmedNonExecutive =
+    selectedPosition?.is_executive ===
+    false;
+
+  const salaryBandRequired =
+    mode === "create" &&
+    Boolean(positionLevelId) &&
+    hasSalaryBandOptions &&
+    isConfirmedNonExecutive;
+
+  const useIndividualCompensation =
+    Boolean(positionLevelId) &&
+    !masterLoading &&
+    (
+      !hasSalaryBandOptions ||
+      (
+        isExecutivePosition &&
+        !positionLevelBandId
+      )
+    );
+
   return (
     <div>
       <Alert
         showIcon
         type="info"
         title="ข้อมูล Payroll"
-        description="เชื่อมพนักงานกับ Payroll Company, Payroll Type, Payroll Group และ Salary Band"
+        description="เชื่อมพนักงานกับ Payroll Company, Payroll Type, Payroll Group และ Salary Band (ถ้ามี)"
         className="mb-5"
       />
 
@@ -522,11 +579,28 @@ export default function EmployeePayrollStep({
           <Form.Item
             label="Salary Band"
             name="position_level_band_id"
+            dependencies={[
+              "position_level_id",
+            ]}
             rules={[
               {
-                required: mode === "create",
-                message:
-                  "กรุณาเลือก Salary Band",
+                validator: (_, value) => {
+                  if (
+                    !salaryBandRequired
+                  ) {
+                    return Promise.resolve();
+                  }
+
+                  if (!value) {
+                    return Promise.reject(
+                      new Error(
+                        "กรุณาเลือก Salary Band"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
               },
             ]}
             extra={
@@ -534,10 +608,11 @@ export default function EmployeePayrollStep({
                 ? `Min / Mid / Max: ${salaryBandRangeText} บาท`
                 : !positionLevelId
                   ? "กรุณาเลือกระดับตำแหน่งก่อน"
-                  : salaryBandOptions.length === 0 &&
-                      !masterLoading
-                    ? "ไม่พบ Salary Band ที่เปิดใช้งานสำหรับระดับตำแหน่งนี้"
-                    : null
+                  : isExecutivePosition
+                    ? "ตำแหน่งผู้บริหาร: Salary Band เป็นตัวเลือก สามารถเว้นว่างและใช้ค่าตอบแทนรายบุคคลได้"
+                    : useIndividualCompensation
+                      ? "ระดับตำแหน่งนี้ไม่มี Salary Band สามารถใช้ค่าตอบแทนรายบุคคลและระบุ Base Salary ได้"
+                      : null
             }
           >
             <Select
@@ -545,15 +620,20 @@ export default function EmployeePayrollStep({
               allowClear
               disabled={
                 disabled ||
-                !positionLevelId
+                !positionLevelId ||
+                !hasSalaryBandOptions
               }
               loading={masterLoading}
               options={salaryBandOptions}
               optionFilterProp="label"
               placeholder={
-                positionLevelId
-                  ? "เลือก Salary Band"
-                  : "กรุณาเลือกระดับตำแหน่งก่อน"
+                !positionLevelId
+                  ? "กรุณาเลือกระดับตำแหน่งก่อน"
+                  : !hasSalaryBandOptions
+                    ? "ไม่มี Salary Band สำหรับระดับตำแหน่งนี้"
+                    : isExecutivePosition
+                      ? "เลือก Salary Band (ไม่บังคับ)"
+                      : "เลือก Salary Band"
               }
               notFoundContent={
                 masterLoading
@@ -570,6 +650,20 @@ export default function EmployeePayrollStep({
           </Form.Item>
         </Col>
       </Row>
+
+      {useIndividualCompensation && (
+        <Alert
+          showIcon
+          type="info"
+          title="ค่าตอบแทนรายบุคคล / ไม่ใช้ Salary Band"
+          description={
+            isExecutivePosition
+              ? "ตำแหน่งผู้บริหารสามารถใช้ค่าตอบแทนรายบุคคลได้ Salary Band จึงไม่บังคับ หากไม่เลือก ระบบจะบันทึก position_level_band_id เป็นค่าว่างและใช้ Base Salary ที่ระบุ"
+              : "ระดับตำแหน่งนี้ไม่มี Salary Band ที่เปิดใช้งาน ระบบจะอนุญาตให้ระบุ Base Salary โดยไม่ต้องเลือก Salary Band และจะบันทึก position_level_band_id เป็นค่าว่าง"
+          }
+          className="mb-4"
+        />
+      )}
 
       <Divider
         titlePlacement="left"
@@ -945,7 +1039,7 @@ export default function EmployeePayrollStep({
         showIcon
         type="info"
         title="ไม่เก็บเงินเดือนฐานไว้ในตาราง employees"
-        description="ตอนสร้างพนักงาน ระบบจะบันทึก Base Salary พร้อม Salary Band, Position, Payroll Company/Type/Group และ snapshot ช่วงเงินเดือนลง employee_compensations"
+        description="ตอนสร้างพนักงาน ระบบจะบันทึก Base Salary พร้อม Position, Payroll Company/Type/Group และ Salary Band/snapshot ช่วงเงินเดือนเมื่อมีการเลือก Band"
       />
     </div>
   );

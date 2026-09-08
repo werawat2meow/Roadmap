@@ -15,7 +15,8 @@ export async function GET() {
     // 1. ดึงข้อมูลการประเมิน
     const { data: evaluations, error: evalError } = await supabaseAdmin
       .from("rm_evaluations")
-      .select(`
+      .select(
+        `
         id,
         employee_id,
         evaluator_id,
@@ -31,8 +32,10 @@ export async function GET() {
         newLevel,
         completedAt,
         created_at,
-        rm_evaluation_types(name)
-      `)
+        rm_evaluation_types(name),
+        rm_evaluation_reviewers(manager_id, status)
+      `,
+      )
       .eq("status", "Submitted");
 
     if (evalError) throw evalError;
@@ -43,17 +46,23 @@ export async function GET() {
       });
     }
 
+    const reviewerManagerIds = evaluations.flatMap((r: any) =>
+      (r.rm_evaluation_reviewers || []).map((rev: any) => rev.manager_id),
+    );
+
     const userIds = [
       ...new Set([
         ...evaluations.map((r: any) => r.employee_id),
         ...evaluations.map((r: any) => r.evaluator_id),
+        ...reviewerManagerIds,
       ]),
     ].filter(Boolean);
 
     // 2. ดึงข้อมูลพนักงาน
     const { data: employeeRows, error: empError } = await supabaseAdmin
       .from("employees")
-      .select(`
+      .select(
+        `
         id,
         first_name_th,
         last_name_th,
@@ -68,7 +77,8 @@ export async function GET() {
             position_levels(level_code, level_name)
           )
         )
-      `)
+      `,
+      )
       .in("id", userIds);
 
     if (empError) throw empError;
@@ -79,25 +89,24 @@ export async function GET() {
       ...new Set(
         evaluations
           .flatMap((item: any) => [item.approved_by, item.rejected_by])
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ];
 
     const approverNameByUserId = new Map<string, string>();
 
     if (approverIds.length > 0) {
-      const { data: approverUsers, error: approverUserError } = await supabaseAdmin
-        .from("user_accounts")
-        .select("id, employee_id")
-        .in("id", approverIds);
+      const { data: approverUsers, error: approverUserError } =
+        await supabaseAdmin
+          .from("user_accounts")
+          .select("id, employee_id")
+          .in("id", approverIds);
 
       if (approverUserError) throw approverUserError;
 
       const employeeIds = [
         ...new Set(
-          approverUsers
-            .map((user: any) => user.employee_id)
-            .filter(Boolean)
+          approverUsers.map((user: any) => user.employee_id).filter(Boolean),
         ),
       ];
 
@@ -113,7 +122,7 @@ export async function GET() {
         approverEmployees.map((emp: any) => [
           emp.id,
           `${emp.first_name_th || ""} ${emp.last_name_th || ""}`.trim(),
-        ])
+        ]),
       );
 
       approverUsers.forEach((user: any) => {
@@ -125,48 +134,66 @@ export async function GET() {
     // 4. จัด Format ข้อมูล
     const formatted = evaluations.map((item: any) => {
       const emp = empMap.get(item.employee_id);
-      const evaluator = empMap.get(item.evaluator_id);
+      const reviewers: any[] = item.rm_evaluation_reviewers || [];
+      let evaluatorNames: string[] = [];
 
-      const rawScore = item.totalScore || 0;
-      const maxScore = item.maxScore || 100;
+      if (reviewers.length > 0) {
+        evaluatorNames = reviewers
+          .map((rev) => {
+            const revEmp = empMap.get(rev.manager_id);
+            return revEmp
+              ? `${revEmp.first_name_th || ""} ${revEmp.last_name_th || ""}`.trim()
+              : null;
+          })
+          .filter(Boolean) as string[];
+      }
+
+      // ถ้าไม่มีใน rm_evaluation_reviewers ให้ fallback ไปใช้ evaluator_id เดิม
+      if (evaluatorNames.length === 0) {
+        const fallbackEmp = empMap.get(item.evaluator_id);
+        if (fallbackEmp) {
+          evaluatorNames.push(
+            `${fallbackEmp.first_name_th || ""} ${fallbackEmp.last_name_th || ""}`.trim(),
+          );
+        }
+      }
+
+      const evaluatorName =
+        evaluatorNames.length > 0 ? evaluatorNames.join(", ") : "ไม่ระบุ";
+
+      const rawScore = Number(item.totalScore || 0);
+      const maxScore = Number(item.maxScore) > 0 ? Number(item.maxScore) : 100;
       const scorePercent = Math.round((rawScore / maxScore) * 100);
       const calculatedGrade = getGrade(scorePercent);
 
       const levelMapping =
         emp?.positions?.position_level_mappings?.find(
-          (m: any) => m.is_default
+          (m: any) => m.is_default,
         ) || emp?.positions?.position_level_mappings?.[0];
       const positionLevel = levelMapping?.position_levels;
       const levelCode =
         positionLevel?.level_code || positionLevel?.level_name || "";
 
       const displayLevel = item.newLevel || levelCode || "P1";
-      const deptName =
-        emp?.departments?.department_name || "ไม่ระบุแผนก";
+      const deptName = emp?.departments?.department_name || "ไม่ระบุแผนก";
       const posName = emp?.positions?.position_name || "พนักงาน";
 
       return {
         id: item.id,
-        name: `${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`
-          .trim()
-          || "ไม่พบชื่อ",
+        name:
+          `${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`.trim() ||
+          "ไม่พบชื่อ",
         grade: calculatedGrade,
-        initials:
-          emp?.first_name_en?.[0] ||
-          emp?.first_name_th?.[0] ||
-          "?",
+        initials: emp?.first_name_en?.[0] || emp?.first_name_th?.[0] || "?",
         title: posName,
         score: scorePercent,
-        scoreClass:
-          scorePercent >= 80
-            ? "text-emerald-600"
-            : "text-amber-600",
+        rawScore, // 👈 เพิ่ม: คะแนนที่ทำได้จริง (เช่น 157)
+        maxScore, // 👈 เพิ่ม: คะแนนเต็มจริง (เช่น 160)
+        scoreClass: scorePercent >= 80 ? "text-emerald-600" : "text-amber-600",
         avatarClass: deptName.includes("HR")
           ? "bg-pink-50 text-pink-700"
           : "bg-blue-50 text-blue-700",
-        evaluatorName: evaluator
-          ? `${evaluator.first_name_th} ${evaluator.last_name_th}`
-          : "ไม่ระบุ",
+        evaluatorName,
         approvedByName: item.approved_by
           ? approverNameByUserId.get(item.approved_by) || "ไม่ระบุ"
           : null,
@@ -198,11 +225,10 @@ export async function GET() {
 
     // 5. คำนวณ Stats
     const avgScorePercent = Math.round(
-      formatted.reduce((acc, curr) => acc + curr.score, 0) /
-        formatted.length
+      formatted.reduce((acc, curr) => acc + curr.score, 0) / formatted.length,
     );
     const uniqueDepts = new Set(
-      employeeRows?.map((e: any) => e.department_id).filter(Boolean)
+      employeeRows?.map((e: any) => e.department_id).filter(Boolean),
     ).size;
 
     return NextResponse.json({
@@ -217,9 +243,6 @@ export async function GET() {
     });
   } catch (err: any) {
     console.error("Executive API Error:", err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

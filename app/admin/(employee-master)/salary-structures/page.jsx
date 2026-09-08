@@ -304,14 +304,6 @@ export default function SalaryStructuresPage() {
     setPage(nextPage);
   };
 
-  if (loadingUser) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spin size="large" />
-      </div>
-    );
-  }
-
   if (!user) return null;
 
   if (!canView) {

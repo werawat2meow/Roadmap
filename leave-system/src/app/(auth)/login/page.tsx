@@ -1,0 +1,9 @@
+// ไม่มี "use client" ตรงนี้
+import LoginClient from "./LoginClient";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default function Page() {
+  return <LoginClient />;
+}

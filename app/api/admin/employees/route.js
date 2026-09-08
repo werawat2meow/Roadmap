@@ -15,6 +15,15 @@ import {
   mapEmployeeDatabaseError,
 } from "@/lib/employee/employeeTransaction";
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
+import {
+  EMPLOYEE_STATUTORY_MODULE,
+  hasEmployeeStatutoryPayload,
+  normalizeEmployeeStatutoryPayload,
+  validateEmployeeStatutoryPayload,
+  validateEmployeeStatutoryCompanies,
+  createEmployeeStatutoryProfile,
+  deleteEmployeeStatutoryProfilesByEmployeeId,
+} from "@/lib/employee/employeeStatutory";
 
 
 const DEFAULT_PAGE = 1;
@@ -211,7 +220,7 @@ function validateInitialBankAccount(
   return null;
 }
 
-async function rollbackCreatedEmployeeAfterBankError(
+async function rollbackCreatedEmployeeAfterRelatedDataError(
   result
 ) {
   const employeeId =
@@ -225,9 +234,23 @@ async function rollbackCreatedEmployeeAfterBankError(
 
   if (employeeId) {
     /*
-     * ลบข้อมูลลูกที่ transaction อาจสร้างไว้
+     * ลบข้อมูลลูกที่อาจถูกสร้างจาก Wizard
      * ก่อนลบ employees เพื่อกัน FK ที่ไม่ได้ CASCADE
      */
+    await deleteEmployeeStatutoryProfilesByEmployeeId(
+      employeeId
+    );
+
+    await supabaseAdmin
+      .from(
+        "employee_bank_accounts"
+      )
+      .delete()
+      .eq(
+        "employee_id",
+        employeeId
+      );
+
     await supabaseAdmin
       .from(
         "employee_compensations"
@@ -266,7 +289,7 @@ async function rollbackCreatedEmployeeAfterBankError(
       );
     } catch (error) {
       console.error(
-        "ROLLBACK_EMPLOYEE_AUTH_USER_AFTER_BANK_ERROR:",
+        "ROLLBACK_EMPLOYEE_AUTH_USER_AFTER_RELATED_DATA_ERROR:",
         error
       );
     }
@@ -2602,6 +2625,122 @@ if (
     }
 
     /* -----------------------------------------------------
+       INITIAL STATUTORY PROFILE
+
+       Employee Wizard ส่งข้อมูล Tax / ภ.ง.ด. / SSO
+       เข้ามาพร้อมการสร้างพนักงาน
+
+       ต้องมี Permission:
+       ems.employee_statutory_profiles.create
+
+       และต้องผ่าน Employee Organization Scope เดียวกัน
+    ----------------------------------------------------- */
+
+    const initialStatutoryEnabled =
+      hasEmployeeStatutoryPayload(
+        body
+      );
+
+    let statutoryGuard = null;
+    let initialStatutoryProfile = null;
+
+    if (initialStatutoryEnabled) {
+      statutoryGuard =
+        await requireScopedAccess(
+          EMPLOYEE_STATUTORY_MODULE,
+          "create",
+          {
+            scopeType: "employee",
+          }
+        );
+
+      if (!statutoryGuard.ok) {
+        return statutoryGuard.response;
+      }
+
+      if (
+        !statutoryGuard.canAccessEmployee(
+          employee
+        )
+      ) {
+        return errorResponse(
+          "คุณไม่มีสิทธิ์กำหนดข้อมูลภาษีและประกันสังคมให้พนักงานใน Scope องค์กรที่เลือก",
+          {
+            status: 403,
+          }
+        );
+      }
+
+      initialStatutoryProfile =
+        normalizeEmployeeStatutoryPayload(
+          body,
+          {
+            employee,
+          }
+        );
+
+      const statutoryValidationError =
+        validateEmployeeStatutoryPayload(
+          initialStatutoryProfile,
+          employee
+        );
+
+      if (statutoryValidationError) {
+        return errorResponse(
+          statutoryValidationError,
+          {
+            status: 400,
+          }
+        );
+      }
+
+      const statutoryCompaniesResult =
+        await validateEmployeeStatutoryCompanies(
+          initialStatutoryProfile
+        );
+
+      if (!statutoryCompaniesResult.ok) {
+        return errorResponse(
+          statutoryCompaniesResult.message,
+          {
+            status:
+              statutoryCompaniesResult.error
+                ? getErrorStatus(
+                    statutoryCompaniesResult.error
+                  )
+                : 400,
+
+            error:
+              statutoryCompaniesResult.error
+                ?.message ||
+              null,
+
+            details:
+              getDatabaseErrorDetails(
+                statutoryCompaniesResult.error
+              ),
+          }
+        );
+      }
+
+      /*
+       * Legacy compatibility
+       * Source of Truth ของ Statutory อยู่ที่
+       * employee_statutory_profiles
+       */
+      employee.tax_id =
+        initialStatutoryProfile
+          .tax_identification_no;
+
+      employee.social_security_no =
+        initialStatutoryProfile
+          .social_security_registered
+          ? initialStatutoryProfile
+              .social_security_no
+          : null;
+    }
+
+    /* -----------------------------------------------------
        INITIAL BANK ACCOUNT PERMISSION + MASTER VALIDATION
 
        ถ้ามีการส่งข้อมูลบัญชีธนาคารมาจาก Employee Wizard
@@ -3227,6 +3366,7 @@ if (
        10. Insert user_accounts
        11. Write activity log
        12. Insert employee_bank_accounts (ถ้ามีข้อมูลบัญชีเริ่มต้น)
+       13. Insert employee_statutory_profiles (Tax / ภ.ง.ด. / SSO)
     ----------------------------------------------------- */
 
     const result =
@@ -3284,7 +3424,7 @@ if (
         null;
 
       if (!employeeId) {
-        await rollbackCreatedEmployeeAfterBankError(
+        await rollbackCreatedEmployeeAfterRelatedDataError(
           result
         );
 
@@ -3376,7 +3516,7 @@ if (
           bankAccountError
         );
 
-        await rollbackCreatedEmployeeAfterBankError(
+        await rollbackCreatedEmployeeAfterRelatedDataError(
           result
         );
 
@@ -3410,6 +3550,93 @@ if (
     }
 
     /* -----------------------------------------------------
+       INSERT INITIAL EMPLOYEE STATUTORY PROFILE
+
+       ทำหลังได้ employee.id แล้ว
+       ถ้าบันทึกไม่สำเร็จ ให้ Rollback Employee + Related Data
+       เพื่อไม่ให้เกิดข้อมูลครึ่งชุด
+    ----------------------------------------------------- */
+
+    let insertedStatutoryProfile =
+      null;
+
+    if (
+      initialStatutoryEnabled &&
+      initialStatutoryProfile
+    ) {
+      const employeeId =
+        result?.data?.employee?.id ||
+        null;
+
+      if (!employeeId) {
+        await rollbackCreatedEmployeeAfterRelatedDataError(
+          result
+        );
+
+        return errorResponse(
+          "สร้างพนักงานแล้วแต่ไม่พบ employee_id สำหรับบันทึกข้อมูลภาษีและประกันสังคม ระบบยกเลิกการสร้างพนักงานแล้ว",
+          {
+            status: 500,
+          }
+        );
+      }
+
+      const actorId =
+        statutoryGuard?.access?.id ||
+        guard?.access?.id ||
+        null;
+
+      const {
+        data: statutoryData,
+        error: statutoryError,
+      } =
+        await createEmployeeStatutoryProfile({
+          employeeId,
+          payload:
+            initialStatutoryProfile,
+          actorId,
+        });
+
+      if (statutoryError) {
+        console.error(
+          "CREATE_INITIAL_EMPLOYEE_STATUTORY_PROFILE_ERROR:",
+          statutoryError
+        );
+
+        await rollbackCreatedEmployeeAfterRelatedDataError(
+          result
+        );
+
+        return errorResponse(
+          "ไม่สามารถบันทึกข้อมูลภาษีและประกันสังคมเริ่มต้นได้ ระบบยกเลิกการสร้างพนักงานแล้ว",
+          {
+            status:
+              getErrorStatus(
+                statutoryError
+              ),
+
+            error:
+              statutoryError.message,
+
+            details:
+              getDatabaseErrorDetails(
+                statutoryError
+              ),
+          }
+        );
+      }
+
+      insertedStatutoryProfile =
+        statutoryData;
+
+      result.data = {
+        ...result.data,
+        employee_statutory_profile:
+          insertedStatutoryProfile,
+      };
+    }
+
+    /* -----------------------------------------------------
        SUCCESS RESPONSE
     ----------------------------------------------------- */
 
@@ -3432,6 +3659,11 @@ if (
           bankAccountCreated:
             Boolean(
               insertedBankAccount
+            ),
+
+          statutoryProfileCreated:
+            Boolean(
+              insertedStatutoryProfile
             ),
 
           roleId:

@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -43,14 +44,12 @@ import {
 ========================================================= */
 
 const PAGE_SIZE = 20;
+const USER_ACCOUNT_PAGE_SIZE = 20;
 
 const API_URL =
   "/api/admin/user-access-assignments";
 
 const MASTER_ENDPOINTS = {
-  userAccounts:
-    "/api/admin/user-accounts?all=true",
-
   roles:
     "/api/admin/roles?all=true",
 
@@ -105,6 +104,31 @@ function getTotal(
     payload?.pagination?.total ??
     payload?.total ??
     fallback
+  );
+}
+
+function mergeRowsById(
+  currentRows = [],
+  nextRows = []
+) {
+  const map = new Map();
+
+  for (const item of [
+    ...currentRows,
+    ...nextRows,
+  ]) {
+    if (!item?.id) {
+      continue;
+    }
+
+    map.set(
+      item.id,
+      item
+    );
+  }
+
+  return Array.from(
+    map.values()
   );
 }
 
@@ -292,6 +316,29 @@ export default function UserAccessAssignmentsPage() {
     userAccounts,
     setUserAccounts,
   ] = useState([]);
+
+  const [
+    userAccountPage,
+    setUserAccountPage,
+  ] = useState(0);
+
+  const [
+    userAccountSearch,
+    setUserAccountSearch,
+  ] = useState("");
+
+  const [
+    userAccountLoading,
+    setUserAccountLoading,
+  ] = useState(false);
+
+  const [
+    userAccountHasMore,
+    setUserAccountHasMore,
+  ] = useState(true);
+
+  const userAccountRequestIdRef =
+    useRef(0);
 
   const [roles, setRoles] =
     useState([]);
@@ -497,6 +544,178 @@ export default function UserAccessAssignmentsPage() {
   ]);
 
   /* =======================================================
+     Lazy Load User Accounts
+  ======================================================= */
+
+  const loadUserAccountsPage =
+    useCallback(
+      async ({
+        pageNumber = 1,
+        searchText = "",
+        reset = false,
+      } = {}) => {
+        const requestId =
+          userAccountRequestIdRef.current +
+          1;
+
+        userAccountRequestIdRef.current =
+          requestId;
+
+        setUserAccountLoading(true);
+
+        try {
+          const params =
+            new URLSearchParams();
+
+          params.set(
+            "page",
+            String(pageNumber)
+          );
+
+          params.set(
+            "pageSize",
+            String(
+              USER_ACCOUNT_PAGE_SIZE
+            )
+          );
+
+          const normalizedSearch =
+            String(
+              searchText || ""
+            ).trim();
+
+          if (normalizedSearch) {
+            params.set(
+              "search",
+              normalizedSearch
+            );
+          }
+
+          const payload =
+            await fetchJson(
+              `/api/admin/user-accounts?${params.toString()}`
+            );
+
+          const nextRows =
+            getRows(payload);
+
+          const payloadTotal =
+            getTotal(
+              payload,
+              null
+            );
+
+          if (
+            requestId !==
+            userAccountRequestIdRef.current
+          ) {
+            return;
+          }
+
+          setUserAccounts(
+            (currentRows) => {
+              const mergedRows =
+                reset
+                  ? nextRows
+                  : mergeRowsById(
+                      currentRows,
+                      nextRows
+                    );
+
+              if (
+                typeof payloadTotal ===
+                  "number" &&
+                Number.isFinite(
+                  payloadTotal
+                )
+              ) {
+                setUserAccountHasMore(
+                  mergedRows.length <
+                    payloadTotal
+                );
+              } else {
+                setUserAccountHasMore(
+                  nextRows.length >=
+                    USER_ACCOUNT_PAGE_SIZE
+                );
+              }
+
+              return mergedRows;
+            }
+          );
+
+          setUserAccountPage(
+            pageNumber
+          );
+
+          setUserAccountSearch(
+            normalizedSearch
+          );
+        } catch (error) {
+          console.error(
+            "LOAD_USER_ACCOUNTS_LAZY_ERROR:",
+            error
+          );
+
+          await swalError(
+            "โหลดผู้ใช้งานระบบไม่สำเร็จ",
+            error?.message ||
+              "ไม่สามารถโหลดรายการผู้ใช้งานระบบได้"
+          );
+        } finally {
+          if (
+            requestId ===
+            userAccountRequestIdRef.current
+          ) {
+            setUserAccountLoading(
+              false
+            );
+          }
+        }
+      },
+      [fetchJson]
+    );
+
+  const handleUserAccountSearch =
+    useCallback(
+      async (value) => {
+        await loadUserAccountsPage({
+          pageNumber: 1,
+          searchText: value,
+          reset: true,
+        });
+      },
+      [loadUserAccountsPage]
+    );
+
+  const handleLoadMoreUserAccounts =
+    useCallback(async () => {
+      if (
+        userAccountLoading ||
+        !userAccountHasMore
+      ) {
+        return;
+      }
+
+      await loadUserAccountsPage({
+        pageNumber:
+          Math.max(
+            userAccountPage,
+            1
+          ) + 1,
+        searchText:
+          userAccountSearch,
+        reset: false,
+      });
+    }, [
+      loadUserAccountsPage,
+      userAccountHasMore,
+      userAccountLoading,
+      userAccountPage,
+      userAccountSearch,
+    ]);
+
+  /* =======================================================
      Load Master Data
   ======================================================= */
 
@@ -510,7 +729,6 @@ export default function UserAccessAssignmentsPage() {
 
       try {
         const [
-          userAccountsPayload,
           rolesPayload,
           companiesPayload,
           branchGroupsPayload,
@@ -519,10 +737,6 @@ export default function UserAccessAssignmentsPage() {
           divisionsPayload,
           unitsPayload,
         ] = await Promise.all([
-          fetchJson(
-            MASTER_ENDPOINTS.userAccounts
-          ),
-
           fetchJson(
             MASTER_ENDPOINTS.roles
           ),
@@ -551,12 +765,6 @@ export default function UserAccessAssignmentsPage() {
             MASTER_ENDPOINTS.units
           ),
         ]);
-
-        setUserAccounts(
-          getRows(
-            userAccountsPayload
-          )
-        );
 
         setRoles(
           getRows(
@@ -671,6 +879,12 @@ export default function UserAccessAssignmentsPage() {
       try {
         await loadMasterData();
 
+        await loadUserAccountsPage({
+          pageNumber: 1,
+          searchText: "",
+          reset: true,
+        });
+
         setSelectedRecord(null);
 
         setModalMode("create");
@@ -689,6 +903,7 @@ export default function UserAccessAssignmentsPage() {
       canCreate,
       form,
       loadMasterData,
+      loadUserAccountsPage,
     ]);
 
   const openRecord =
@@ -714,6 +929,12 @@ export default function UserAccessAssignmentsPage() {
         try {
           await loadMasterData();
 
+          await loadUserAccountsPage({
+            pageNumber: 1,
+            searchText: "",
+            reset: true,
+          });
+
           const detail =
             await loadDetail(
               record.id
@@ -722,6 +943,23 @@ export default function UserAccessAssignmentsPage() {
           if (!detail) {
             throw new Error(
               "ไม่พบรายละเอียด Assignment"
+            );
+          }
+
+          const selectedUserAccount =
+            detail?.user_account ||
+            detail?.userAccount ||
+            null;
+
+          if (
+            selectedUserAccount?.id
+          ) {
+            setUserAccounts(
+              (currentRows) =>
+                mergeRowsById(
+                  currentRows,
+                  [selectedUserAccount]
+                )
             );
           }
 
@@ -835,6 +1073,7 @@ export default function UserAccessAssignmentsPage() {
         form,
         loadDetail,
         loadMasterData,
+        loadUserAccountsPage,
       ]
     );
 
@@ -1598,6 +1837,18 @@ export default function UserAccessAssignmentsPage() {
         }
         userAccounts={
           userAccounts
+        }
+        userAccountLoading={
+          userAccountLoading
+        }
+        userAccountHasMore={
+          userAccountHasMore
+        }
+        onUserAccountSearch={
+          handleUserAccountSearch
+        }
+        onLoadMoreUserAccounts={
+          handleLoadMoreUserAccounts
         }
         roles={roles}
         companies={companies}

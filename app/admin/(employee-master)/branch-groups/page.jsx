@@ -151,7 +151,7 @@ export default function BranchGroupsPage() {
       return;
     }
 
-    if (isEdit && !canEdit) {
+    if (isEdit && !canEditRecord(editingGroup)) {
       swalError("คุณไม่มีสิทธิ์แก้ไขกลุ่มสังกัด");
       return;
     }

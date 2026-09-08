@@ -65,7 +65,8 @@ function parseBoolean(
   fallback = false
 ) {
   if (
-    typeof value === "boolean"
+    typeof value ===
+    "boolean"
   ) {
     return value;
   }
@@ -310,7 +311,8 @@ function mapDatabaseError(
   }
 
   if (
-    error.code === "23505"
+    error.code ===
+    "23505"
   ) {
     if (
       error.message?.includes(
@@ -332,13 +334,15 @@ function mapDatabaseError(
   }
 
   if (
-    error.code === "23503"
+    error.code ===
+    "23503"
   ) {
     return "ไม่พบบริษัทหรือผู้ใช้งานที่อ้างอิง";
   }
 
   if (
-    error.code === "23514"
+    error.code ===
+    "23514"
   ) {
     return "ข้อมูลไม่ผ่านเงื่อนไขที่ฐานข้อมูลกำหนด";
   }
@@ -354,7 +358,12 @@ function mapDatabaseError(
    /api/admin/employee-code-settings
 
    Permission:
+
+   ปกติ:
    ems.employee_code_settings.view
+
+   Employee Context:
+   ems.employees.view
 
    Scope:
    company
@@ -365,31 +374,78 @@ export async function GET(
 ) {
   try {
     /* =====================================================
-       1. Permission + Scope
-    ===================================================== */
+       1. Query Params / Context
 
-    const guard =
-      await requireScopedAccess(
-        "ems.employee_code_settings",
-        "view",
-        {
-          scopeType:
-            "company",
-        }
-      );
-
-    if (!guard.ok) {
-      return guard.response;
-    }
-
-    /* =====================================================
-       2. Query Params
+       ต้องอ่าน scope_context ก่อนสร้าง Guard
+       เพราะหน้า Employees ใช้ Code Setting
+       เป็น Master Data สำหรับสร้างรหัสพนักงาน
     ===================================================== */
 
     const {
       searchParams,
     } =
       new URL(req.url);
+
+    const scopeContext =
+      searchParams
+        .get(
+          "scope_context"
+        )
+        ?.trim() || "";
+
+    /*
+     * อนุญาตเฉพาะ Context ที่กำหนดไว้เท่านั้น
+     *
+     * ห้ามทำ:
+     *
+     * requireScopedAccess(
+     *   scopeContext,
+     *   "view"
+     * )
+     *
+     * เพราะ Frontend สามารถส่ง module อื่นมาเองได้
+     */
+
+    const isEmployeeContext =
+      scopeContext ===
+      "ems.employees";
+
+    /* =====================================================
+       2. Permission + Company Scope
+
+       Employee Page:
+       ems.employees.view
+
+       Employee Code Setting Page:
+       ems.employee_code_settings.view
+    ===================================================== */
+
+    const guard =
+      isEmployeeContext
+        ? await requireScopedAccess(
+            "ems.employees",
+            "view",
+            {
+              scopeType:
+                "company",
+            }
+          )
+        : await requireScopedAccess(
+            "ems.employee_code_settings",
+            "view",
+            {
+              scopeType:
+                "company",
+            }
+          );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    /* =====================================================
+       3. Query Params
+    ===================================================== */
 
     const search =
       searchParams
@@ -408,7 +464,9 @@ export async function GET(
 
     const resetPolicy =
       searchParams
-        .get("reset_policy")
+        .get(
+          "reset_policy"
+        )
         ?.trim() || "";
 
     const isDefaultParam =
@@ -445,17 +503,20 @@ export async function GET(
       );
 
     /* =====================================================
-       3. Explicit Company Scope Check
+       4. Explicit Company Scope Check
 
-       ถ้ามีการระบุ company_id มาโดยตรง
-       ต้องอยู่ใน Scope ของ Login User
+       ถ้ามี company_id
+       บริษัทนั้นต้องอยู่ใน Scope
+       ของ Permission Context ที่กำลังใช้งาน
     ===================================================== */
 
     if (companyId) {
       const scopeResponse =
         guard.assertAccessId(
           companyId,
-          "คุณไม่มีสิทธิ์เข้าถึงการตั้งค่ารหัสพนักงานของบริษัทนี้"
+          isEmployeeContext
+            ? "คุณไม่มีสิทธิ์เข้าถึงข้อมูลรหัสพนักงานของบริษัทนี้"
+            : "คุณไม่มีสิทธิ์เข้าถึงการตั้งค่ารหัสพนักงานของบริษัทนี้"
         );
 
       if (scopeResponse) {
@@ -464,7 +525,7 @@ export async function GET(
     }
 
     /* =====================================================
-       4. Base Query
+       5. Base Query
     ===================================================== */
 
     let query =
@@ -511,11 +572,12 @@ export async function GET(
         );
 
     /* =====================================================
-       5. Apply Company Scope
+       6. Apply Company Scope
 
        สำคัญ:
-       ต้อง Apply ก่อน user filters
-       และ all=true ก็ต้องโดน Scope เหมือนกัน
+       ไม่ว่าจะเรียกจากหน้า Setting
+       หรือหน้า Employees
+       ก็ต้องกรอง company_id ตาม Scope
     ===================================================== */
 
     query =
@@ -525,7 +587,7 @@ export async function GET(
       );
 
     /* =====================================================
-       6. Search
+       7. Search
     ===================================================== */
 
     if (search) {
@@ -548,7 +610,7 @@ export async function GET(
     }
 
     /* =====================================================
-       7. Company Filter
+       8. Company Filter
     ===================================================== */
 
     if (companyId) {
@@ -560,7 +622,7 @@ export async function GET(
     }
 
     /* =====================================================
-       8. Status Filter
+       9. Status Filter
     ===================================================== */
 
     if (
@@ -577,7 +639,7 @@ export async function GET(
     }
 
     /* =====================================================
-       9. Reset Policy Filter
+       10. Reset Policy Filter
     ===================================================== */
 
     if (
@@ -594,7 +656,7 @@ export async function GET(
     }
 
     /* =====================================================
-       10. Default Filter
+       11. Default Filter
     ===================================================== */
 
     if (
@@ -620,7 +682,7 @@ export async function GET(
     }
 
     /* =====================================================
-       11. Sort
+       12. Sort
     ===================================================== */
 
     query =
@@ -648,7 +710,7 @@ export async function GET(
         );
 
     /* =====================================================
-       12. Pagination
+       13. Pagination
     ===================================================== */
 
     if (all) {
@@ -674,7 +736,7 @@ export async function GET(
     }
 
     /* =====================================================
-       13. Execute
+       14. Execute
     ===================================================== */
 
     const {
@@ -693,8 +755,10 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ไม่สามารถโหลดการตั้งค่ารหัสพนักงานได้",
+
           error:
             mapDatabaseError(
               error
@@ -707,14 +771,16 @@ export async function GET(
     }
 
     /* =====================================================
-       14. All Response
+       15. All Response
     ===================================================== */
 
     if (all) {
       return NextResponse.json({
         success: true,
+
         data:
           data || [],
+
         total:
           data?.length ||
           0,
@@ -722,7 +788,7 @@ export async function GET(
     }
 
     /* =====================================================
-       15. Pagination Response
+       16. Pagination Response
     ===================================================== */
 
     const total =
@@ -759,8 +825,10 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
+
         message:
           "เกิดข้อผิดพลาดในการโหลดการตั้งค่ารหัสพนักงาน",
+
         error:
           error?.message ||
           "Unknown error",
@@ -830,6 +898,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             validationError,
         },
@@ -911,8 +980,10 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ไม่สามารถตรวจสอบข้อมูลบริษัทได้",
+
           error:
             mapDatabaseError(
               companyError
@@ -928,6 +999,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ไม่พบบริษัทที่เลือก",
         },
@@ -969,8 +1041,10 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ไม่สามารถตรวจสอบชื่อรูปแบบรหัสได้",
+
           error:
             mapDatabaseError(
               duplicateError
@@ -986,6 +1060,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ชื่อรูปแบบรหัสนี้มีอยู่แล้วในบริษัท",
         },
@@ -1031,8 +1106,10 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "ไม่สามารถตรวจสอบการตั้งค่าของบริษัทได้",
+
           error:
             mapDatabaseError(
               countError

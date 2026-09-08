@@ -77,12 +77,27 @@ const DEFAULT_FORM_VALUES = {
 
   line_id: "",
 
-  tax_id: "",
+  /* Statutory / Tax */
+  tax_identity_type: "citizen_id",
+  tax_identification_no: "",
+  tax_filing_form_code: undefined,
+  tax_resident_status: "resident",
+  tax_withholding_company_id: undefined,
+  statutory_effective_from: dayjs(),
+
+  social_security_registered: false,
   social_security_no: "",
+  insured_type: "section_33",
+  social_security_company_id: undefined,
+
+  /* Legacy compatibility */
+  tax_id: "",
 
   /* -------------------------------------------------------
      Organization
   ------------------------------------------------------- */
+
+  use_tax_company_for_organization: false,
 
   company_id: undefined,
   branch_group_id: undefined,
@@ -145,7 +160,7 @@ const DEFAULT_FORM_VALUES = {
   employee_code_setting_id:
     undefined,
 
-  employee_type: "thai",
+  employee_type: undefined,
 
   running_date: dayjs(),
 
@@ -230,7 +245,7 @@ const MASTER_ENDPOINTS = {
   paymentMethods:
     "/api/admin/payment-methods?all=true&status=active&supports_payroll=true",
   employeeCodeSettings:
-    "/api/admin/employee-code-settings?all=true&status=active",
+    "/api/admin/employee-code-settings?all=true&status=active&scope_context=ems.employees",
   roles:
     "/api/admin/roles?all=true&is_active=true",
 };
@@ -566,16 +581,62 @@ function createEmployeeFormValues(record) {
     line_id:
       record.line_id || "",
 
-    tax_id:
+    /*
+     * Statutory fields are editable only during Create in this Wizard.
+     * Existing employee statutory history is managed at
+     * /admin/employee-statutory-profiles.
+     */
+    tax_identity_type:
+      record.citizen_id
+        ? "citizen_id"
+        : record.passport_no
+          ? "passport"
+          : "tax_id",
+
+    tax_identification_no:
       record.tax_id || "",
+
+    tax_filing_form_code:
+      undefined,
+
+    tax_resident_status:
+      "resident",
+
+    tax_withholding_company_id:
+      undefined,
+
+    statutory_effective_from:
+      toDayjs(
+        record.start_work_date ||
+          record.hire_date
+      ) || dayjs(),
+
+    social_security_registered:
+      Boolean(
+        record.social_security_no
+      ),
 
     social_security_no:
       record.social_security_no ||
       "",
 
+    insured_type:
+      record.social_security_no
+        ? "section_33"
+        : undefined,
+
+    social_security_company_id:
+      undefined,
+
+    /* Legacy compatibility */
+    tax_id:
+      record.tax_id || "",
+
     /* -----------------------------------------------------
        Organization
     ----------------------------------------------------- */
+
+    use_tax_company_for_organization: false,
 
     company_id:
       record.company_id ||
@@ -783,6 +844,102 @@ function createEmployeeFormValues(record) {
   return values;
 }
 
+function resolveTaxIdentificationNo(values = {}) {
+  const identityType =
+    cleanText(
+      values.tax_identity_type
+    ) || "citizen_id";
+
+  if (identityType === "citizen_id") {
+    return cleanNullableText(
+      values.citizen_id
+    );
+  }
+
+  if (identityType === "passport") {
+    return cleanNullableText(
+      values.passport_no
+    );
+  }
+
+  return cleanNullableText(
+    values.tax_identification_no
+  );
+}
+
+function buildEmployeeStatutoryPayload(
+  values
+) {
+  const socialRegistered =
+    Boolean(
+      values.social_security_registered
+    );
+
+  return {
+    tax_identity_type:
+      cleanText(
+        values.tax_identity_type
+      ) || "citizen_id",
+
+    tax_identification_no:
+      values.tax_identity_type ===
+      "tax_id"
+        ? cleanNullableText(
+            values.tax_identification_no
+          )
+        : null,
+
+    tax_filing_form_code:
+      cleanNullableText(
+        values.tax_filing_form_code
+      ),
+
+    tax_resident_status:
+      cleanText(
+        values.tax_resident_status
+      ) || "resident",
+
+    tax_withholding_company_id:
+      cleanNullableUuid(
+        values.tax_withholding_company_id
+      ),
+
+    social_security_registered:
+      socialRegistered,
+
+    social_security_no:
+      socialRegistered
+        ? cleanNullableText(
+            values.social_security_no
+          )
+        : null,
+
+    insured_type:
+      socialRegistered
+        ? cleanNullableText(
+            values.insured_type
+          )
+        : null,
+
+    social_security_company_id:
+      socialRegistered
+        ? cleanNullableUuid(
+            values.social_security_company_id
+          )
+        : null,
+
+    effective_from:
+      formatDateForApi(
+        values.statutory_effective_from ||
+          values.start_work_date
+      ),
+
+    effective_to: null,
+    status: "active",
+    remark: null,
+  };
+}
+
 function buildEmployeePayload(values,{
     mode,
     selectedRecord,
@@ -961,15 +1118,45 @@ function buildEmployeePayload(values,{
         values.line_id
       ),
 
+    /*
+     * Legacy compatibility:
+     * employees.tax_id mirrors the selected Tax Identity.
+     * The statutory source of truth is employee_statutory_profiles.
+     */
     tax_id:
-      cleanNullableText(
-        values.tax_id
-      ),
+      isCreate
+        ? resolveTaxIdentificationNo(
+            values
+          )
+        : cleanNullableText(
+            selectedRecord?.tax_id
+          ),
 
     social_security_no:
-      cleanNullableText(
-        values.social_security_no
-      ),
+      isCreate
+        ? Boolean(
+            values.social_security_registered
+          )
+          ? cleanNullableText(
+              values.social_security_no
+            )
+          : null
+        : cleanNullableText(
+            selectedRecord
+              ?.social_security_no
+          ),
+
+    /*
+     * ส่ง Statutory เข้า /api/admin/employees พร้อม Employee
+     * เพื่อให้ Backend บันทึก Employee + Tax/SSO เป็นชุดเดียวกัน
+     * เฉพาะ Create เท่านั้น
+     * Edit ใช้ /admin/employee-statutory-profiles เพื่อรักษา Effective History
+     */
+    ...(isCreate
+      ? buildEmployeeStatutoryPayload(
+          values
+        )
+      : {}),
 
     /* -----------------------------------------------------
        Organization
@@ -2257,7 +2444,34 @@ export default function EmployeesPage() {
     }
 
     try {
-      await form.validateFields();
+      /*
+       * Salary Band เป็น Conditional Required
+       *
+       * ห้ามใช้ form.validateFields() ตรง ๆ ที่นี่ เพราะมันจะ
+       * re-validate position_level_band_id ด้วย Rule ของ Form.Item
+       * แม้ Position Level นั้นจะไม่มี Salary Band ให้เลือกก็ตาม
+       *
+       * เราจึง validate ทุก field ของ Wizard ยกเว้น Salary Band
+       * แล้วใช้ business rule ด้านล่างเป็นตัวตัดสินว่า
+       * Level นี้มี Salary Band จริงหรือไม่
+       */
+      const submitFields = Array.from(
+        new Set(
+          Object.values(
+            EMPLOYEE_STEP_FIELDS
+          )
+            .flat()
+            .filter(
+              (fieldName) =>
+                fieldName !==
+                "position_level_band_id"
+            )
+        )
+      );
+
+      await form.validateFields(
+        submitFields
+      );
 
       const values = form.getFieldsValue(true);
       const payload =
@@ -2371,7 +2585,60 @@ export default function EmployeesPage() {
       }
 
       if (!isEdit) {
+        const selectedPositionLevelId =
+          payload.position_level_id
+            ? String(
+                payload.position_level_id
+              )
+            : "";
+
+        const hasSalaryBandForPositionLevel =
+          Boolean(
+            selectedPositionLevelId
+          ) &&
+          (
+            scopedMasterData
+              .positionLevelBands || []
+          ).some(
+            (item) =>
+              String(
+                item?.position_level_id ||
+                  ""
+              ) ===
+              selectedPositionLevelId
+          );
+
+        const selectedPosition =
+          (
+            scopedMasterData.positions || []
+          ).find(
+            (item) =>
+              String(
+                item?.id || ""
+              ) ===
+              String(
+                payload.position_id || ""
+              )
+          ) || null;
+
+        const isExecutivePosition =
+          selectedPosition?.is_executive ===
+          true;
+
+        const isConfirmedNonExecutive =
+          selectedPosition?.is_executive ===
+          false;
+
+        /*
+          Salary Band เป็น Conditional Required
+
+          - ตำแหน่งทั่วไป: ถ้า Level มี Band ต้องเลือก
+          - Executive: Band เป็น Optional แม้ Level จะมี Band
+          - Level ที่ไม่มี Band: ใช้ Base Salary รายบุคคลได้
+        */
         if (
+          hasSalaryBandForPositionLevel &&
+          isConfirmedNonExecutive &&
           !payload.position_level_band_id
         ) {
           message.warning(
@@ -2708,6 +2975,8 @@ export default function EmployeesPage() {
     selectedRecord,
     page,
     fetchEmployees,
+    scopedMasterData.positionLevelBands,
+    scopedMasterData.positions,
   ]);
 
   const executeDelete =
@@ -2919,34 +3188,40 @@ export default function EmployeesPage() {
     setPage(1);
   }, []);
 
-  const handleTableChange = useCallback((
-      pagination,
-      filters,
-      sorter
-    ) => {
-      const nextPage =
-        pagination?.current || 1;
+  const handleTableChange = useCallback(
+  (pagination, filters, sorter) => {
+    const nextPage =
+      pagination?.current || 1;
 
-      const nextPageSize =
-        pagination?.pageSize ||
-        DEFAULT_PAGE_SIZE;
+    const nextPageSize =
+      pagination?.pageSize ||
+      DEFAULT_PAGE_SIZE;
 
-      if (
-        nextPageSize !== pageSize
-      ) {
-        setPageSize(
-          nextPageSize
-        );
+    if (
+      nextPageSize !== pageSize
+    ) {
+      /*
+       * เคลียร์ rows ของ pageSize เก่า
+       * ก่อน render pageSize ใหม่
+       *
+       * กัน Antd warning:
+       * dataSource.length > pagination.pageSize
+       */
+      setEmployees([]);
 
-        setPage(1);
+      setPageSize(
+        nextPageSize
+      );
 
-        return;
-      }
+      setPage(1);
 
-      setPage(nextPage);
-    },
-    [pageSize]
-  );
+      return;
+    }
+
+    setPage(nextPage);
+  },
+  [pageSize]
+);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([

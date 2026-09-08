@@ -2,6 +2,7 @@
 
 import {
   Alert,
+  Checkbox,
   Col,
   Divider,
   Form,
@@ -678,6 +679,8 @@ function LazyPositionFamilySelect({
 export default function EmployeeOrganizationStep({
   form,
 
+  mode = "create",
+
   disabled = false,
 
   masterData = {},
@@ -692,6 +695,30 @@ export default function EmployeeOrganizationStep({
     Form.useWatch(
       "company_id",
       form
+    );
+
+  /*
+   * tax_withholding_company_id อยู่ใน Step ก่อนหน้า
+   * จึงต้อง preserve ค่าไว้แม้ EmployeeContactStep ถูก unmount แล้ว
+   */
+  const taxWithholdingCompanyId =
+    Form.useWatch(
+      "tax_withholding_company_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  const useTaxCompanyForOrganization =
+    Boolean(
+      Form.useWatch(
+        "use_tax_company_for_organization",
+        {
+          form,
+          preserve: true,
+        }
+      )
     );
 
   const branchGroupId =
@@ -836,6 +863,32 @@ export default function EmployeeOrganizationStep({
           })),
       [companies]
     );
+
+  const taxWithholdingCompany =
+    useMemo(
+      () =>
+        companies.find(
+          (item) =>
+            String(item?.id || "") ===
+            String(
+              taxWithholdingCompanyId ||
+                ""
+            )
+        ) || null,
+      [
+        companies,
+        taxWithholdingCompanyId,
+      ]
+    );
+
+  const taxWithholdingCompanyLabel =
+    taxWithholdingCompany
+      ? makeLabel(
+          taxWithholdingCompany,
+          "company_code",
+          "company_name_th"
+        )
+      : "";
 
   const branchGroupOptions =
     useMemo(() => {
@@ -1361,6 +1414,67 @@ export default function EmployeeOrganizationStep({
   ======================================================= */
 
   /*
+   * Convenience option สำหรับ Create Employee:
+   * ถ้า HR เลือก "ใช้บริษัทเดียวกับบริษัทนำส่งภาษี"
+   * ให้ company_id ของ Organization อ้างอิง
+   * tax_withholding_company_id จาก Step ข้อมูลติดต่อ / ภาษี
+   *
+   * หมายเหตุ: เป็นเพียงตัวช่วยกรอกข้อมูล
+   * ไม่ได้บังคับว่าบริษัทสังกัดกับบริษัทภาษีต้องเป็นบริษัทเดียวกัน
+   */
+  useEffect(() => {
+    if (mode !== "create") {
+      return;
+    }
+
+    if (!useTaxCompanyForOrganization) {
+      return;
+    }
+
+    if (!taxWithholdingCompanyId) {
+      form.setFieldsValue({
+        use_tax_company_for_organization:
+          false,
+        company_id: undefined,
+        branch_group_id: undefined,
+        branch_id: undefined,
+        department_id: undefined,
+        division_id: undefined,
+        unit_id: undefined,
+        position_id: undefined,
+        job_id: undefined,
+      });
+
+      return;
+    }
+
+    if (
+      String(companyId || "") ===
+      String(taxWithholdingCompanyId)
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({
+      company_id:
+        taxWithholdingCompanyId,
+      branch_group_id: undefined,
+      branch_id: undefined,
+      department_id: undefined,
+      division_id: undefined,
+      unit_id: undefined,
+      position_id: undefined,
+      job_id: undefined,
+    });
+  }, [
+    mode,
+    useTaxCompanyForOrganization,
+    taxWithholdingCompanyId,
+    companyId,
+    form,
+  ]);
+
+  /*
     ถ้าเปลี่ยนบริษัทแล้ว Branch เดิม
     ไม่ได้อยู่ในบริษัทนั้น ให้ Reset
   */
@@ -1524,13 +1638,66 @@ export default function EmployeeOrganizationStep({
         </Space>
       </Divider>
 
+      {mode === "create" ? (
+        <div
+          className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3"
+        >
+          <Form.Item
+            name="use_tax_company_for_organization"
+            valuePropName="checked"
+            noStyle
+          >
+            <Checkbox
+              disabled={
+                disabled ||
+                !taxWithholdingCompanyId
+              }
+              onChange={(event) => {
+                if (!event.target.checked) {
+                  return;
+                }
+
+                form.setFieldsValue({
+                  company_id:
+                    taxWithholdingCompanyId,
+                  branch_group_id:
+                    undefined,
+                  branch_id: undefined,
+                  department_id:
+                    undefined,
+                  division_id:
+                    undefined,
+                  unit_id: undefined,
+                  position_id:
+                    undefined,
+                  job_id: undefined,
+                });
+              }}
+            >
+              <span className="font-medium">
+                ใช้บริษัทเดียวกับบริษัทผู้จ่ายเงินได้ / บริษัทนำส่งภาษี
+              </span>
+            </Checkbox>
+          </Form.Item>
+
+          <div className="mt-1 pl-6 text-xs text-slate-500">
+            {taxWithholdingCompanyId
+              ? `บริษัทภาษีที่เลือกไว้: ${
+                  taxWithholdingCompanyLabel ||
+                  "บริษัทที่เลือกในข้อมูลติดต่อ / ภาษี"
+                }`
+              : "ยังไม่ได้เลือกบริษัทผู้จ่ายเงินได้ / บริษัทนำส่งภาษีใน Step ข้อมูลติดต่อ / ภาษี"}
+          </div>
+        </div>
+      ) : null}
+
       <Row gutter={[16, 0]}>
         <Col
           xs={24}
           md={8}
         >
           <Form.Item
-            label="บริษัท"
+            label="บริษัทที่พนักงานสังกัด"
             name="company_id"
             rules={[
               {
@@ -1539,17 +1706,30 @@ export default function EmployeeOrganizationStep({
                   "กรุณาเลือกบริษัท",
               },
             ]}
+            extra={
+              useTaxCompanyForOrganization
+                ? "อ้างอิงบริษัทจากข้อมูลติดต่อ / ภาษีอัตโนมัติ"
+                : "เลือกบริษัทที่พนักงานทำงาน/สังกัดจริง ซึ่งสามารถต่างจากบริษัทภาษี บริษัทเงินเดือน และบริษัทประกันสังคมได้"
+            }
           >
             <Select
               showSearch
               allowClear
               loading={masterLoading}
-              disabled={disabled}
+              disabled={
+                disabled ||
+                (mode === "create" &&
+                  useTaxCompanyForOrganization)
+              }
               options={
                 companyOptions
               }
               optionFilterProp="label"
-              placeholder="เลือกบริษัท"
+              placeholder={
+                useTaxCompanyForOrganization
+                  ? "อ้างอิงจากบริษัทนำส่งภาษี"
+                  : "เลือกบริษัทที่พนักงานสังกัด"
+              }
               onChange={() => {
                 form.setFieldsValue({
                   branch_group_id:

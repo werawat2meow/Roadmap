@@ -29,6 +29,16 @@ import {
 } from "@/lib/employee/employeeTransaction";
 
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
+import {
+  EMPLOYEE_STATUTORY_MODULE,
+  hasEmployeeStatutoryPayload,
+  normalizeEmployeeStatutoryPayload,
+  validateEmployeeStatutoryPayload,
+  validateEmployeeStatutoryCompanies,
+  getActiveEmployeeStatutoryProfile,
+  createEmployeeStatutoryProfile,
+  updateEmployeeStatutoryProfile,
+} from "@/lib/employee/employeeStatutory";
 
 /* =========================================================
    CONSTANTS
@@ -1040,6 +1050,145 @@ export async function PATCH(req,{ params }) {
     }
 
     /* =====================================================
+       10.1 Optional Statutory Update
+
+       ปกติ Employee Wizard Edit จะไม่ส่ง Field ชุดนี้
+       เพราะ Effective History จัดการที่
+       /admin/employee-statutory-profiles
+
+       แต่ API รองรับไว้เมื่อ Client ระบุ Statutory Field
+       อย่างชัดเจน โดยยังบังคับ Permission + Scope
+    ===================================================== */
+
+    const statutoryRequested =
+      hasEmployeeStatutoryPayload(
+        body
+      );
+
+    let statutoryGuard = null;
+    let currentStatutoryProfile = null;
+    let statutoryPayload = null;
+
+    if (statutoryRequested) {
+      const {
+        data: activeStatutory,
+        error: activeStatutoryError,
+      } =
+        await getActiveEmployeeStatutoryProfile(
+          id
+        );
+
+      if (activeStatutoryError) {
+        return errorResponse(
+          "ไม่สามารถโหลดข้อมูลภาษีและประกันสังคมเดิมได้",
+          {
+            status:
+              getErrorStatus(
+                activeStatutoryError
+              ),
+            error:
+              activeStatutoryError.message,
+          }
+        );
+      }
+
+      currentStatutoryProfile =
+        activeStatutory || null;
+
+      const statutoryAction =
+        currentStatutoryProfile
+          ? "edit"
+          : "create";
+
+      statutoryGuard =
+        await requireScopedAccess(
+          EMPLOYEE_STATUTORY_MODULE,
+          statutoryAction,
+          {
+            scopeType: "employee",
+          }
+        );
+
+      if (!statutoryGuard.ok) {
+        return statutoryGuard.response;
+      }
+
+      if (
+        !statutoryGuard.canAccessEmployee(
+          current
+        ) ||
+        !statutoryGuard.canAccessEmployee(
+          employee
+        )
+      ) {
+        return errorResponse(
+          "คุณไม่มีสิทธิ์แก้ไขข้อมูลภาษีและประกันสังคมของพนักงานใน Scope นี้",
+          {
+            status: 403,
+          }
+        );
+      }
+
+      statutoryPayload =
+        normalizeEmployeeStatutoryPayload(
+          body,
+          {
+            employee,
+            current:
+              currentStatutoryProfile,
+          }
+        );
+
+      const statutoryValidationError =
+        validateEmployeeStatutoryPayload(
+          statutoryPayload,
+          employee
+        );
+
+      if (statutoryValidationError) {
+        return errorResponse(
+          statutoryValidationError,
+          {
+            status: 400,
+          }
+        );
+      }
+
+      const companyValidation =
+        await validateEmployeeStatutoryCompanies(
+          statutoryPayload
+        );
+
+      if (!companyValidation.ok) {
+        return errorResponse(
+          companyValidation.message,
+          {
+            status:
+              companyValidation.error
+                ? getErrorStatus(
+                    companyValidation.error
+                  )
+                : 400,
+            error:
+              companyValidation.error
+                ?.message || null,
+          }
+        );
+      }
+
+      employee.tax_id =
+        statutoryPayload
+          .tax_identification_no;
+
+      employee.social_security_no =
+        statutoryPayload
+          .social_security_registered
+          ? statutoryPayload
+              .social_security_no
+          : null;
+    }
+
+    /* =====================================================
        11. Duplicate Validation
     ===================================================== */
 
@@ -1157,6 +1306,90 @@ export async function PATCH(req,{ params }) {
             updateError.message,
         }
       );
+    }
+
+    /* =====================================================
+       14.1 Save Statutory Profile (Optional)
+
+       ทำก่อน User Account เพื่อให้ Employee + Statutory
+       อยู่ในสถานะสอดคล้องกันมากที่สุด
+    ===================================================== */
+
+    let updatedStatutoryProfile =
+      null;
+
+    if (
+      statutoryRequested &&
+      statutoryPayload
+    ) {
+      const actorId =
+        statutoryGuard?.access?.id ||
+        guard?.access?.id ||
+        null;
+
+      const statutoryResult =
+        currentStatutoryProfile
+          ? await updateEmployeeStatutoryProfile({
+              id:
+                currentStatutoryProfile.id,
+              payload:
+                statutoryPayload,
+              actorId,
+            })
+          : await createEmployeeStatutoryProfile({
+              employeeId: id,
+              payload:
+                statutoryPayload,
+              actorId,
+            });
+
+      if (statutoryResult.error) {
+        console.error(
+          "PATCH_EMPLOYEE_STATUTORY_PROFILE_ERROR:",
+          statutoryResult.error
+        );
+
+        try {
+          const rollbackEmployee =
+            normalizeEmployeePayload(
+              current
+            );
+
+          rollbackEmployee.position_level_band_id =
+            current.position_level_band_id ||
+            null;
+
+          await supabaseAdmin
+            .from("employees")
+            .update(
+              buildEmployeeUpdatePayload(
+                rollbackEmployee,
+                current
+              )
+            )
+            .eq("id", id);
+        } catch (rollbackError) {
+          console.error(
+            "ROLLBACK_EMPLOYEE_AFTER_STATUTORY_UPDATE_ERROR:",
+            rollbackError
+          );
+        }
+
+        return errorResponse(
+          "ไม่สามารถบันทึกข้อมูลภาษีและประกันสังคมได้ การแก้ไขพนักงานถูกยกเลิก",
+          {
+            status:
+              getErrorStatus(
+                statutoryResult.error
+              ),
+            error:
+              statutoryResult.error.message,
+          }
+        );
+      }
+
+      updatedStatutoryProfile =
+        statutoryResult.data;
     }
 
     /* =====================================================
@@ -1452,6 +1685,14 @@ export async function PATCH(req,{ params }) {
 
           account_updated:
             updateUserAccount,
+
+          employee_statutory_profile:
+            updatedStatutoryProfile,
+
+          statutory_updated:
+            Boolean(
+              updatedStatutoryProfile
+            ),
         },
       });
     } catch (
@@ -1469,8 +1710,10 @@ export async function PATCH(req,{ params }) {
 
     return successResponse(
       {
-        employee:updatedEmployee,
+        employee: updatedEmployee,
         user_account: updatedAccount,
+        employee_statutory_profile:
+          updatedStatutoryProfile,
       },
       {
         message:

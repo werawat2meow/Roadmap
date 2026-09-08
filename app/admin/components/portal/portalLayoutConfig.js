@@ -1,7 +1,7 @@
 export const PORTAL_SIDEBAR = {
-  collapsed: 84,
-  lg: 300,
-  xl: 330,
-  xxl: 360,
-  mobile: 360,
+  collapsed: 72,   // เดิม 84 — ไอคอนเดี่ยว 72px ก็ยังดูสบายตา ไม่แน่นเกินไป
+  lg: 260,         // เดิม 300
+  xl: 280,         // เดิม 330
+  xxl: 300,        // เดิม 360
+  mobile: 300,     // เดิม 360
 };

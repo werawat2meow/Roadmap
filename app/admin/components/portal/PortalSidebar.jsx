@@ -37,17 +37,6 @@ import {
 import Link from "next/link";
 
 
-/*
-จากเดิม
-{renderIcon(
-  menu.icon_code
-)}
-เปลี่ยน
-{getPortalIcon(
-  item.icon_code
-)}
-*/
-
 import {
   AnimatePresence,
   motion,
@@ -818,7 +807,7 @@ export default function PortalSidebar({
                       }
                     `}
                   >
-                    {renderIcon(
+                    {getPortalIcon(
                       item.icon_code
                     )}
                   </span>
@@ -939,7 +928,7 @@ export default function PortalSidebar({
                   }
                 `}
               >
-                {renderIcon(
+                {getPortalIcon(
                   item.icon_code
                 )}
               </span>
@@ -1243,7 +1232,7 @@ export default function PortalSidebar({
                             `}
                           >
                             <span className="text-xl">
-                              {renderIcon(
+                              {getPortalIcon(
                                 menu.icon_code
                               )}
                             </span>
@@ -1301,7 +1290,7 @@ export default function PortalSidebar({
                             }
                           `}
                         >
-                          {renderIcon(
+                          {getPortalIcon(
                             menu.icon_code
                           )}
                         </span>
@@ -1361,7 +1350,7 @@ export default function PortalSidebar({
                           `}
                         >
                           <span className="text-xl">
-                            {renderIcon(
+                            {getPortalIcon(
                               menu.icon_code
                             )}
                           </span>
@@ -1430,7 +1419,7 @@ export default function PortalSidebar({
                             }
                           `}
                         >
-                          {renderIcon(
+                          {getPortalIcon(
                             menu.icon_code
                           )}
                         </span>

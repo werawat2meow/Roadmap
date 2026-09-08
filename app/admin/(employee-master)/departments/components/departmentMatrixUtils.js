@@ -11,7 +11,7 @@ export function getBranchGroupKey(branch) {
 }
 
 export function buildBranchGroups(branches = []) {
-  return Array.from(
+  const groups = Array.from(
     new Map(
       branches.map((branch) => {
         const key = getBranchGroupKey(branch);
@@ -23,11 +23,13 @@ export function buildBranchGroups(branches = []) {
             key,
             name,
             color: branch?.group_color || "#E2E8F0",
+            sortOrder: Number(branch?.group_sort_order ?? 0),
           },
         ];
       })
     ).values()
   );
+  return groups.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export function getBranchesByGroup(branches = [], groupKey) {

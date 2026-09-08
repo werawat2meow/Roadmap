@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import {
+  requireAuthenticatedAccess,
+} from "@/lib/auth/requirePortalAccess";
 
 /* =========================================================
    HELPERS
@@ -56,7 +59,83 @@ function cleanUuid(value) {
 }
 
 /* =========================================================
+   STRICT ROLE + PERMISSION
+
+   สำคัญ:
+   Module นี้ตรวจ Permission จาก role_permissions จริง
+   ผ่าน access.permissions โดยตรง
+
+   ไม่ใช้ SUPER_ADMIN bypass สำหรับ Action ของหน้านี้
+   เพราะผู้ใช้ต้องมี Permission ที่ Role ถูกกำหนดจริง
+========================================================= */
+
+function hasExactPermission(
+  access,
+  permissionCode
+) {
+  return (
+    Array.isArray(
+      access?.permissions
+    ) &&
+    access.permissions.includes(
+      permissionCode
+    )
+  );
+}
+
+async function requireExactPermission(
+  permissionCode,
+  message = "คุณไม่มีสิทธิ์ใช้งานส่วนนี้"
+) {
+  const auth =
+    await requireAuthenticatedAccess();
+
+  if (!auth.ok) {
+    return auth;
+  }
+
+  if (
+    !hasExactPermission(
+      auth.access,
+      permissionCode
+    )
+  ) {
+    return {
+      ok: false,
+      response: errorResponse(
+        message,
+        {
+          status: 403,
+        }
+      ),
+    };
+  }
+
+  return auth;
+}
+
+function sameOrder(
+  first = [],
+  second = []
+) {
+  if (
+    first.length !==
+    second.length
+  ) {
+    return false;
+  }
+
+  return first.every(
+    (value, index) =>
+      value === second[index]
+  );
+}
+
+/* =========================================================
    GET /api/admin/position-family-levels
+
+   Permission:
+   ems.position_family_levels.view
 
    รองรับ:
    ?all=true
@@ -65,6 +144,16 @@ function cleanUuid(value) {
 
 export async function GET(req) {
   try {
+    const guard =
+      await requireExactPermission(
+        "ems.position_family_levels.view",
+        "คุณไม่มีสิทธิ์ดูระดับตำแหน่งของกลุ่มสายงาน"
+      );
+
+    if (!guard.ok) {
+      return guard.response;
+    }
+
     const { searchParams } =
       new URL(req.url);
 
@@ -183,10 +272,39 @@ export async function GET(req) {
 
 /* =========================================================
    PUT /api/admin/position-family-levels
+
+   Permission ตาม Diff จริง:
+
+   เพิ่ม Mapping ใหม่
+   -> ems.position_family_levels.create
+
+   แก้ไข/ลบ Mapping เดิม
+   -> ems.position_family_levels.edit
+
+   เปลี่ยนลำดับ Mapping เดิมเท่านั้น
+   -> ems.position_family_levels.edit
+
+   Backend คำนวณ Diff เอง
+   ไม่เชื่อ Permission จาก Frontend
 ========================================================= */
 
 export async function PUT(req) {
   try {
+    /* =====================================================
+       1. Authentication ก่อน
+    ===================================================== */
+
+    const auth =
+      await requireAuthenticatedAccess();
+
+    if (!auth.ok) {
+      return auth.response;
+    }
+
+    /* =====================================================
+       2. Body
+    ===================================================== */
+
     let body = null;
 
     try {
@@ -233,7 +351,7 @@ export async function PUT(req) {
     }
 
     /* -----------------------------------------------------
-       Validate Family
+       3. Validate Family
     ----------------------------------------------------- */
 
     const {
@@ -270,10 +388,12 @@ export async function PUT(req) {
       );
     }
 
-    /*
-      รองรับล้าง Mapping ทั้งหมด
-      กรณี level_ids = []
-    */
+    /* -----------------------------------------------------
+       4. Validate Levels
+
+       รองรับล้าง Mapping ทั้งหมด
+       กรณี level_ids = []
+    ----------------------------------------------------- */
 
     if (levelIds.length > 0) {
       const {
@@ -326,7 +446,7 @@ export async function PUT(req) {
     }
 
     /* -----------------------------------------------------
-       Load Existing Mapping
+       5. Load Existing Mapping
     ----------------------------------------------------- */
 
     const {
@@ -346,6 +466,18 @@ export async function PUT(req) {
       .eq(
         "position_family_id",
         familyId
+      )
+      .order(
+        "sort_order",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
       );
 
     if (existingError) {
@@ -357,32 +489,125 @@ export async function PUT(req) {
         ? existing
         : [];
 
-    const existingLevelIds =
-      new Set(
-        existingRows.map(
-          (item) =>
-            item.position_level_id
-        )
+    const existingIds =
+      existingRows.map(
+        (item) =>
+          item.position_level_id
       );
+
+    const existingLevelIds =
+      new Set(existingIds);
 
     const incomingLevelIds =
       new Set(levelIds);
 
     /* -----------------------------------------------------
-       Delete Mapping
+       6. Calculate Diff
     ----------------------------------------------------- */
 
+    const createLevelIds =
+      levelIds.filter(
+        (id) =>
+          !existingLevelIds.has(id)
+      );
+
+    const deleteRows =
+      existingRows.filter(
+        (item) =>
+          !incomingLevelIds.has(
+            item.position_level_id
+          )
+      );
+
     const deleteIds =
-      existingRows
-        .filter(
-          (item) =>
-            !incomingLevelIds.has(
-              item.position_level_id
-            )
-        )
-        .map(
-          (item) => item.id
-        );
+      deleteRows.map(
+        (item) => item.id
+      );
+
+    const sameMembers =
+      createLevelIds.length === 0 &&
+      deleteIds.length === 0;
+
+    const orderChanged =
+      sameMembers &&
+      !sameOrder(
+        existingIds,
+        levelIds
+      );
+
+    /* -----------------------------------------------------
+       7. Permission ตาม Action จริง
+
+       ใช้ access.permissions จาก Role / role_permissions
+       ไม่มี role_code bypass ใน Module นี้
+    ----------------------------------------------------- */
+
+    if (
+      createLevelIds.length > 0 &&
+      !hasExactPermission(
+        auth.access,
+        "ems.position_family_levels.create"
+      )
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์เพิ่มระดับตำแหน่งในกลุ่มสายงาน",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      deleteIds.length > 0 &&
+      !hasExactPermission(
+        auth.access,
+        "ems.position_family_levels.edit"
+      )
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์แก้ไขระดับตำแหน่งของกลุ่มสายงาน",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      orderChanged &&
+      !hasExactPermission(
+        auth.access,
+        "ems.position_family_levels.edit"
+      )
+    ) {
+      return errorResponse(
+        "คุณไม่มีสิทธิ์แก้ไขลำดับระดับตำแหน่งของกลุ่มสายงาน",
+        {
+          status: 403,
+        }
+      );
+    }
+
+    /* -----------------------------------------------------
+       8. ไม่มีการเปลี่ยนแปลง
+    ----------------------------------------------------- */
+
+    if (
+      createLevelIds.length === 0 &&
+      deleteIds.length === 0 &&
+      !orderChanged
+    ) {
+      return successResponse(
+        existingRows,
+        {
+          message:
+            "ไม่มีข้อมูลที่เปลี่ยนแปลง",
+        }
+      );
+    }
+
+    /* -----------------------------------------------------
+       9. Delete Mapping
+    ----------------------------------------------------- */
 
     if (
       deleteIds.length > 0
@@ -405,22 +630,30 @@ export async function PUT(req) {
     }
 
     /* -----------------------------------------------------
-       Insert Mapping
+       10. Insert Mapping
+
+       Create อย่างเดียวจะไม่แก้ sort_order
+       ของ Mapping เดิม
     ----------------------------------------------------- */
 
-    const insertRows =
-      levelIds
-        .filter(
-          (id) =>
-            !existingLevelIds.has(
-              id
-            )
-        )
-        .map(
-          (
-            id,
-            index
-          ) => ({
+    if (
+      createLevelIds.length > 0
+    ) {
+      const maxSortOrder =
+        existingRows.reduce(
+          (maxValue, item) =>
+            Math.max(
+              maxValue,
+              Number(
+                item.sort_order || 0
+              )
+            ),
+          -1
+        );
+
+      const insertRows =
+        createLevelIds.map(
+          (id, index) => ({
             position_family_id:
               familyId,
 
@@ -428,13 +661,12 @@ export async function PUT(req) {
               id,
 
             sort_order:
-              index,
+              maxSortOrder +
+              index +
+              1,
           })
         );
 
-    if (
-      insertRows.length > 0
-    ) {
       const {
         error: insertError,
       } = await supabaseAdmin
@@ -451,46 +683,50 @@ export async function PUT(req) {
     }
 
     /* -----------------------------------------------------
-       Update Sort Order ของรายการเดิม
+       11. Edit Sort Order
+
+       ทำเฉพาะกรณีสมาชิกเดิมเท่าเดิม
+       แต่ลำดับเปลี่ยนจริง และมี Edit Permission แล้ว
     ----------------------------------------------------- */
 
-    for (
-      let index = 0;
-      index <
-      levelIds.length;
-      index += 1
-    ) {
-      const levelId =
-        levelIds[index];
+    if (orderChanged) {
+      for (
+        let index = 0;
+        index < levelIds.length;
+        index += 1
+      ) {
+        const levelId =
+          levelIds[index];
 
-      const {
-        error: sortError,
-      } = await supabaseAdmin
-        .from(
-          "position_family_levels"
-        )
-        .update({
-          sort_order: index,
-          updated_at:
-            new Date()
-              .toISOString(),
-        })
-        .eq(
-          "position_family_id",
-          familyId
-        )
-        .eq(
-          "position_level_id",
-          levelId
-        );
+        const {
+          error: sortError,
+        } = await supabaseAdmin
+          .from(
+            "position_family_levels"
+          )
+          .update({
+            sort_order: index,
+            updated_at:
+              new Date()
+                .toISOString(),
+          })
+          .eq(
+            "position_family_id",
+            familyId
+          )
+          .eq(
+            "position_level_id",
+            levelId
+          );
 
-      if (sortError) {
-        throw sortError;
+        if (sortError) {
+          throw sortError;
+        }
       }
     }
 
     /* -----------------------------------------------------
-       Reload Result
+       12. Reload Result
     ----------------------------------------------------- */
 
     const {
@@ -525,6 +761,12 @@ export async function PUT(req) {
       )
       .order(
         "sort_order",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "created_at",
         {
           ascending: true,
         }

@@ -745,12 +745,6 @@ export default function EmployeeOrganizationStep({
       form
     );
 
-  const unitId =
-    Form.useWatch(
-      "unit_id",
-      form
-    );
-
   const positionFamilyId =
     Form.useWatch(
       "position_family_id",
@@ -796,9 +790,6 @@ export default function EmployeeOrganizationStep({
 
   const positions =
     masterData.positions || [];
-
-  const unitPositions =
-    masterData.unitPositions || [];
 
   const jobs =
     masterData.jobs || [];
@@ -1162,14 +1153,12 @@ export default function EmployeeOrganizationStep({
     ]);
 
   /*
-    ตำแหน่งกรองจาก:
+    ตำแหน่งกรองจาก Job Architecture เท่านั้น:
     1. positions.position_family_id
-    2. unit_positions เมื่อเลือกหน่วยงาน
+    2. Position Level ที่ positions API คืนใน item.levels
 
-    หมายเหตุ:
-    ตาราง positions ปัจจุบันไม่มี
-    position_level_id จึงยังไม่สามารถ
-    กรอง Position ตาม Level โดยตรงได้
+    หน่วยงาน (unit_id) เป็น Organization Structure
+    และไม่ใช้เป็นเงื่อนไขกรองรายการตำแหน่ง
   */
 
   const positionOptions =
@@ -1238,71 +1227,7 @@ export default function EmployeeOrganizationStep({
     }
 
     /* =====================================================
-       3. Filter Workforce Plan / Unit Position
-
-       หลังปรับ unit_positions ใหม่
-       ให้เช็ค branch_id ด้วย
-    ===================================================== */
-
-    if (unitId) {
-      const allowedPositionIds =
-        new Set(
-          unitPositions
-            .filter(
-              (item) => {
-                if (!isActive(item)) {
-                  return false;
-                }
-
-                if (
-                  String(
-                    item.unit_id ||
-                      ""
-                  ) !==
-                  String(unitId)
-                ) {
-                  return false;
-                }
-
-                /*
-                 * ถ้า Plan มี branch_id
-                 * ต้องตรงกับ Branch ของ Employee
-                 */
-                if (
-                  item.branch_id &&
-                  branchId &&
-                  String(
-                    item.branch_id
-                  ) !==
-                    String(
-                      branchId
-                    )
-                ) {
-                  return false;
-                }
-
-                return true;
-              }
-            )
-            .map(
-              (item) =>
-                String(
-                  item.position_id
-                )
-            )
-        );
-
-      availablePositions =
-        availablePositions.filter(
-          (item) =>
-            allowedPositionIds.has(
-              String(item.id)
-            )
-        );
-    }
-
-    /* =====================================================
-       4. Sort + Map
+       3. Sort + Map
     ===================================================== */
 
     return availablePositions
@@ -1328,11 +1253,6 @@ export default function EmployeeOrganizationStep({
       }));
   }, [
     positions,
-    unitPositions,
-
-    branchId,
-    unitId,
-
     positionFamilyId,
     positionLevelId,
   ]);
@@ -1981,21 +1901,6 @@ export default function EmployeeOrganizationStep({
                   ? "เลือกหน่วยงาน"
                   : "กรุณาเลือกฝ่ายก่อน"
               }
-              onChange={() => {
-                form.setFieldsValue({
-                  position_id:
-                    undefined,
-
-                  job_id:
-                    undefined,
-
-                  position_level_band_id:
-                    undefined,
-
-                  base_salary:
-                    undefined,
-                });
-              }}
             />
           </Form.Item>
         </Col>

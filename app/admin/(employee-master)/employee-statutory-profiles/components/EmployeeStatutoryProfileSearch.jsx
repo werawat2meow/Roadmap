@@ -24,11 +24,6 @@ export default function EmployeeStatutoryProfileSearch({
   onIdentityTypeChange,
   socialRegistered,
   onSocialRegisteredChange,
-  taxCompanyId,
-  onTaxCompanyIdChange,
-  ssoCompanyId,
-  onSsoCompanyIdChange,
-  companies = [],
   onCreate,
   onRefresh,
   onImport,
@@ -39,16 +34,6 @@ export default function EmployeeStatutoryProfileSearch({
   canExport = false,
   loading = false,
 }) {
-  const companyOptions = (companies || []).map((company) => ({
-    value: company.id,
-    label: [
-      company.company_code,
-      company.company_name_th || company.company_name_en,
-    ]
-      .filter(Boolean)
-      .join(" - "),
-  }));
-
   return (
     <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -90,28 +75,6 @@ export default function EmployeeStatutoryProfileSearch({
             { value: "false", label: "ไม่ขึ้นทะเบียน" },
           ]}
         />
-
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          value={taxCompanyId || undefined}
-          onChange={(value) => onTaxCompanyIdChange?.(value || "")}
-          placeholder="บริษัทนำส่งภาษี"
-          className="min-w-[250px]"
-          options={companyOptions}
-        />
-
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          value={ssoCompanyId || undefined}
-          onChange={(value) => onSsoCompanyIdChange?.(value || "")}
-          placeholder="บริษัทประกันสังคม"
-          className="min-w-[250px]"
-          options={companyOptions}
-        />
       </div>
 
       <Space wrap>
@@ -132,7 +95,7 @@ export default function EmployeeStatutoryProfileSearch({
 
         {canExport ? (
           <Button icon={<ExportOutlined />} onClick={onExport}>
-            Export CSV หน้านี้
+            Export CSV
           </Button>
         ) : null}
 

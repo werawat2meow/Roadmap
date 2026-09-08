@@ -6,10 +6,6 @@ import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 const MODULE = "ems.employee_statutory_profiles";
 const TABLE = "employee_statutory_profiles";
 const SCOPE_BATCH_SIZE = 1000;
-const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE = 100;
-const ALLOWED_STATUSES = ["active", "inactive"];
-const ALLOWED_IDENTITY_TYPES = ["citizen_id", "passport", "tax_id"];
 const NO_ACCESS_UUID = "00000000-0000-0000-0000-000000000000";
 
 function cleanText(value) {
@@ -87,42 +83,6 @@ function applyScope(query, ids) {
   return query.in("employee_id", ids);
 }
 
-async function findScopedEmployeeIdsBySearch(guard, search) {
-  const keyword = cleanText(search);
-  if (!keyword) return null;
-
-  let query = supabaseAdmin
-    .from("employees")
-    .select(`
-      id,
-      company_id,
-      branch_group_id,
-      branch_id,
-      department_id,
-      division_id,
-      unit_id
-    `)
-    .or(
-      [
-        `employee_code.ilike.%${keyword}%`,
-        `first_name_th.ilike.%${keyword}%`,
-        `last_name_th.ilike.%${keyword}%`,
-        `first_name_en.ilike.%${keyword}%`,
-        `last_name_en.ilike.%${keyword}%`,
-        `citizen_id.ilike.%${keyword}%`,
-        `passport_no.ilike.%${keyword}%`,
-      ].join(",")
-    )
-    .limit(500);
-
-  query = guard.applyEmployeeScope(query);
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data || []).map((item) => item.id);
-}
-
 export async function GET(req) {
   try {
     const guard = await requireScopedAccess(MODULE, "export", {
@@ -132,28 +92,8 @@ export async function GET(req) {
     if (!guard.ok) return guard.response;
 
     const { searchParams } = new URL(req.url);
-    const page = Math.max(Number(searchParams.get("page")) || 1, 1);
-    const pageSize = Math.min(
-      Math.max(Number(searchParams.get("pageSize")) || DEFAULT_PAGE_SIZE, 1),
-      MAX_PAGE_SIZE
-    );
-    const search = cleanText(searchParams.get("search"));
     const status = cleanText(searchParams.get("status")).toLowerCase();
-    const identityType = cleanText(
-      searchParams.get("tax_identity_type")
-    ).toLowerCase();
-    const socialRegistered = searchParams.get("social_security_registered");
-    const taxCompanyId = cleanText(
-      searchParams.get("tax_withholding_company_id")
-    );
-    const ssoCompanyId = cleanText(
-      searchParams.get("social_security_company_id")
-    );
-
     const scopedEmployeeIds = await getScopedEmployeeIds(guard);
-    const searchedEmployeeIds = search
-      ? await findScopedEmployeeIdsBySearch(guard, search)
-      : null;
 
     let query = supabaseAdmin
       .from(TABLE)
@@ -197,42 +137,14 @@ export async function GET(req) {
           company_name_en
         )
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(5000);
 
     query = applyScope(query, scopedEmployeeIds);
 
-    if (Array.isArray(searchedEmployeeIds)) {
-      if (!searchedEmployeeIds.length) {
-        query = query.eq("employee_id", NO_ACCESS_UUID);
-      } else {
-        query = query.in("employee_id", searchedEmployeeIds);
-      }
-    }
-
-    if (status && ALLOWED_STATUSES.includes(status)) {
+    if (["active", "inactive"].includes(status)) {
       query = query.eq("status", status);
     }
-
-    if (identityType && ALLOWED_IDENTITY_TYPES.includes(identityType)) {
-      query = query.eq("tax_identity_type", identityType);
-    }
-
-    if (taxCompanyId) {
-      query = query.eq("tax_withholding_company_id", taxCompanyId);
-    }
-
-    if (ssoCompanyId) {
-      query = query.eq("social_security_company_id", ssoCompanyId);
-    }
-
-    if (socialRegistered === "true") {
-      query = query.eq("social_security_registered", true);
-    } else if (socialRegistered === "false") {
-      query = query.eq("social_security_registered", false);
-    }
-
-    const from = (page - 1) * pageSize;
-    query = query.range(from, from + pageSize - 1);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -293,7 +205,7 @@ export async function GET(req) {
     }
 
     const csv = `\uFEFF${lines.join("\r\n")}`;
-    const fileName = `employee-statutory-profiles-page-${page}-${new Date()
+    const fileName = `employee-statutory-profiles-${new Date()
       .toISOString()
       .slice(0, 10)}.csv`;
 

@@ -266,8 +266,6 @@ export default function EmployeeStatutoryProfilesPage() {
   const [status, setStatus] = useState("");
   const [identityType, setIdentityType] = useState("");
   const [socialRegistered, setSocialRegistered] = useState("");
-  const [taxCompanyId, setTaxCompanyId] = useState("");
-  const [ssoCompanyId, setSsoCompanyId] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [employeeOptionsLoading, setEmployeeOptionsLoading] = useState(false);
@@ -440,12 +438,6 @@ export default function EmployeeStatutoryProfilesPage() {
       if (socialRegistered) {
         params.set("social_security_registered", socialRegistered);
       }
-      if (taxCompanyId) {
-        params.set("tax_withholding_company_id", taxCompanyId);
-      }
-      if (ssoCompanyId) {
-        params.set("social_security_company_id", ssoCompanyId);
-      }
 
       const response = await fetch(
         `/api/admin/employee-statutory-profiles?${params.toString()}`,
@@ -476,17 +468,7 @@ export default function EmployeeStatutoryProfilesPage() {
     } finally {
       setLoading(false);
     }
-  }, [
-    canView,
-    page,
-    pageSize,
-    debouncedSearch,
-    status,
-    identityType,
-    socialRegistered,
-    taxCompanyId,
-    ssoCompanyId,
-  ]);
+  }, [canView, page, pageSize, debouncedSearch, status, identityType, socialRegistered]);
 
   useEffect(() => {
     if (!loadingUser && canView) {
@@ -663,23 +645,8 @@ export default function EmployeeStatutoryProfilesPage() {
 
     try {
       setExporting(true);
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(pageSize),
-      });
-
-      if (debouncedSearch) params.set("search", debouncedSearch);
+      const params = new URLSearchParams();
       if (status) params.set("status", status);
-      if (identityType) params.set("tax_identity_type", identityType);
-      if (socialRegistered) {
-        params.set("social_security_registered", socialRegistered);
-      }
-      if (taxCompanyId) {
-        params.set("tax_withholding_company_id", taxCompanyId);
-      }
-      if (ssoCompanyId) {
-        params.set("social_security_company_id", ssoCompanyId);
-      }
 
       const response = await fetch(
         `/api/admin/employee-statutory-profiles/export?${params.toString()}`,
@@ -835,17 +802,6 @@ export default function EmployeeStatutoryProfilesPage() {
             setSocialRegistered(value);
             setPage(1);
           }}
-          taxCompanyId={taxCompanyId}
-          onTaxCompanyIdChange={(value) => {
-            setTaxCompanyId(value);
-            setPage(1);
-          }}
-          ssoCompanyId={ssoCompanyId}
-          onSsoCompanyIdChange={(value) => {
-            setSsoCompanyId(value);
-            setPage(1);
-          }}
-          companies={masters.companies}
           onCreate={openCreate}
           onRefresh={loadData}
           onImport={() => importInputRef.current?.click()}

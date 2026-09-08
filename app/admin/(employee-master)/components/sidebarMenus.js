@@ -847,6 +847,9 @@ export const MenuHRMS = [
     ]
   },
 
+
+
+
   {
     title: "JOB ARCHITECTURE",
     icon: "ProfileOutlined",
@@ -927,10 +930,10 @@ export const MenuHRMS = [
     title: "TAX & SOCIAL SECURITY",
     icon: "SafetyCertificateOutlined",
     items: [
-      { label: "โปรไฟล์ภาษี", href: "/admin/tax-profiles", icon: "SafetyCertificateOutlined", permission: "ems.tax_profiles.view" },
-      { label: "อัตราภาษี", href: "/admin/tax-rates", icon: "BarChartOutlined", permission: "ems.tax_rates.view" },
-      { label: "ประกันสังคม", href: "/admin/social-security", icon: "SafetyOutlined", permission: "ems.social_security.view" },
-      { label: "ภาษีและประกันสังคมพนักงาน", href: "/admin/employee-statutory-profiles", icon: "IdcardOutlined", permission: "ems.employee_statutory_profiles.view" },
+      // { label: "โปรไฟล์ภาษี", href: "/admin/tax-profiles", icon: "SafetyCertificateOutlined", permission: "ems.tax_profiles.view" },
+      // { label: "อัตราภาษี", href: "/admin/tax-rates", icon: "BarChartOutlined", permission: "ems.tax_rates.view" },
+      // { label: "ประกันสังคม", href: "/admin/social-security", icon: "SafetyOutlined", permission: "ems.social_security.view" },
+
       { label: "กองทุนสำรองเลี้ยงชีพ", href: "/admin/provident-funds", icon: "WalletOutlined", permission: "ems.provident_funds.view" }
     ]
   },

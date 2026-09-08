@@ -28,6 +28,7 @@ import {
 } from "antd";
 
 const { Option } = Select;
+const { Title, Text } = Typography;
 
 import AntIcon from '@/components/AntIcon';
 
@@ -87,6 +88,21 @@ interface PositionOption {
   name: string;
 }
 
+interface BranchOption {
+  id: string | number;
+  branch_name: string;
+}
+
+interface JobOpenOption {
+  id: string | number;
+  position_id: string | number;
+  branch_id: string | number | null;
+  branches?: {
+    id: string | number;
+    branch_name: string;
+  } | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                   Page                                     */
 /* -------------------------------------------------------------------------- */
@@ -101,94 +117,322 @@ export default function RegisterPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [positionId, setPositionId] = useState<string | number | undefined>( undefined );
+  const [positionId, setPositionId] = useState<string | number | undefined>(undefined);
 
-  const [personal, setPersonal] =
-    useState<PersonalInformationData  >(
-      createPersonalInformation()
-    );
+  const [sourceBranchId, setSourceBranchId] = useState<string | number | undefined>(undefined);
 
-  const [education, setEducation] =
-    useState<EducationHistory[]>([
-      createEducationRow(),
-    ]);
+  const [jobId, setJobId] = useState<string | number | undefined>(undefined);
 
-  const [workExperience, setWorkExperience] =
-    useState<WorkExperience[]>([
-      createWorkRow(),
-    ]);
+  const [branches, setBranches] = useState<BranchOption[]>([]);
 
-  const [computerSkills, setComputerSkills] =
-    useState<ComputerSkill[]>([
-      createComputerSkillRow(),
-    ]);
+  const [jobOpenings, setJobOpenings] = useState<JobOpenOption[]>([]);
 
-  const [languageSkills, setLanguageSkills] =
-    useState<LanguageSkill[]>([
-      createLanguageSkillRow(),
-    ]);
+  const [loadingJobOpenings, setLoadingJobOpenings] = useState(false);
 
-  const [documents, setDocuments] =
-    useState<ApplicationDocument[]>(
-      createDefaultDocuments()
-    );
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  const [showBranchSelect, setShowBranchSelect] = useState(false);
+
+  const [personal, setPersonal] = useState<PersonalInformationData  >(createPersonalInformation());
+
+  const [education, setEducation] = useState<EducationHistory[]>([createEducationRow(),]);
+
+  const [workExperience, setWorkExperience] = useState<WorkExperience[]>([createWorkRow(),]);
+
+  const [computerSkills, setComputerSkills] = useState<ComputerSkill[]>([createComputerSkillRow(),]);
+
+  const [languageSkills, setLanguageSkills] = useState<LanguageSkill[]>([createLanguageSkillRow(),]);
+
+  const [documents, setDocuments] = useState<ApplicationDocument[]>(createDefaultDocuments());
 
 
   /* ---------------------------------------------------------------------- */
   /*                             Submit Handler                             */
   /* ---------------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
+  /*                             Submit Handler                             */
+  /* ---------------------------------------------------------------------- */
   const handleSubmit = async () => {
-    const payload = {
-      positionId: positionId,
-      personal,
-      education,
-      workExperience,
-      computerSkills,
-      languageSkills,
-      // เก็บ metadata ของเอกสารไว้ (id, type, title, fileName)
-      // แต่ตัด object File ออก เพราะ JSON.stringify ไม่รองรับ
-      documents: documents.map(({ file, ...rest }: any) => rest),
-      agreement: {
-        certify: true,
-        pdpa: true,
-      },
-    };
-
-    setSaving(true);
-
-    const formData = new FormData();
-
-    // แนบไฟล์จริง โดยใช้ document.id เป็น key
-    // ต้องตรงกับฝั่ง API ที่อ่านด้วย formData.get(document.id)
-    documents.forEach((doc: any) => {
-      if (doc?.file instanceof File) {
-        formData.append(doc.id, doc.file, doc.file.name);
-      }
-    });
-
-    // แนบ payload หลักเป็น JSON string ภายใต้ key "payload"
-    // ต้องตรงกับฝั่ง API: formData.get("payload")
-    formData.append("payload", JSON.stringify(payload));
-
     try {
+      // 1. ตรวจสอบ Validation ของ Ant Design Form ทั้งหมดในหน้าก่อน
+      // หากมี field ไหนไม่ผ่าน Antd จะ throw error และ auto focus ไปยัง field นั้นให้อัตโนมัติ
+      await form.validateFields();
+
+      // 2. ตรวจสอบ State-based fields (ตำแหน่ง)
+      if (!positionId) {
+        message.error("กรุณาเลือกตำแหน่ง");
+        // สั่งให้ Scroll และ Focus ไปที่ Form Item ชื่อ 'position' (หรือตาม name ใน Form.Item)
+        form.scrollToField("position", { behavior: "smooth", scrollMode: "if-needed" });
+        return;
+      }
+
+      // 3. ตรวจสอบ State-based fields (สังกัด/สาขา)
+      if (showBranchSelect && !sourceBranchId) {
+        message.error("กรุณาเลือกสังกัด");
+        form.scrollToField("sourceBranchId", { behavior: "smooth", scrollMode: "if-needed" });
+        return;
+      }
+
+      // 4. (Optional) ตรวจสอบ Custom Section State เช่น ประวัติการศึกษา
+      // หากต้องการสั่ง Focus ไปยังส่วนอื่นที่ไม่ได้ใช้ Form.Item
+      if (education.length === 0) {
+        message.error("กรุณากรอกประวัติการศึกษาอย่างน้อย 1 รายการ");
+        return;
+      }
+
+      // ------------------------------------------------------------
+      // หากผ่านการ Validation ทั้งหมดแล้ว จึงเริ่มกระบวนการ Save
+      // ------------------------------------------------------------
+      setSaving(true);
+
+      const payload = {
+        positionId: positionId,
+        sourceBranchId: sourceBranchId ?? null,
+        jobId: jobId ?? null,
+        personal,
+        education,
+        workExperience,
+        computerSkills,
+        languageSkills,
+        documents: documents.map(({ file, ...rest }: any) => rest),
+        agreement: {
+          certify: true,
+          pdpa: true,
+        },
+      };
+
+      const formData = new FormData();
+      documents.forEach((doc: any) => {
+        if (doc?.file instanceof File) {
+          formData.append(doc.id, doc.file, doc.file.name);
+        }
+      });
+      formData.append("payload", JSON.stringify(payload));
+
       const response = await fetch("/jobs/api/application", {
         method: "POST",
         body: formData,
       });
-      const result = await response.json();
 
+      const result = await response.json();
       if (!response.ok) {
         throw new Error(result.message ?? "Cannot save application.");
       }
 
       message.success(getUIText(uiText.saveSuccess, locale));
+      // router.push("/recruitment/candidate");
 
-      router.push("/recruitment/candidate");
-    } catch (error: any) {
-      message.error(error?.message ?? "Unable to submit application.");
+    } catch (errorInfo: any) {
+      // ดักจับ Error จาก form.validateFields()
+      if (errorInfo?.errorFields && errorInfo.errorFields.length > 0) {
+        const firstErrorField = errorInfo.errorFields[0];
+        const errorMessage = firstErrorField.errors[0] || "กรุณากรอกข้อมูลให้ครบถ้วน";
+        
+        // แจ้งเตือนข้อความ Error ของฟิลด์แรกที่ไม่ผ่าน
+        message.error(errorMessage);
+
+        // Focus ไปยังฟิลด์ที่มีปัญหา
+        form.scrollToField(firstErrorField.name, {
+          behavior: "smooth",
+          scrollMode: "if-needed",
+        });
+      } else if (errorInfo?.message) {
+        // กรณีเป็น API Error หรือ Error จากการ throw ข้างนอก
+        message.error(errorInfo.message);
+      } else {
+        message.error("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+
+  const loadAllBranches = async () => {
+    setLoadingBranches(true);
+
+    try {
+      const response = await fetch(
+        "/recruitment/api/create_candidate/branches",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Unable to load branches (${response.status})`
+        );
+      }
+
+      const result = await response.json();
+
+      const list: BranchOption[] = Array.isArray(result)
+        ? result
+        : result?.data ?? [];
+
+      setBranches(list);
+    } catch (error) {
+      console.error("loadAllBranches error:", error);
+      setBranches([]);
+      message.error("ไม่สามารถโหลดข้อมูลสังกัดได้");
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
+  const handlePositionChange = async (
+    value: string | number | undefined
+  ) => {
+    // ============================================================
+    // แจ้ง PersonalInformation ตาม logic เดิม
+    // ============================================================
+    setPositionId(value);
+
+    // ============================================================
+    // Reset ค่าเดิมทุกครั้งที่เปลี่ยน Position
+    // ============================================================
+    setSourceBranchId(undefined);
+    setJobId(undefined);
+
+    setBranches([]);
+    setJobOpenings([]);
+
+    setShowBranchSelect(false);
+
+    if (!value) {
+      return;
+    }
+
+    setLoadingJobOpenings(true);
+
+    try {
+      const response = await fetch(
+        `/recruitment/api/create_candidate/job_open?position_id=${encodeURIComponent(
+          String(value)
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Unable to check recruitment opening (${response.status})`
+        );
+      }
+
+      const result = await response.json();
+
+      const openings: JobOpenOption[] =
+        Array.isArray(result)
+          ? result
+          : result?.data ?? [];
+
+      setJobOpenings(openings);
+
+      // ==========================================================
+      // CASE 1
+      // ไม่มีรอบเปิดรับสมัคร
+      //
+      // ต้องเลือกสังกัดจาก branches ทั้งหมด
+      // job_id = null
+      // ==========================================================
+      if (openings.length === 0) {
+        setJobId(undefined);
+
+        setShowBranchSelect(true);
+
+        await loadAllBranches();
+
+        return;
+      }
+
+      // ==========================================================
+      // CASE 2
+      // มีรอบเปิดรับสมัคร 1 สังกัด
+      //
+      // ไม่แสดง Dropdown
+      // ใช้ branch_id และ recruit_job_open.id อัตโนมัติ
+      // ==========================================================
+      if (openings.length === 1) {
+        const opening = openings[0];
+
+        setJobId(opening.id);
+
+        setSourceBranchId(
+          opening.branch_id ?? undefined
+        );
+
+        setShowBranchSelect(false);
+
+        return;
+      }
+
+      // ==========================================================
+      // CASE 3
+      // มีรอบเปิดรับสมัครหลายสังกัด
+      //
+      // ต้องให้ผู้สมัครเลือกสังกัด
+      // ==========================================================
+      setShowBranchSelect(true);
+    } catch (error: any) {
+      console.error(
+        "handlePositionChange error:",
+        error
+      );
+
+      setJobOpenings([]);
+      setBranches([]);
+
+      setJobId(undefined);
+      setSourceBranchId(undefined);
+      setShowBranchSelect(false);
+
+      message.error(
+        error?.message ??
+          "ไม่สามารถตรวจสอบรอบเปิดรับสมัครได้"
+      );
+    } finally {
+      setLoadingJobOpenings(false);
+    }
+  };
+
+  const handleSourceBranchChange = (
+    value: string | number | undefined
+  ) => {
+    setSourceBranchId(value);
+
+    // ============================================================
+    // ไม่มี recruit_job_open
+    //
+    // job_id ต้องเป็น null
+    // ============================================================
+    if (jobOpenings.length === 0) {
+      setJobId(undefined);
+      return;
+    }
+
+    // ============================================================
+    // มี recruit_job_open หลายรายการ
+    //
+    // หา record ที่ branch ตรงกัน
+    // แล้วใช้ recruit_job_open.id เป็น job_id
+    // ============================================================
+    const selectedOpening = jobOpenings.find(
+      (item) =>
+        String(item.branch_id) === String(value)
+    );
+
+    setJobId(
+      selectedOpening?.id
+    );
   };
 
   /* ---------------------------------------------------------------------- */
@@ -277,6 +521,7 @@ export default function RegisterPage() {
             form={form}
             layout="vertical"
             autoComplete="off"
+            scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
           >
               {/* ---------------------------------------------------------------------- */}
               {/* Personal Information                                                   */}
@@ -286,9 +531,17 @@ export default function RegisterPage() {
                 form={form}
                 language={locale}
                 position={positionId}
-                onPositionChange={setPositionId}
+                onPositionChange={handlePositionChange}
                 value={personal}
                 onChange={setPersonal}
+                showBranchSelect={showBranchSelect}
+                sourceBranchId={sourceBranchId}
+                branches={branches}
+                jobOpenings={jobOpenings}
+                loadingBranches={loadingBranches}
+                loadingJobOpenings={loadingJobOpenings}
+                onSourceBranchChange={handleSourceBranchChange}
+                allowIdTypeSelection
               />
       
               {/* ---------------------------------------------------------------------- */}
@@ -436,6 +689,25 @@ interface RegisterPersonalInformationProps {
   onPositionChange: (value: string | number | undefined) => void;
   value: PersonalInformationData;
   onChange: (value: PersonalInformationData) => void;
+  // ------------------------------------------------------------------
+  // ค่าที่เกี่ยวกับสังกัด / รอบเปิดรับสมัคร ต้องส่งลงมาจาก RegisterPage
+  // เพราะเดิม component นี้อ้างถึงตัวแปรเหล่านี้ตรงๆ ทั้งที่ไม่ได้อยู่ใน
+  // scope ของตัวเอง (bug: ReferenceError ตอน render)
+  // ------------------------------------------------------------------
+  showBranchSelect: boolean;
+  sourceBranchId: string | number | undefined;
+  branches: BranchOption[];
+  jobOpenings: JobOpenOption[];
+  loadingBranches: boolean;
+  loadingJobOpenings: boolean;
+  onSourceBranchChange: (value: string | number | undefined) => void;
+  // ------------------------------------------------------------------
+  // เปิดให้ผู้สมัครเลือกเองว่าจะกรอก "เลขบัตรประชาชน" หรือ "พาสปอร์ต"
+  // แยกอิสระจากภาษาของฟอร์ม — เป็น opt-in (default false) เพราะ
+  // PersonalInformation ถูกเรียกใช้หลายหน้า หน้าอื่นที่ไม่ได้ส่ง prop
+  // นี้มาจะยังทำงานแบบเดิม (ผูกกับ language)
+  // ------------------------------------------------------------------
+  allowIdTypeSelection?: boolean;
 }
 
 function PersonalInformation({
@@ -444,7 +716,15 @@ function PersonalInformation({
   position,
   onPositionChange,
   value,
-  onChange,  
+  onChange,
+  showBranchSelect,
+  sourceBranchId,
+  branches,
+  jobOpenings,
+  loadingBranches,
+  loadingJobOpenings,
+  onSourceBranchChange,
+  allowIdTypeSelection = false,
 }: RegisterPersonalInformationProps) {
     
     const [locale, setLocale] = useState("TH");
@@ -974,6 +1254,29 @@ function PersonalInformation({
   };
 
   /* ---------------------------------------------------------------------- */
+  /*                    ID Card / Passport Type Selection                   */
+  /* ---------------------------------------------------------------------- */
+  // เมื่อ allowIdTypeSelection = true ผู้สมัครเลือกได้เองว่าจะกรอก
+  // "เลขบัตรประชาชน" หรือ "พาสปอร์ต" โดยไม่ผูกกับภาษาของฟอร์มอีกต่อไป
+  // เก็บค่าไว้ใน value.idDocumentType (ฝัง field เพิ่มแบบยืดหยุ่น เพราะ
+  // type PersonalInformationData เดิมออกแบบมาสำหรับ flow ที่ผูกกับภาษา)
+  // ถ้าไม่ได้เปิดใช้งาน จะ fallback ไปใช้ logic เดิม (ตาม language)
+  const idDocumentType: "thai_id" | "passport" = allowIdTypeSelection
+    ? ((value as any).idDocumentType as "thai_id" | "passport" | undefined) ??
+      (language === "TH" ? "thai_id" : "passport")
+    : (language === "TH" ? "thai_id" : "passport");
+
+  const handleIdDocumentTypeChange = (type: "thai_id" | "passport") => {
+    onChange({
+      ...(value as any),
+      idDocumentType: type,
+      // เคลียร์เลขที่กรอกไว้เดิม เพราะรูปแบบ/การตรวจสอบไม่ตรงกันระหว่าง
+      // เลขบัตรประชาชนกับพาสปอร์ต
+      idCardNo: "",
+    } as PersonalInformationData);
+  };
+
+  /* ---------------------------------------------------------------------- */
   /*                            Event Handlers                              */
   /* ---------------------------------------------------------------------- */
 
@@ -1075,7 +1378,9 @@ function PersonalInformation({
                 <Select
                   showSearch
                   allowClear
-                  placeholder={ "Select a position" }
+                  placeholder={
+                    language === "TH" ? "เลือกตำแหน่ง" : "Select a position"
+                  }
                   loading={loadingPositions}
                   value={position}
                   onChange={(value) => onPositionChange(value)}
@@ -1119,6 +1424,61 @@ function PersonalInformation({
                 />
               </Form.Item>
             </Col>
+
+            {showBranchSelect && (
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label="สังกัด"
+                  required
+                  validateStatus={
+                    showBranchSelect && !sourceBranchId
+                      ? "error"
+                      : ""
+                  }
+                  help={
+                    showBranchSelect && !sourceBranchId
+                      ? "กรุณาเลือกสังกัด"
+                      : undefined
+                  }
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="เลือกสังกัด"
+                    loading={
+                      loadingBranches ||
+                      loadingJobOpenings
+                    }
+                    value={sourceBranchId}
+                    optionFilterProp="label"
+                    onChange={onSourceBranchChange}
+                    options={
+                      jobOpenings.length > 0
+                        ? jobOpenings
+                            .filter(
+                              (item) => item.branch_id != null
+                            )
+                            .map((item) => ({
+                              value: item.branch_id,
+                              label:
+                                item.branches?.branch_name ??
+                                String(item.branch_id),
+                            }))
+                        : branches.map((branch) => ({
+                            value: branch.id,
+                            label: branch.branch_name,
+                          }))
+                    }
+                    notFoundContent={
+                      loadingBranches ||
+                      loadingJobOpenings
+                        ? "กำลังโหลด..."
+                        : "ไม่พบข้อมูลสังกัด"
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         </Card>
 
@@ -1342,7 +1702,7 @@ function PersonalInformation({
 
             {/* Nationality */}
             <Col xs={24} md={6}>
-              <Form.Item label={getUIText(uiText.nationality, locale)} >
+              <Form.Item label={getUIText(uiText.nationality, locale)} required>
                 <Select
                   showSearch
                   allowClear
@@ -1410,9 +1770,43 @@ function PersonalInformation({
 
             {/* ID / Passport */}
             <Col xs={24}>
+              {allowIdTypeSelection && (
+                <Form.Item
+                  label={
+                    language === "TH"
+                      ? "ประเภทเอกสารประจำตัว"
+                      : "ID Document Type"
+                  }
+                  required
+                  style={{ marginBottom: 8 }}
+                >
+                  <Radio.Group
+                    value={idDocumentType}
+                    onChange={(e) =>
+                      handleIdDocumentTypeChange(e.target.value)
+                    }
+                  >
+                    <Radio value="thai_id">
+                      {language === "TH"
+                        ? "เลขบัตรประชาชน"
+                        : "Thai Citizen ID"}
+                    </Radio>
+                    <Radio value="passport">
+                      {language === "TH" ? "พาสปอร์ต" : "Passport"}
+                    </Radio>
+                  </Radio.Group>
+                </Form.Item>
+              )}
+
               <Form.Item
                 name="idCardNo"
-                label={getUIText(uiText.idCardNo, locale)}
+                label={
+                  allowIdTypeSelection
+                    ? idDocumentType === "thai_id"
+                      ? (language === "TH" ? "เลขบัตรประชาชน" : "Thai Citizen ID")
+                      : (language === "TH" ? "เลขพาสปอร์ต" : "Passport Number")
+                    : getUIText(uiText.idCardNo, locale)
+                }
                 required
                 validateTrigger="onChange"
                 rules={[
@@ -1421,7 +1815,7 @@ function PersonalInformation({
                         if (!value) {
                             return Promise.resolve();
                         }
-                        if (language === "TH") {
+                        if (idDocumentType === "thai_id") {
                           if (!/^\d{13}$/.test(value)) {
                             return Promise.reject(
                             new Error("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
@@ -1449,7 +1843,7 @@ function PersonalInformation({
                     updateField("idCardNo", e.target.value);
                     form.setFieldValue("idCardNo", e.target.value);
                   }}
-                  maxLength={language === "TH" ? 13 : 20}
+                  maxLength={idDocumentType === "thai_id" ? 13 : 20}
                 />
               </Form.Item>
             </Col>
@@ -2379,8 +2773,6 @@ function EducationSection({
 /*                            Inlined SkillsSection                          */
 /* ========================================================================== */
 
-const { Title } = Typography;
-
 function SkillsSection({
   language,
   computerSkills,
@@ -2756,8 +3148,6 @@ function SkillsSection({
 /*                       Inlined WorkExperienceSection                       */
 /* ========================================================================== */
 
-dayjs.extend(customParseFormat);
-
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
@@ -2937,7 +3327,7 @@ function WorkExperienceSection({
                     updateRow(
                       work.id,
                       "latestSalary",
-                      e.target.value
+                      e.target.value.replace(/\D/g, "")
                     )
                   }
                 />
@@ -2974,8 +3364,6 @@ function WorkExperienceSection({
 /*                         Inlined DocumentsSection                           */
 /* ========================================================================== */
 
-const { Text } = Typography;
-
 const ALLOWED_TYPES = [
   "image/png",
   "image/jpeg",
@@ -3006,13 +3394,6 @@ function DocumentsSection({
       )
     );
   };
-
-  // const beforeUpload =
-  // (id: string): UploadProps["beforeUpload"] =>
-  // (file) => {
-  //   updateDocumentFields(id, { file, fileName: file.name });
-  //   return false;
-  // };
 
   const beforeUpload =
   (id: string): UploadProps["beforeUpload"] =>

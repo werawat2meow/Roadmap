@@ -147,6 +147,39 @@ export async function POST(req: Request) {
   // ถ้ากด Submit ให้เป็น In_Review ไว้ก่อน จนกว่าจะตรวจพบว่าทุกคนกดครบแล้ว
   const targetStatus = isManagerSubmitting ? "In_Review" : body.status;
 
+  const evaluationId = body.evaluationId?.trim();
+
+  let existingReviewerSubmissions: Record<string, any> = {};
+  if (evaluationId) {
+    const { data: existingEval } = await supabaseAdmin
+      .from("rm_evaluations")
+      .select("extra_data")
+      .eq("id", evaluationId)
+      .maybeSingle();
+    if (existingEval?.extra_data?.reviewer_submissions) {
+      existingReviewerSubmissions =
+        existingEval.extra_data.reviewer_submissions;
+    }
+  }
+
+  // ถ้าผู้ประเมินคนนี้กด Submit ให้บันทึกคะแนนจริงของคนนี้ไว้ (รวม Company + Department + Expectations ครบ)
+  if (isManagerSubmitting) {
+    existingReviewerSubmissions[evaluatorId] = {
+      totalScore: Number(body.totalScore ?? 0),
+      companyScore: Number(body.companyScore ?? 0),
+      departmentScore: Number(body.departmentScore ?? 0),
+      expectationScore: Number(body.expectationScore ?? 0),
+      maxScore: Number(body.maxScore ?? 160),
+      comment: body.managerComment || "",
+      submittedAt: new Date().toISOString(),
+    };
+  }
+
+  const mergedExtraData = {
+    ...(body.extra_data || {}),
+    reviewer_submissions: existingReviewerSubmissions,
+  };
+
   const evalPayload = {
     employee_id: body.employeeId,
     evaluator_id: body.evaluatorId,
@@ -161,7 +194,7 @@ export async function POST(req: Request) {
     managerComment: body.managerComment ?? null,
     examScore: body.examScore ?? null,
     maxScore: body.maxScore ?? null,
-    extra_data: body.extra_data ?? null,
+    extra_data: mergedExtraData, // 👈 ใช้ mergedExtraData ที่จำคะแนนของผู้ประเมินแต่ละคน
     evaluation_period: body.evaluationPeriod ?? null,
     evaluation_period_continued: body.evaluationPeriodContinued ?? null,
     special_compensation: body.specialCompensation ?? null,
@@ -169,7 +202,6 @@ export async function POST(req: Request) {
     new_level: body.newLevel ?? null,
   };
 
-  const evaluationId = body.evaluationId?.trim();
   let evalData: any = null;
   let evalError: any = null;
 
@@ -258,12 +290,18 @@ export async function POST(req: Request) {
         .delete()
         .eq("reviewer_id", currentReviewer.id);
 
-      const reviewerScoreRows = body.scores.map((s: any) => ({
-        reviewer_id: currentReviewer.id,
-        category_item_id: s.categoryItemId,
-        score: s.score,
-        remark: s.remark ?? null,
-      }));
+      const reviewerScoreRows = body.scores.map((s: any) => {
+        const maxAllowed = Number(s.max ?? s.weight ?? 0);
+        const rawScore = Number(s.score ?? 0);
+        const clamped =
+          maxAllowed > 0 ? Math.min(rawScore, maxAllowed) : rawScore;
+        return {
+          reviewer_id: currentReviewer.id,
+          category_item_id: s.categoryItemId,
+          score: Math.round(clamped), // หรือ keep decimals if schema allows
+          remark: s.remark ?? null,
+        };
+      });
 
       const { error: reviewerScoreError } = await supabaseAdmin
         .from("rm_evaluation_reviewer_scores")
@@ -281,7 +319,7 @@ export async function POST(req: Request) {
   // 3. ตรวจสอบว่ามี Reviewers ทั้งหมดกี่คน และกด Submit ครบหรือยัง
   const { data: allReviewers } = await supabaseAdmin
     .from("rm_evaluation_reviewers")
-    .select("id, status")
+    .select("id, manager_id, status")
     .eq("evaluation_id", evalData.id);
 
   const totalReviewers = allReviewers?.length || 0;
@@ -292,18 +330,20 @@ export async function POST(req: Request) {
     (totalReviewers > 0 && submittedCount === totalReviewers);
 
   // 4. กรณีครบทุกคนแล้ว และผู้ประเมินกด Submit: นำคะแนนมารวมแล้วหาค่าเฉลี่ย
+  // 4. กรณีครบทุกคนแล้ว และผู้ประเมินกด Submit: นำคะแนนมารวมแล้วหาค่าเฉลี่ย
   if (isAllCompleted && isManagerSubmitting) {
     const reviewerIds = (allReviewers || []).map((r) => r.id);
     const { data: allScores } = await supabaseAdmin
       .from("rm_evaluation_reviewer_scores")
-      .select("category_item_id, score, remark")
+      .select("reviewer_id, category_item_id, score, remark")
       .in("reviewer_id", reviewerIds);
 
+    // คำนวณเฉลี่ยรายข้อสำหรับตาราง rm_evaluation_scores
     const itemMap = new Map<
       string,
       { totalScore: number; count: number; remark: string }
     >();
-    (allScores || []).forEach((row) => {
+    (allScores || []).forEach((row: any) => {
       const prev = itemMap.get(row.category_item_id) || {
         totalScore: 0,
         count: 0,
@@ -320,22 +360,17 @@ export async function POST(req: Request) {
 
     const divisor = totalReviewers > 0 ? totalReviewers : 1;
     const finalScoresPayload: any[] = [];
-    let calculatedTotalScore = 0;
-
     itemMap.forEach((val, itemId) => {
-      const avgScore = Math.round(val.totalScore / divisor);
-      calculatedTotalScore += avgScore;
-
+      const avgScore = val.totalScore / divisor;
       finalScoresPayload.push({
         evaluation_id: evalData.id,
         category_item_id: itemId,
-        score: avgScore,
+        score: Number(avgScore.toFixed(2)),
         remark: val.remark || null,
         is_included: true,
       });
     });
 
-    // บันทึกคะแนนเฉลี่ยลงตารางหลัก rm_evaluation_scores
     await supabaseAdmin
       .from("rm_evaluation_scores")
       .delete()
@@ -347,17 +382,61 @@ export async function POST(req: Request) {
         .insert(finalScoresPayload);
     }
 
-    // คำนวณเกรด และอัปเดตเป็น 'Submitted' เพื่อส่งไปเมนู Management
-    const summaryMaxScore = body.maxScore || 100;
+    // ⭐️ คำนวณผลรวมตามโจทย์ลูกค้า: นำคะแนนรวมที่ได้ของผู้ประเมินทุกคนมาบวกกัน แล้วหารตามจำนวนผู้ประเมิน
+    let finalTotalScore = Number(body.totalScore ?? 0);
+    let finalCompanyScore = Number(body.companyScore ?? 0);
+    let finalDepartmentScore = Number(body.departmentScore ?? 0);
+    let finalExpectationScore = Number(body.expectationScore ?? 0);
+    const summaryMaxScore = Number(body.maxScore) || 160;
+
+    if (totalReviewers > 1) {
+      const submissions = (allReviewers || [])
+        .map((rev) => existingReviewerSubmissions[rev.manager_id])
+        .filter(Boolean);
+
+      const count =
+        submissions.length > 0 ? submissions.length : totalReviewers;
+      const sumTotal = submissions.reduce(
+        (acc, s) => acc + Number(s.totalScore || 0),
+        0,
+      );
+      const sumCompany = submissions.reduce(
+        (acc, s) => acc + Number(s.companyScore || 0),
+        0,
+      );
+      const sumDept = submissions.reduce(
+        (acc, s) => acc + Number(s.departmentScore || 0),
+        0,
+      );
+      const sumExp = submissions.reduce(
+        (acc, s) => acc + Number(s.expectationScore || 0),
+        0,
+      );
+
+      // คะแนนที่ได้บวกกัน แล้วหาร 2 (หรือหารจำนวนผู้ประเมิน)
+      finalTotalScore = sumTotal / count;
+      finalCompanyScore = Math.round((sumCompany / count) * 100) / 100;
+      finalDepartmentScore = Math.round((sumDept / count) * 100) / 100;
+      finalExpectationScore = Math.round((sumExp / count) * 100) / 100;
+    }
+
+    // คิดเป็นเปอร์เซ็นต์: (คะแนนที่ได้หารสอง / คะแนนเต็ม) * 100
     const percentage =
-      summaryMaxScore > 0 ? (calculatedTotalScore / summaryMaxScore) * 100 : 0;
+      summaryMaxScore > 0
+        ? Math.round((finalTotalScore / summaryMaxScore) * 100 * 100) / 100
+        : 0;
+
     const finalGrade = computeGrade(percentage);
 
     const { data: finalizedEval } = await supabaseAdmin
       .from("rm_evaluations")
       .update({
         status: "Submitted",
-        totalScore: calculatedTotalScore,
+        companyScore: finalCompanyScore,
+        departmentScore: finalDepartmentScore,
+        expectationScore: finalExpectationScore,
+        totalScore: finalTotalScore,
+        maxScore: summaryMaxScore,
         grade: finalGrade,
         completedAt: new Date().toISOString(),
       })

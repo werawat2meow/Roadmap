@@ -24,7 +24,20 @@ type Employee = {
 
 type ExecutiveSlideOverProps = {
   open: boolean;
-  employee: Employee | null;
+  employee?: {
+    initials?: string;
+    name?: string;
+    grade?: string;
+    title?: string;
+    tags?: { label: string; className: string }[];
+    quarter?: string;
+    score?: number;
+    rawScore?: number;
+    maxScore?: number;
+    scoreClass?: string;
+    evaluatorName?: string;
+    completedDate?: string;
+  } | null;
   evaluationId?: string;
   onClose: () => void;
   onApprove?: () => void;
@@ -102,7 +115,9 @@ export default function ExecutiveSlideOver({
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-sm font-medium text-slate-500">คะแนนประเมินรวม</p>
+                <p className="text-sm font-medium text-slate-500">
+                  คะแนนประเมินรวม
+                </p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className={`text-4xl font-black ${scoreClass}`}>
                     {score}%
@@ -125,7 +140,8 @@ export default function ExecutiveSlideOver({
               </div>
               <div className="flex justify-between items-center px-1">
                 <span className="text-xs font-bold text-slate-400">
-                  {score} / 100 คะแนน
+                  {employee?.rawScore ?? score} / {employee?.maxScore ?? 100}{" "}
+                  คะแนน
                 </span>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
                   <CheckCircle className="h-3.5 w-3.5" />
@@ -142,18 +158,38 @@ export default function ExecutiveSlideOver({
             <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-2">
               ข้อมูลทั่วไป
             </h3>
-            
+
             <div className="grid grid-cols-1 gap-3">
               <CompactDetailRow icon={Award} label="แผนก" value={department} />
-              <CompactDetailRow icon={ClipboardList} label="ตำแหน่ง" value={title} />
-              
+              <CompactDetailRow
+                icon={ClipboardList}
+                label="ตำแหน่ง"
+                value={title}
+              />
+
               <div className="grid grid-cols-2 gap-3">
-                <CompactDetailRow icon={CalendarDays} label="ระดับ" value={quarter} />
-                <CompactDetailRow icon={ClipboardList} label="ประเภท" value={typeValue} />
+                <CompactDetailRow
+                  icon={CalendarDays}
+                  label="ระดับ"
+                  value={quarter}
+                />
+                <CompactDetailRow
+                  icon={ClipboardList}
+                  label="ประเภท"
+                  value={typeValue}
+                />
               </div>
 
-              <CompactDetailRow icon={Users} label="ผู้ประเมิน" value={employee?.evaluatorName || "ไม่ระบุ"} />
-              <CompactDetailRow icon={CalendarDays} label="วันที่ประเมิน" value={employee?.completedDate || "-"} />
+              <CompactDetailRow
+                icon={Users}
+                label="ผู้ประเมิน"
+                value={employee?.evaluatorName || "ไม่ระบุ"}
+              />
+              <CompactDetailRow
+                icon={CalendarDays}
+                label="วันที่ประเมิน"
+                value={employee?.completedDate || "-"}
+              />
             </div>
           </div>
 

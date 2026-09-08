@@ -29,11 +29,16 @@ export default function EmployeeEvaluationCompareModal({
 }: Props) {
   if (!open) return null;
 
+  const fmt = (v: number | null | undefined) =>
+    typeof v === "number" ? new Intl.NumberFormat("th-TH").format(v) : "-";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
       <div className="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-4">
-          <h2 className="text-xl font-bold text-slate-900">เปรียบเทียบการประเมิน</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            เปรียบเทียบการประเมิน
+          </h2>
           <button
             onClick={onClose}
             className="rounded-full bg-rose-500 px-3 py-1 text-sm font-semibold text-white"
@@ -45,7 +50,7 @@ export default function EmployeeEvaluationCompareModal({
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
+              <tr className="border-b border-slate-200 text-center text-slate-900">
                 <th className="py-2 pr-4">ครั้งที่</th>
                 <th className="py-2 pr-4">วันที่</th>
                 <th className="py-2 pr-4">ประเภท</th>
@@ -58,19 +63,43 @@ export default function EmployeeEvaluationCompareModal({
               </tr>
             </thead>
             <tbody>
+              {" "}
               {records.map((record, index) => (
-                <tr key={record.id} className="border-b border-slate-100">
-                  <td className="py-3 pr-4">{index + 1}</td>
-                  <td className="py-3 pr-4">{new Date(record.created_at).toLocaleDateString("th-TH")}</td>
-                  <td className="py-3 pr-4">{record.evaluationType || "-"}</td>
-                  <td className="py-3 pr-4">{record.totalScore ?? "-"}</td>
-                  <td className="py-3 pr-4">{record.currentSalary ?? "-"}</td>
-                  <td className="py-3 pr-4">{record.newSalary ?? "-"}</td>
-                  <td className="py-3 pr-4">{record.new_designation || "-"}</td>
-                  <td className="py-3 pr-4">{record.new_level || "-"}</td>
-                  <td className="py-3 pr-4">{record.status}</td>
+                <tr
+                  key={record.id}
+                  className="border-b border-slate-100 text-slate-500"
+                >
+                  {" "}
+                  <td className="py-3 pr-4 text-center">{index + 1}</td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {" "}
+                    {new Date(record.created_at).toLocaleDateString(
+                      "th-TH",
+                    )}{" "}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {record.evaluationType || "-"}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {record.totalScore ?? "-"}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-right">
+                    {fmt(record.currentSalary)}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-right">
+                    {fmt(record.newSalary)}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {record.new_designation || "-"}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {record.new_level || "-"}
+                  </td>{" "}
+                  <td className="py-3 pr-4 text-center">
+                    {record.status}
+                  </td>{" "}
                 </tr>
-              ))}
+              ))}{" "}
             </tbody>
           </table>
         </div>

@@ -91,9 +91,15 @@ export default function EvaluationHistoryModal({
                         สถานะ:
                       </span>
                       <span
-                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${statusBadgeClass}`}
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${
+                          record.status === "In_Review"
+                            ? "bg-blue-50 text-blue-700 ring-1 ring-blue-600/10"
+                            : statusBadgeClass
+                        }`}
                       >
-                        {record.status}
+                        {record.status === "In_Review"
+                          ? "รอผู้ประเมินอีกท่าน"
+                          : record.status}
                       </span>
                     </div>
 
@@ -107,9 +113,9 @@ export default function EvaluationHistoryModal({
                     </div>
                   </div>
 
-                  {record.status === "Returned" && record.rejection_note && (
+                  {Boolean(record.rejection_note) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                      <p className="font-semibold">ถูกตีกลับให้แก้ไข</p>
+                      <p className="font-semibold">หมายเหตุการตีกลับแก้ไข:</p>
                       <p className="mt-1">{record.rejection_note}</p>
                     </div>
                   )}

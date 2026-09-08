@@ -59,6 +59,17 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
+    // 🔥 เพิ่มส่วนนี้: ถ้าเป็นการตีกลับแก้ไข ให้รีเซ็ตสถานะของผู้ประเมินทุกคนกลับเป็น Draft
+    if (action === "return") {
+      await supabaseAdmin
+        .from("rm_evaluation_reviewers")
+        .update({
+          status: "Draft",
+          completedAt: null,
+        })
+        .eq("evaluation_id", evaluationId);
+    }
+
     return NextResponse.json({
       success: true,
       message:

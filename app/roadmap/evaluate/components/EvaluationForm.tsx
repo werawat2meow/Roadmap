@@ -76,6 +76,8 @@ type EvaluationFormProps = {
   managers?: ManagerUser[];
   formData?: EvaluationFormData;
   onFormChange?: (next: Partial<EvaluationFormData>) => void;
+  showDepartmentWarning?: boolean;
+  departmentWarningText?: React.ReactNode
 };
 
 const makeRow = (prefix: string): RowState => ({
@@ -105,6 +107,8 @@ export default function EvaluationForm({
   employeeLevel,
   formData,
   onFormChange,
+  showDepartmentWarning,
+departmentWarningText,
 }: EvaluationFormProps) {
   const selectedLevel =
     employeeLevel ||
@@ -290,9 +294,7 @@ export default function EvaluationForm({
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-medium text-gray-500">
-              ระดับใหม่
-            </span>
+            <span className="text-sm font-medium text-gray-500">ระดับใหม่</span>
             <input
               type="text"
               value={formData?.newLevel ?? ""}
@@ -386,6 +388,9 @@ export default function EvaluationForm({
         onChangeRow={updateDepartmentRow}
         onAddRow={addDepartmentRow}
         onRemoveRow={removeDepartmentRow}
+        footerWarning={
+          showDepartmentWarning ? (departmentWarningText ?? null) : null
+        }
       />
 
       <EvaluationSection

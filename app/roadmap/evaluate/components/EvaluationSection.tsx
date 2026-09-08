@@ -9,8 +9,8 @@ type Item = {
 
 type RowState = {
   rowId: string;
-  itemId: string;  // UUID for Company/Department dropdown
-  topic: string;   // free text for Expectations
+  itemId: string; // UUID for Company/Department dropdown
+  topic: string; // free text for Expectations
   maxScore: number;
   score: number;
   note: string;
@@ -31,6 +31,7 @@ type EvaluationSectionProps = {
   onChangeRow: (rowId: string, next: Partial<RowState>) => void;
   onAddRow: () => void;
   onRemoveRow?: (rowId: string) => void;
+  footerWarning?: React.ReactNode;
 };
 
 const ScoreDropdown = ({ score }: { score: number }) => (
@@ -55,9 +56,15 @@ export default function EvaluationSection({
   onChangeRow,
   onAddRow,
   onRemoveRow,
+  footerWarning,
 }: EvaluationSectionProps) {
   const totalMaxScore = rows.reduce((sum, row) => sum + row.maxScore, 0);
   const totalScore = rows.reduce((sum, row) => sum + row.score, 0);
+  const clamp = (v: number, max: number) => {
+    if (!Number.isFinite(max) || max <= 0) return v;
+    if (!Number.isFinite(v) || v < 0) return 0;
+    return Math.min(v, max);
+  };
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
       <div className="flex justify-between items-center bg-blue-600 text-white -m-4 mb-0 p-3 rounded-t-lg">
@@ -147,14 +154,16 @@ export default function EvaluationSection({
                     <input
                       type="number"
                       value={row.score}
-                      onChange={(e) =>
-                        onChangeRow(row.rowId, {
-                          score: Number(e.target.value),
-                        })
-                      }
+                      onChange={(e) => {
+                        const raw = Number(e.target.value);
+                        const maxAllowed = Number(row.maxScore ?? 0);
+                        const nextScore = clamp(raw, maxAllowed);
+                        onChangeRow(row.rowId, { score: nextScore });
+                      }}
                       /* 🛠️ เปลี่ยนจาก px-2 py-1 เป็น p-2 ความสูงจะเท่ากับช่องหมายเหตุเป๊ะ */
                       className="w-full min-w-[80px] border border-gray-300 rounded-md p-2 bg-white text-black text-center"
                       min={0}
+                      max={row.maxScore ?? undefined}
                     />
                   </td>
                   <td className="py-2 px-2">
@@ -201,6 +210,16 @@ export default function EvaluationSection({
               <td className="pt-3 text-center px-2">{totalScore}</td>
               <td colSpan={2}></td>
             </tr>
+
+            {footerWarning ? (
+              <tr>
+                <td colSpan={5} className="pt-2">
+                  <div className="text-sm text-rose-700 font-medium bg-rose-50 p-2 rounded">
+                    {footerWarning}
+                  </div>
+                </td>
+              </tr>
+            ) : null}
           </tfoot>
         </table>
       </div>

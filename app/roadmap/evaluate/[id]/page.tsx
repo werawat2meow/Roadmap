@@ -53,7 +53,11 @@ type HistoryRecord = {
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
-  rm_evaluation_reviewers?: { manager_id: string }[];
+  rm_evaluation_reviewers?: Array<{
+    id?: string;
+    manager_id: string;
+    status?: string;
+  }>;
 };
 
 export default function EvaluateEmployeePage() {
@@ -387,14 +391,22 @@ export default function EvaluateEmployeePage() {
   const buildScoreRows = (rows: RowState[]) =>
     rows
       .filter(
-        (row) => row.itemId && isUuid(row.itemId) && Number.isFinite(row.score),
+        (row) =>
+          row.itemId &&
+          isUuid(row.itemId) &&
+          Number.isFinite(Number(row.score)),
       )
-      .map((row) => ({
-        categoryItemId: row.itemId,
-        score: row.score,
-        remark: row.note || null,
-        isIncluded: true,
-      }));
+      .map((row) => {
+        const maxAllowed = Number(row.maxScore ?? (row as any).weight ?? 0);
+        const raw = Number(row.score ?? 0);
+        return {
+          categoryItemId: row.itemId,
+          score: Math.min(raw, maxAllowed),
+          max: maxAllowed,
+          remark: row.note || null,
+          isIncluded: true,
+        };
+      });
 
   const createScoresPayload = () => [
     ...buildScoreRows(formData.companyRows),
@@ -462,6 +474,15 @@ export default function EvaluateEmployeePage() {
   };
 
   const handleSaveDraft = async () => {
+    if (selectedManagerIds.length === 0) {
+      if (
+        !window.confirm(
+          "คุณยังไม่ได้เลือกผู้ประเมิน ต้องการบันทึกแบบร่างต่อหรือไม่?",
+        )
+      ) {
+        return;
+      }
+    }
     await sendEvaluationPayload("Draft");
   };
 
@@ -596,6 +617,36 @@ export default function EvaluateEmployeePage() {
       managers={managers}
       formData={formData}
       onFormChange={handleFormChange}
+      showDepartmentWarning={
+        !employee?.departmentId || departmentGround.length === 0
+      }
+      departmentWarningText={
+        !employee?.departmentId ? (
+          <>
+            ยังไม่มีข้อมูลแผนกสำหรับพนักงานคนนี้ — กรุณาเพิ่มที่{" "}
+            <a
+              href="/admin/settings/departments"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold"
+            >
+              Settings → Department
+            </a>
+          </>
+        ) : (
+          <>
+            ยังไม่มีข้อมูลแผนกสำหรับฝ่าย/หน่วยนี้ — กรุณาเพิ่มที่{" "}
+            <a
+              href="/roadmap/settings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold"
+            >
+              Settings → Department
+            </a>
+          </>
+        )
+      }
     />
   );
 

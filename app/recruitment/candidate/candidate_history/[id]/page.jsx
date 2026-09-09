@@ -151,6 +151,7 @@ export default function CandidateHistoryPage({ params }) {
           columns={columns}
           dataSource={history}
           pagination={false}
+          loading={loading}
         />
       </Card>
     </Space>

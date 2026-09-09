@@ -109,6 +109,7 @@ export async function GET(request) {
         p_branch_ids: branchIds,
         p_page: page,
         p_page_size: isAll ? 999999 : pageSize,
+        p_include_null_branch: all_scrop,
       }
     );
 

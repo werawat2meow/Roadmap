@@ -50,6 +50,118 @@ function toDayjs(value) {
     : null;
 }
 
+/* =========================================================
+   Enterprise Identity Validation
+========================================================= */
+
+function normalizeCitizenId(value) {
+  return String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 13);
+}
+
+function isValidThaiCitizenId(value) {
+  const citizenId =
+    normalizeCitizenId(value);
+
+  if (!/^\d{13}$/.test(citizenId)) {
+    return false;
+  }
+
+  let sum = 0;
+
+  for (
+    let index = 0;
+    index < 12;
+    index += 1
+  ) {
+    sum +=
+      Number(citizenId[index]) *
+      (13 - index);
+  }
+
+  const expectedCheckDigit =
+    (11 - (sum % 11)) % 10;
+
+  return (
+    expectedCheckDigit ===
+    Number(citizenId[12])
+  );
+}
+
+function normalizePassportNo(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 20);
+}
+
+function isValidPassportNo(value) {
+  const passportNo =
+    normalizePassportNo(value);
+
+  /*
+    Passport ไม่มีรูปแบบเดียวกันทุกประเทศ
+    จึงไม่บังคับ 9 ตัวแบบตายตัว
+
+    Employee Master รองรับ:
+    - A-Z
+    - 0-9
+    - 6 ถึง 20 ตัวอักษร
+  */
+  return /^[A-Z0-9]{6,20}$/.test(
+    passportNo
+  );
+}
+
+function isThaiNationality(item) {
+  if (!item) {
+    return false;
+  }
+
+  const codes = [
+    item.nationality_code,
+    item.iso2,
+    item.iso3,
+  ]
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toUpperCase()
+    )
+    .filter(Boolean);
+
+  if (
+    codes.includes("TH") ||
+    codes.includes("THA") ||
+    codes.includes("THAI")
+  ) {
+    return true;
+  }
+
+  const nameTh =
+    String(
+      item.nationality_name_th ||
+      ""
+    ).trim();
+
+  const nameEn =
+    String(
+      item.nationality_name_en ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  return (
+    nameTh === "ไทย" ||
+    nameTh === "สัญชาติไทย" ||
+    nameEn === "thai" ||
+    nameEn === "thailand"
+  );
+}
+
 function buildOptions(rows = [],{codeKey,nameKey,nameEnKey,}) {
   return rows.map((item) => {
     const code = item?.[codeKey];
@@ -104,6 +216,23 @@ export default function EmployeePersonalStep({
 
   const countries =
     masterData.countries || [];
+
+  const selectedNationality =
+    nationalities.find(
+      (item) =>
+        String(item?.id || "") ===
+        String(nationalityId || "")
+    ) || null;
+
+  const isThaiEmployee =
+    Boolean(nationalityId) &&
+    isThaiNationality(
+      selectedNationality
+    );
+
+  const isForeignEmployee =
+    Boolean(nationalityId) &&
+    !isThaiEmployee;
 
   const titleOptions =
     buildOptions(titles, {
@@ -543,6 +672,13 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="สัญชาติ"
             name="nationality_id"
+            rules={[
+              {
+                required: true,
+                message:
+                  "กรุณาเลือกสัญชาติเพื่อกำหนดข้อมูลยืนยันตัวตน",
+              },
+            ]}
           >
             <LazyNationalitySelect
                 disabled={disabled}
@@ -580,19 +716,90 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="เลขบัตรประชาชน"
             name="citizen_id"
+            required={
+              isThaiEmployee
+            }
+            dependencies={[
+              "nationality_id",
+            ]}
+            normalize={(value) =>
+              normalizeCitizenId(
+                value
+              )
+            }
             rules={[
-              {
-                pattern:
-                  /^\d{13}$/,
-                message:
-                  "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก",
-              },
+              () => ({
+                validator(
+                  _,
+                  value
+                ) {
+                  const citizenId =
+                    normalizeCitizenId(
+                      value
+                    );
+
+                  if (
+                    isThaiEmployee &&
+                    !citizenId
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "พนักงานสัญชาติไทยต้องระบุเลขบัตรประชาชน"
+                      )
+                    );
+                  }
+
+                  if (!citizenId) {
+                    return Promise.resolve();
+                  }
+
+                  if (
+                    !/^\d{13}$/.test(
+                      citizenId
+                    )
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก"
+                      )
+                    );
+                  }
+
+                  if (
+                    !isValidThaiCitizenId(
+                      citizenId
+                    )
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "เลขบัตรประชาชนไม่ถูกต้อง กรุณาตรวจสอบเลขทั้ง 13 หลัก"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              }),
             ]}
           >
             <Input
               disabled={disabled}
+              inputMode="numeric"
               maxLength={13}
-              placeholder="เลขบัตรประชาชน"
+              autoComplete="off"
+              placeholder={
+                isThaiEmployee
+                  ? "เลขบัตรประชาชน 13 หลัก *"
+                  : "เลขบัตรประชาชน (ถ้ามี)"
+              }
+              onChange={(event) => {
+                form.setFieldValue(
+                  "citizen_id",
+                  normalizeCitizenId(
+                    event.target.value
+                  )
+                );
+              }}
             />
           </Form.Item>
         </Col>
@@ -604,10 +811,77 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="เลขหนังสือเดินทาง"
             name="passport_no"
+            required={
+              isForeignEmployee
+            }
+            dependencies={[
+              "nationality_id",
+            ]}
+            normalize={(value) =>
+              normalizePassportNo(
+                value
+              )
+            }
+            rules={[
+              () => ({
+                validator(
+                  _,
+                  value
+                ) {
+                  const passportNo =
+                    normalizePassportNo(
+                      value
+                    );
+
+                  if (
+                    isForeignEmployee &&
+                    !passportNo
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "พนักงานต่างชาติต้องระบุเลขหนังสือเดินทาง"
+                      )
+                    );
+                  }
+
+                  if (!passportNo) {
+                    return Promise.resolve();
+                  }
+
+                  if (
+                    !isValidPassportNo(
+                      passportNo
+                    )
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "เลขหนังสือเดินทางต้องเป็น A-Z หรือ 0-9 จำนวน 6-20 ตัว"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              }),
+            ]}
           >
             <Input
               disabled={disabled}
-              placeholder="Passport Number"
+              maxLength={20}
+              autoComplete="off"
+              placeholder={
+                isForeignEmployee
+                  ? "Passport Number *"
+                  : "Passport Number (ถ้ามี)"
+              }
+              onChange={(event) => {
+                form.setFieldValue(
+                  "passport_no",
+                  normalizePassportNo(
+                    event.target.value
+                  )
+                );
+              }}
             />
           </Form.Item>
         </Col>
@@ -619,18 +893,62 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="วันหมดอายุหนังสือเดินทาง"
             name="passport_expire_date"
+            required={
+              isForeignEmployee
+            }
+            dependencies={[
+              "nationality_id",
+              "passport_no",
+            ]}
             getValueProps={(value) => ({
               value: toDayjs(value),
             })}
             normalize={(value) =>
               toDayjs(value)
             }
+            rules={[
+              ({
+                getFieldValue,
+              }) => ({
+                validator(
+                  _,
+                  value
+                ) {
+                  const passportNo =
+                    normalizePassportNo(
+                      getFieldValue(
+                        "passport_no"
+                      )
+                    );
+
+                  if (
+                    (
+                      isForeignEmployee ||
+                      passportNo
+                    ) &&
+                    !value
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "กรุณาระบุวันหมดอายุหนังสือเดินทาง"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              }),
+            ]}
           >
             <DatePicker
               disabled={disabled}
               format="DD/MM/YYYY"
               className="w-full"
-              placeholder="เลือกวันหมดอายุ"
+              placeholder={
+                isForeignEmployee
+                  ? "เลือกวันหมดอายุ *"
+                  : "เลือกวันหมดอายุ"
+              }
             />
           </Form.Item>
         </Col>

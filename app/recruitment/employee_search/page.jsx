@@ -10,7 +10,6 @@ import {
   Space,
   Empty,
 } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
 
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
@@ -59,56 +58,56 @@ export default function EmployeeSearchPage() {
     });
 
     const handleSearch = async (
-    value,
-    page = 1,
-    pageSize = pagination.pageSize
-    ) => {
-    const keyword = value.trim();
+      value,
+      page = 1,
+      pageSize = pagination.pageSize
+      ) => {
+      const keyword = value.trim();
 
-    setSearch(value);
+      setSearch(value);
 
-    if (!keyword) {
-        setData([]);
-        setPagination({
-        current: 1,
-        pageSize: 10,
-        total: 0,
-        });
-        return;
-    }
+      if (!keyword) {
+          setData([]);
+          setPagination({
+          current: 1,
+          pageSize: 10,
+          total: 0,
+          });
+          return;
+      }
 
-    try {
-        setLoading(true);
+      try {
+          setLoading(true);
 
-        const params = new URLSearchParams({
-        search: keyword,
-        page: String(page),
-        pageSize: String(pageSize),
-        });
+          const params = new URLSearchParams({
+            search: keyword,
+            page: String(page),
+            pageSize: String(pageSize),
+          });
 
-        const response = await fetch(
-        `/recruitment/api/employee_search?${params.toString()}`
-        );
+          const response = await fetch(
+          `/recruitment/api/employee_search?${params.toString()}`
+          );
 
-        const result = await response.json();
+          const result = await response.json();
 
-        if (result.success) {
-        setData(result.data || []);
+          if (result.success) {
+          setData(result.data || []);
 
-        setPagination({
-            current: result.page,
-            pageSize: result.pageSize,
-            total: result.total,
-        });
-        } else {
-        setData([]);
-        }
-    } catch (error) {
-        console.error("Search employee error:", error);
-        setData([]);
-    } finally {
-        setLoading(false);
-    }
+          setPagination({
+              current: result.page,
+              pageSize: result.pageSize,
+              total: result.total,
+          });
+          } else {
+          setData([]);
+          }
+      } catch (error) {
+          console.error("Search employee error:", error);
+          setData([]);
+      } finally {
+          setLoading(false);
+      }
     };
 
   const columns = [
@@ -160,6 +159,14 @@ export default function EmployeeSearchPage() {
     },
   ];
 
+  const handleTableChange = (paginationInfo) => {
+    handleSearch(
+      search,
+      paginationInfo.current,
+      paginationInfo.pageSize
+    );
+  };
+
     if (isChecking || loading) return <LoadingOrb />;
     if (!canView) return null;
 
@@ -189,14 +196,21 @@ export default function EmployeeSearchPage() {
             value={search}
             onChange={(e) => {
               const value = e.target.value;
-
               setSearch(value);
 
               if (!value.trim()) {
                 setData([]);
+                setPagination({
+                  current: 1,
+                  pageSize: 10,
+                  total: 0,
+                });
               }
             }}
-            onSearch={handleSearch}
+            onSearch={(value) => {
+              setSearch(value);
+              handleSearch(value, 1, pagination.pageSize);
+            }}
             loading={loading}
             enterButton="ค้นหา"
           />
@@ -207,21 +221,20 @@ export default function EmployeeSearchPage() {
             dataSource={data}
             loading={loading}
             pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                total: pagination.total,
-                showSizeChanger: true,
-                pageSizeOptions: [10, 20, 50, 100],
-
-                showTotal: (total, range) =>
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              pageSizeOptions: [10, 20, 50, 100],
+              showTotal: (total, range) =>
                 `${range[0]}-${range[1]} จาก ${total} รายการ`,
             }}
             onChange={(paginationInfo) => {
-                handleSearch(
+              handleSearch(
                 search,
                 paginationInfo.current,
                 paginationInfo.pageSize
-                );
+              );
             }}
             scroll={{ x: 1000 }}
           />

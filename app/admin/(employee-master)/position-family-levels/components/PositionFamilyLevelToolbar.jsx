@@ -10,6 +10,7 @@ import {
 import {
   SaveOutlined,
   ReloadOutlined,
+  SolutionOutlined,
 } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -24,12 +25,27 @@ export default function PositionFamilyLevelToolbar({
   canCreate = false,
   canEdit = false,
 
+  /* =========================================================
+     Navigation Permission
+
+     canViewPositions
+     -> ems.positions.view
+  ========================================================= */
+
+  canViewPositions = false,
+
   hasChanges = false,
   canSave = false,
 
   onSave,
   onRefresh,
   onReset,
+
+  /* =========================================================
+     Navigation
+  ========================================================= */
+
+  onOpenPositions,
 }) {
   /* =========================================================
      Permission
@@ -60,6 +76,7 @@ export default function PositionFamilyLevelToolbar({
    * - ยังไม่มีการเปลี่ยนแปลง
    * - การเปลี่ยนแปลงนั้นไม่ตรงกับ Permission
    */
+
   const showSave =
     canManage;
 
@@ -68,9 +85,31 @@ export default function PositionFamilyLevelToolbar({
     !hasChanges ||
     !canSave;
 
+  /* =========================================================
+     Navigation
+
+     ปุ่มตำแหน่งใช้ Permission ของ Module ปลายทางโดยตรง
+
+     ems.positions.view
+  ========================================================= */
+
+  const showPositions =
+    canViewPositions;
+
+  const disablePositions =
+    !selectedFamilyId;
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <Card className="mb-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* ===================================================
+            INFO
+        =================================================== */}
+
         <Space
           orientation="vertical"
           size={0}
@@ -88,7 +127,40 @@ export default function PositionFamilyLevelToolbar({
           </Text>
         </Space>
 
-        <Space>
+        {/* ===================================================
+            ACTIONS
+        =================================================== */}
+
+        <Space wrap>
+          {/* =================================================
+              POSITIONS
+
+              ไปหน้า:
+              /admin/positions?family_id=...
+
+              Handler อยู่ใน page.jsx
+          ================================================= */}
+
+          {showPositions && (
+            <Button
+              icon={
+                <SolutionOutlined />
+              }
+              disabled={
+                disablePositions
+              }
+              onClick={
+                onOpenPositions
+              }
+            >
+              ตำแหน่งในกลุ่มสายงาน
+            </Button>
+          )}
+
+          {/* =================================================
+              RESET
+          ================================================= */}
+
           <Button
             icon={
               <ReloadOutlined />
@@ -103,6 +175,10 @@ export default function PositionFamilyLevelToolbar({
             Reset
           </Button>
 
+          {/* =================================================
+              REFRESH
+          ================================================= */}
+
           <Button
             icon={
               <ReloadOutlined />
@@ -116,6 +192,10 @@ export default function PositionFamilyLevelToolbar({
           >
             Refresh
           </Button>
+
+          {/* =================================================
+              SAVE
+          ================================================= */}
 
           {showSave && (
             <Button

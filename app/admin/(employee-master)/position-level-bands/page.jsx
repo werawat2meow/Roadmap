@@ -11,6 +11,7 @@ import PositionLevelBandModal from "./components/PositionLevelBandModal";
 import { useRouter,useSearchParams, } from "next/navigation";
 import {useAuth} from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
 
 export default function PositionLevelBandsPage() {
 
@@ -26,10 +27,27 @@ export default function PositionLevelBandsPage() {
   const canEdit = hasPermission(user,"ems.position_level_bands.edit");
   const canDelete = hasPermission(user,"ems.position_level_bands.delete");
 
+  /* ==========================
+    Navigation Context
+
+    รองรับทั้ง:
+    - ?level_id=...
+    - ?position_level_id=...
+
+    เพื่อให้เปิดมาจากหน้า
+    /admin/position-family-levels
+    แล้วเลือกระดับที่กดมาให้อัตโนมัติ
+  ========================== */
+
+  const levelIdFromUrl =
+    searchParams.get("level_id")?.trim() ||
+    searchParams.get("position_level_id")?.trim() ||
+    "";
+
   const [loading, setLoading] = useState(false);
   const [levels, setLevels] = useState([]);
   const [bands, setBands] = useState([]);
-  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState(() => levelIdFromUrl || null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] =useState(20);
@@ -52,9 +70,17 @@ export default function PositionLevelBandsPage() {
       }
       const rows = json.data || [];
       setLevels(rows);
-      const levelId =searchParams.get("position_level_id");
-      if (levelId && rows.some((x) => x.id === levelId)) {
-        setSelectedLevel(levelId);
+      if (
+        levelIdFromUrl &&
+        rows.some(
+          (item) =>
+            String(item.id) ===
+            String(levelIdFromUrl)
+        )
+      ) {
+        setSelectedLevel(
+          levelIdFromUrl
+        );
       }
     } catch (err) {
       console.error(err);
@@ -69,15 +95,23 @@ export default function PositionLevelBandsPage() {
   ========================== */
 
   useEffect(() => {
-    const levelId =
-      searchParams.get(
-        "position_level_id"
-      );
-
-    if (levelId) {
-      setSelectedLevel(levelId);
+    if (!levelIdFromUrl) {
+      return;
     }
-  }, [searchParams]);
+
+    setPage(1);
+
+    setSelectedLevel((current) => {
+      if (
+        String(current || "") ===
+        String(levelIdFromUrl)
+      ) {
+        return current;
+      }
+
+      return levelIdFromUrl;
+    });
+  }, [levelIdFromUrl]);
 
   /* ==========================
       Load Bands
@@ -130,11 +164,28 @@ export default function PositionLevelBandsPage() {
   };
 
   /* ==========================
+      Level Change
+  ========================== */
+
+  const handleLevelChange = (
+    value
+  ) => {
+    setPage(1);
+    setSelectedLevel(
+      value || null
+    );
+  };
+
+  /* ==========================
       Search
   ========================== */
 
   const handleSearch = () => {
-    setPage(1);
+    if (page !== 1) {
+      setPage(1);
+      return;
+    }
+
     loadBands();
   };
 
@@ -144,8 +195,9 @@ export default function PositionLevelBandsPage() {
 
   const handleReset = () => {
     setSearch("");
-    const levelId = searchParams.get("position_level_id");
-    setSelectedLevel(levelId || null);
+    setSelectedLevel(
+      levelIdFromUrl || null
+    );
     setPage(1);
     setTimeout(() => {
       loadBands();
@@ -314,9 +366,7 @@ export default function PositionLevelBandsPage() {
   return (
     <Card
       title={
-        currentLevel
-          ? `Position Level Bands - ${currentLevel.level_code} (${currentLevel.level_name})`
-          : "Position Level Bands"
+        currentLevel? `Position Level Bands - ${currentLevel.level_code} (${currentLevel.level_name})` : "Position Level Bands"
       }
       extra={
         <Button
@@ -329,24 +379,30 @@ export default function PositionLevelBandsPage() {
         </Button>
       }
     >
+
+      <PageInfoAlert
+        message="Position Level Bands"
+        description="จัดการข้อมูล Band ของแต่ละระดับตำแหน่งงานคนไทย (Position Level) โดยสามารถเลือก Position Level ที่ต้องการจัดการได้จากด้านบน "
+      />
+
+      <div style={{ marginTop: 10 }} />
+
       <PositionLevelBandSearch
         search={search}
         setSearch={setSearch}
         levels={levels}
         selectedLevel={selectedLevel}
         setSelectedLevel={
-          setSelectedLevel
+          handleLevelChange
         }
         onSearch={handleSearch}
         onReset={handleReset}
         lockLevel={
-          !!searchParams.get(
-            "position_level_id"
-          )
+          !!levelIdFromUrl
         }
       />
 
-      <div style={{ marginTop: 20 }} />
+      <div style={{ marginTop: 10 }} />
 
       <PositionLevelBandTable
         data={bands}
@@ -381,16 +437,3 @@ export default function PositionLevelBandsPage() {
     </Card>
   );
 }
-
-
-
-/****
- * 
- * 
- *  คิดเรื่องเงินเดือน ต่างชาติที่มี passport/ พม่า ที่ไม่มี passport    แล้วมีการจ่ายจริง และมีการเสียภาษี 
- * 
- * 
- * 
- * 
- * 
- */

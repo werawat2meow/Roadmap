@@ -847,9 +847,6 @@ export const MenuHRMS = [
     ]
   },
 
-
-
-
   {
     title: "JOB ARCHITECTURE",
     icon: "ProfileOutlined",
@@ -863,6 +860,62 @@ export const MenuHRMS = [
       { label: "ตำแหน่งตามหน่วย", href: "/admin/unit-positions", icon: "PartitionOutlined", permission: "ems.unit_positions.view" },
       { label: "เส้นทางอาชีพ", href: "/admin/career-paths", icon: "ApartmentOutlined", permission: "ems.career_paths.view" }
     ]
+  },
+
+  // รองรับทั้ง Expat ต่างชาติ + แรงงาน MOU เช่น เมียนมา/ลาว/กัมพูชา ผมแนะนำขยายให้ครบวงจรประมาณนี้ครับ โดยยัง ไม่เอาเงินเดือน/Payroll มาปนในหมวดนี้
+  {
+    title: "EMPLOYEE COMPLIANCE",
+    icon: "SafetyCertificateOutlined",
+    items: [
+      {
+        label: "รูปแบบการจ้างพนักงานต่างชาติ",
+        href: "/admin/foreign-employment-schemes",
+        icon: "ApartmentOutlined",
+        permission: "ems.foreign_employment_schemes.view",
+      },
+      {
+        label: "ประเภทวีซ่า",
+        href: "/admin/visa-types",
+        icon: "IdcardOutlined",
+        permission: "ems.visa_types.view",
+      },
+      {
+        label: "ประเภทใบอนุญาตทำงาน",
+        href: "/admin/work-permit-types",
+        icon: "FileProtectOutlined",
+        permission: "ems.work_permit_types.view",
+      },
+      {
+        label: "ประเภทเอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-document-types",
+        icon: "FileTextOutlined",
+        permission: "ems.foreign_worker_document_types.view",
+      },
+      {
+        label: "ข้อมูลแรงงานต่างชาติ",
+        href: "/admin/foreign-workers",
+        icon: "GlobalOutlined",
+        permission: "ems.foreign_workers.view",
+      },
+      {
+        label: "เอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-documents",
+        icon: "FolderOpenOutlined",
+        permission: "ems.foreign_worker_documents.view",
+      },
+      {
+        label: "ต่ออายุเอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-renewals",
+        icon: "SyncOutlined",
+        permission: "ems.foreign_worker_renewals.view",
+      },
+      {
+        label: "เอกสารใกล้หมดอายุ",
+        href: "/admin/foreign-worker-expirations",
+        icon: "WarningOutlined",
+        permission: "ems.foreign_worker_expirations.view",
+      },
+    ],
   },
 
   {
@@ -1187,6 +1240,79 @@ export const MenuHRMS = [
 
 
 // /admin/employee-statutory-profiles    หน้านี้ ต้องทำ Filter ให้ User สามารถดูข้อมูลภาษี และ ระกันสังคม ได้ ที่จ่ายไม่ตรงกัน แต่ละบริษัท และ แต่ละสาขา และ แต่ละหน่วยงานได้
+
+/*
+
+
+
+EMPLOYEE COMPLIANCE
+       │
+       ▼
+1. รูปแบบการจ้างพนักงานต่างชาติ
+   Foreign Employment Scheme
+       │
+       ├─ MOU Foreign Worker
+       ├─ Direct Hire
+       ├─ Expat
+       ├─ BOI / Sponsored
+       └─ Other
+       │
+       ▼
+2. ประเภทวีซ่า
+       │
+       ▼
+3. ประเภทใบอนุญาตทำงาน
+       │
+       ▼
+4. ประเภทเอกสารแรงงานต่างชาติ
+       │
+       ▼
+5. ข้อมูลแรงงานต่างชาติ
+       │
+       ▼
+6. เอกสารแรงงานต่างชาติ
+       │
+       ├─ Passport
+       ├─ Visa
+       ├─ Work Permit
+       ├─ MOU Document
+       └─ เอกสารอื่น
+       │
+       ▼
+7. ต่ออายุ / เปลี่ยนสถานะ
+       │
+       ▼
+8. ติดตามเอกสารใกล้หมดอายุ
+
+
+ตัวอย่างแรงงานเมียนมา
+
+Compliance
+────────────────────
+Nationality = Myanmar
+Scheme = MOU Worker
+Visa = Active
+Work Permit = Active
+
+          ↓
+
+Employment / Payroll
+────────────────────
+Employment Type = Daily
+Payroll Type = Daily
+
+          ↓
+
+Compensation
+────────────────────
+Salary Structure =
+MOU Daily Worker - Phuket
+
+Wage = xxx บาท / วัน
+
+
+
+*/
 
 /*
   ทำไฟล์ Excell ในการ insert  Database  Employees  import  

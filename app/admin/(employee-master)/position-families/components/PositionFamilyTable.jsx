@@ -2,6 +2,7 @@
 
 import { Table, Tag, Space, Button, Tooltip } from "antd";
 import {
+  NodeIndexOutlined,
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
@@ -11,9 +12,11 @@ export default function PositionFamilyTable({
   families,
   page,
   pageSize,
+  canViewFamilyLevels = false,
   canEdit,
   canDelete,
   deletingId,
+  onOpenFamilyLevels,
   onEdit,
   onDelete,
 }) {
@@ -76,6 +79,18 @@ export default function PositionFamilyTable({
       align: "center",
       render: (_, record) => (
         <Space>
+
+          {canViewFamilyLevels && (
+            <Tooltip title="กำหนดระดับของกลุ่มสายงาน">
+              <Button
+                type="text"
+                icon={<NodeIndexOutlined />}
+                onClick={() =>
+                  onOpenFamilyLevels?.(record)
+                }
+              />
+            </Tooltip>
+          )}
 
           {canEdit && (
             <Tooltip title="Edit">

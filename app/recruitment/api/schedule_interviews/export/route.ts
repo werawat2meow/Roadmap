@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const positionId = searchParams.get("position_id");
   const dateFrom = searchParams.get("date_from");
   const dateTo = searchParams.get("date_to");
+  const reviewerId = searchParams.get("reviewer_id");
 
   let query = supabaseAdmin
     .from("recruit_job_applications")
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       position_id,
       titles (title_name_th),
       positions ( position_name ),
-      recruit_job_interviews ( id, interview_datetime, remark, interview_order ),
+      recruit_job_interviews ( id, interview_datetime, remark, reviewer, interview_order ),
       recruit_job_documents ( document_type, file_url )
       `
     )
@@ -32,15 +33,20 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (status) query = query.eq("status", Number(status));
-  if (positionId) query = query.eq("position_id", Number(positionId));
-  // หมายเหตุ: ถ้าต้องกรองตาม "วันที่สัมภาษณ์" จริง ๆ (ไม่ใช่วันสมัคร)
-  // field นี้อยู่ในตารางลูก recruit_job_interviews จึงกรองฝั่ง query ตรง ๆ ไม่ได้ง่าย
-  // ด้านล่างผมกรองซ้ำอีกชั้นหลังดึงข้อมูลมาแล้วแทน
+  if (positionId) query = query.eq("position_id", positionId);
+  if (reviewerId) query = query.eq( "recruit_job_interviews.reviewer", reviewerId );
 
   const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json(
+      { success: false, message: "ไม่มีข้อมูลผู้สมัครที่ตรงตามเงื่อนไข" },
+      { status: 500 }
+    );
   }
 
   const workbook = new ExcelJS.Workbook();

@@ -154,6 +154,10 @@ export default function RecruitmentApplicationsPage() {
   const [selectedInterviewer, setSelectedInterviewer] =  useState<string | undefined>();
   const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
+  const [reviewerId, setReviewerId] = useState<string | undefined>(undefined);
+  const [reviewerOptions, setReviewerOptions] = useState<InterviewerOption[]>([]);
+  const [loadingReviewer, setLoadingReviewer] = useState(false);
+
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
   const [remark, setRemark] = useState<string>(""); // เพิ่ม
   const [interviewErrors, setInterviewErrors] = useState<InterviewErrors>({});
@@ -205,6 +209,42 @@ export default function RecruitmentApplicationsPage() {
     return () => controller.abort();
   }, []);
 
+  const loadReviewerOptions = async () => {
+    setLoadingReviewer(true);
+
+    try {
+      const res = await fetch(
+        "/recruitment/api/schedule_interviews?resource=reviewers"
+      );
+
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "ไม่สามารถโหลดรายชื่อผู้สัมภาษณ์ได้");
+      }
+
+      setReviewerOptions(
+        (json.data ?? []).map(
+          (employee: {
+            id: string;
+            first_name_th: string;
+            last_name_th: string;
+          }) => ({
+            value: String(employee.id),
+            label: `${employee.first_name_th ?? ""} ${
+              employee.last_name_th ?? ""
+            }`.trim(),
+          })
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      message.error("ไม่สามารถโหลดรายชื่อผู้สัมภาษณ์ได้");
+    } finally {
+      setLoadingReviewer(false);
+    }
+  };
+
   const loadData = async (targetPage: number, signal?: AbortSignal) => {
     setLoading(true);
     try {
@@ -217,6 +257,9 @@ export default function RecruitmentApplicationsPage() {
       }
       if (positionId) {
         params.set("position_id", String(positionId));
+      }
+      if (reviewerId) {
+        params.set("reviewer_id", String(reviewerId));
       }
       if (dateRange) {
         // ชื่อ param ต้องตรงกับ API: date_from / date_to
@@ -266,6 +309,7 @@ export default function RecruitmentApplicationsPage() {
         params.set("date_from", dateRange.format("YYYY-MM-DD"));
         params.set("date_to", dateRange.format("YYYY-MM-DD"));
       }
+      if (reviewerId) params.set("reviewer_id", String(reviewerId));
 
       const res = await fetch(
         `/recruitment/api/schedule_interviews/export?${params.toString()}`
@@ -275,7 +319,7 @@ export default function RecruitmentApplicationsPage() {
         const json = await res.json().catch(() => null);
         Modal.error({
           title: "เกิดข้อผิดพลาด",
-          content: json?.error || "ไม่สามารถ export ข้อมูลได้",
+          content: json?.message || "ไม่สามารถ export ข้อมูลได้",
         });
         return;
       }
@@ -307,11 +351,12 @@ export default function RecruitmentApplicationsPage() {
         params.set("date_from", dateRange.format("YYYY-MM-DD"));
         params.set("date_to", dateRange.format("YYYY-MM-DD"));
       }
+      if (reviewerId) params.set("reviewer_id", String(reviewerId));
 
       const res = await fetch(
         `/recruitment/api/schedule_interviews/export_image?${params.toString()}`
       );
-
+  
       if (!res.ok) {
         const json = await res.json().catch(() => null);
         Modal.error({
@@ -361,11 +406,15 @@ export default function RecruitmentApplicationsPage() {
    * เพื่อให้ "มีจุดเดียว" ที่ยิง API ต่อการเปลี่ยนแปลงแต่ละครั้ง
    */
 
+  useEffect(() => {
+    loadReviewerOptions();
+  }, []);
+
   // เมื่อ filter เปลี่ยน ให้ reset ไปหน้า 1 เสมอ (ไม่ยิง fetch ตรงนี้)
   useEffect(() => {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, positionId, dateRange, pageSize]);
+  }, [statusFilter, positionId, reviewerId, dateRange, pageSize]);
 
   // จุดเดียวที่ยิง API: ทำงานตอน mount, ตอน page เปลี่ยน, และตอน filter เปลี่ยน
   // (ถ้า filter เปลี่ยนตอน page ยังเป็น 1 อยู่แล้ว setPage(1) จะไม่ trigger re-render
@@ -380,7 +429,7 @@ export default function RecruitmentApplicationsPage() {
     loadData(page, controller.signal);
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, positionId, dateRange, pageSize]);
+  }, [page, statusFilter, positionId, reviewerId, dateRange, pageSize]);
 
   // ===== เปิด modal อัพเดตข้อมูล (รวมลำดับสัมภาษณ์ + สถานะ) =====
   const openUpdateModal = async (record: Application) => {
@@ -815,6 +864,21 @@ export default function RecruitmentApplicationsPage() {
                     .includes(input.toLowerCase())
                 }
               />
+              <Select
+                allowClear
+                showSearch
+                placeholder="ผู้สัมภาษณ์"
+                value={reviewerId}
+                loading={loadingReviewer}
+                onChange={(val) => setReviewerId(val)}
+                style={{ width: 240 }}
+                options={reviewerOptions}
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />    
 
               <DatePicker
                 placeholder="วันที่เข้าสัมภาษณ์"

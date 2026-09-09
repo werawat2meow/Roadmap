@@ -41,41 +41,53 @@ export async function GET(req: Request) {
   const positionId = searchParams.get("position_id");
   const dateFrom = searchParams.get("date_from");
   const dateTo = searchParams.get("date_to");
+  const reviewerId = searchParams.get("reviewer_id");
 
   let query = supabaseAdmin
     .from("recruit_job_applications")
     .select(
       `
-    id,
-    first_name,
-    last_name,
-    nickname_th,
-    nickname_en,
-    phone_number,
-    expected_salary,
-    profile_image_url,
-    position_id,
-    status,
-    titles (title_name_th),
-    positions ( position_name ),
-    recruit_job_interviews ( id, interview_datetime, remark, interview_order ),
-    recruit_job_documents ( document_type, file_url )
-    `
+      id,
+      first_name,
+      last_name,
+      nickname_th,
+      nickname_en,
+      phone_number,
+      expected_salary,
+      profile_image_url,
+      position_id,
+      status,
+      titles (title_name_th),
+      positions ( position_name ),
+      recruit_job_interviews ( id, interview_datetime, remark, reviewer, interview_order ),
+      recruit_job_documents ( document_type, file_url )
+      `
     )
+    .eq("status", 5) // เฉพาะผู้สมัครยืนยันการสัมภาษณ์
     .order("created_at", { ascending: true });
 
   if (status) query = query.eq("status", Number(status));
-  if (positionId) query = query.eq("position_id", Number(positionId));
+  if (positionId) query = query.eq("position_id", positionId);
   if (dateFrom && dateTo) {
     query = query
       .gte("recruit_job_interviews.interview_datetime", `${dateFrom}T00:00:00`)
       .lte("recruit_job_interviews.interview_datetime", `${dateTo}T23:59:59`);
   }
+  if (reviewerId) query = query.eq( "recruit_job_interviews.reviewer", reviewerId );
 
   const { data, error } = await query;
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!data || data.length === 0) {
+    return new Response(JSON.stringify(
+      { error: "ไม่มีข้อมูลผู้สมัครที่ตรงตามเงื่อนไข" }
+    ), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

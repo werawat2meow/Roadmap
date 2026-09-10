@@ -230,13 +230,22 @@ export default function CandidateProfile({
   const fullName = `${application.titles?.title_name_th ?? ""} ${value(application.first_name)} ${value(application.last_name)}`;
   const nickname = `${value(application.nickname_th)} / ${value(application.nickname_en)}`;
 
+  const profileImageUrl =
+  application.profile_image_url ||
+  documents.find(
+    (doc) =>
+      doc?.document_type === "photo" &&
+      doc?.file_url
+  )?.file_url ||
+  null;
+
   return (
     <div className="dossier">
       {/* ============ Hero: identity card ============ */}
       <div className="hero">
         <div className="hero-photo">
-          {application.profile_image_url ? (
-            <img src={application.profile_image_url} alt={fullName} />
+          {profileImageUrl ? (
+            <img src={profileImageUrl} alt={fullName} />
           ) : (
             <span>{initials(application.first_name, application.last_name)}</span>
           )}

@@ -778,11 +778,13 @@ export async function POST(request) {
             ? {
                 citizen_id: get_data_emp_recrut.identity_no,
                 tax_id: get_data_emp_recrut.identity_no,
+                social_security_no: get_data_emp_recrut.identity_no,
                 passport_no: null,
               }
             : {
                 citizen_id: null,
                 tax_id: null,
+                social_security_no: null,
                 passport_no: get_data_emp_recrut.identity_no,
               };
 

@@ -125,12 +125,12 @@ export const uiText = {
     TH: "นามสกุล",
   },
 
-  nicknameTh: {
+  nicknameTH: {
     EN: "Nickname (TH)",
     TH: "ชื่อเล่น (TH)",
   },
 
-  nicknameEn: {
+  nicknameEN: {
     EN: "Nickname (EN)",
     TH: "ชื่อเล่น (EN)",
   },

@@ -1559,7 +1559,7 @@ function PersonalInformation({
 
             {/* Nickname TH */}
             <Col xs={24} md={12}>
-              <Form.Item label={getUIText(uiText.nicknameTh, locale)} >
+              <Form.Item label={getUIText(uiText.nicknameTH, locale)} >
                 <Input
                   value={value.nicknameTH}
                   onChange={(e) => updateField("nicknameTH", e.target.value) }
@@ -1569,7 +1569,7 @@ function PersonalInformation({
 
             {/* Nickname EN */}
             <Col xs={24} md={12}>
-              <Form.Item label={getUIText(uiText.nicknameEn, locale)} >
+              <Form.Item label={getUIText(uiText.nicknameEN, locale)} >
                 <Input
                   value={value.nicknameEN}
                   onChange={(e) => updateField("nicknameEN", e.target.value) }

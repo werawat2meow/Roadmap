@@ -175,7 +175,7 @@ export default function LanguageForm({ languageId = null }) {
 
               <button
                 type="button"
-                onClick={() => router.push("/language")}
+                onClick={() => router.push("/recruitment/setting/language")}
                 className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 ยกเลิก

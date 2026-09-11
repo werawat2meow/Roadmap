@@ -423,11 +423,11 @@ export default function CandidateDetail({
           >
             <Descriptions
               bordered
-              column={2}
+              column={3}
               size="middle"
             >
               <Descriptions.Item label="โรคประจำตัว">
-                {yesNo(application.underlying_disease)}
+                {application.underlying_disease}
               </Descriptions.Item>
 
               <Descriptions.Item label="เคยต้องคดีอาญา">

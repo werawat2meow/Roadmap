@@ -86,41 +86,74 @@ const createEmptyForm = (languages = []) => ({
   remark:"",
 });
 
-const buildFormData = (initialData, languages) => ({
-  position_mode: initialData?.position_mode || "existing",
+const buildFormData = (initialData, languages) => {
+  const isSpecialPosition =
+    initialData?.department_id == null &&
+    initialData?.division_id == null &&
+    initialData?.unit_id == null;
 
-  branch_id:
-    initialData.jobDescriptionBranches.length > 0
-      ? initialData.jobDescriptionBranches.map((item) => item.branch_id.toString())
-      : Array.isArray(initialData?.branch_id)
-        ? initialData.branch_id.map(String)
-        : initialData?.branch_id
-          ? [initialData.branch_id.toString()]
-          : [],
-  department_id: initialData?.department_id?.toString() || "",
-  division_id: initialData?.division_id?.toString() || "",
-  unit_id: initialData?.unit_id?.toString() || "",
-  positions_id: initialData?.positions_id?.toString() || "",
-  
-  salary_mode:
-    initialData?.salary_note === "เงินเดือนตามตกลง"
-      ? "negotiable"
-      : "range",
-  salary_min: initialData?.salary_min?.toString() || "",
-  salary_max: initialData?.salary_max?.toString() || "",
-  salary_note: initialData?.salary_note || "",
+  return {
+    position_mode: isSpecialPosition ? "special" : "existing",
 
-  type_of_work: initialData?.type_of_work || "monthly",
-  salary_note: initialData?.salary_note || "",
-  workplace: initialData?.workplace || "",
-  description: normalizeLocalizedObject(initialData?.description, languages, "description_text"),
-  requirements: normalizeLocalizedRows(initialData?.requirements, languages, "requirement_text"),
-  responsibilities: normalizeLocalizedRows(initialData?.responsibilities, languages, "responsibility_text"),
-  benefits: normalizeLocalizedRows(initialData?.benefits, languages, "benefit_text"),
-  workday:initialData?.workday || "",
-  dayoff:initialData?.dayoff || "",
-  remark: initialData?.remark || "",
-});
+    special_position_name: initialData?.positions?.position_name || "",
+
+    branch_id:
+      initialData.jobDescriptionBranches.length > 0
+        ? initialData.jobDescriptionBranches.map((item) =>
+            item.branch_id.toString()
+          )
+        : Array.isArray(initialData?.branch_id)
+          ? initialData.branch_id.map(String)
+          : initialData?.branch_id
+            ? [initialData.branch_id.toString()]
+            : [],
+
+    department_id: initialData?.department_id?.toString() || "",
+    division_id: initialData?.division_id?.toString() || "",
+    unit_id: initialData?.unit_id?.toString() || "",
+    positions_id: initialData?.positions_id?.toString() || "",
+
+    salary_mode:
+      initialData?.salary_note === "เงินเดือนตามตกลง"
+        ? "negotiable"
+        : "range",
+
+    salary_min: initialData?.salary_min?.toString() || "",
+    salary_max: initialData?.salary_max?.toString() || "",
+    salary_note: initialData?.salary_note || "",
+
+    type_of_work: initialData?.type_of_work || "monthly",
+    workplace: initialData?.workplace || "",
+
+    description: normalizeLocalizedObject(
+      initialData?.description,
+      languages,
+      "description_text"
+    ),
+
+    requirements: normalizeLocalizedRows(
+      initialData?.requirements,
+      languages,
+      "requirement_text"
+    ),
+
+    responsibilities: normalizeLocalizedRows(
+      initialData?.responsibilities,
+      languages,
+      "responsibility_text"
+    ),
+
+    benefits: normalizeLocalizedRows(
+      initialData?.benefits,
+      languages,
+      "benefit_text"
+    ),
+
+    workday: initialData?.workday || "",
+    dayoff: initialData?.dayoff || "",
+    remark: initialData?.remark || "",
+  };
+};
 
 // Helper: ensure ของที่ถูก select อยู่ใน list เสมอ
 function ensureSelected(list, selectedId, allItems) {
@@ -651,63 +684,63 @@ export default function JobDescriptionForm({
               </div>
             </div>
 
+            {/* Branch */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Branch
+              </label>
+
+              <Select
+                mode="multiple"
+                value={form.branch_id}
+                placeholder="-- เลือก Branch --"
+                onChange={handleBranchChange}
+                options={branches.map((item) => ({
+                  value: item.id.toString(),
+                  label: item.branch_name,
+                }))}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toString()
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                styles={{
+                  root: {
+                    width: "100%",
+                    border: "1px solid",
+                    padding: "9px 16px",
+                    borderRadius: "12px",
+                    outlineStyle: "none",
+                  },
+                }}
+              />
+            </div>
 
             {form.position_mode === "special" ? (
-  <>
-    {/* Branch สำหรับ Special Position */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Branch
-      </label>
+              <>               
 
-      <Select
-        mode="multiple"
-        value={form.branch_id}
-        placeholder="-- เลือก Branch --"
-        onChange={handleBranchChange}
-        options={branches.map((item) => ({
-          value: item.id.toString(),
-          label: item.branch_name,
-        }))}
-        allowClear
-        showSearch
-        optionFilterProp="label"
-        filterOption={(input, option) =>
-          (option?.label ?? "")
-            .toString()
-            .toLowerCase()
-            .includes(input.toLowerCase())
-        }
-        styles={{
-          root: {
-            width: "100%",
-            border: "1px solid",
-            padding: "9px 16px",
-            borderRadius: "12px",
-            outlineStyle: "none",
-          },
-        }}
-      />
-    </div>
+                {/* Special Position Name */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    ชื่อตำแหน่งใหม่พิเศษ
+                  </label>
 
-    {/* Special Position Name */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        ชื่อตำแหน่งใหม่พิเศษ
-      </label>
-
-      <input
-        type="text"
-        value={form.special_position_name}
-        onChange={(e) =>
-          updateField("special_position_name", e.target.value)
-        }
-        className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-        placeholder="กรอกชื่อตำแหน่งใหม่พิเศษ"
-        required
-      />
-    </div>
-  </>
+                  <input
+                    type="text"
+                    value={form.special_position_name}
+                    onChange={(e) =>
+                      updateField("special_position_name", e.target.value)
+                    }
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    placeholder="กรอกชื่อตำแหน่งใหม่พิเศษ"
+                    required
+                  />
+                </div>
+              </>
             ) : (
               <>
                 {/* Department */}

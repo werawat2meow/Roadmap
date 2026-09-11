@@ -56,7 +56,7 @@ export default async function EditJobDescriptionPage({ params }) {
 
     supabaseAdmin
       .from("recruit_job_description")
-      .select("*")
+      .select("* , positions( id, position_name)")
       .eq("id", id)
       .single(),
 

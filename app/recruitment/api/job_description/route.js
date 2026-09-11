@@ -113,7 +113,6 @@ export async function POST(request) {
         .select("id")
         .single();
       if(positionError){
-        console.log("Error inserting special position:", positionError); // Debugging line
         return NextResponse.json({ message: "ไม่สามารถสร้างตำแหน่งใหม่ได้" }, { status: 500 });
       }
       id_position = positionData.id;

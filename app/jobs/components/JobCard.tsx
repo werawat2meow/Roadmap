@@ -53,14 +53,16 @@ export default function JobCard({ job }: Props) {
             </svg>
             <span>{job.branch_name}</span>
           </p>
- 
-          <button
-            type="button"
-            onClick={() => router.push(`/jobs/similar/${job.department_id}`)}
-            className="cursor-pointer rounded-full border border-[#D9D2C0] bg-[#F5F3EE] px-3 py-1 text-xs font-medium text-[#5B5E66] transition-colors hover:border-[#8C6F2E]/60 hover:bg-white hover:text-[#8C6F2E]"
-          >
-            ตำแหน่งอื่นในสายงานนี้ →
-          </button>
+          
+          { job.department_id && (
+            <button
+              type="button"
+              onClick={() => router.push(`/jobs/similar/${job.department_id}`)}
+              className="cursor-pointer rounded-full border border-[#D9D2C0] bg-[#F5F3EE] px-3 py-1 text-xs font-medium text-[#5B5E66] transition-colors hover:border-[#8C6F2E]/60 hover:bg-white hover:text-[#8C6F2E]"
+            >
+              ตำแหน่งอื่นในสายงานนี้ →
+            </button>
+          )}
         </div>
  
         <div className="mt-4 h-px w-full bg-gradient-to-r from-[#8C6F2E]/50 via-[#D9D2C0] to-transparent" />

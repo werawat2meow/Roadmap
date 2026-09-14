@@ -16,6 +16,8 @@ import {
   useMemo,
 } from "react";
 
+import PositionSelector from "./PositionSelector";
+
 /* =========================================================
    Component
 ========================================================= */
@@ -117,10 +119,6 @@ export default function OrgPositionSlotModal({
 
   const units =
     options.units ||
-    [];
-
-  const positions =
-    options.positions ||
     [];
 
   /* =======================================================
@@ -1172,27 +1170,27 @@ export default function OrgPositionSlotModal({
                 },
               ]}
             >
-              <Select
-                showSearch
-                optionFilterProp="label"
-                placeholder="เลือกตำแหน่ง"
-                options={positions.map(
-                  (
-                    item
-                  ) => ({
-                    value:
-                      item.id,
+              <PositionSelector
+                initialOption={
+                  editing?.position_id
+                    ? {
+                        id:
+                          editing.position_id,
 
-                    label:
-                      `${
-                        item.position_code ||
-                        ""
-                      } - ${
-                        item.position_name ||
-                        "-"
-                      }`,
-                  })
-                )}
+                        position_code:
+                          editing.positions
+                            ?.position_code ||
+                          editing.position_code ||
+                          "",
+
+                        position_name:
+                          editing.positions
+                            ?.position_name ||
+                          editing.position_name ||
+                          "",
+                      }
+                    : null
+                }
               />
             </Form.Item>
           </Col>

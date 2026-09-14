@@ -54,6 +54,7 @@ export async function GET(request, { params }) {
 
     const historyData = history.map((item) => ({
       id: item.id,
+      positions: item?.positions?.position_name || "-",
       created_at: item.created_at,
       status: item.status,
       display_status:
@@ -71,12 +72,8 @@ export async function GET(request, { params }) {
     console.error(err);
 
     return NextResponse.json(
-      {
-        error: err.message ?? "Unexpected server error",
-      },
-      {
-        status: 500,
-      }
+      { error: err.message ?? "Unexpected server error", },
+      { status: 500, }
     );
   }
 }

@@ -14,7 +14,10 @@ import {
   Space,
   Spin,
   Alert,
+  message,
 } from "antd";
+
+import AntIcon from "@/components/AntIcon";
 
 const { Title, Text } = Typography;
 
@@ -68,6 +71,8 @@ export default function CandidateHistoryPage({ params }) {
 
       const json = await res.json();
 
+      console.log(json);
+
       if (!res.ok) {
         throw new Error(json.error || "Load failed");
       }
@@ -83,6 +88,11 @@ export default function CandidateHistoryPage({ params }) {
 
   const columns = [
     {
+      title:"ตำแหน่ง",
+      dataIndex: "positions",
+      render: (value) => `${value ?? ""}`,
+    },
+    {
       title: "ชื่อ-นามสกุล",
       render: () =>
         `${candidate?.first_name ?? ""} ${candidate?.last_name ?? ""}`,
@@ -95,30 +105,63 @@ export default function CandidateHistoryPage({ params }) {
     {
       title: "Status",
       dataIndex: "display_status",
-      render: (val, row) => (
-        <Space orientation="vertical" size={4}>
-          <StatusTag value={val} />
+      render: (val, row) => {
+        return (
+          <Space orientation="vertical" size={4}>
+            <StatusTag value={val} />
 
-          {val === "backlist" && row.status_reason && (
-            <Text type="secondary">
-              เหตุผล: {row.status_reason}
-            </Text>
-          )}
-        </Space>
-      ),
+            {val === "backlist" && row.status_reason && (
+              <Text type="secondary">
+                เหตุผล: {row.status_reason}
+              </Text>
+            )}
+
+          </Space>
+        );
+      },
     },
     {
       title: "Action",
       align: "center",
-      render: (_, row) => (
-        <Space size="small">
-          { canEdit && (
-            <Link href={`/recruitment/candidate/candidate_history/${row.id}/detail`}>
-              <Button type="primary">ดูรายละเอียด</Button>
-            </Link>
-          )}
-        </Space>
-      ),
+      render: (_, row) => {
+        const handleCopyResumeUrl = async () => {
+          const url = `${window.location.origin}/jobs/register/update_resume/${row.id}`;
+
+          try {
+            await navigator.clipboard.writeText(url);
+            message.success("คัดลอก URL แล้ว");
+          } catch (error) {
+            console.error("Copy URL failed:", error);
+            message.error("ไม่สามารถคัดลอก URL ได้");
+          }
+        };
+
+        return (
+          <Space size="small">
+            {canEdit && (
+              <Link
+                href={`/recruitment/candidate/candidate_history/${row.id}/detail`}
+              >
+                <Button type="primary">
+                  ดูรายละเอียด
+                </Button>
+              </Link>
+            )}
+
+            {row.status === 18 && (
+              <Button
+                type="link"
+                size="small"
+                icon={<AntIcon name="CopyOutlined" />}
+                onClick={handleCopyResumeUrl}
+                style={{ padding: 0 }}
+              >
+                Copy URL
+              </Button>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -131,6 +174,9 @@ export default function CandidateHistoryPage({ params }) {
 
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      <Button onClick={() => window.history.back()}>
+        ย้อนกลับ
+      </Button>
       <Card>
         <Title level={4}>ประวัติการสมัคร</Title>
 

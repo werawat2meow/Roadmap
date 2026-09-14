@@ -71,6 +71,13 @@ const roleOptions: User["role"][] = [
   "ยังไม่กำหนด",
 ];
 
+const ROLE_LABELS: Record<User["role"], string> = {
+  Admin: "Settings",
+  Manager: "Manager",
+  Management: "Management",
+  "ยังไม่กำหนด": "Make Form",
+};
+
 const getRoleButtonClass = (role: User["role"], selectedRole: User["role"]) => {
   if (selectedRole === role) {
     switch (role) {
@@ -173,7 +180,7 @@ function UserAccessEditor({
               onClick={() => handleRoleChange(role)}
               className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition ${getRoleButtonClass(role, draftUser.role)}`}
             >
-              {role}
+              {ROLE_LABELS[role]}
             </button>
           ))}
         </div>
@@ -303,7 +310,7 @@ export default function AccessPermissionsPanel({
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 border-red-100">
             <Shield className="h-4 w-4" />
-            Admin
+            {ROLE_LABELS.Admin}
           </div>
           <p className="mt-4 text-3xl font-bold text-slate-900">
             {counts.Admin}
@@ -333,7 +340,7 @@ export default function AccessPermissionsPanel({
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-amber-700 bg-amber-50 border-amber-100">
             <ShieldOff className="h-4 w-4" />
-            ยังไม่กำหนด
+            {ROLE_LABELS["ยังไม่กำหนด"]}
           </div>
           <p className="mt-4 text-3xl font-bold text-slate-900">
             {counts.unassigned}
@@ -378,7 +385,7 @@ export default function AccessPermissionsPanel({
                     <div
                       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(user.role)}`}
                     >
-                      {user.role}
+                      {ROLE_LABELS[user.role]}
                     </div>
                     <p className="mt-2 text-xs text-slate-500">
                       {user.menus.length}/{menuOptions.length} เมนู

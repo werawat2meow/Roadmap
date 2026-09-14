@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertCircle, X } from "lucide-react";
@@ -62,6 +62,9 @@ type HistoryRecord = {
 
 export default function EvaluateEmployeePage() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const urlType = searchParams.get("type");
+  const urlEvaluationId = searchParams.get("evaluationId");
   const { user } = useAuth();
   const evaluatorId = user?.employee_id || user?.id;
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -71,9 +74,18 @@ export default function EvaluateEmployeePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [managers, setManagers] = useState<ManagerUser[]>([]);
+  const initialTab =
+    urlType === "Performance" ||
+    urlType === "Promote" ||
+    urlType === "Progression" ||
+    urlType === "Probation"
+      ? urlType
+      : "Probation";
+
   const [activeTab, setActiveTab] = useState<
     "Probation" | "Performance" | "Promote" | "Progression"
-  >("Probation");
+  >(initialTab);
+
   const [showPopup, setShowPopup] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -141,7 +153,7 @@ export default function EvaluateEmployeePage() {
   );
   const [compareRecords, setCompareRecords] = useState<HistoryRecord[]>([]);
   const [editingEvaluationId, setEditingEvaluationId] = useState<string | null>(
-    null,
+    urlEvaluationId,
   );
 
   const fetchEvaluationHistory = useCallback(async () => {
@@ -728,7 +740,13 @@ export default function EvaluateEmployeePage() {
         </div>
       )}
       <div className="mb-6">
-        <EvaluationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <EvaluationTabs
+          activeTab={activeTab}
+          onTabChange={(nextTab) => {
+            setActiveTab(nextTab);
+            handleFormChange({ evaluationType: nextTab });
+          }}
+        />
       </div>
 
       <EmployeeInfoCard

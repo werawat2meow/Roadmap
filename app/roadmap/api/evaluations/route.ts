@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { createNotification } from "@/lib/notifications/createNotification";
 
 const isUuid = (value: string) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -10,10 +11,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const employeeId = url.searchParams.get("employeeId");
   const year = url.searchParams.get("year");
+  const status = url.searchParams.get("status");
 
-  if (!employeeId) {
+  if (!employeeId && !status) {
     return NextResponse.json(
-      { success: false, error: "Missing employeeId query parameter" },
+      { success: false, error: "Missing employeeId or status query parameter" },
       { status: 400 },
     );
   }
@@ -21,9 +23,17 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      `id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,currentSalary,newSalary,evaluation_period,evaluation_period_continued,special_compensation,new_designation,new_level,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id,status)`,
-    )
-    .eq("employee_id", employeeId);
+      `id,employee_id,status,created_at,totalScore,companyScore,departmentScore,expectationScore,examScore,maxScore,managerComment,evaluation_type_id,extra_data,currentSalary,newSalary,evaluation_period,evaluation_period_continued,special_compensation,new_designation,new_level,rm_evaluation_types(name),rm_evaluation_scores(category_item_id,score,remark,is_included),rm_evaluation_reviewers(manager_id,status)`,
+    );
+
+  if (employeeId) {
+    query = query.eq("employee_id", employeeId);
+  }
+
+  if (status) {
+    const statuses = status.split(",").map((s) => s.trim());
+    query = query.in("status", statuses); // 👈 กรอง status เช่น Nominated
+  }
 
   if (year) {
     query = query
@@ -41,8 +51,33 @@ export async function GET(req: Request) {
     );
   }
 
+  const employeeIds = [
+    ...new Set(
+      (data ?? []).map((item: any) => item.employee_id).filter(Boolean),
+    ),
+  ];
+
+  let employeeRows: any[] = [];
+  if (employeeIds.length > 0) {
+    const { data: rows, error: employeeError } = await supabaseAdmin
+      .from("employees")
+      .select("id, first_name_th, last_name_th, employee_code")
+      .in("id", employeeIds);
+
+    if (employeeError) {
+      console.error("Failed to load employee names", employeeError);
+    } else {
+      employeeRows = rows || [];
+    }
+  }
+
+  const employeeMap = new Map(
+    employeeRows.map((employee: any) => [employee.id, employee]),
+  );
+
   const records = (data ?? []).map((item: any) => ({
     ...item,
+    employee: employeeMap.get(item.employee_id) ?? null,
     evaluationType: item.rm_evaluation_types?.name ?? null,
   }));
 
@@ -145,6 +180,22 @@ export async function POST(req: Request) {
 
   const isManagerSubmitting = body.status === "Submitted";
   // ถ้ากด Submit ให้เป็น In_Review ไว้ก่อน จนกว่าจะตรวจพบว่าทุกคนกดครบแล้ว
+  const isNomination = body.status === "Nominated";
+  if (isNomination) {
+    const day = 6;
+    // const day = new Date().getDate();
+    const isNominationPeriod = day >= 26 && day <= 28;
+
+    if (!isNominationPeriod) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ 26-28",
+        },
+        { status: 403 },
+      );
+    }
+  }
   const targetStatus = isManagerSubmitting ? "In_Review" : body.status;
 
   const evaluationId = body.evaluationId?.trim();
@@ -237,6 +288,41 @@ export async function POST(req: Request) {
     );
   }
 
+  if (isNomination) {
+    try {
+      // 1. ดึง HR/Admin จาก rm_user_access
+      const { data: hrUsers } = await supabaseAdmin
+        .from("rm_user_access")
+        .select("employee_id")
+        .in("role", ["Admin"]);
+
+      const hrEmployeeIds = (hrUsers || [])
+        .map((u) => u.employee_id)
+        .filter(Boolean);
+
+      // 2. ดึง user_accounts_id ของ HR
+      const { data: hrAccounts } = await supabaseAdmin
+        .from("user_accounts")
+        .select("id")
+        .in("employee_id", hrEmployeeIds);
+
+      // 3. ยิง Notification ไปหา HR ทุกคน
+      for (const hr of hrAccounts || []) {
+        await createNotification({
+          user_account_id: hr.id,
+          notification_type: "roadmap_nomination_submitted",
+          title: "📥 ได้รับรายชื่อพนักงานเข้าแผนรอบประเมิน",
+          message: `หัวหน้างานได้ส่งรายชื่อพนักงาน (${requestedTypeName || "ประเมิน"}) เข้ามาแล้ว กรุณาตรวจสอบและออกใบประเมินภายในวันที่ 2`,
+          module_code: "roadmap",
+          action_url: `/roadmap/evaluate/${body.employeeId}`,
+          priority: "warning",
+        });
+      }
+    } catch (notiErr) {
+      console.error("Failed to notify HR about nomination:", notiErr);
+    }
+  }
+
   // 1. เพิ่มผู้ประเมิน: ทำเฉพาะตอนสร้างใหม่ หรือเมื่อมีการส่ง managerIds มาตอนสร้าง
   if (
     !evaluationId &&
@@ -298,7 +384,7 @@ export async function POST(req: Request) {
         return {
           reviewer_id: currentReviewer.id,
           category_item_id: s.categoryItemId,
-          score: Math.round(clamped), // หรือ keep decimals if schema allows
+          score: Number(clamped.toFixed(2)), // หรือ keep decimals if schema allows
           remark: s.remark ?? null,
         };
       });
@@ -394,30 +480,45 @@ export async function POST(req: Request) {
         .map((rev) => existingReviewerSubmissions[rev.manager_id])
         .filter(Boolean);
 
-      const count =
-        submissions.length > 0 ? submissions.length : totalReviewers;
-      const sumTotal = submissions.reduce(
-        (acc, s) => acc + Number(s.totalScore || 0),
-        0,
-      );
-      const sumCompany = submissions.reduce(
-        (acc, s) => acc + Number(s.companyScore || 0),
-        0,
-      );
-      const sumDept = submissions.reduce(
-        (acc, s) => acc + Number(s.departmentScore || 0),
-        0,
-      );
-      const sumExp = submissions.reduce(
-        (acc, s) => acc + Number(s.expectationScore || 0),
-        0,
-      );
+      if (submissions.length === totalReviewers) {
+        const count = submissions.length;
 
-      // คะแนนที่ได้บวกกัน แล้วหาร 2 (หรือหารจำนวนผู้ประเมิน)
-      finalTotalScore = sumTotal / count;
-      finalCompanyScore = Math.round((sumCompany / count) * 100) / 100;
-      finalDepartmentScore = Math.round((sumDept / count) * 100) / 100;
-      finalExpectationScore = Math.round((sumExp / count) * 100) / 100;
+        const sumTotal = submissions.reduce(
+          (acc, s) => acc + Number(s.totalScore || 0),
+          0,
+        );
+        const sumCompany = submissions.reduce(
+          (acc, s) => acc + Number(s.companyScore || 0),
+          0,
+        );
+        const sumDept = submissions.reduce(
+          (acc, s) => acc + Number(s.departmentScore || 0),
+          0,
+        );
+        const sumExp = submissions.reduce(
+          (acc, s) => acc + Number(s.expectationScore || 0),
+          0,
+        );
+
+        finalTotalScore = Math.round((sumTotal / count) * 100) / 100;
+        finalCompanyScore = Math.round((sumCompany / count) * 100) / 100;
+        finalDepartmentScore = Math.round((sumDept / count) * 100) / 100;
+        finalExpectationScore = Math.round((sumExp / count) * 100) / 100;
+      } else {
+        console.error("Missing reviewer submissions for final score", {
+          totalReviewers,
+          reviewerIds: (allReviewers || []).map((r) => r.manager_id),
+          submissions,
+        });
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: "ยังมีข้อมูลคะแนนผู้ประเมินไม่ครบ ไม่สามารถสรุปคะแนนรวมได้",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // คิดเป็นเปอร์เซ็นต์: (คะแนนที่ได้หารสอง / คะแนนเต็ม) * 100
@@ -427,6 +528,17 @@ export async function POST(req: Request) {
         : 0;
 
     const finalGrade = computeGrade(percentage);
+
+    console.log("FINAL REVIEWER SUBMISSIONS", {
+      totalReviewers,
+      submittedCount,
+      reviewerIds: (allReviewers || []).map((r) => r.manager_id),
+      submissions: (allReviewers || []).map(
+        (r) => existingReviewerSubmissions[r.manager_id],
+      ),
+      finalTotalScore,
+      summaryMaxScore,
+    });
 
     const { data: finalizedEval } = await supabaseAdmin
       .from("rm_evaluations")
@@ -457,6 +569,15 @@ export async function POST(req: Request) {
   }
 
   // 5. ถ้ายังประเมินไม่ครบ (เช่น 1/2 คน) หรือเป็นการ Save Draft
+  let responseMessage = "บันทึกแบบร่างเรียบร้อยแล้ว";
+  if (isManagerSubmitting) {
+    responseMessage = `บันทึกคะแนนของคุณเรียบร้อยแล้ว (รอผู้ประเมินท่านอื่น ${submittedCount}/${totalReviewers})`;
+  } else if (body.status === "Nominated") {
+    responseMessage = "ส่งรายชื่อพนักงานเข้าแผนรอบประเมินเรียบร้อยแล้ว";
+  } else if (body.status === "Draft" && evaluationId) {
+    responseMessage = "อนุมัติออกใบประเมินเรียบร้อยแล้ว";
+  }
+
   return NextResponse.json(
     {
       success: true,
@@ -464,9 +585,7 @@ export async function POST(req: Request) {
       isFullyCompleted: false,
       submittedCount,
       totalReviewers,
-      message: isManagerSubmitting
-        ? `บันทึกคะแนนของคุณเรียบร้อยแล้ว (รอผู้ประเมินท่านอื่น ${submittedCount}/${totalReviewers})`
-        : "บันทึกแบบร่างเรียบร้อยแล้ว",
+      message: responseMessage,
     },
     { status: 201 },
   );

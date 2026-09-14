@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, notFound } from "next/navigation";
-import { Spin, Result } from "antd";
+import { Spin, Result , Button } from "antd";
 import CandidateProfile from "@/app/recruitment/components/CandidateProfile";
 
 
@@ -71,14 +71,19 @@ export default function ApplicantDetailPage() {
     }
   
     return (
-      <CandidateProfile
-        application={data.application}
-        education={data.education}
-        workExperience={data.workExperience}
-        languageSkills={data.languageSkills}
-        systemProgramSkills={data.systemProgramSkills}
-        documents={data.documents}
-        interviews={data.interviews}
-      />
+      <div>
+        <Button onClick={() => window.history.back()}>
+          ย้อนกลับ
+        </Button>
+        <CandidateProfile
+          application={data.application}
+          education={data.education}
+          workExperience={data.workExperience}
+          languageSkills={data.languageSkills}
+          systemProgramSkills={data.systemProgramSkills}
+          documents={data.documents}
+          interviews={data.interviews}
+        />
+      </div>
     );
 }

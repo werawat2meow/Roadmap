@@ -50,7 +50,7 @@ export default function PositionLevelBandModal({
 
     if (max >= min) {
       form.setFieldValue(
-        "midpoint",
+        "salary_mid",
         Number(((min + max) / 2).toFixed(2))
       );
     }
@@ -292,7 +292,7 @@ export default function PositionLevelBandModal({
           </Col>
 
           <Col span={8}>
-            <Form.Item label="ค่ากลาง (Midpoint)" extra="ระบบคำนวณอัตโนมัติจากค่า Min และ Max" name="midpoint">
+            <Form.Item label="ค่ากลาง (Midpoint)" extra="ระบบคำนวณอัตโนมัติจากค่า Min และ Max" name="salary_mid">
               <InputNumber
                 disabled
                 style={{ width: "100%" }}

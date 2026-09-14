@@ -15,6 +15,8 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 
+import PositionSelector from "./PositionSelector";
+
 /* =========================================================
    Component
 ========================================================= */
@@ -62,10 +64,6 @@ export default function OrgPositionSlotSearch({
 
   const units =
     options.units ||
-    [];
-
-  const positions =
-    options.positions ||
     [];
 
   /* =======================================================
@@ -675,33 +673,13 @@ export default function OrgPositionSlotSearch({
             ตำแหน่ง
           </FieldLabel>
 
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
+          <PositionSelector
             className="w-full"
             value={
               filters.position_id ||
               undefined
             }
             placeholder="ตำแหน่ง"
-            options={positions.map(
-              (
-                item
-              ) => ({
-                value:
-                  item.id,
-
-                label:
-                  `${
-                    item.position_code ||
-                    ""
-                  } - ${
-                    item.position_name ||
-                    "-"
-                  }`,
-              })
-            )}
             onChange={(
               value
             ) =>

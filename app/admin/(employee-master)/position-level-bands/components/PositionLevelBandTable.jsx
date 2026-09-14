@@ -3,8 +3,9 @@
 import { Table, Tag, Space, Button, Tooltip } from "antd";
 import {
   EditOutlined,
-  DeleteOutlined,
 } from "@ant-design/icons";
+
+import DeleteConfirm from "@/app/admin/(employee-master)/components/master/DeleteConfirm";
 
 export default function PositionLevelBandTable({
   data = [],
@@ -86,8 +87,8 @@ export default function PositionLevelBandTable({
 
     {
       title: "Midpoint",
-      dataIndex: "midpoint",
-      key: "midpoint",
+      dataIndex: "salary_mid",
+      key: "salary_mid",
       width: 150,
       align: "right",
       render: (value) =>
@@ -154,11 +155,12 @@ export default function PositionLevelBandTable({
 
           {canDelete && (
             <Tooltip title="ลบ">
-              <Button
-                danger
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={() => onDelete(record)}
+              <DeleteConfirm
+                title="ลบ Salary Band"
+                description={`ยืนยันการลบ ${record.band_code} - ${record.band_name} ใช่หรือไม่`}
+                onConfirm={() =>
+                  onDelete?.(record)
+                }
               />
             </Tooltip>
           )}

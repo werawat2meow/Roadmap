@@ -1,6 +1,42 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
+
+function resolveSalaryMid(
+  salaryMin,
+  salaryMax,
+  salaryMid,
+  legacyMidpoint
+) {
+  const min =
+    Number(salaryMin) || 0;
+
+  const max =
+    Number(salaryMax) || 0;
+
+  const rawMid =
+    salaryMid ??
+    legacyMidpoint;
+
+  const parsedMid =
+    Number(rawMid);
+
+  if (
+    Number.isFinite(parsedMid) &&
+    parsedMid > 0
+  ) {
+    return parsedMid;
+  }
+
+  if (min > 0 && max >= min) {
+    return Number(
+      ((min + max) / 2).toFixed(2)
+    );
+  }
+
+  return 0;
+}
+
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -64,9 +100,22 @@ export async function GET(req) {
 
     if (error) throw error;
 
+    const rows =
+      (data || []).map(
+        (item) => ({
+          ...item,
+          salary_mid:
+            resolveSalaryMid(
+              item.salary_min,
+              item.salary_max,
+              item.salary_mid
+            ),
+        })
+      );
+
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: rows,
       pagination: {
         page,
         pageSize,
@@ -117,7 +166,12 @@ export async function POST(req) {
         Number(body.salary_min) || 0,
 
       salary_mid:
-        Number(body.salary_mid) || 0,
+        resolveSalaryMid(
+          body.salary_min,
+          body.salary_max,
+          body.salary_mid,
+          body.midpoint
+        ),
 
       salary_max:
         Number(body.salary_max) || 0,

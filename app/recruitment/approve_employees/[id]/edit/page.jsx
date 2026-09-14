@@ -171,6 +171,7 @@ export default function Page({ params }) {
   // พร้อมทั้งไล่โหลด master ข้อมูลแบบ cascading (department -> division -> unit -> position -> position_level)
   // ให้ตรงกับค่าที่เคยเลือกไว้ เพื่อให้ Select แสดงผล label ได้ถูกต้อง
   async function populateFormFromApplication(application) {
+    
     if (!application) return;
 
     setForm((prev) => ({
@@ -183,6 +184,9 @@ export default function Page({ params }) {
       incentive_type: application.incentive_type ?? prev.incentive_type,
       incentive_amount: application.incentive_amount ?? prev.incentive_amount,
       oc: application.oc ?? prev.oc,
+      deposit: application.deposit ?? prev.deposit,
+      deduct_processing: application.deduct_processing ?? prev.deduct_processing,
+      deduct_resign_within_one_year: application.deduct_resign_within_one_year ?? prev.deduct_resign_within_one_year,
       phone_allowance: application.phone_allowance ?? prev.phone_allowance,
       employment_type: application.employment_type ?? prev.employment_type,
       employment_type_id: application.employment_type_id ?? prev.employment_type_id,

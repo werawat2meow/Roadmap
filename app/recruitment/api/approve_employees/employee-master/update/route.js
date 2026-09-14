@@ -255,7 +255,7 @@ export async function POST(request) {
   const userId = await getUserIdFromRequest();
 
   try {
-    const body = await request.json();
+    const body = await request.json(); 
 
     const {
       application_id,
@@ -286,6 +286,9 @@ export async function POST(request) {
       payroll_types,
       position_family_id,
       job_id,
+      deposit,
+      deduct_processing,
+      deduct_resign_within_one_year,
     } = body;
 
     // ========================================================
@@ -514,6 +517,9 @@ export async function POST(request) {
         incentive_type,
         incentive_amount,
         oc,
+        deposit,
+        deduct_processing,
+        deduct_resign_within_one_year,
         phone_allowance,
         employment_type,
         employment_type_id,
@@ -788,6 +794,11 @@ export async function POST(request) {
                 passport_no: get_data_emp_recrut.identity_no,
               };
 
+
+        // deposit
+        // deduct_processing  Workpermit
+        // deduct_resign_within_one_year
+
         // ------------------------------------------------------
         // Prepare Employee Data
         // ------------------------------------------------------
@@ -896,9 +907,35 @@ export async function POST(request) {
         // ------------------------------------------------------
         // update recruit_job_applications
         // ------------------------------------------------------
+
         const { error: updateAppError } = await supabaseAdmin
           .from("recruit_job_applications")
           .update({
+            branch_id,
+            department_id,
+            division_id,
+            unit_id,
+            position_id,
+            position_level_id,
+            base_salary,
+            position_allowance,
+            living_allowance,
+            special_allowance,
+            fuel_allowance,
+            incentive_type,
+            incentive_amount,
+            oc,
+            deposit,
+            deduct_processing,
+            deduct_resign_within_one_year,
+            phone_allowance,
+            employment_type,
+            employment_type_id,
+            company_id: get_data_company.company_id,
+            branch_group_id: get_data_company.group_id,
+            payroll_company_id: get_data_payroll_companies.id,
+            payroll_type_id: payroll_types,
+            position_family_id,
             emp_id: createdEmployee.id,
             emp_code: createdEmployee.employee_code,
             hire_date: start_date,

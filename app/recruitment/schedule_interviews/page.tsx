@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo , useRef } from "react";
 import Link from "next/link";
 import {
   App,
@@ -20,11 +20,14 @@ import {
   UploadProps,
   Input, // เพิ่ม
 } from "antd";
+import type { ColumnsType } from "antd/es/table";
 
 import dayjs, { Dayjs } from "dayjs";
 import AntIcon from '@/components/AntIcon';
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
+
+import CandidateExportImage from "@/app/recruitment/components/CandidateExportImage";
 
 const { Title, Text } = Typography;
 
@@ -174,7 +177,11 @@ export default function RecruitmentApplicationsPage() {
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
 
   const [exporting, setExporting] = useState(false);
-  const [exportingImage, setExportingImage] = useState(false); 
+  const [exportingImage, setExportingImage] = useState(false);
+
+  const [exportingImagePresentation, setExportingImagePresentation] = useState(false); 
+
+  
 
   // โหลดตัวเลือกตำแหน่งงาน (resource=positions) ครั้งเดียวตอน mount
   // ใช้ AbortController กัน request ค้างจากรอบแรกตอน React Strict Mode
@@ -560,7 +567,33 @@ export default function RecruitmentApplicationsPage() {
     setPhotoModalOpen(true);
   };
 
-  const columns = useMemo(
+  const exportImageRef = useRef<{ openPreview: (data: any) => void }>(null);
+
+  const handleExportImagePresentation = async (applicationId: number) => {
+    try {
+      setExportingImagePresentation(true);
+
+      const response = await fetch(
+        `/recruitment/api/schedule_interviews/${applicationId}/export_presentation`
+      );
+
+      if (!response.ok) {
+        throw new Error("ไม่สามารถโหลดข้อมูลได้");
+      }
+
+      const data = await response.json();
+
+      // เปิด modal preview แทนการ export ทันที
+      exportImageRef.current?.openPreview(data);
+    } catch (error) {
+      console.error(error);
+      message.error("ไม่สามารถโหลดข้อมูลได้");
+    } finally {
+      setExportingImagePresentation(false);
+    }
+  };
+
+  const columns = useMemo<ColumnsType<Application>>(
     () => [
       {
         title: "No.",
@@ -574,11 +607,21 @@ export default function RecruitmentApplicationsPage() {
         title: "Position",
         dataIndex: ["positions", "position_name"],
         key: "position_name",
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (value: string) => value || "-",
       },
       {
         title: "Name",
         key: "first_name",
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (_: unknown, record: Application) =>
           `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`,
       },
@@ -607,36 +650,71 @@ export default function RecruitmentApplicationsPage() {
         dataIndex: "status",
         key: "status",
         width: 180,
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (value: number) => <StatusTag value={value} />,
       },
       {
         title: "Action",
         key: "action",
-        width: 120,
+        width: 300,
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (_: unknown, record: Application) => (
-          <Space>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 8,
+            }}
+          >
             {canView && (
               <Link href={`/recruitment/schedule_interviews/${record.id}`}>
-                <Button type="primary">View</Button>
+                <Button type="primary" block>
+                  View
+                </Button>
               </Link>
             )}
 
             {canEdit && (
-              <Button type="primary" ghost onClick={() => openUpdateModal(record)}>
+              <Button
+                type="primary"
+                ghost
+                block
+                onClick={() => openUpdateModal(record)}
+              >
                 อัพเดตข้อมูล
               </Button>
             )}
 
             {canEdit && record.status === 5 && (
-              <Button
-                type="primary"
-                icon={<AntIcon name="UploadOutlined" />}
-                onClick={() => openPhotoModal(record)}
-              >
-                อัปเดตรูปผู้สมัคร
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  icon={<AntIcon name="UploadOutlined" />}
+                  block
+                  onClick={() => openPhotoModal(record)}
+                >
+                  อัปเดตรูปผู้สมัคร
+                </Button>
+
+                <Button
+                  type="primary"
+                  block
+                  loading={exportingImagePresentation}
+                  onClick={() => handleExportImagePresentation(record.id)}
+                >
+                  Export รูป
+                </Button>
+              </>
             )}
-          </Space>
+          </div>
         ),
       },
     ],
@@ -674,7 +752,7 @@ export default function RecruitmentApplicationsPage() {
     if (!photoApplication) return;
 
     if (!photoFile?.originFileObj) {
-      message.warning("กรุณาเลือกรูปผู้สมัคร");
+      Modal.error({ title: 'เกิดข้อผิดพลาด', content: "กรุณาเลือกรูปผู้สมัคร" });
       return;
     }
 
@@ -704,11 +782,11 @@ export default function RecruitmentApplicationsPage() {
       const json = await res.json();
 
       if (!res.ok || json.error) {
-        message.error(json.error || "ไม่สามารถอัปโหลดรูปได้");
+        Modal.error({ title: 'เกิดข้อผิดพลาด', content: json.error || "ไม่สามารถอัปโหลดรูปได้" });
         return;
       }
 
-      message.success("อัปเดตรูปผู้สมัครเรียบร้อย");
+      Modal.success({ title: '', content: "อัปเดตรูปผู้สมัครเรียบร้อย" });
 
       setPhotoModalOpen(false);
       setPhotoApplication(null);
@@ -1095,6 +1173,8 @@ export default function RecruitmentApplicationsPage() {
           </div>
         </Space>
       </Modal>
+
+      <CandidateExportImage ref={exportImageRef} />
     </>
   );
 }

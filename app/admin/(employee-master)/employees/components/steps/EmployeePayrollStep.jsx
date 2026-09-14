@@ -699,12 +699,67 @@ export default function EmployeePayrollStep({
                     return Promise.resolve();
                   }
 
-                  if (Number(value) < 0) {
+                  const salary = Number(value);
+
+                  if (salary < 0) {
                     return Promise.reject(
                       new Error(
                         "เงินเดือนฐานต้องไม่น้อยกว่า 0"
                       )
                     );
+                  }
+
+                  if (
+                    mode === "create" &&
+                    selectedSalaryBand
+                  ) {
+                    const salaryMin =
+                      selectedSalaryBand.salary_min;
+
+                    const salaryMax =
+                      selectedSalaryBand.salary_max;
+
+                    if (
+                      salaryMin !== null &&
+                      salaryMin !== undefined &&
+                      salaryMin !== "" &&
+                      salary < Number(salaryMin)
+                    ) {
+                      return Promise.reject(
+                        new Error(
+                          `เงินเดือนฐานต้องไม่น้อยกว่า ${Number(
+                            salaryMin
+                          ).toLocaleString(
+                            "th-TH",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          )} บาท ตาม Salary Band`
+                        )
+                      );
+                    }
+
+                    if (
+                      salaryMax !== null &&
+                      salaryMax !== undefined &&
+                      salaryMax !== "" &&
+                      salary > Number(salaryMax)
+                    ) {
+                      return Promise.reject(
+                        new Error(
+                          `เงินเดือนฐานต้องไม่เกิน ${Number(
+                            salaryMax
+                          ).toLocaleString(
+                            "th-TH",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          )} บาท ตาม Salary Band`
+                        )
+                      );
+                    }
                   }
 
                   return Promise.resolve();
@@ -718,7 +773,26 @@ export default function EmployeePayrollStep({
             }
           >
             <InputNumber
-              min={0}
+              min={
+                mode === "create" &&
+                selectedSalaryBand?.salary_min !== null &&
+                selectedSalaryBand?.salary_min !== undefined &&
+                selectedSalaryBand?.salary_min !== ""
+                  ? Number(
+                      selectedSalaryBand.salary_min
+                    )
+                  : 0
+              }
+              max={
+                mode === "create" &&
+                selectedSalaryBand?.salary_max !== null &&
+                selectedSalaryBand?.salary_max !== undefined &&
+                selectedSalaryBand?.salary_max !== ""
+                  ? Number(
+                      selectedSalaryBand.salary_max
+                    )
+                  : undefined
+              }
               precision={2}
               step={100}
               className="w-full"
@@ -1035,12 +1109,12 @@ export default function EmployeePayrollStep({
         />
       )}
 
-      <Alert
+      {/* <Alert
         showIcon
         type="info"
         title="ไม่เก็บเงินเดือนฐานไว้ในตาราง employees"
         description="ตอนสร้างพนักงาน ระบบจะบันทึก Base Salary พร้อม Position, Payroll Company/Type/Group และ Salary Band/snapshot ช่วงเงินเดือนเมื่อมีการเลือก Band"
-      />
+      /> */}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { Alert, Col, Form, InputNumber, Row, Select } from "antd";
 import { useMemo } from "react";
+import PositionSelector from "./PositionSelector";
 
 function makeOptions(items, codeKey, nameKey) {
   return (items || []).map((item) => ({
@@ -301,18 +302,28 @@ export default function UnitPositionForm({
           <Form.Item
             label="ตำแหน่ง"
             name="position_id"
-            rules={[{ required: true, message: "กรุณาเลือกตำแหน่ง" }]}
+            rules={[
+              {
+                required: true,
+                message: "กรุณาเลือกตำแหน่ง",
+              },
+            ]}
           >
-            <Select
-              showSearch
-              optionFilterProp="label"
+            <PositionSelector
               disabled={structureDisabled}
-              placeholder="เลือกตำแหน่ง"
-              options={makeOptions(
-                options.positions || [],
-                "position_code",
-                "position_name"
-              )}
+              initialOption={
+                editingRow?.position_id
+                  ? {
+                      id: editingRow.position_id,
+                      position_name:
+                        editingRow.position_name || "",
+                      position_code:
+                        editingRow.position_code || "",
+                      position_level:
+                        editingRow.position_level || "",
+                    }
+                  : null
+              }
             />
           </Form.Item>
         </Col>

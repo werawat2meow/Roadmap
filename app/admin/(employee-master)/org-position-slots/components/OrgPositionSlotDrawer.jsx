@@ -92,7 +92,7 @@ export default function OrgPositionSlotDrawer({
 
       <div className="mb-5 rounded-2xl bg-slate-50 p-5">
         <Space
-          direction="vertical"
+          orientation="vertical"
           size={4}
         >
           <div className="text-xl font-bold text-slate-800">

@@ -287,14 +287,6 @@ export default function PositionLevelBandsPage() {
   ========================== */
 
   const handleDelete = async (record) => {
-    if (
-      !confirm(
-        `ต้องการลบ ${record.band_name} ใช่หรือไม่ ?`
-      )
-    ) {
-      return;
-    }
-
     try {
       setLoading(true);
 

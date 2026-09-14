@@ -783,7 +783,11 @@ export default function EmployeePersonalStep({
             ]}
           >
             <Input
-              disabled={disabled}
+              disabled={
+                disabled ||
+                !nationalityId ||
+                isForeignEmployee
+              }
               inputMode="numeric"
               maxLength={13}
               autoComplete="off"
@@ -866,7 +870,11 @@ export default function EmployeePersonalStep({
             ]}
           >
             <Input
-              disabled={disabled}
+              disabled={
+                disabled ||
+                !nationalityId ||
+                isThaiEmployee
+              }
               maxLength={20}
               autoComplete="off"
               placeholder={
@@ -941,7 +949,11 @@ export default function EmployeePersonalStep({
             ]}
           >
             <DatePicker
-              disabled={disabled}
+              disabled={
+                disabled ||
+                !nationalityId ||
+                isThaiEmployee
+              }
               format="DD/MM/YYYY"
               className="w-full"
               placeholder={

@@ -8,6 +8,29 @@ import {
 
 export const runtime = "nodejs";
 
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
+function validateDocumentFileSizes(
+  documents: any[] | undefined,
+  formData: FormData | null
+): string | null {
+  if (!documents || documents.length === 0 || !formData) return null;
+
+  for (const document of documents) {
+    const file = formData.get(document.id);
+
+    if (!(file instanceof File)) continue;
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const label = document.type ?? document.id;
+      return `ไฟล์ "${file.name}" (${label}) มีขนาด ${sizeMB}MB เกินขนาดที่กำหนด (สูงสุด 2MB)`;
+    }
+  }
+
+  return null;
+}
+
 function emptyToNull(value: unknown) {
   return value === "" || value === undefined ? null : value;
 }
@@ -119,6 +142,15 @@ export async function POST(request: NextRequest) {
     if (!payload) {
       return NextResponse.json(
         { success: false, message: "Missing application payload." },
+        { status: 400 }
+      );
+    }
+
+    // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
+    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    if (sizeError) {
+      return NextResponse.json(
+        { success: false, message: sizeError },
         { status: 400 }
       );
     }
@@ -458,6 +490,15 @@ export async function PUT(request: NextRequest) {
     if (!payload) {
       return NextResponse.json(
         { success: false, message: "Missing application payload." },
+        { status: 400 }
+      );
+    }
+
+    // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
+    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    if (sizeError) {
+      return NextResponse.json(
+        { success: false, message: sizeError },
         { status: 400 }
       );
     }

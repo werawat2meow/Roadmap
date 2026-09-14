@@ -220,7 +220,7 @@ export default function RegisterPage() {
       }
 
       message.success(getUIText(uiText.saveSuccess, locale));
-      // router.push("/recruitment/candidate");
+      router.push("/recruitment/candidate");
 
     } catch (errorInfo: any) {
       // ดักจับ Error จาก form.validateFields()
@@ -1863,7 +1863,7 @@ function PersonalInformation({
                   required
                   name="addressNo"
                   value={value.addressNo}
-                  onChange={(e) => updateField( "addressNo", e.target.value ) }
+                  onChange={(e) => updateField( "addressNo", e.target.value.replace(/[^\p{L}\p{M}\p{N}\s/]/gu, "") ) }
                 />
               </Form.Item>
             </Col>
@@ -3371,6 +3371,8 @@ const ALLOWED_TYPES = [
   "video/mp4",
 ];
 
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+
 
 function DocumentsSection({
   language,
@@ -3400,6 +3402,15 @@ function DocumentsSection({
   (file) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
       message.error(getUIText(uiText.invalidDocument, locale));
+      return Upload.LIST_IGNORE;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      message.error(
+        language === "TH"
+          ? "ขนาดไฟล์ต้องไม่เกิน 2MB"
+          : "File size must not exceed 2MB"
+      );
       return Upload.LIST_IGNORE;
     }
 
@@ -3450,6 +3461,13 @@ function DocumentsSection({
       >
         {getUIText(uiText.addRow, locale)}
       </Button>
+
+      <Alert
+        title="ไฟล์ที่อัปโหลดต้องมีขนาดไม่เกิน 2MB"
+        type="warning"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
 
       <Space
         orientation="vertical"

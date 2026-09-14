@@ -11,6 +11,7 @@ import {
   Typography,
   Upload,
   message,
+  Alert,
 } from "antd";
 import {
   DeleteOutlined,
@@ -40,6 +41,8 @@ const ALLOWED_TYPES = [
   "application/pdf",
   "video/mp4",
 ];
+const MAX_FILE_SIZE_MB = 2;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 
 export default function DocumentsSection({
@@ -70,6 +73,15 @@ export default function DocumentsSection({
   (file) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
       message.error(getUIText(uiText.invalidDocument, locale));
+      return Upload.LIST_IGNORE;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      message.error(
+        language === "TH"
+          ? `ขนาดไฟล์ต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB`
+          : `File size must not exceed ${MAX_FILE_SIZE_MB} MB`
+      );
       return Upload.LIST_IGNORE;
     }
 
@@ -123,6 +135,17 @@ export default function DocumentsSection({
       >
         {getUIText(uiText.addRow, locale)}
       </Button>
+
+      <Alert
+        title={
+          language === "TH"
+            ? "ไฟล์ที่อัปโหลดต้องมีขนาดไม่เกิน 2MB"
+            : "File size must not exceed 2MB"
+        }
+        type="warning"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
 
       <Space
         orientation="vertical"

@@ -1064,7 +1064,12 @@ export default function PersonalInformation({
                                 required
                                 name="addressNo"
                                 value={value.addressNo}
-                                onChange={(e) => updatePlainTextField("addressNo", e.target.value)}
+                                onChange={(e) =>
+                                    updateField(
+                                        "addressNo",
+                                        e.target.value.replace(/[^\p{L}\p{M}\p{N}\s/]/gu, "")
+                                    )
+                                }
                             />
                         </Form.Item>
                     </Col>

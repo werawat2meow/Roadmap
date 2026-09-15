@@ -545,7 +545,7 @@ export default function JobDescriptionForm({
       department_id: form.position_mode === "existing"? form.department_id || null: null,
       division_id: form.position_mode === "existing" ? form.division_id || null : null,
       unit_id: form.position_mode === "existing" ? form.unit_id || null : null,
-      positions_id: form.position_mode === "existing" ? form.positions_id || null : null,
+      positions_id: form.position_mode === "existing" || mode === "edit" ? form.positions_id || null : null,
       special_position_name: form.position_mode === "special" ? form.special_position_name.trim() : null,
       salary_min: form.salary_min,
       salary_max: form.salary_max,

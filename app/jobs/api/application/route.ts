@@ -37,8 +37,77 @@ function emptyToNull(value: unknown) {
 
 async function resolveRecruitmentOpening(
   positionId: string | number | null,
-  requestedBranchId: string | number | null
+  requestedBranchId: string | number | null,
+  requestedJobId: string | number | null
 ) {
+  // ============================================================
+  // กรณี 1 : มี jobId
+  // ให้ยึด jobId เป็นอันดับแรก
+  // ============================================================
+  if (requestedJobId) {
+    const { data: opening, error } = await supabaseAdmin
+      .from("recruit_job_open")
+      .select(`
+        id,
+        position_id,
+        branch_id,
+        branches (
+          id,
+          branch_name
+        )
+      `)
+      .eq("id", requestedJobId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!opening) {
+      throw new Error("The selected job opening is not available.");
+    }
+
+    return {
+      jobId: opening.id,
+      sourceBranchId: opening.branch_id ?? requestedBranchId ?? null,
+    };
+  }
+
+  // ============================================================
+  // กรณี 2 : ไม่มี jobId แต่มี source_branch_id
+  // ค้นหาจาก position + branch
+  // ============================================================
+  if (requestedBranchId && positionId) {
+    const { data: opening, error } = await supabaseAdmin
+      .from("recruit_job_open")
+      .select(`
+        id,
+        position_id,
+        branch_id,
+        branches (
+          id,
+          branch_name
+        )
+      `)
+      .eq("position_id", positionId)
+      .eq("branch_id", requestedBranchId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (opening) {
+      return {
+        jobId: opening.id,
+        sourceBranchId: opening.branch_id,
+      };
+    }
+  }
+
+  // ============================================================
+  // กรณี 3 : ไม่มี positionId
+  // ============================================================
   if (!positionId) {
     return {
       jobId: null,
@@ -46,6 +115,10 @@ async function resolveRecruitmentOpening(
     };
   }
 
+  // ============================================================
+  // ไม่มีทั้ง jobId ที่ match และ branch ที่ match
+  // ใช้ logic เดิม ตรวจสอบจาก position
+  // ============================================================
   const { data: openings, error } = await supabaseAdmin
     .from("recruit_job_open")
     .select(`
@@ -65,9 +138,7 @@ async function resolveRecruitmentOpening(
 
   const jobOpenings = openings ?? [];
 
-  // ============================================================
-  // กรณี 1 : ไม่มีรอบเปิดรับสมัคร
-  // ============================================================
+  // ไม่มีรอบเปิดรับสมัคร
   if (jobOpenings.length === 0) {
     return {
       jobId: null,
@@ -75,9 +146,7 @@ async function resolveRecruitmentOpening(
     };
   }
 
-  // ============================================================
-  // กรณี 2 : มีรอบเปิดรับสมัครเพียง 1 สังกัด
-  // ============================================================
+  // มีรอบเดียว
   if (jobOpenings.length === 1) {
     const opening = jobOpenings[0];
 
@@ -87,14 +156,9 @@ async function resolveRecruitmentOpening(
     };
   }
 
-  // ============================================================
-  // กรณี 3 : มีหลายสังกัด
-  // ต้องระบุ sourceBranchId
-  // ============================================================
+  // มีหลายรอบ แต่ไม่ได้ระบุ branch
   if (!requestedBranchId) {
-    throw new Error(
-      "Please select a branch for this position."
-    );
+    throw new Error("Please select a branch for this position.");
   }
 
   const selectedOpening = jobOpenings.find(
@@ -164,7 +228,12 @@ export async function POST(request: NextRequest) {
     const requestedBranchId = emptyToNull(
       payload.sourceBranchId ??
       payload.source_branch_id
-    ) as string | number | null;   
+    ) as string | number | null;
+
+    const requestedJobId = emptyToNull(
+      payload.jobId ??
+      payload.job_id
+    ) as string | number | null;
 
     // ============================================================
     // ตรวจสอบรอบเปิดรับสมัคร
@@ -174,7 +243,8 @@ export async function POST(request: NextRequest) {
       sourceBranchId,
     } = await resolveRecruitmentOpening(
       positionId,
-      requestedBranchId
+      requestedBranchId,
+      requestedJobId
     );
 
     /* ------------------------------------------------------------ */
@@ -514,6 +584,11 @@ export async function PUT(request: NextRequest) {
       payload.source_branch_id
     ) as string | number | null;
 
+    const requestedJobId = emptyToNull(
+      payload.jobId ??
+      payload.job_id
+    ) as string | number | null;
+
 
     const applicationId = payload.application_id;
 
@@ -535,7 +610,8 @@ export async function PUT(request: NextRequest) {
       sourceBranchId,
     } = await resolveRecruitmentOpening(
       positionId,
-      requestedBranchId
+      requestedBranchId,
+      requestedJobId
     );
 
     // API เป็นผู้กำหนด status

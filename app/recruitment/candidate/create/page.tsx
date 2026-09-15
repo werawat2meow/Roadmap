@@ -1967,7 +1967,7 @@ function PersonalInformation({
                   name="phoneNumber"
                   value={value.phoneNumber}
                   placeholder={ language === "TH" ? "08xxxxxxxx" : "Phone Number" }
-                  onChange={(e) => updateField( "phoneNumber", e.target.value ) }
+                  onChange={(e) => updateField( "phoneNumber", e.target.value.replace(/\D/g, "") ) }
                 />
               </Form.Item>
             </Col>
@@ -2220,7 +2220,7 @@ function PersonalInformation({
                     ? "08xxxxxxxx"
                     : "Phone Number"
                   }
-                  onChange={(e) => updateEmergencyContact( "phone", e.target.value ) }
+                  onChange={(e) => updateEmergencyContact( "phone", e.target.value.replace(/\D/g, "") ) }
                 />
               </Form.Item>
             </Col>

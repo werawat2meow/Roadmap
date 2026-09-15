@@ -258,6 +258,9 @@ export default function RecruitmentOpenFormPage({
   const [pageLoading, setPageLoading] = useState(
     mode === "edit" && !initialData
   );
+
+  console.log(initialData);
+  
   useEffect(() => {
     if (!initialData) return;
 

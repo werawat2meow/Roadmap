@@ -686,16 +686,17 @@ export default function Page({ params }) {
 
       if (!res.ok) { throw new Error( result.message || "ไม่สามารถบันทึกข้อมูลได้" ); }
 
-      // ดึงรหัสพนักงานจาก API
-      setEmployeeCode(result.employee_code || "");
+      if(applicationStatus === 17 && actionChoice === 15){
+        // ดึงรหัสพนักงานจาก API
+        setEmployeeCode(result.employee_code || "");
 
-      // เปิด Modal
-      setSuccessModalOpen(true);
+        // เปิด Modal
+        setSuccessModalOpen(true);
+      }else{
+        message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
 
-      // message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
-
-      // ถ้าต้องการกลับหน้ารายการ
-      // router.push("/recruitment/approve_employees");
+        router.push("/recruitment/approve_employees");
+      }
 
     } catch (error) {
       console.error("SAVE EMPLOYEE ERROR:", error);

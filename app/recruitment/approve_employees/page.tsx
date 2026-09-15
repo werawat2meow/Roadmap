@@ -279,6 +279,7 @@ export default function WaitingApprovalPage() {
             <Col xs={24} md={6}>
               <Select
                 allowClear
+                showSearch
                 style={{ width: '100%' }}
                 placeholder="ตำแหน่ง"
                 value={filters.position_id}
@@ -293,12 +294,18 @@ export default function WaitingApprovalPage() {
                     page: 1,
                   }))
                 }
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
               />
             </Col>
 
             <Col xs={24} md={6}>
               <Select
                 allowClear
+                showSearch
                 style={{ width: '100%' }}
                 placeholder="สถานะ"
                 value={filters.status}
@@ -309,6 +316,11 @@ export default function WaitingApprovalPage() {
                     status: value,
                     page: 1,
                   }))
+                }
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
               />
             </Col>

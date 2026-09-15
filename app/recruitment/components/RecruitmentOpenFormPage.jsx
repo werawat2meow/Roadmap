@@ -245,61 +245,9 @@ function MultiSearchableSelect({
 }
 
 async function fetchJSON(url) {
-  const startedAt = Date.now();
-
-  console.log("[API REQUEST]", {
-    url,
-    timestamp: new Date().toISOString(),
-  });
-
-  try {
-    const res = await fetch(url, {
-      cache: "no-store",
-    });
-
-    const contentType = res.headers.get("content-type");
-
-    let data = null;
-
-    if (contentType?.includes("application/json")) {
-      data = await res.json();
-    } else {
-      data = await res.text();
-    }
-
-    console.log("[API RESPONSE]", {
-      url,
-      status: res.status,
-      ok: res.ok,
-      duration: `${Date.now() - startedAt}ms`,
-      data,
-    });
-
-    if (!res.ok) {
-      console.error("[API ERROR]", {
-        url,
-        status: res.status,
-        statusText: res.statusText,
-        data,
-      });
-
-      throw new Error(
-        data?.message ||
-        data?.error ||
-        `Request failed: ${res.status} ${res.statusText}`
-      );
-    }
-
-    return data;
-  } catch (error) {
-    console.error("[API FETCH FAILED]", {
-      url,
-      message: error?.message,
-      stack: error?.stack,
-    });
-
-    throw error;
-  }
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json();
 }
 
 export default function RecruitmentOpenFormPage({
@@ -310,11 +258,6 @@ export default function RecruitmentOpenFormPage({
   const [pageLoading, setPageLoading] = useState(
     mode === "edit" && !initialData
   );
-
-  console.log(mode);  
-
-  console.log(initialData);
-  
   useEffect(() => {
     if (!initialData) return;
 
@@ -392,86 +335,32 @@ export default function RecruitmentOpenFormPage({
 
   useEffect(() => {
     setLoading((s) => ({ ...s, branches: true }));
-
-    const url =
-      `/recruitment/api/job_openings/branches` +
-      `?status=active&q=${encodeURIComponent(branchTerm)}`;
-
-    fetchJSON(url)
-      .then((data) => {
-        console.log("[BRANCHES SUCCESS]", {
-          count: Array.isArray(data) ? data.length : null,
-          data,
-        });
-
-        setBranches(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("[BRANCHES FAILED]", {
-          url,
-          error,
-        });
-
-        setBranches([]);
-      })
-      .finally(() => {
-        setLoading((s) => ({ ...s, branches: false }));
-      });
+    fetchJSON(`/recruitment/api/job_openings/branches?status=active&q=${encodeURIComponent(branchTerm)}`)
+      .then(setBranches)
+      .catch(() => setBranches([]))
+      .finally(() => setLoading((s) => ({ ...s, branches: false })));
   }, [branchTerm]);
 
   useEffect(() => {
     if (!branchIds.length) {
       setDepartments([]);
-      setDepartmentId(null);
-      setDivisionId(null);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
     setLoading((s) => ({ ...s, departments: true }));
-
-    const url =
-      `/recruitment/api/job_openings/departments` +
-      `?branch_id=${encodeURIComponent(branchIds.join(","))}` +
-      `&status=active` +
-      `&q=${encodeURIComponent(departmentTerm)}`;
-
-    console.log("[DEPARTMENTS PARAMS]", {
-      branchIds,
-      branch_id: branchIds.join(","),
-      departmentTerm,
-    });
-
-    fetchJSON(url)
-      .then((data) => {
-        console.log("[DEPARTMENTS SUCCESS]", {
-          count: Array.isArray(data) ? data.length : null,
-          data,
-        });
-
-        setDepartments(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("[DEPARTMENTS FAILED]", {
-          url,
-          branchIds,
-          error,
-        });
-
-        setDepartments([]);
-      })
-      .finally(() => {
-        setLoading((s) => ({ ...s, departments: false }));
-      });
+    fetchJSON(
+      `/recruitment/api/job_openings/departments?branch_id=${branchIds.join(
+        ","
+      )}&status=active&q=${encodeURIComponent(departmentTerm)}`
+    )
+      .then(setDepartments)
+      .catch(() => setDepartments([]))
+      .finally(() => setLoading((s) => ({ ...s, departments: false })));
   }, [branchIds, departmentTerm]);
 
   useEffect(() => {
     if (!departmentId) {
       setDivisions([]);
-      setDivisionId(null);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
@@ -487,137 +376,56 @@ export default function RecruitmentOpenFormPage({
   }, [departmentId, divisionTerm]);
 
   useEffect(() => {
-    if (!departmentId) {
-      setDivisions([]);
-      setDivisionId(null);
-      setUnitId(null);
-      setPositionId(null);
-      return;
-    }
-
-    setLoading((s) => ({ ...s, divisions: true }));
-
-    const url =
-      `/recruitment/api/job_openings/divisions` +
-      `?department_id=${encodeURIComponent(departmentId)}` +
-      `&status=active` +
-      `&q=${encodeURIComponent(divisionTerm)}`;
-
-    console.log("[DIVISIONS PARAMS]", {
-      departmentId,
-      divisionTerm,
-    });
-
-    fetchJSON(url)
-      .then((data) => {
-        console.log("[DIVISIONS SUCCESS]", {
-          count: Array.isArray(data) ? data.length : null,
-          data,
-        });
-
-        setDivisions(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("[DIVISIONS FAILED]", {
-          url,
-          departmentId,
-          error,
-        });
-
-        setDivisions([]);
-      })
-      .finally(() => {
-        setLoading((s) => ({ ...s, divisions: false }));
-      });
-  }, [departmentId, divisionTerm]);
-
-
-  useEffect(() => {
     if (!divisionId) {
       setUnits([]);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
     setLoading((s) => ({ ...s, units: true }));
-
-    const url =
-      `/recruitment/api/job_openings/units` +
-      `?division_id=${encodeURIComponent(divisionId)}` +
-      `&status=active` +
-      `&q=${encodeURIComponent(unitTerm)}`;
-
-    console.log("[UNITS PARAMS]", {
-      divisionId,
-      unitTerm,
-    });
-
-    fetchJSON(url)
-      .then((data) => {
-        console.log("[UNITS SUCCESS]", {
-          count: Array.isArray(data) ? data.length : null,
-          data,
-        });
-
-        setUnits(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("[UNITS FAILED]", {
-          url,
-          divisionId,
-          error,
-        });
-
-        setUnits([]);
-      })
-      .finally(() => {
-        setLoading((s) => ({ ...s, units: false }));
-      });
+    fetchJSON(
+      `/recruitment/api/job_openings/units?division_id=${divisionId}&status=active&q=${encodeURIComponent(
+        unitTerm
+      )}`
+    )
+      .then(setUnits)
+      .catch(() => setUnits([]))
+      .finally(() => setLoading((s) => ({ ...s, units: false })));
   }, [divisionId, unitTerm]);
 
   useEffect(() => {
     if (!unitId) {
       setPositions([]);
-      setPositionId(null);
       return;
     }
 
     setLoading((s) => ({ ...s, positions: true }));
-
-    const url =
-      `/recruitment/api/job_openings/positions` +
-      `?unit_id=${encodeURIComponent(unitId)}` +
-      `&status=active` +
-      `&q=${encodeURIComponent(positionTerm)}`;
-
-    console.log("[POSITIONS PARAMS]", {
-      unitId,
-      positionTerm,
-    });
-
-    fetchJSON(url)
-      .then((data) => {
-        console.log("[POSITIONS SUCCESS]", {
-          count: Array.isArray(data) ? data.length : null,
-          data,
-        });
-
-        setPositions(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("[POSITIONS FAILED]", {
-          url,
-          unitId,
-          error,
-        });
-
-        setPositions([]);
-      })
-      .finally(() => {
-        setLoading((s) => ({ ...s, positions: false }));
-      });
+    fetchJSON(
+      `/recruitment/api/job_openings/positions?unit_id=${unitId}&status=active&q=${encodeURIComponent(
+        positionTerm
+      )}`
+    )
+      .then(setPositions)
+      .catch(() => setPositions([]))
+      .finally(() => setLoading((s) => ({ ...s, positions: false })));
   }, [unitId, positionTerm]);
+
+  useEffect(() => {
+    if (!positionId) {
+      setHeadcountTarget(0);
+      setEmployeeCount(0);
+      return;
+    }
+
+    fetchJSON(`/recruitment/api/job_openings/position-capacity?position_id=${positionId}`)
+      .then((data) => {
+        setHeadcountTarget(data.headcount_target ?? 0);
+        setEmployeeCount(data.employee_count ?? 0);
+      })
+      .catch(() => {
+        setHeadcountTarget(0);
+        setEmployeeCount(0);
+      });
+  }, [positionId]);
 
   const canSubmit = Boolean(
     branchIds.length > 0 &&

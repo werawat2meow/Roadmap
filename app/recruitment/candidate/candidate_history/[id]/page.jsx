@@ -71,8 +71,6 @@ export default function CandidateHistoryPage({ params }) {
 
       const json = await res.json();
 
-      console.log(json);
-
       if (!res.ok) {
         throw new Error(json.error || "Load failed");
       }

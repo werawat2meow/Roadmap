@@ -61,9 +61,6 @@ export async function GET(request) {
     }
   });
 
-  console.log("departments" , uniqueDepartments);
-  
-
   return NextResponse.json(
     Array.from(uniqueDepartments.values()).sort((a, b) =>
       a.label.localeCompare(b.label)

@@ -51,6 +51,9 @@ export async function GET(request) {
     }
   });
 
+  console.log("unit" , uniqueUnits);
+  
+
   return NextResponse.json(
     Array.from(uniqueUnits.values()).sort((a, b) =>
       a.label.localeCompare(b.label)

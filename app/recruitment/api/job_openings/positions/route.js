@@ -55,6 +55,9 @@ export async function GET(request) {
     }
   });
 
+  console.log("position" , uniquePositions);
+  
+
   return NextResponse.json(
     Array.from(uniquePositions.values()).sort((a, b) =>
       a.label.localeCompare(b.label)

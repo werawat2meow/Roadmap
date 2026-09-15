@@ -259,6 +259,8 @@ export default function RecruitmentOpenFormPage({
     mode === "edit" && !initialData
   );
 
+  console.log(mode);  
+
   console.log(initialData);
   
   useEffect(() => {

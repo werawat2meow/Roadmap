@@ -51,6 +51,9 @@ export async function GET(request) {
     }
   });
 
+  console.log("division" , uniqueDivisions);
+  
+
   return NextResponse.json(
     Array.from(uniqueDivisions.values()).sort((a, b) =>
       a.label.localeCompare(b.label)

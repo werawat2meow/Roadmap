@@ -44,6 +44,8 @@ export async function GET(request) {
     }
   });
 
+  console.log("branches" , uniqueBranches);  
+
   return NextResponse.json(
     Array.from(uniqueBranches.values()).sort((a, b) =>
       a.label.localeCompare(b.label)

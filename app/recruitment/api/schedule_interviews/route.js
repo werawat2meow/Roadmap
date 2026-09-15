@@ -185,6 +185,7 @@ export async function GET(request) {
     //   -> branch_departments
     //   -> branch_id
     // ============================================================
+    
     const {
       data: branchPositions,
       error: branchPositionsError,
@@ -209,7 +210,7 @@ export async function GET(request) {
       .in(
         "unit_positions.units.divisions.departments.branch_departments.branch_id",
         branchIds
-      );
+      );      
 
     if (branchPositionsError) {
       return NextResponse.json(
@@ -224,7 +225,7 @@ export async function GET(request) {
       ...new Set(
         (branchPositions ?? []).map((p) => p.id)
       ),
-    ];
+    ];    
 
     // ============================================================
     // ถ้าไม่มีตำแหน่งที่ User มีสิทธิ์
@@ -366,7 +367,7 @@ export async function GET(request) {
       data,
       error,
       count,
-    } = await query;
+    } = await query;    
 
     if (error) {
       return NextResponse.json(

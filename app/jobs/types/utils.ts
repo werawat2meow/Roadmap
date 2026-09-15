@@ -105,7 +105,8 @@ export function validateEmail(
 
 export function validatePlainText(value: string): boolean {
   // return /^[\p{L}\p{N}\s]*$/u.test(value);
-  return /^[\p{L}\p{M}\p{N}\s]*$/u.test(value);
+  // return /^[\p{L}\p{M}\p{N}\s]*$/u.test(value);
+  return /^[\p{L}\p{M}\p{N}\s/]*$/u.test(value);
 }
 
 /* -------------------------------------------------------------------------- */

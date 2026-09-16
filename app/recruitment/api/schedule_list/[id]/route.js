@@ -13,14 +13,10 @@ export async function GET(request, { params }) {
 
   const userId = await getUserIdFromRequest();
 
-  console.log(token , userId);
-
   // ไม่ login → ต้องมี token ที่ valid เท่านั้นถึงจะเข้าได้
   if (!userId) {
-    console.log("if");
     
     if (!token) {
-      console.log("if token");
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }

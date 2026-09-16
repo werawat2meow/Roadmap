@@ -14,7 +14,6 @@ export async function GET(request) {
       positions!inner (
         id,
         position_name,
-        position_level,
         status,
         unit_positions!inner (
           unit_id,
@@ -52,7 +51,6 @@ export async function GET(request) {
       uniquePositions.set(position.id, {
         id: position.id,
         label: position.position_name,
-        level: position.position_level,
       });
     }
   });

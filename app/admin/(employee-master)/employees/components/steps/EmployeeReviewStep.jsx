@@ -457,19 +457,35 @@ export default function EmployeeReviewStep({
               : `Citizen ID: ${values.citizen_id || "-"}`}
         </Descriptions.Item>
 
+        <Descriptions.Item label="การนำส่งภาษี">
+          {values.tax_withholding_enabled
+            ? "บริษัทเป็นผู้หักและนำส่งภาษี"
+            : "ไม่นำส่งภาษีโดยบริษัท"}
+        </Descriptions.Item>
+
         <Descriptions.Item label="แบบภาษี / ภ.ง.ด.">
-          {values.tax_filing_form_code || "-"}
+          {values.tax_withholding_enabled
+            ? values.tax_filing_form_code || "-"
+            : "-"}
+        </Descriptions.Item>
+
+        <Descriptions.Item label="สถานะผู้มีถิ่นที่อยู่ทางภาษี">
+          {values.tax_withholding_enabled
+            ? values.tax_resident_status || "-"
+            : "-"}
         </Descriptions.Item>
 
         <Descriptions.Item label="บริษัทนำส่งภาษี">
-          {getValue(
-            taxWithholdingCompany,
-            [
-              "company_name_th",
-              "company_name_en",
-              "company_code",
-            ]
-          )}
+          {values.tax_withholding_enabled
+            ? getValue(
+                taxWithholdingCompany,
+                [
+                  "company_name_th",
+                  "company_name_en",
+                  "company_code",
+                ]
+              )
+            : "-"}
         </Descriptions.Item>
 
         <Descriptions.Item label="ประกันสังคม">

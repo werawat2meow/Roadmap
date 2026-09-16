@@ -201,8 +201,13 @@ export default function JobOpenForm({ editId }) {
 
   function handleQuantityChange(row, value) {
     const key = rowKey(row.unit_id, row.branch_id);
-    const clamped = Math.max(0, Math.min(value, maxOpening));
-    setQuantities((prev) => ({ ...prev, [key]: clamped }));
+
+    const quantity = Math.max(0, Number(value) || 0);
+
+    setQuantities((prev) => ({
+      ...prev,
+      [key]: quantity,
+    }));
   }
 
   // ============================================================
@@ -220,13 +225,13 @@ export default function JobOpenForm({ editId }) {
       setMessage({ type: "error", text: "กรุณาระบุจำนวนที่ต้องการเปิดรับอย่างน้อย 1 บริษัท" });
       return;
     }
-    if (totalRequested > maxOpening) {
-      setMessage({
-        type: "error",
-        text: `จำนวนรวมเกินโควตาที่เปิดรับได้ (สูงสุด ${maxOpening} อัตรา)`,
-      });
-      return;
-    }
+    // if (totalRequested > maxOpening) {
+    //   setMessage({
+    //     type: "error",
+    //     text: `จำนวนรวมเกินโควตาที่เปิดรับได้ (สูงสุด ${maxOpening} อัตรา)`,
+    //   });
+    //   return;
+    // }
     if (!startDate || !endDate) {
       setMessage({ type: "error", text: "กรุณาเลือกวันที่เริ่มเปิดรับและวันที่ปิดรับ" });
       return;
@@ -450,7 +455,18 @@ export default function JobOpenForm({ editId }) {
                           {row.branch_name}
                         </td>
                         <td className="px-3 py-2 text-slate-500">
-                          {row.department_name} / {row.division_name} / {row.unit_name}
+                          {[
+                            row.department_name,
+                            row.division_name,
+                            row.unit_name,
+                          ]
+                            .filter(
+                              (value) =>
+                                value !== null &&
+                                value !== undefined &&
+                                String(value).trim() !== ""
+                            )
+                            .join(" / ") || "-"}
                         </td>
                         <td className="px-3 py-2 text-center text-slate-500">
                           {row.employee_count ?? 0}
@@ -459,7 +475,6 @@ export default function JobOpenForm({ editId }) {
                           <input
                             type="number"
                             min={0}
-                            max={maxOpening}
                             value={quantities[key] ?? ""}
                             onChange={(e) =>
                               handleQuantityChange(row, Number(e.target.value) || 0)
@@ -547,7 +562,7 @@ export default function JobOpenForm({ editId }) {
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isSubmitting || remaining < 0}
+          disabled={isSubmitting }
           className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "บันทึกข้อมูล"}

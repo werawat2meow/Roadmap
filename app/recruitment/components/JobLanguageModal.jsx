@@ -99,7 +99,7 @@ export default function JobLanguageModal({
               <option value="">-- เลือกตำแหน่งงาน --</option>
               {positions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.position_name} ({p.position_level})
+                  {p.position_name}
                 </option>
               ))}
             </select>

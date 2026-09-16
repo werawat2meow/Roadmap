@@ -78,7 +78,8 @@ const DEFAULT_FORM_VALUES = {
   line_id: "",
 
   /* Statutory / Tax */
-  tax_identity_type: "citizen_id",
+  tax_withholding_enabled: false,
+  tax_identity_type: undefined,
   tax_identification_no: "",
   tax_filing_form_code: undefined,
   tax_resident_status: "resident",
@@ -586,15 +587,28 @@ function createEmployeeFormValues(record) {
      * Existing employee statutory history is managed at
      * /admin/employee-statutory-profiles.
      */
+    /*
+     * Edit / View ใช้ Personal Identity เป็น Source of Truth
+     * เพื่อให้หน้า "ข้อมูลติดต่อ / ภาษี" แสดงค่าอัตโนมัติ
+     * แม้พนักงานรายนั้นยังไม่มี Statutory Profile
+     */
+    tax_withholding_enabled:
+      false,
+
     tax_identity_type:
       record.citizen_id
         ? "citizen_id"
         : record.passport_no
           ? "passport"
-          : "tax_id",
+          : record.tax_id
+            ? "tax_id"
+            : undefined,
 
     tax_identification_no:
-      record.tax_id || "",
+      record.citizen_id ||
+      record.passport_no ||
+      record.tax_id ||
+      "",
 
     tax_filing_form_code:
       undefined,
@@ -844,65 +858,211 @@ function createEmployeeFormValues(record) {
   return values;
 }
 
-function resolveTaxIdentificationNo(values = {}) {
-  const identityType =
-    cleanText(
-      values.tax_identity_type
-    ) || "citizen_id";
+const TAX_WITHHOLDING_STEP_FIELDS =
+  new Set([
+    "tax_filing_form_code",
+    "tax_resident_status",
+    "tax_withholding_company_id",
+    "statutory_effective_from",
+  ]);
 
-  if (identityType === "citizen_id") {
-    return cleanNullableText(
+const SOCIAL_SECURITY_STEP_FIELDS =
+  new Set([
+    "social_security_no",
+    "insured_type",
+    "social_security_company_id",
+  ]);
+
+function getEmployeeStepFieldsForValidation(
+  step,
+  form
+) {
+  const fields =
+    EMPLOYEE_STEP_FIELDS[
+      step
+    ] || [];
+
+  if (Number(step) !== 1) {
+    return fields;
+  }
+
+  const taxWithholdingEnabled =
+    Boolean(
+      form.getFieldValue(
+        "tax_withholding_enabled"
+      )
+    );
+
+  const socialSecurityRegistered =
+    Boolean(
+      form.getFieldValue(
+        "social_security_registered"
+      )
+    );
+
+  return fields.filter(
+    (fieldName) => {
+      if (
+        !taxWithholdingEnabled &&
+        TAX_WITHHOLDING_STEP_FIELDS.has(
+          fieldName
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        !socialSecurityRegistered &&
+        SOCIAL_SECURITY_STEP_FIELDS.has(
+          fieldName
+        )
+      ) {
+        return false;
+      }
+
+      return true;
+    }
+  );
+}
+
+function resolveEmployeeIdentity(
+  values = {}
+) {
+  const citizenId =
+    cleanNullableText(
       values.citizen_id
     );
-  }
 
-  if (identityType === "passport") {
-    return cleanNullableText(
+  const passportNo =
+    cleanNullableText(
       values.passport_no
     );
+
+  /*
+   * Personal Identity เป็น Source of Truth
+   *
+   * 1) ถ้ามี Citizen ID ใช้ Citizen ID
+   * 2) ถ้าไม่มี Citizen ID แต่มี Passport ใช้ Passport
+   * 3) ถ้าไม่มีทั้งสองอย่าง ค่อยใช้ Tax ID ที่ HR ระบุเอง
+   *
+   * ห้าม fallback เป็น citizen_id เฉย ๆ
+   * เพราะพนักงานต่างชาติอาจมีเฉพาะ Passport
+   */
+  if (citizenId) {
+    return {
+      type: "citizen_id",
+      value: citizenId,
+    };
   }
 
-  return cleanNullableText(
-    values.tax_identification_no
+  if (passportNo) {
+    return {
+      type: "passport",
+      value: passportNo,
+    };
+  }
+
+  const selectedType =
+    cleanText(
+      values.tax_identity_type
+    );
+
+  const taxId =
+    cleanNullableText(
+      values.tax_identification_no
+    );
+
+  if (
+    selectedType === "tax_id" &&
+    taxId
+  ) {
+    return {
+      type: "tax_id",
+      value: taxId,
+    };
+  }
+
+  return {
+    type: null,
+    value: null,
+  };
+}
+
+function resolveTaxIdentificationNo(
+  values = {}
+) {
+  return resolveEmployeeIdentity(
+    values
+  ).value;
+}
+
+function hasInitialStatutoryFormData(
+  values = {}
+) {
+  /*
+   * สร้าง employee_statutory_profiles เฉพาะเมื่อ HR
+   * เปิดการนำส่งภาษี หรือขึ้นทะเบียนประกันสังคมจริง
+   *
+   * Citizen ID / Passport เป็น Personal Identity
+   * ไม่ควรทำให้เกิด Statutory Profile โดยอัตโนมัติ
+   */
+  return Boolean(
+    values.tax_withholding_enabled ||
+    values.social_security_registered
   );
 }
 
 function buildEmployeeStatutoryPayload(
   values
 ) {
+  const taxWithholdingEnabled =
+    Boolean(
+      values.tax_withholding_enabled
+    );
+
   const socialRegistered =
     Boolean(
       values.social_security_registered
     );
 
+  const identity =
+    resolveEmployeeIdentity(
+      values
+    );
+
   return {
+    /*
+     * Identity ยังแนบไปกับ Statutory Profile ได้
+     * ในกรณี SSO-only เพื่ออ้างอิงตัวบุคคล
+     * แต่จะไม่ถือว่าเปิด Tax Withholding
+     * หากไม่มีข้อมูลกลุ่มภาษีด้านล่าง
+     */
     tax_identity_type:
-      cleanText(
-        values.tax_identity_type
-      ) || "citizen_id",
+      identity.type,
 
     tax_identification_no:
-      values.tax_identity_type ===
-      "tax_id"
+      identity.value,
+
+    tax_filing_form_code:
+      taxWithholdingEnabled
         ? cleanNullableText(
-            values.tax_identification_no
+            values.tax_filing_form_code
           )
         : null,
 
-    tax_filing_form_code:
-      cleanNullableText(
-        values.tax_filing_form_code
-      ),
-
     tax_resident_status:
-      cleanText(
-        values.tax_resident_status
-      ) || "resident",
+      taxWithholdingEnabled
+        ? cleanNullableText(
+            values.tax_resident_status
+          )
+        : null,
 
     tax_withholding_company_id:
-      cleanNullableUuid(
-        values.tax_withholding_company_id
-      ),
+      taxWithholdingEnabled
+        ? cleanNullableUuid(
+            values.tax_withholding_company_id
+          )
+        : null,
 
     social_security_registered:
       socialRegistered,
@@ -1152,7 +1312,10 @@ function buildEmployeePayload(values,{
      * เฉพาะ Create เท่านั้น
      * Edit ใช้ /admin/employee-statutory-profiles เพื่อรักษา Effective History
      */
-    ...(isCreate
+    ...(isCreate &&
+    hasInitialStatutoryFormData(
+      values
+    )
       ? buildEmployeeStatutoryPayload(
           values
         )
@@ -2106,9 +2269,10 @@ export default function EmployeesPage() {
   const handleNextStep = useCallback(async () => {
       try {
         const fields =
-          EMPLOYEE_STEP_FIELDS[
-            currentStep
-          ] || [];
+          getEmployeeStepFieldsForValidation(
+            currentStep,
+            form
+          );
 
         await form.validateFields(
           fields
@@ -2237,9 +2401,10 @@ export default function EmployeesPage() {
           step += 1
         ) {
           const fields =
-            EMPLOYEE_STEP_FIELDS[
-              step
-            ] || [];
+            getEmployeeStepFieldsForValidation(
+              step,
+              form
+            );
 
           if (
             fields.length
@@ -2457,10 +2622,16 @@ export default function EmployeesPage() {
        */
       const submitFields = Array.from(
         new Set(
-          Object.values(
+          Object.keys(
             EMPLOYEE_STEP_FIELDS
           )
-            .flat()
+            .flatMap(
+              (step) =>
+                getEmployeeStepFieldsForValidation(
+                  Number(step),
+                  form
+                )
+            )
             .filter(
               (fieldName) =>
                 fieldName !==

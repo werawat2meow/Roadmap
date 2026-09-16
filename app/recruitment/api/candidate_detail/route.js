@@ -32,7 +32,7 @@ export async function GET(request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Not set company Data" },
+        { error: "User ของท่านไม่ได้ตั้งค่า scrop งานไว้" },
         { status: 401 }
       );
     }
@@ -46,7 +46,7 @@ export async function GET(request) {
     const all_scrop = Boolean(user.all_scrop);
 
     let status = all_scrop
-      ? [1, 2, 3, 6, 7, 8, 9, 16, 99]
+      ? [1, 2, 3, 6, 7, 8, 9, 16, 18, 99]
       : [1, 2, 3, 6, 7, 8, 9];
 
     // ---------- List mode: รายการผู้สมัคร ----------
@@ -109,6 +109,7 @@ export async function GET(request) {
         p_branch_ids: branchIds,
         p_page: page,
         p_page_size: isAll ? 999999 : pageSize,
+        p_include_null_branch: all_scrop,
       }
     );
 

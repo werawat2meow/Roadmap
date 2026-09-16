@@ -125,12 +125,12 @@ export const uiText = {
     TH: "นามสกุล",
   },
 
-  nicknameTh: {
+  nicknameTH: {
     EN: "Nickname (TH)",
     TH: "ชื่อเล่น (TH)",
   },
 
-  nicknameEn: {
+  nicknameEN: {
     EN: "Nickname (EN)",
     TH: "ชื่อเล่น (EN)",
   },
@@ -744,6 +744,15 @@ export const uiText = {
     TH:"ฝาก Resume",
   },
 
+  bottomCtaTitle: {
+    TH: "สนใจร่วมงานกับเรา?",
+    EN: "Interested in joining us?",
+  },
+
+  bottomCtaDescription: {
+    TH: "สมัครงานกับเราและเริ่มต้นโอกาสใหม่ของคุณ",
+    EN: "Apply now and start your next opportunity with us.",
+  },
 
 
 } as const;

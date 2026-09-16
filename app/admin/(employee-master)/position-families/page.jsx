@@ -11,6 +11,7 @@ import PositionFamilySearch from "./components/PositionFamilySearch";
 import PositionFamilyTable from "./components/PositionFamilyTable";
 import PositionFamilyPagination from "./components/PositionFamilyPagination";
 import PositionFamilyModal from "./components/PositionFamilyModal";
+import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
 
 const initialForm = {
   family_code: "",
@@ -29,6 +30,7 @@ export default function PositionFamiliesPage() {
   const canCreate = hasPermission(user,"ems.position_families.create");
   const canEdit = hasPermission(user,"ems.position_families.edit");
   const canDelete = hasPermission(user,"ems.position_families.delete");
+  const canViewFamilyLevels = hasPermission(user,"ems.position_family_levels.view");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +138,23 @@ export default function PositionFamiliesPage() {
   const handleOpenCreate = () => {
     resetForm();
     setOpenModal(true);
+  };
+
+  const handleOpenFamilyLevels = (family) => {
+    if (!canViewFamilyLevels) {
+      swalError(
+        "คุณไม่มีสิทธิ์ดูระดับของกลุ่มสายงาน"
+      );
+      return;
+    }
+
+    if (!family?.id) {
+      return;
+    }
+
+    router.push(
+      `/admin/position-family-levels?family_id=${encodeURIComponent(family.id)}`
+    );
   };
 
   const handleOpenEdit = (family) => {
@@ -293,25 +312,17 @@ export default function PositionFamiliesPage() {
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
-
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-
         <div className="flex items-center justify-between">
-
           <div>
-
             <h1 className="text-2xl font-bold">
               Position Families
             </h1>
-
             <p className="text-slate-500 mt-1">
               Master Position Family Management
             </p>
-
           </div>
-
           {canCreate && (
             <button
               onClick={handleOpenCreate}
@@ -320,10 +331,10 @@ export default function PositionFamiliesPage() {
               + Add Position Family
             </button>
           )}
-
         </div>
-
       </div>
+      
+      <PageInfoAlert description="จัดการกลุ่มงาน ใช้สำหรับจัดหมวดหมู่ตำแหน่งก่อนนำไปผูกกับพนักงาน" />
 
       <PositionFamilySearch
         value={search}
@@ -341,9 +352,11 @@ export default function PositionFamiliesPage() {
         families={families}
         page={page}
         pageSize={pageSize}
+        canViewFamilyLevels={canViewFamilyLevels}
         canEdit={canEdit}
         canDelete={canDelete}
         deletingId={deletingId}
+        onOpenFamilyLevels={handleOpenFamilyLevels}
         onEdit={handleOpenEdit}
         onDelete={handleDelete}
       />

@@ -1775,16 +1775,6 @@ export default function EmployeeOrganizationStep({
           ORGANIZATION UNIT
       =================================================== */}
 
-      <Divider
-        titlePlacement="left"
-        plain
-      >
-        <Space>
-          <ApartmentOutlined />
-          หน่วยงาน
-        </Space>
-      </Divider>
-
       <Row gutter={[16, 0]}>
         <Col
           xs={24}

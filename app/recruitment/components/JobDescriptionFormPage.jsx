@@ -59,6 +59,13 @@ const buildBenefitFromRecords = (records = [], languages = []) =>
     : [buildSectionRow(languages)];
 
 const createEmptyForm = (languages = []) => ({
+  // existing = ตำแหน่งที่มีอยู่แล้ว
+  // special = ตำแหน่งใหม่พิเศษ
+  position_mode: "existing",
+
+  // ชื่อตำแหน่งใหม่พิเศษ
+  special_position_name: "",
+
   branch_id: [],
   department_id: "",
   division_id: "",
@@ -79,39 +86,74 @@ const createEmptyForm = (languages = []) => ({
   remark:"",
 });
 
-const buildFormData = (initialData, languages) => ({  
-  branch_id:
-    initialData.jobDescriptionBranches.length > 0
-      ? initialData.jobDescriptionBranches.map((item) => item.branch_id.toString())
-      : Array.isArray(initialData?.branch_id)
-        ? initialData.branch_id.map(String)
-        : initialData?.branch_id
-          ? [initialData.branch_id.toString()]
-          : [],
-  department_id: initialData?.department_id?.toString() || "",
-  division_id: initialData?.division_id?.toString() || "",
-  unit_id: initialData?.unit_id?.toString() || "",
-  positions_id: initialData?.positions_id?.toString() || "",
-  
-  salary_mode:
-    initialData?.salary_note === "เงินเดือนตามตกลง"
-      ? "negotiable"
-      : "range",
-  salary_min: initialData?.salary_min?.toString() || "",
-  salary_max: initialData?.salary_max?.toString() || "",
-  salary_note: initialData?.salary_note || "",
+const buildFormData = (initialData, languages) => {
+  const isSpecialPosition =
+    initialData?.department_id == null &&
+    initialData?.division_id == null &&
+    initialData?.unit_id == null;
 
-  type_of_work: initialData?.type_of_work || "monthly",
-  salary_note: initialData?.salary_note || "",
-  workplace: initialData?.workplace || "",
-  description: normalizeLocalizedObject(initialData?.description, languages, "description_text"),
-  requirements: normalizeLocalizedRows(initialData?.requirements, languages, "requirement_text"),
-  responsibilities: normalizeLocalizedRows(initialData?.responsibilities, languages, "responsibility_text"),
-  benefits: normalizeLocalizedRows(initialData?.benefits, languages, "benefit_text"),
-  workday:initialData?.workday || "",
-  dayoff:initialData?.dayoff || "",
-  remark: initialData?.remark || "",
-});
+  return {
+    position_mode: isSpecialPosition ? "special" : "existing",
+
+    special_position_name: initialData?.positions?.position_name || "",
+
+    branch_id:
+      initialData.jobDescriptionBranches.length > 0
+        ? initialData.jobDescriptionBranches.map((item) =>
+            item.branch_id.toString()
+          )
+        : Array.isArray(initialData?.branch_id)
+          ? initialData.branch_id.map(String)
+          : initialData?.branch_id
+            ? [initialData.branch_id.toString()]
+            : [],
+
+    department_id: initialData?.department_id?.toString() || "",
+    division_id: initialData?.division_id?.toString() || "",
+    unit_id: initialData?.unit_id?.toString() || "",
+    positions_id: initialData?.positions_id?.toString() || "",
+
+    salary_mode:
+      initialData?.salary_note === "เงินเดือนตามตกลง"
+        ? "negotiable"
+        : "range",
+
+    salary_min: initialData?.salary_min?.toString() || "",
+    salary_max: initialData?.salary_max?.toString() || "",
+    salary_note: initialData?.salary_note || "",
+
+    type_of_work: initialData?.type_of_work || "monthly",
+    workplace: initialData?.workplace || "",
+
+    description: normalizeLocalizedObject(
+      initialData?.description,
+      languages,
+      "description_text"
+    ),
+
+    requirements: normalizeLocalizedRows(
+      initialData?.requirements,
+      languages,
+      "requirement_text"
+    ),
+
+    responsibilities: normalizeLocalizedRows(
+      initialData?.responsibilities,
+      languages,
+      "responsibility_text"
+    ),
+
+    benefits: normalizeLocalizedRows(
+      initialData?.benefits,
+      languages,
+      "benefit_text"
+    ),
+
+    workday: initialData?.workday || "",
+    dayoff: initialData?.dayoff || "",
+    remark: initialData?.remark || "",
+  };
+};
 
 // Helper: ensure ของที่ถูก select อยู่ใน list เสมอ
 function ensureSelected(list, selectedId, allItems) {
@@ -168,6 +210,27 @@ export default function JobDescriptionForm({
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handlePositionModeChange(mode) {
+    setForm((prev) => ({
+      ...prev,
+      position_mode: mode,
+
+      // ถ้าเปลี่ยนเป็น special ให้ล้าง hierarchy เดิม
+      ...(mode === "special"
+        ? {
+            department_id: "",
+            division_id: "",
+            unit_id: "",
+            positions_id: "",
+          }
+        : {
+            special_position_name: "",
+          }),
+    }));
+
+    setErrorMessage("");
   }
 
   // Update a single localized field that is stored as one object (not a list of rows)
@@ -443,18 +506,47 @@ export default function JobDescriptionForm({
     setLoading(true);
     setErrorMessage("");
 
-    if (!form.branch_id || !form.department_id || !form.division_id || !form.unit_id || !form.positions_id) {
-      setErrorMessage("กรุณาเลือกตำแหน่งงานให้ครบ");
+    // ============================
+    // Validate Position
+    // ============================
+    if (!form.branch_id || form.branch_id.length === 0) {
+      setErrorMessage("กรุณาเลือก Branch");
       setLoading(false);
       return;
     }
 
+    if (form.position_mode === "existing") {
+      if (
+        !form.department_id ||
+        !form.division_id ||
+        !form.unit_id ||
+        !form.positions_id
+      ) {
+        setErrorMessage("กรุณาเลือกตำแหน่งงานให้ครบ");
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (form.position_mode === "special") {
+      if (!form.special_position_name?.trim()) {
+        setErrorMessage("กรุณากรอกชื่อตำแหน่งใหม่พิเศษ");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // ============================
+    // Payload
+    // ============================
     const payload = {
+      position_mode: form.position_mode,
       branch_id: form.branch_id || null,
-      department_id: form.department_id || null,
-      division_id: form.division_id || null,
-      unit_id: form.unit_id || null,
-      positions_id: form.positions_id || null,
+      department_id: form.position_mode === "existing"? form.department_id || null: null,
+      division_id: form.position_mode === "existing" ? form.division_id || null : null,
+      unit_id: form.position_mode === "existing" ? form.unit_id || null : null,
+      positions_id: form.position_mode === "existing" || mode === "edit" ? form.positions_id || null : null,
+      special_position_name: form.position_mode === "special" ? form.special_position_name.trim() : null,
       salary_min: form.salary_min,
       salary_max: form.salary_max,
       salary_note: form.salary_note || null,
@@ -468,16 +560,32 @@ export default function JobDescriptionForm({
       dayoff: form.dayoff,
       remark: form.remark,
     };
-    
+
     const isEdit = mode === "edit";
-    const url = isEdit ? `/recruitment/api/job_description/${initialData.id}` : "/recruitment/api/job_description";
+
+    const url = isEdit
+      ? `/recruitment/api/job_description/${initialData.id}`
+      : "/recruitment/api/job_description";
+
     const method = isEdit ? "PUT" : "POST";
-    
+
     try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
       const result = await res.json();
-      
-      if (!res.ok) throw new Error(result.message || "บันทึกไม่สำเร็จ");
+
+      if (!res.ok) {
+        throw new Error(
+          result.message || "บันทึกไม่สำเร็จ"
+        );
+      }
+
       router.push("/recruitment/setting/job_description");
       router.refresh();
     } catch (error) {
@@ -504,13 +612,88 @@ export default function JobDescriptionForm({
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
+
+            {/* Position Type */}
+            <div className="md:col-span-2">
+              <label className="mb-3 block text-sm font-semibold text-gray-800">
+                ประเภทตำแหน่ง
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+
+                {/* Existing Position */}
+                <label
+                  className={`cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${
+                    form.position_mode === "existing"
+                      ? "border-blue-600 bg-blue-50 shadow-lg"
+                      : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="position_mode"
+                      value="existing"
+                      checked={form.position_mode === "existing"}
+                      onChange={(e) => handlePositionModeChange(e.target.value)}
+                      className="mt-1 h-5 w-5 accent-blue-600"
+                    />
+
+                    <div>
+                      <div className="font-semibold text-gray-900">
+                        ตำแหน่งที่มีอยู่แล้ว
+                      </div>
+
+                      <div className="mt-1 text-sm text-gray-500">
+                        เลือกตำแหน่งจากโครงสร้าง Branch / Department / Division / Unit
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                {/* Special Position */}
+                <label
+                  className={`cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${
+                    form.position_mode === "special"
+                      ? "border-emerald-600 bg-emerald-50 shadow-lg"
+                      : "border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="position_mode"
+                      value="special"
+                      checked={form.position_mode === "special"}
+                      onChange={(e) => handlePositionModeChange(e.target.value)}
+                      className="mt-1 h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <div className="font-semibold text-gray-900">
+                        ตำแหน่งใหม่พิเศษ
+                      </div>
+
+                      <div className="mt-1 text-sm text-gray-500">
+                        กรอกชื่อตำแหน่งใหม่ และเลือก Branch
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+              </div>
+            </div>
+
             {/* Branch */}
             <div>
-              <label className="mb-2 block text-sm font-medium">Company</label>
+              <label className="mb-2 block text-sm font-medium">
+                Branch
+              </label>
+
               <Select
                 mode="multiple"
                 value={form.branch_id}
-                placeholder="-- เลือก Company --"
+                placeholder="-- เลือก Branch --"
                 onChange={handleBranchChange}
                 options={branches.map((item) => ({
                   value: item.id.toString(),
@@ -535,80 +718,138 @@ export default function JobDescriptionForm({
                   },
                 }}
               />
-              {benefitLoading && (
-                <p className="mt-1 text-xs text-gray-400">กำลังโหลดข้อมูลสวัสดิการ...</p>
-              )}
             </div>
 
-            {/* Department */}
-            <div>
-              <label className="mb-2 block text-sm font-medium">Department</label>
-              <select
-                value={form.department_id}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                required
-                disabled={deptDisabled}
-              >
-                <option value="">-- เลือก department --</option>
-                {filteredDepartments.map((item) => (
-                  <option key={item.id} value={item.id?.toString()}>{item.department_name}</option>
-                ))}
-              </select>
-            </div>
+            {form.position_mode === "special" ? (
+              <>               
 
-            {/* Division */}
-            <div>
-              <label className="mb-2 block text-sm font-medium">Division</label>
-              <select
-                value={form.division_id}
-                onChange={(e) => handleDivisionChange(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                required
-                disabled={divDisabled}
-              >
-                <option value="">-- เลือก division --</option>
-                {filteredDivisions.map((item) => (
-                  <option key={item.id} value={item.id?.toString()}>{item.division_name}</option>
-                ))}
-              </select>
-            </div>
+                {/* Special Position Name */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    ชื่อตำแหน่งใหม่พิเศษ
+                  </label>
 
-            {/* Unit */}
-            <div>
-              <label className="mb-2 block text-sm font-medium">Unit</label>
-              <select
-                value={form.unit_id}
-                onChange={(e) => handleUnitChange(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                required
-                disabled={unitDisabled}
-              >
-                <option value="">-- เลือก unit --</option>
-                {filteredUnits.map((item) => (
-                  <option key={item.id} value={item.id?.toString()}>{item.unit_name}</option>
-                ))}
-              </select>
-            </div>
+                  <input
+                    type="text"
+                    value={form.special_position_name}
+                    onChange={(e) =>
+                      updateField("special_position_name", e.target.value)
+                    }
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    placeholder="กรอกชื่อตำแหน่งใหม่พิเศษ"
+                    required
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Department */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Department
+                  </label>
 
-            {/* Position */}
-            <div>
-              <label className="mb-2 block text-sm font-medium">Position</label>
-              <select
-                value={form.positions_id}
-                onChange={(e) => updateField("positions_id", e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
-                required
-                disabled={posDisabled}
-              >
-                <option value="">-- เลือก position --</option>
-                {filteredPositions.map((item) => (
-                  <option key={item.id} value={item.id?.toString()}>
-                    {item.position_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  <select
+                    value={form.department_id}
+                    onChange={(e) => handleDepartmentChange(e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    required
+                    disabled={deptDisabled}
+                  >
+                    <option value="">-- เลือก department --</option>
+
+                    {filteredDepartments.map((item) => (
+                      <option
+                        key={item.id}
+                        value={item.id?.toString()}
+                      >
+                        {item.department_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Division */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Division
+                  </label>
+
+                  <select
+                    value={form.division_id}
+                    onChange={(e) => handleDivisionChange(e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    required
+                    disabled={divDisabled}
+                  >
+                    <option value="">-- เลือก division --</option>
+
+                    {filteredDivisions.map((item) => (
+                      <option
+                        key={item.id}
+                        value={item.id?.toString()}
+                      >
+                        {item.division_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Unit */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Unit
+                  </label>
+
+                  <select
+                    value={form.unit_id}
+                    onChange={(e) => handleUnitChange(e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    required
+                    disabled={unitDisabled}
+                  >
+                    <option value="">-- เลือก unit --</option>
+
+                    {filteredUnits.map((item) => (
+                      <option
+                        key={item.id}
+                        value={item.id?.toString()}
+                      >
+                        {item.unit_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Position */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Position
+                  </label>
+
+                  <select
+                    value={form.positions_id}
+                    onChange={(e) =>
+                      updateField("positions_id", e.target.value)
+                    }
+                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    required
+                    disabled={posDisabled}
+                  >
+                    <option value="">-- เลือก position --</option>
+
+                    {filteredPositions.map((item) => (
+                      <option
+                        key={item.id}
+                        value={item.id?.toString()}
+                      >
+                        {item.position_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             {/* Type of work */}
             <div>

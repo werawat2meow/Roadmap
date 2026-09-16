@@ -8,8 +8,174 @@ import {
 
 export const runtime = "nodejs";
 
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
+function validateDocumentFileSizes(
+  documents: any[] | undefined,
+  formData: FormData | null
+): string | null {
+  if (!documents || documents.length === 0 || !formData) return null;
+
+  for (const document of documents) {
+    const file = formData.get(document.id);
+
+    if (!(file instanceof File)) continue;
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const label = document.type ?? document.id;
+      return `ไฟล์ "${file.name}" (${label}) มีขนาด ${sizeMB}MB เกินขนาดที่กำหนด (สูงสุด 2MB)`;
+    }
+  }
+
+  return null;
+}
+
 function emptyToNull(value: unknown) {
   return value === "" || value === undefined ? null : value;
+}
+
+async function resolveRecruitmentOpening(
+  positionId: string | number | null,
+  requestedBranchId: string | number | null,
+  requestedJobId: string | number | null
+) {
+  // ============================================================
+  // กรณี 1 : มี jobId
+  // ให้ยึด jobId เป็นอันดับแรก
+  // ============================================================
+  if (requestedJobId) {
+    const { data: opening, error } = await supabaseAdmin
+      .from("recruit_job_open")
+      .select(`
+        id,
+        position_id,
+        branch_id,
+        branches (
+          id,
+          branch_name
+        )
+      `)
+      .eq("id", requestedJobId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!opening) {
+      throw new Error("The selected job opening is not available.");
+    }
+
+    return {
+      jobId: opening.id,
+      sourceBranchId: opening.branch_id ?? requestedBranchId ?? null,
+    };
+  }
+
+  // ============================================================
+  // กรณี 2 : ไม่มี jobId แต่มี source_branch_id
+  // ค้นหาจาก position + branch
+  // ============================================================
+  if (requestedBranchId && positionId) {
+    const { data: opening, error } = await supabaseAdmin
+      .from("recruit_job_open")
+      .select(`
+        id,
+        position_id,
+        branch_id,
+        branches (
+          id,
+          branch_name
+        )
+      `)
+      .eq("position_id", positionId)
+      .eq("branch_id", requestedBranchId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (opening) {
+      return {
+        jobId: opening.id,
+        sourceBranchId: opening.branch_id,
+      };
+    }
+  }
+
+  // ============================================================
+  // กรณี 3 : ไม่มี positionId
+  // ============================================================
+  if (!positionId) {
+    return {
+      jobId: null,
+      sourceBranchId: requestedBranchId ?? null,
+    };
+  }
+
+  // ============================================================
+  // ไม่มีทั้ง jobId ที่ match และ branch ที่ match
+  // ใช้ logic เดิม ตรวจสอบจาก position
+  // ============================================================
+  const { data: openings, error } = await supabaseAdmin
+    .from("recruit_job_open")
+    .select(`
+      id,
+      position_id,
+      branch_id,
+      branches (
+        id,
+        branch_name
+      )
+    `)
+    .eq("position_id", positionId);
+
+  if (error) {
+    throw error;
+  }
+
+  const jobOpenings = openings ?? [];
+
+  // ไม่มีรอบเปิดรับสมัคร
+  if (jobOpenings.length === 0) {
+    return {
+      jobId: null,
+      sourceBranchId: requestedBranchId ?? null,
+    };
+  }
+
+  // มีรอบเดียว
+  if (jobOpenings.length === 1) {
+    const opening = jobOpenings[0];
+
+    return {
+      jobId: opening.id,
+      sourceBranchId: opening.branch_id ?? null,
+    };
+  }
+
+  // มีหลายรอบ แต่ไม่ได้ระบุ branch
+  if (!requestedBranchId) {
+    throw new Error("Please select a branch for this position.");
+  }
+
+  const selectedOpening = jobOpenings.find(
+    (item) =>
+      String(item.branch_id) === String(requestedBranchId)
+  );
+
+  if (!selectedOpening) {
+    throw new Error(
+      "The selected branch is not available for this position."
+    );
+  }
+
+  return {
+    jobId: selectedOpening.id,
+    sourceBranchId: selectedOpening.branch_id,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -43,26 +209,51 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
+    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    if (sizeError) {
+      return NextResponse.json(
+        { success: false, message: sizeError },
+        { status: 400 }
+      );
+    }
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
     const positionId = emptyToNull(
       payload.positionId ?? payload.position_id
-    );
+    ) as string | number | null;
 
-    const get_branch_id = await supabaseAdmin
-      .from("recruit_jobs")
-      .select("branch_id")
-      .eq("id", payload.jobId)
-      .single();
+    const requestedBranchId = emptyToNull(
+      payload.sourceBranchId ??
+      payload.source_branch_id
+    ) as string | number | null;
+
+    const requestedJobId = emptyToNull(
+      payload.jobId ??
+      payload.job_id
+    ) as string | number | null;
+
+    // ============================================================
+    // ตรวจสอบรอบเปิดรับสมัคร
+    // ============================================================
+    const {
+      jobId,
+      sourceBranchId,
+    } = await resolveRecruitmentOpening(
+      positionId,
+      requestedBranchId,
+      requestedJobId
+    );
 
     /* ------------------------------------------------------------ */
     /*         1) Insert recruit_job_applications ก่อนอันดับแรก         */
     /* ------------------------------------------------------------ */
 
     const applicationData = {
-      job_id: payload.jobId,
-      source_branch_id: get_branch_id.data?.branch_id ?? null,
+      job_id: jobId,
+      source_branch_id: sourceBranchId,
       position_id: positionId,
       other_position: personal.otherPosition ?? "",
       expected_salary: Number(personal.expectedSalary ?? payload.expected_salary ?? 0),
@@ -322,6 +513,7 @@ export async function POST(request: NextRequest) {
       // โยน error เดิมต่อ ให้ catch ชั้นนอกสุดจัดการ response
       throw innerError;
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -371,12 +563,32 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
+    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    if (sizeError) {
+      return NextResponse.json(
+        { success: false, message: sizeError },
+        { status: 400 }
+      );
+    }
     
     const personal = payload.personal ?? {};
     const agreement = payload.agreement ?? {};
     const positionId = emptyToNull(
       payload.positionId ?? payload.position_id
-    );
+    ) as string | number | null;
+
+    const requestedBranchId = emptyToNull(
+      payload.sourceBranchId ??
+      payload.source_branch_id
+    ) as string | number | null;
+
+    const requestedJobId = emptyToNull(
+      payload.jobId ??
+      payload.job_id
+    ) as string | number | null;
+
 
     const applicationId = payload.application_id;
 
@@ -390,11 +602,25 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================
+    // ตรวจสอบ recruit_job_open ใหม่ทุกครั้ง
+    // ============================================================
+    const {
+      jobId,
+      sourceBranchId,
+    } = await resolveRecruitmentOpening(
+      positionId,
+      requestedBranchId,
+      requestedJobId
+    );
+
     // API เป็นผู้กำหนด status
     const status = 1;
 
     const applicationData = {
       position_id: positionId,
+      job_id: jobId,
+      source_branch_id: sourceBranchId,
       other_position: personal.otherPosition ?? "",
       expected_salary: Number( personal.expectedSalary ?? payload.expected_salary ?? 0),
       first_name: personal.firstName ?? "",

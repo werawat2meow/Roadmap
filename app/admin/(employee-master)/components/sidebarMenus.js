@@ -370,144 +370,144 @@ export const sidebarMenus = [
 
     ],
   },
-  // {
-  //   title: "COST STRUCTURE",
-  //   icon: <AccountBookOutlined />,
-  //   items: [
-  //     {
-  //       label: "Business Unit",
-  //       href: "/admin/business-units",
-  //       icon: <BankOutlined />,
-  //       permission: "ems.business_units.view",
-  //     },
-  //     {
-  //       label: "Cost Center",
-  //       href: "/admin/cost-centers",
-  //       icon: <FundProjectionScreenOutlined />,
-  //       permission: "ems.cost_centers.view",
-  //     },
-  //     {
-  //       label: "Profit Center",
-  //       href: "/admin/profit-centers",
-  //       icon: <DollarOutlined />,
-  //       permission: "ems.profit_centers.view",
-  //     },
-  //     {
-  //       label: "GL Mapping",
-  //       href: "/admin/gl-mappings",
-  //       icon: <FileTextOutlined />,
-  //       permission: "ems.gl_mappings.view",
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "EMPLOYEE MASTER",
-  //   icon: <IdcardOutlined />,
-  //   items: [
-  //     {
-  //       label: "พนักงาน",
-  //       href: "/admin/employees",
-  //       icon: <IdcardOutlined />,
-  //       permission: "ems.employees.view",
-  //     },
-  //     {
-  //       label: "ประเภทการจ้าง",
-  //       href: "/admin/employment-types",
-  //       icon: <UsergroupAddOutlined />,
-  //       permission: "ems.employment_types.view",
-  //     },
-  //     {
-  //       label: "สถานะพนักงาน",
-  //       href: "/admin/employee-statuses",
-  //       icon: <SafetyOutlined />,
-  //       permission: "ems.employee_statuses.view",
-  //     },
-  //     {
-  //       label: "ตั้งค่ารหัสพนักงาน",
-  //       href: "/admin/employee-code-settings",
-  //       icon: <SettingOutlined />,
-  //       permission: "ems.employee_code_settings.view",
-  //     },
-  //     {
-  //       label: "เลขรันรหัสพนักงาน",
-  //       href: "/admin/employee-running",
-  //       icon: <NumberOutlined />,
-  //       permission: "ems.employee_running.view",
-  //     },
+  {
+    title: "COST STRUCTURE",
+    icon: <AccountBookOutlined />,
+    items: [
+      {
+        label: "Business Unit",
+        href: "/admin/business-units",
+        icon: <BankOutlined />,
+        permission: "ems.business_units.view",
+      },
+      {
+        label: "Cost Center",
+        href: "/admin/cost-centers",
+        icon: <FundProjectionScreenOutlined />,
+        permission: "ems.cost_centers.view",
+      },
+      {
+        label: "Profit Center",
+        href: "/admin/profit-centers",
+        icon: <DollarOutlined />,
+        permission: "ems.profit_centers.view",
+      },
+      {
+        label: "GL Mapping",
+        href: "/admin/gl-mappings",
+        icon: <FileTextOutlined />,
+        permission: "ems.gl_mappings.view",
+      },
+    ],
+  },
+  {
+    title: "EMPLOYEE MASTER",
+    icon: <IdcardOutlined />,
+    items: [
+      {
+        label: "พนักงาน",
+        href: "/admin/employees",
+        icon: <IdcardOutlined />,
+        permission: "ems.employees.view",
+      },
+      {
+        label: "ประเภทการจ้าง",
+        href: "/admin/employment-types",
+        icon: <UsergroupAddOutlined />,
+        permission: "ems.employment_types.view",
+      },
+      {
+        label: "สถานะพนักงาน",
+        href: "/admin/employee-statuses",
+        icon: <SafetyOutlined />,
+        permission: "ems.employee_statuses.view",
+      },
+      {
+        label: "ตั้งค่ารหัสพนักงาน",
+        href: "/admin/employee-code-settings",
+        icon: <SettingOutlined />,
+        permission: "ems.employee_code_settings.view",
+      },
+      {
+        label: "เลขรันรหัสพนักงาน",
+        href: "/admin/employee-running",
+        icon: <NumberOutlined />,
+        permission: "ems.employee_running.view",
+      },
       
-  //     {
-  //       label: "รายงานพนักงาน",
-  //       href: "/admin/employee-reports",
-  //       icon: <BarChartOutlined />,
-  //       permission: "ems.employee_reports.view",
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "USER ACCESS",
-  //   icon: <SafetyCertificateOutlined />,
-  //   items: [
-  //     {
-  //       label: "ผู้ใช้งานระบบ",
-  //       href: "/admin/user-accounts",
-  //       icon: <UserOutlined />,
-  //       permission: "access.user_accounts.view",
-  //     },
-  //     {
-  //       label: "บทบาทและสิทธิ์",
-  //       href: "/admin/roles",
-  //       icon: <SafetyOutlined />,
-  //       permission: "access.roles.view",
-  //     },
-  //     {
-  //       label: "Permissions",
-  //       href: "/admin/permissions",
-  //       icon: <KeyOutlined />,
-  //       permission: "access.permissions.view",
-  //     },
+      {
+        label: "รายงานพนักงาน",
+        href: "/admin/employee-reports",
+        icon: <BarChartOutlined />,
+        permission: "ems.employee_reports.view",
+      },
+    ],
+  },
+  {
+    title: "USER ACCESS",
+    icon: <SafetyCertificateOutlined />,
+    items: [
+      {
+        label: "ผู้ใช้งานระบบ",
+        href: "/admin/user-accounts",
+        icon: <UserOutlined />,
+        permission: "access.user_accounts.view",
+      },
+      {
+        label: "บทบาทและสิทธิ์",
+        href: "/admin/roles",
+        icon: <SafetyOutlined />,
+        permission: "access.roles.view",
+      },
+      {
+        label: "Permissions",
+        href: "/admin/permissions",
+        icon: <KeyOutlined />,
+        permission: "access.permissions.view",
+      },
       
-  //     /* =====================================================
-  //      USER ACCESS ASSIGNMENT 
-  //       ผู้ใช้งาน + Role
-  //     ===================================================== */
-  //     {
-  //       label: "กำหนดบทบาทผู้ใช้งาน",
-  //       href: "/admin/user-access-assignments",
-  //       icon: <SafetyCertificateOutlined />,
-  //       permission: "access.user_access_assignments.view",
-  //     },
-  //     {
-  //       label: "Activity Logs",
-  //       href: "/admin/activity-logs",
-  //       icon: <AuditOutlined />,
-  //       permission: "access.activity_logs.view",
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "API MANAGEMENT",
-  //   icon: <ApiOutlined />,
-  //   items: [
-  //     {
-  //       label: "API Clients",
-  //       href: "/admin/api-clients",
-  //       icon: <UsergroupAddOutlined />,
-  //       permission: "api.api_clients.view",
-  //     },
-  //     {
-  //       label: "API Tokens",
-  //       href: "/admin/api-tokens",
-  //       icon: <KeyOutlined />,
-  //       permission: "api.api_tokens.view",
-  //     },
-  //     {
-  //       label: "API Logs",
-  //       href: "/admin/api-logs",
-  //       icon: <AuditOutlined />,
-  //       permission: "api.api_logs.view",
-  //     },
-  //   ],
-  // },
+      /* =====================================================
+       USER ACCESS ASSIGNMENT 
+        ผู้ใช้งาน + Role
+      ===================================================== */
+      {
+        label: "กำหนดบทบาทผู้ใช้งาน",
+        href: "/admin/user-access-assignments",
+        icon: <SafetyCertificateOutlined />,
+        permission: "access.user_access_assignments.view",
+      },
+      {
+        label: "Activity Logs",
+        href: "/admin/activity-logs",
+        icon: <AuditOutlined />,
+        permission: "access.activity_logs.view",
+      },
+    ],
+  },
+  {
+    title: "API MANAGEMENT",
+    icon: <ApiOutlined />,
+    items: [
+      {
+        label: "API Clients",
+        href: "/admin/api-clients",
+        icon: <UsergroupAddOutlined />,
+        permission: "api.api_clients.view",
+      },
+      {
+        label: "API Tokens",
+        href: "/admin/api-tokens",
+        icon: <KeyOutlined />,
+        permission: "api.api_tokens.view",
+      },
+      {
+        label: "API Logs",
+        href: "/admin/api-logs",
+        icon: <AuditOutlined />,
+        permission: "api.api_logs.view",
+      },
+    ],
+  },
 ];
 
 
@@ -847,9 +847,6 @@ export const MenuHRMS = [
     ]
   },
 
-
-
-
   {
     title: "JOB ARCHITECTURE",
     icon: "ProfileOutlined",
@@ -863,6 +860,67 @@ export const MenuHRMS = [
       { label: "ตำแหน่งตามหน่วย", href: "/admin/unit-positions", icon: "PartitionOutlined", permission: "ems.unit_positions.view" },
       { label: "เส้นทางอาชีพ", href: "/admin/career-paths", icon: "ApartmentOutlined", permission: "ems.career_paths.view" }
     ]
+  },
+  // ฟาง HRM 
+  // รองรับทั้ง Expat ต่างชาติ + แรงงาน MOU เช่น เมียนมา/ลาว/กัมพูชา ผมแนะนำขยายให้ครบวงจรประมาณนี้ครับ โดยยัง ไม่เอาเงินเดือน/Payroll มาปนในหมวดนี้
+
+
+  // ฟังก์ชั่นหลักๆๆ 
+   // 1. 
+  // User Manual ระบบ HRMS  คู่มือการใช้งานระบบ 
+  {
+    title: "EMPLOYEE COMPLIANCE",
+    icon: "SafetyCertificateOutlined",
+    items: [
+      {
+        label: "รูปแบบการจ้างพนักงานต่างชาติ",
+        href: "/admin/foreign-employment-schemes",
+        icon: "ApartmentOutlined",
+        permission: "ems.foreign_employment_schemes.view",
+      },
+      {
+        label: "ประเภทวีซ่า",
+        href: "/admin/visa-types",
+        icon: "IdcardOutlined",
+        permission: "ems.visa_types.view",
+      },
+      {
+        label: "ประเภทใบอนุญาตทำงาน",
+        href: "/admin/work-permit-types",
+        icon: "FileProtectOutlined",
+        permission: "ems.work_permit_types.view",
+      },
+      {
+        label: "ประเภทเอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-document-types",
+        icon: "FileTextOutlined",
+        permission: "ems.foreign_worker_document_types.view",
+      },
+      {
+        label: "ข้อมูลแรงงานต่างชาติ",
+        href: "/admin/foreign-workers",
+        icon: "GlobalOutlined",
+        permission: "ems.foreign_workers.view",
+      },
+      {
+        label: "เอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-documents",
+        icon: "FolderOpenOutlined",
+        permission: "ems.foreign_worker_documents.view",
+      },
+      {
+        label: "ต่ออายุเอกสารแรงงานต่างชาติ",
+        href: "/admin/foreign-worker-renewals",
+        icon: "SyncOutlined",
+        permission: "ems.foreign_worker_renewals.view",
+      },
+      {
+        label: "เอกสารใกล้หมดอายุ",
+        href: "/admin/foreign-worker-expirations",
+        icon: "WarningOutlined",
+        permission: "ems.foreign_worker_expirations.view",
+      },
+    ],
   },
 
   {
@@ -1187,6 +1245,79 @@ export const MenuHRMS = [
 
 
 // /admin/employee-statutory-profiles    หน้านี้ ต้องทำ Filter ให้ User สามารถดูข้อมูลภาษี และ ระกันสังคม ได้ ที่จ่ายไม่ตรงกัน แต่ละบริษัท และ แต่ละสาขา และ แต่ละหน่วยงานได้
+
+/*
+
+
+
+EMPLOYEE COMPLIANCE
+       │
+       ▼
+1. รูปแบบการจ้างพนักงานต่างชาติ
+   Foreign Employment Scheme
+       │
+       ├─ MOU Foreign Worker
+       ├─ Direct Hire
+       ├─ Expat
+       ├─ BOI / Sponsored
+       └─ Other
+       │
+       ▼
+2. ประเภทวีซ่า
+       │
+       ▼
+3. ประเภทใบอนุญาตทำงาน
+       │
+       ▼
+4. ประเภทเอกสารแรงงานต่างชาติ
+       │
+       ▼
+5. ข้อมูลแรงงานต่างชาติ
+       │
+       ▼
+6. เอกสารแรงงานต่างชาติ
+       │
+       ├─ Passport
+       ├─ Visa
+       ├─ Work Permit
+       ├─ MOU Document
+       └─ เอกสารอื่น
+       │
+       ▼
+7. ต่ออายุ / เปลี่ยนสถานะ
+       │
+       ▼
+8. ติดตามเอกสารใกล้หมดอายุ
+
+
+ตัวอย่างแรงงานเมียนมา
+
+Compliance
+────────────────────
+Nationality = Myanmar
+Scheme = MOU Worker
+Visa = Active
+Work Permit = Active
+
+          ↓
+
+Employment / Payroll
+────────────────────
+Employment Type = Daily
+Payroll Type = Daily
+
+          ↓
+
+Compensation
+────────────────────
+Salary Structure =
+MOU Daily Worker - Phuket
+
+Wage = xxx บาท / วัน
+
+
+
+*/
 
 /*
   ทำไฟล์ Excell ในการ insert  Database  Employees  import  

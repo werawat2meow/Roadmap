@@ -33,7 +33,7 @@ export default function RecruitmentPage() {
                   style={{ backgroundColor: "green" }}
                 >
                   <span>+</span>
-                  <span>เปิดรายการรับสมัครพนักงาน</span>
+                  <span> เปิดรายการรับสมัครพนักงาน </span>
                 </button>
               </div>
             )}

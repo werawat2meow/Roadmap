@@ -27,13 +27,6 @@ import {
 } from "@/app/jobs/types/types";
 
 import {
-  createAgreement,
-  createComputerSkillRow,
-  createDefaultDocuments,
-  createEducationRow,
-  createLanguageSkillRow,
-  createPersonalInformation,
-  createWorkRow,
   mergeAgreement,
   mergeComputerSkillRows,
   mergeDocuments,

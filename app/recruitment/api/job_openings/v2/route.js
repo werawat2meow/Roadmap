@@ -53,9 +53,6 @@ export async function POST(request) {
 
     if (
       !branchId ||
-      !departmentId ||
-      !divisionId ||
-      !unitId ||
       !positionId ||
       !openingCount ||
       !payload.start_date ||
@@ -73,15 +70,29 @@ export async function POST(request) {
     // ============================
     // เช็คข้อมูลเดิม
     // ============================
-    const { data: existing, error: checkError } = await supabaseAdmin
+    let checkQuery = supabaseAdmin
       .from("recruit_job_open")
       .select("id")
       .eq("branch_id", branchId)
-      .eq("department_id", departmentId)
-      .eq("division_id", divisionId)
-      .eq("unit_id", unitId)
-      .eq("position_id", positionId)
-      .maybeSingle();
+      .eq("position_id", positionId);
+
+    // เช็คเฉพาะกรณีที่มี departmentId
+    if (departmentId) {
+      checkQuery = checkQuery.eq("department_id", departmentId);
+    }
+
+    // เช็คเฉพาะกรณีที่มี divisionId
+    if (divisionId) {
+      checkQuery = checkQuery.eq("division_id", divisionId);
+    }
+
+    // เช็คเฉพาะกรณีที่มี unitId
+    if (unitId) {
+      checkQuery = checkQuery.eq("unit_id", unitId);
+    }
+
+    const { data: existing, error: checkError } =
+      await checkQuery.maybeSingle();
 
     if (checkError) {
       return NextResponse.json(

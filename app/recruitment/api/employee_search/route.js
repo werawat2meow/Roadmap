@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 const RECRUIT_STATUS = {
@@ -31,11 +32,30 @@ export async function GET(request) {
 
     const search = searchParams.get("search")?.trim() || "";
 
+    const page = Math.max(
+      Number.parseInt(searchParams.get("page") || "1", 10),
+      1
+    );
+
+    const pageSize = Math.min(
+      Math.max(
+        Number.parseInt(searchParams.get("pageSize") || "10", 10),
+        1
+      ),
+      100
+    );
+
+    // --------------------------------------------------
+    // ถ้าไม่มี keyword
+    // --------------------------------------------------
     if (!search) {
       return NextResponse.json({
         success: true,
         data: [],
+        page: 1,
+        pageSize,
         total: 0,
+        totalPages: 0,
       });
     }
 
@@ -82,30 +102,31 @@ export async function GET(request) {
     // --------------------------------------------------
     // 2. ค้นหาจาก employees
     // --------------------------------------------------
-    const { data: employees, error: employeeError } = await supabaseAdmin
-      .from("employees")
-      .select(`
-        id,
-        first_name_th,
-        last_name_th,
-        first_name_en,
-        last_name_en,
-        nick_name,
-        nickname_th,
-        nickname_en,
-        status
-      `)
-      .or(
-        [
-          `first_name_th.ilike.${keyword}`,
-          `last_name_th.ilike.${keyword}`,
-          `first_name_en.ilike.${keyword}`,
-          `last_name_en.ilike.${keyword}`,
-          `nick_name.ilike.${keyword}`,
-          `nickname_th.ilike.${keyword}`,
-          `nickname_en.ilike.${keyword}`,
-        ].join(",")
-      );
+    const { data: employees, error: employeeError } =
+      await supabaseAdmin
+        .from("employees")
+        .select(`
+          id,
+          first_name_th,
+          last_name_th,
+          first_name_en,
+          last_name_en,
+          nick_name,
+          nickname_th,
+          nickname_en,
+          status
+        `)
+        .or(
+          [
+            `first_name_th.ilike.${keyword}`,
+            `last_name_th.ilike.${keyword}`,
+            `first_name_en.ilike.${keyword}`,
+            `last_name_en.ilike.${keyword}`,
+            `nick_name.ilike.${keyword}`,
+            `nickname_th.ilike.${keyword}`,
+            `nickname_en.ilike.${keyword}`,
+          ].join(",")
+        );
 
     if (employeeError) {
       console.error("Search employees error:", employeeError);
@@ -124,8 +145,8 @@ export async function GET(request) {
     // --------------------------------------------------
     const applicationResults = (applications || []).map((item) => ({
       id: item.id,
-      first_name: item.first_name,
-      last_name: item.last_name,
+      first_name: item.first_name || "",
+      last_name: item.last_name || "",
       nickname: item.nickname_th || item.nickname_en || null,
       status: item.status,
       status_name:
@@ -140,9 +161,13 @@ export async function GET(request) {
     const employeeResults = (employees || []).map((item) => ({
       id: item.id,
       first_name:
-        item.first_name_th || item.first_name_en || "",
+        item.first_name_th ||
+        item.first_name_en ||
+        "",
       last_name:
-        item.last_name_th || item.last_name_en || "",
+        item.last_name_th ||
+        item.last_name_en ||
+        "",
       nickname:
         item.nickname_th ||
         item.nickname_en ||
@@ -159,15 +184,54 @@ export async function GET(request) {
     // --------------------------------------------------
     // 5. รวมข้อมูล
     // --------------------------------------------------
-    const data = [
+    const allData = [
       ...applicationResults,
       ...employeeResults,
     ];
 
+    // --------------------------------------------------
+    // 6. Sort
+    // --------------------------------------------------
+    allData.sort((a, b) => {
+      const nameA = `${a.first_name} ${a.last_name}`.trim();
+      const nameB = `${b.first_name} ${b.last_name}`.trim();
+
+      return nameA.localeCompare(nameB, "th");
+    });
+
+    // --------------------------------------------------
+    // 7. Pagination
+    // --------------------------------------------------
+    const total = allData.length;
+
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / pageSize);
+
+    // ถ้าหน้าเกินจำนวนหน้าที่มี
+    const safePage =
+      totalPages > 0
+        ? Math.min(page, totalPages)
+        : 1;
+
+    const from = (safePage - 1) * pageSize;
+    const to = from + pageSize;
+
+    const paginatedData = allData.slice(from, to);
+
+    // --------------------------------------------------
+    // 8. Response
+    // --------------------------------------------------
     return NextResponse.json({
       success: true,
-      data,
-      total: data.length,
+      data: paginatedData,
+
+      // pagination
+      page: safePage,
+      pageSize,
+      total,
+      totalPages,
     });
   } catch (error) {
     console.error("Employee search API error:", error);

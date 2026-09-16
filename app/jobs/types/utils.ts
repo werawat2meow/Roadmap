@@ -104,7 +104,9 @@ export function validateEmail(
 /* -------------------------------------------------------------------------- */
 
 export function validatePlainText(value: string): boolean {
-  return /^[\p{L}\p{N}\s]*$/u.test(value);
+  // return /^[\p{L}\p{N}\s]*$/u.test(value);
+  // return /^[\p{L}\p{M}\p{N}\s]*$/u.test(value);
+  return /^[\p{L}\p{M}\p{N}\s/]*$/u.test(value);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -333,18 +335,18 @@ export function validateApplication(
     "street",
     "lineId",
     "residenceOther",
-    "underlyingDisease",
   ];
 
   for (const field of plainTextFields) {
     const value = payload.personal[field];
-    if (typeof value === "string" && !validatePlainText(value)) {
+    if (typeof value === "string" && !validatePlainText(value)) { 
+          
       errors.push({
         field,
         message:
           locale === "TH"
-            ? "กรุณากรอกข้อมูลโดยไม่ใช้อักขระพิเศษ"
-            : "Please do not use special characters",
+            ? `${getUIText(uiText[field], locale)} กรุณากรอกข้อมูลโดยไม่ใช้อักขระพิเศษ`
+            : `${getUIText(uiText[field], locale)} Please do not use special characters`,
       });
     }
   }

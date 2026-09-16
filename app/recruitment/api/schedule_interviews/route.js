@@ -1,30 +1,34 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserAccess } from "@/app/recruitment/lib/getUserId";
 
 /**
- * GET /recruitment/api/candidate
+ * GET /recruitment/api/schedule_interviews
  *
  * Query params (list mode - default):
- *   status      : ค่า status (number) - optional
- *   position_id : id ของตำแหน่งงาน - optional
- *   date_from   : ISO string ของวันที่เริ่มต้น (created_at >=) - optional
- *   date_to     : ISO string ของวันที่สิ้นสุด (created_at <=) - optional
- *   page        : เลขหน้า (default 1)
- *   pageSize    : 10|20|30|40|50|100|all (default 10)
+ *   status       : ค่า status (number) - optional
+ *   position_id  : id ของตำแหน่งงาน - optional
+ *   reviewer_id  : id ของผู้สัมภาษณ์ (employees.id) - optional
+ *   date_from    : วันที่เริ่มต้น interview_datetime - optional
+ *   date_to      : วันที่สิ้นสุด interview_datetime - optional
+ *   page         : เลขหน้า (default 1)
+ *   pageSize     : 10|20|30|40|50|100|all (default 10)
  *
  * Query params (lookup mode):
- *   resource=positions -> คืนรายการตำแหน่งงานทั้งหมด { id, position_name }
+ *   resource=positions
+ *      -> คืนรายการตำแหน่งงานทั้งหมด { id, position_name }
  *
- * หมายเหตุ: ถ้าตาราง recruit_job_applications เปิด RLS และ policy ไม่อนุญาตให้
- * anon key อ่านได้ทั้งหมด ให้เปลี่ยนไปใช้ service role key ใน client ฝั่ง server
- * แทน (แนะนำสร้างไฟล์ @/lib/supabaseServerClient แยกต่างหาก แล้วเปลี่ยน import
- * ด้านบนเป็นตัวนั้น)
+ *   resource=reviewers
+ *      -> คืนรายการผู้สัมภาษณ์จาก employees
+ *         { id, first_name_th, last_name_th }
  */
 export async function GET(request) {
   try {
-
+    // ============================================================
+    // ตรวจสอบ User Access
+    // ============================================================
     const user = await getUserAccess();
+
     if (!user) {
       return NextResponse.json(
         { error: "Not set company Data" },
@@ -38,7 +42,9 @@ export async function GET(request) {
       .map((branch) => branch.id)
       .filter(Boolean);
 
-    // ---------- ไม่มี branchArray -> return error สำหรับ alert แจ้งเตือน ----------
+    // ============================================================
+    // ไม่มี branchArray
+    // ============================================================
     if (branchIds.length === 0) {
       return NextResponse.json(
         { error: "ไม่พบข้อมูลสาขา" },
@@ -48,117 +54,286 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
 
-    // ---------- Lookup mode: ตัวเลือกตำแหน่งงาน ----------
-    if (searchParams.get('resource') === 'positions') {
+    // ============================================================
+    // Lookup mode
+    // ============================================================
+    const resource = searchParams.get("resource");
+
+    // ============================================================
+    // Lookup: Positions
+    // ============================================================
+    if (resource === "positions") {
       const { data, error } = await supabaseAdmin
-        .from('positions')
-        .select('id, position_name')
-        .order('position_name', { ascending: true });
+        .from("positions")
+        .select("id, position_name")
+        .order("position_name", {
+          ascending: true,
+        });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        );
       }
-      return NextResponse.json({ data: data ?? [] });
+
+      return NextResponse.json({
+        data: data ?? [],
+      });
     }
 
-    // ---------- List mode: รายการผู้สมัคร ----------
-    const status = searchParams.get('status');
-    const positionId = searchParams.get('position_id');
-    const dateFrom = searchParams.get('date_from');
-    const dateTo = searchParams.get('date_to');
-    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
-    const pageSizeParam = searchParams.get('pageSize') || '10';
-    const isAll = pageSizeParam === 'all';
-    let pageSize = isAll ? null : parseInt(pageSizeParam, 10);
-    if (!isAll && (!Number.isFinite(pageSize) || pageSize <= 0)) {
+    // ============================================================
+    // Lookup: Reviewers / Interviewers
+    //
+    // employees
+    //   id
+    //   first_name_th
+    //   last_name_th
+    // ============================================================
+    if (resource === "reviewers") {
+      const { data, error } = await supabaseAdmin
+        .from("recruit_job_interviews")
+        .select(`
+          reviewer,
+          employees!inner (
+            id,
+            first_name_th,
+            last_name_th
+          )
+        `)
+        .not("reviewer", "is", null)
+        .eq("status" , 5)
+        .order("employees(first_name_th)", {
+          ascending: true,
+        })
+        .order("employees(last_name_th)", {
+          ascending: true,
+        });
+
+      if (error) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        );
+      }
+
+      // เอาเฉพาะ reviewer ที่ไม่ซ้ำกัน
+      const reviewers = Array.from(
+        new Map(
+          (data ?? []).map((item) => [
+            item.reviewer,
+            {
+              id: item.employees.id,
+              first_name_th: item.employees.first_name_th,
+              last_name_th: item.employees.last_name_th,
+            },
+          ])
+        ).values()
+      );
+
+      return NextResponse.json({
+        data: reviewers,
+      });
+    }
+
+    // ============================================================
+    // List mode
+    // ============================================================
+    const status = searchParams.get("status");
+    const positionId = searchParams.get("position_id");
+    const reviewerId = searchParams.get("reviewer_id");
+
+    const dateFrom = searchParams.get("date_from");
+    const dateTo = searchParams.get("date_to");
+
+    // ============================================================
+    // Pagination
+    // ============================================================
+    const page = Math.max(
+      parseInt(searchParams.get("page") || "1", 10),
+      1
+    );
+
+    const pageSizeParam =
+      searchParams.get("pageSize") || "10";
+
+    const isAll = pageSizeParam === "all";
+
+    let pageSize = isAll
+      ? null
+      : parseInt(pageSizeParam, 10);
+
+    if (
+      !isAll &&
+      (!Number.isFinite(pageSize) || pageSize <= 0)
+    ) {
       pageSize = 10;
     }
+
     if (!isAll) {
-      pageSize = Math.min(pageSize, 100); // จำกัด max
+      pageSize = Math.min(pageSize, 100);
     }
 
-    // ---------- หา position_id ที่อยู่ในสาขาที่ user มีสิทธิ์ ----------
-    // positions -> unit_positions -> units -> divisions -> departments -> branch_departments -> branch_id
-    const { data: branchPositions, error: branchPositionsError } = await supabaseAdmin
-      .from('positions')
+    // ============================================================
+    // หา position_id ที่ User มีสิทธิ์
+    //
+    // positions
+    //   -> unit_positions
+    //   -> units
+    //   -> divisions
+    //   -> departments
+    //   -> branch_departments
+    //   -> branch_id
+    // ============================================================
+    
+    const {
+      data: branchPositions,
+      error: branchPositionsError,
+    } = await supabaseAdmin
+      .from("positions")
       .select(
         `
-        id,
-        unit_positions!inner (
-          units!inner (
-            divisions!inner (
-              departments!inner (
-                branch_departments!inner ( branch_id )
+          id,
+          unit_positions!inner (
+            units!inner (
+              divisions!inner (
+                departments!inner (
+                  branch_departments!inner (
+                    branch_id
+                  )
+                )
               )
             )
           )
-        )
-      `
+        `
       )
       .in(
-        'unit_positions.units.divisions.departments.branch_departments.branch_id',
+        "unit_positions.units.divisions.departments.branch_departments.branch_id",
         branchIds
       );
 
     if (branchPositionsError) {
       return NextResponse.json(
-        { error: branchPositionsError.message },
+        {
+          error: branchPositionsError.message,
+        },
         { status: 500 }
       );
     }
 
     const allowedPositionIds = [
-      ...new Set((branchPositions ?? []).map((p) => p.id)),
-    ];
+      ...new Set(
+        (branchPositions ?? []).map((p) => p.id)
+      ),
+    ];    
 
-    // ถ้าไม่มีตำแหน่งที่ตรงกับสาขาที่ user มีสิทธิ์เลย ให้ return ผลลัพธ์ว่างทันที
+    // ============================================================
+    // ถ้าไม่มีตำแหน่งที่ User มีสิทธิ์
+    // ============================================================
     if (allowedPositionIds.length === 0) {
-      return NextResponse.json({ data: [], count: 0 });
+      return NextResponse.json({
+        data: [],
+        count: 0,
+      });
     }
 
+    // ============================================================
+    // Main Query
+    // ============================================================
     let query = supabaseAdmin
-    .from("recruit_job_applications")
-    .select(
-      `
-        id,
-        first_name,
-        last_name,
-        created_at,
-        status,
-        position_id,
-        titles (title_name_th),
-        positions (position_name),
-        recruit_job_interviews!inner (
-          interview_datetime,
-          interview_order,
-          reviewer
-        )
-      `,
-      { count: "exact" }
-    )
-    .in('position_id', allowedPositionIds)
-    .order("interview_order", {
-      foreignTable: "recruit_job_interviews",
-      ascending: false,
-    })
-    .order("created_at", {
-      ascending: false,
-    });
+      .from("recruit_job_applications")
+      .select(
+        `
+          id,
+          first_name,
+          last_name,
+          created_at,
+          status,
+          position_id,
 
-    if (status !== null && status !== '' && status !== undefined) {
+          titles (
+            title_name_th
+          ),
+
+          positions (
+            position_name
+          ),
+
+          recruit_job_interviews!inner (
+            id,
+            interview_datetime,
+            interview_order,
+            reviewer
+          )
+        `,
+        {
+          count: "exact",
+        }
+      )
+
+      // เรียง Interview ล่าสุดก่อน
+      .order("interview_order", {
+        foreignTable: "recruit_job_interviews",
+        ascending: false,
+      })
+
+      // Application ล่าสุดก่อน
+      .order("created_at", {
+        ascending: false,
+      });
+
+    // ============================================================
+    // จำกัด Position เฉพาะ User ที่ไม่มีสิทธิ์ all_scrop
+    // ============================================================
+    if (user.all_scrop !== true) {
+      query = query.in("position_id", allowedPositionIds);
+    }
+
+    // ============================================================
+    // Filter: Status
+    // ============================================================
+    if (
+      status !== null &&
+      status !== "" &&
+      status !== undefined
+    ) {
       const statusNum = Number(status);
+
       if (!Number.isNaN(statusNum)) {
-        query = query.eq('status', statusNum);
+        query = query.eq("status", statusNum);
       }
     } else {
-      query = query.in('status', [4, 5, 6, 8, 9, 10, 11]); // default เฉพาะตอนไม่ระบุ status
+      // Default status
+      query = query.in("status", [4,5,6,8,9,10,11,]);
     }
 
+    // ============================================================
+    // Filter: Position
+    // ============================================================
     if (positionId) {
-      query = query.eq('position_id', positionId);
+      query = query.eq(
+        "position_id",
+        positionId
+      );
     }
 
-    // Filter interview_datetime
+    // ============================================================
+    // Filter: Reviewer / Interviewer
+    //
+    // recruit_job_interviews.reviewer
+    //       =
+    // employees.id
+    // ============================================================
+    if (reviewerId) {
+      query = query.eq(
+        "recruit_job_interviews.reviewer",
+        reviewerId
+      );
+    }
+
+    // ============================================================
+    // Filter: Interview Date From
+    // ============================================================
     if (dateFrom) {
       query = query.gte(
         "recruit_job_interviews.interview_datetime",
@@ -166,6 +341,9 @@ export async function GET(request) {
       );
     }
 
+    // ============================================================
+    // Filter: Interview Date To
+    // ============================================================
     if (dateTo) {
       query = query.lte(
         "recruit_job_interviews.interview_datetime",
@@ -173,62 +351,107 @@ export async function GET(request) {
       );
     }
 
+    // ============================================================
+    // Pagination
+    // ============================================================
     if (!isAll) {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+      const from =
+        (page - 1) * pageSize;
+
+      const to =
+        from + pageSize - 1;
+
       query = query.range(from, to);
     }
 
-    const { data, error, count } = await query;
+    // ============================================================
+    // Execute Query
+    // ============================================================
+    const {
+      data,
+      error,
+      count,
+    } = await query;    
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ data: data ?? [], count: count ?? 0 });
+    // ============================================================
+    // Response
+    // ============================================================
+    return NextResponse.json({
+      data: data ?? [],
+      count: count ?? 0,
+    });
   } catch (err) {
     console.error(err);
+
     return NextResponse.json(
-      { error: err?.message ?? 'Unexpected server error' },
-      { status: 500 }
+      {
+        error:
+          err?.message ??
+          "Unexpected server error",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
 
+/**
+ * PUT /recruitment/api/schedule_interviews
+ */
 export async function PUT(request) {
   try {
-    const { id, status } = await request.json();
+    const { id, status } =
+      await request.json();
 
     if (!id) {
       return NextResponse.json(
-        { error: "Missing id" },
-        { status: 400 }
+        {
+          error: "Missing id",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const { error } = await supabaseAdmin
-      .from("recruit_job_applications")
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+    const { error } =
+      await supabaseAdmin
+        .from("recruit_job_applications")
+        .update({
+          status,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", id);
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
+        {
+          error: error.message,
+        },
+        {
+          status: 500,
+        }
       );
     }
 
     return NextResponse.json({
       success: true,
     });
-
   } catch (err) {
     return NextResponse.json(
       {
-        error: err.message,
+        error: err?.message,
       },
       {
         status: 500,

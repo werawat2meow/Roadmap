@@ -1,3 +1,10 @@
+// NOTE: keep the same imports as the original file
+// (getUserIdFromRequest, supabaseAdmin, NextResponse, AppError,
+//  createEmployee, createUserAccount, rollbackEmployeeCreation,
+//  writeActivityLog, updateRecruitJobInterviewStatus,
+//  calculateProbationEndDate, getBangkokDate, cleanText,
+//  EMPLOYEE_CODE_RPC)
+
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
@@ -7,6 +14,15 @@ import { cleanText } from "@/lib/employee/employeePayload";
 import { writeActivityLog } from "@/lib/activityLogger";
 
 const EMPLOYEE_CODE_RPC = "reserve_employee_code";
+
+function getBangkokDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 // ------------------------------------------------------------
 // AppError: error ที่ตั้งใจให้ message แสดงต่อผู้ใช้ได้โดยตรง
@@ -246,742 +262,544 @@ async function rollbackEmployeeCreation({ employee, userAccount }) {
   }
 }
 
-/**
- * ============================================================
- * POST
- * ============================================================
- */
+// ============================================================
+// Constants & small helpers
+// ============================================================
+
+const STATUS = {
+  NO_SHOW: 13,
+  RESCHEDULE: 14,
+  STAGE_ONE: 12,
+  PENDING_CONFIRM: 17,
+  CONFIRMED: 15,
+};
+
+const badRequest = (message) => NextResponse.json({ message }, { status: 400 });
+
+// Returns the message for the first "falsy" field, or null if all present.
+const firstMissingFieldMessage = (fields) => {
+  for (const [value, message] of fields) {
+    if (!value) return message;
+  }
+  return null;
+};
+
+// ============================================================
+// Reschedule / No-show
+// Shared by: status 13/14 (direct update) and 17 -> 13/14 transition
+// Returns a NextResponse on error, or null on success.
+// ============================================================
+
+async function rescheduleApplication({ applicationId, targetStatus, startDate, reason, requireReason }) {
+  if (requireReason && !String(reason || "").trim()) {
+    return badRequest("กรุณาระบุเหตุผล");
+  }
+  if (!startDate) {
+    return badRequest("กรุณาระบุวันที่เริ่มงาน");
+  }
+
+  await updateRecruitJobInterviewStatus({ applicationId, status: targetStatus });
+
+  const updatePayload = { start_date: startDate };
+  if (requireReason) updatePayload.status = targetStatus;
+  if (requireReason || String(reason || "").trim()) {
+    updatePayload.status_reason = reason;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("recruit_job_applications")
+    .update(updatePayload)
+    .eq("id", applicationId);
+
+  if (error) {
+    console.error("UPDATE APPLICATION (RESCHEDULE) ERROR:", error);
+    return NextResponse.json(
+      { success: false, message: "ไม่สามารถอัปเดตข้อมูลใบสมัครได้" },
+      { status: 500 }
+    );
+  }
+  return null;
+}
+
+// ============================================================
+// Additional cost / compensation rows
+// ============================================================
+
+function buildAdditionalCostRows(applicationId, additionalCompensation = [], additionalCost = []) {
+  const rows = [];
+
+  for (const item of additionalCompensation) {
+    for (const [topic, amount] of Object.entries(item)) {
+      rows.push({ application_id: applicationId, cost_type: "compensation", topic, amount: Number(amount || 0) });
+    }
+  }
+
+  for (const item of additionalCost) {
+    const topic = item.name?.trim();
+    if (!topic) continue;
+    rows.push({ application_id: applicationId, cost_type: "additional", topic, amount: Number(item.amount || 0) });
+  }
+
+  return rows;
+}
+
+async function syncAdditionalCosts(applicationId, rows) {
+  await supabaseAdmin
+    .from("recruit_additional_cost")
+    .delete()
+    .eq("application_id", applicationId)
+    .in("cost_type", ["additional", "compensation"]);
+
+  if (rows.length > 0) {
+    await supabaseAdmin.from("recruit_additional_cost").insert(rows);
+  }
+}
+
+// ============================================================
+// Stage 1: status 12 -> 17
+// Save application details, wait for the final confirmation call.
+// Returns a NextResponse on error, or null on success.
+// ============================================================
+
+async function processStageOneApproval({ application, body }) {
+  const { data: company, error: companyError } = await supabaseAdmin
+    .from("branches")
+    .select("*")
+    .eq("id", body.branch_id)
+    .single();
+  if (companyError) {
+    console.error("GET COMPANY ERROR:", companyError);
+    throw new AppError("ไม่สามารถดึงข้อมูล Branch ได้");
+  }
+
+  const { data: payrollCompany, error: payrollCompanyError } = await supabaseAdmin
+    .from("payroll_companies")
+    .select("*")
+    .eq("company_id", company.company_id)
+    .single();
+  if (payrollCompanyError) {
+    console.error("GET PAYROLL COMPANY ERROR:", payrollCompanyError);
+    throw new AppError("ไม่สามารถดึงข้อมูล payrol ได้");
+  }
+
+  const probationDays = 119;
+  const probationEndDate = calculateProbationEndDate(body.start_date, probationDays);
+
+  const applicationUpdate = {
+    branch_id: body.branch_id,
+    department_id: body.department_id,
+    division_id: body.division_id,
+    unit_id: body.unit_id,
+    position_id: body.position_id,
+    position_level_id: body.position_level_id,
+    start_date: body.start_date,
+    base_salary: body.base_salary,
+    position_allowance: body.position_allowance,
+    living_allowance: body.living_allowance,
+    special_allowance: body.special_allowance,
+    fuel_allowance: body.fuel_allowance,
+    incentive_type: body.incentive_type,
+    incentive_amount: body.incentive_amount,
+    oc: body.oc,
+    deposit: body.deposit,
+    deduct_processing: body.deduct_processing,
+    deduct_resign_within_one_year: body.deduct_resign_within_one_year,
+    phone_allowance: body.phone_allowance,
+    employment_type: body.employment_type,
+    employment_type_id: body.employment_type_id,
+    employee_status_id: "21e6539f-159c-4ea8-a63a-817c97563785",
+    probation_days: probationDays,
+    probation_end_date: probationEndDate,
+    probation_status: "probation",
+    company_id: company.company_id,
+    branch_group_id: company.group_id,
+    payroll_company_id: payrollCompany.id,
+    payroll_type_id: body.payroll_types,
+    position_family_id: body.position_family_id,
+    last_job_id: body.job_id,
+    status: STATUS.PENDING_CONFIRM,
+  };
+
+  await updateRecruitJobInterviewStatus({ applicationId: application.id, status: STATUS.PENDING_CONFIRM });
+
+  const { error } = await supabaseAdmin
+    .from("recruit_job_applications")
+    .update(applicationUpdate)
+    .eq("id", application.id);
+  if (error) {
+    console.error("UPDATE APPLICATION ERROR:", error);
+    return NextResponse.json({ message: "ไม่สามารถอัปเดตข้อมูลใบสมัครได้" }, { status: 500 });
+  }
+
+  const costRows = buildAdditionalCostRows(application.id, body.additional_compensation, body.additional_cost);
+  await syncAdditionalCosts(application.id, costRows);
+
+  return null;
+}
+
+// ============================================================
+// Stage 2: status 17 -> 15
+// Confirm & create Employee + User Account (with rollback on failure).
+// Returns a NextResponse on error, or null on success.
+// ============================================================
+
+async function processFinalConfirmation({ application, body, userId }) {
+  let createdEmployee = null;
+  let createdUserAccount = null;
+
+  try {
+    const probationDays = 119;
+    const probationEndDate = calculateProbationEndDate(body.start_date, probationDays);
+
+    const { data: codeSetting, error: codeSettingError } = await supabaseAdmin
+      .from("employee_code_settings")
+      .select("*")
+      .eq("company_id", application.company_id)
+      .single();
+    if (codeSettingError) {
+      console.error("GET CODE SETTING ERROR:", codeSettingError);
+      throw new AppError("ไม่สามารถดึงการตั้งค่ารหัสพนักงานได้");
+    }
+
+    const { data: rawCode, error: codeError } = await supabaseAdmin.rpc(EMPLOYEE_CODE_RPC, {
+      p_company_id: application.company_id,
+      p_employee_code_setting_id: codeSetting.id,
+      p_employee_type: application.employment_type,
+      p_running_date: application.start_date,
+    });
+    if (codeError) {
+      console.error("RESERVE EMPLOYEE CODE ERROR:", codeError);
+      throw new AppError("ไม่สามารถออกรหัสพนักงานได้");
+    }
+    const employeeCode = cleanText((Array.isArray(rawCode) ? rawCode[0] : rawCode)?.employee_code);
+    if (!employeeCode) throw new AppError("ไม่สามารถสร้าง Employee Code ได้");
+
+    const { data: gender, error: genderError } = await supabaseAdmin
+      .from("genders")
+      .select("gender_name_th")
+      .eq("id", application.gender)
+      .single();
+    if (genderError) {
+      console.error("GET GENDER NAME ERROR:", genderError);
+      throw new AppError("ไม่สามารถดึงข้อมูลเพศของผู้สมัครได้");
+    }
+
+    const { data: nationality, error: nationalityError } = await supabaseAdmin
+      .from("nationalities")
+      .select("id, nationality_code")
+      .eq("id", application.nationality)
+      .single();
+    if (nationalityError) {
+      console.error("GET NATIONALITY ERROR:", nationalityError);
+      throw new AppError("ไม่สามารถดึงข้อมูลสัญชาติของผู้สมัครได้");
+    }
+
+    const identityData =
+      nationality?.nationality_code === "TH"
+        ? {
+            citizen_id: application.identity_no,
+            tax_id: application.identity_no,
+            social_security_no: application.identity_no,
+            passport_no: null,
+          }
+        : {
+            citizen_id: null,
+            tax_id: null,
+            social_security_no: null,
+            passport_no: application.identity_no,
+          };
+
+    const employeeData = {
+      employee_code: employeeCode,
+      first_name_th: application.first_name,
+      last_name_th: application.last_name,
+      nick_name: application.nickname_th,
+      gender: gender.gender_name_th,
+      phone: application.phone_number,
+      personal_email: application.email,
+      employment_type: application.employment_type,
+      branch_group_id: application.branch_group_id,
+      company_id: application.company_id,
+      branch_id: application.branch_id,
+      department_id: application.department_id,
+      division_id: application.division_id,
+      unit_id: application.unit_id,
+      position_id: application.position_id,
+      position_level_id: application.position_level_id,
+      job_id: application.last_job_id,
+      payroll_company_id: application.payroll_company_id,
+      payroll_type_id: application.payroll_type_id,
+      employee_status_id: application.employee_status_id,
+      employment_type_id: application.employment_type_id,
+      ...identityData,
+      birth_date: application.date_of_birth,
+      line_id: application.line_id,
+      probation_days: application.probation_days,
+      probation_end_date: probationEndDate,
+      probation_status: application.probation_status,
+      nickname_th: application.nickname_th,
+      nickname_en: application.nickname_en,
+      gender_id: application.gender,
+      marital_status_id: application.marital_status,
+      religion_id: application.religion,
+      nationality_id: application.nationality,
+      hire_date: body.start_date,
+      start_work_date: body.start_date,
+      confirmation_date: body.start_date,
+      employee_type_digit: codeSetting.running_digits,
+      employee_year_2d: codeSetting.year_digits,
+      employee_running_no: codeSetting.executive_digit,
+      employee_photo_url: application.profile_image_url,
+      position_family_id: application.position_family_id,
+      employee_photo_path: application.profile_image_url,
+      status: "active",
+      created_by: userId,
+      updated_by: userId,
+    };
+
+    createdEmployee = await createEmployee({ employeeData, userId });
+
+    const { error: compensationError } = await supabaseAdmin.from("employee_compensations").insert({
+      employee_id: createdEmployee.id,
+      position_id: application.position_id,
+      position_level_id: application.position_level_id,
+      payroll_company_id: application.payroll_company_id,
+      payroll_type_id: application.payroll_type_id,
+      currency_code: "THB",
+      base_salary: application.base_salary,
+      source_type: "initial",
+      effective_from: getBangkokDate(),
+      effective_to: null,
+      status: "active",
+      created_by: userId,
+      updated_by: userId,
+    });
+    if (compensationError) {
+      console.error("INSERT EMPLOYEE COMPENSATION ERROR:", compensationError);
+      throw new AppError("ไม่สามารถบันทึกข้อมูลได้");
+    }
+
+    createdUserAccount = await createUserAccount({ employee: createdEmployee, roleId: body.role_id, isActive: true });
+
+    await updateRecruitJobInterviewStatus({ applicationId: application.id, status: STATUS.CONFIRMED });
+
+    const { error: updateAppError } = await supabaseAdmin
+      .from("recruit_job_applications")
+      .update({
+        branch_id: body.branch_id,
+        department_id: body.department_id,
+        division_id: body.division_id,
+        unit_id: body.unit_id,
+        position_id: body.position_id,
+        position_level_id: body.position_level_id,
+        base_salary: body.base_salary,
+        position_allowance: body.position_allowance,
+        living_allowance: body.living_allowance,
+        special_allowance: body.special_allowance,
+        fuel_allowance: body.fuel_allowance,
+        incentive_type: body.incentive_type,
+        incentive_amount: body.incentive_amount,
+        oc: body.oc,
+        deposit: body.deposit,
+        deduct_processing: body.deduct_processing,
+        deduct_resign_within_one_year: body.deduct_resign_within_one_year,
+        phone_allowance: body.phone_allowance,
+        employment_type: body.employment_type,
+        employment_type_id: body.employment_type_id,
+        company_id: application.company_id,
+        branch_group_id: application.branch_group_id,
+        payroll_company_id: application.payroll_company_id,
+        payroll_type_id: body.payroll_types,
+        position_family_id: body.position_family_id,
+        emp_id: createdEmployee.id,
+        emp_code: createdEmployee.employee_code,
+        hire_date: body.start_date,
+        start_date: body.start_date,
+        probation_end_date: probationEndDate,
+        user_approve: userId,
+        status: STATUS.CONFIRMED,
+      })
+      .eq("id", application.id);
+    if (updateAppError) {
+      console.error("UPDATE APPLICATION AFTER CREATE ERROR:", updateAppError);
+      throw new AppError("ไม่สามารถอัปเดตสถานะใบสมัครได้");
+    }
+
+    await writeActivityLog({
+      module_name: "approve_employees",
+      action_type: "create/update",
+      reference_table: "recruit_job_applications",
+      reference_id: createdUserAccount.id,
+      description: `เพิ่มผู้ใช้งานระบบ ${createdUserAccount.username}`,
+      new_data: {
+        auth_user_id: createdUserAccount.auth_user_id,
+        employee_id: createdUserAccount.employee_id,
+        role_id: createdUserAccount.role_id,
+        username: createdUserAccount.username,
+        is_active: createdUserAccount.is_active,
+        employee_code: createdUserAccount.employees?.employee_code || "",
+        employee_name: `${createdUserAccount.employees?.first_name_th || ""} ${
+          createdUserAccount.employees?.last_name_th || ""
+        }`.trim(),
+        role_code: createdUserAccount.roles?.role_code || "",
+        role_name: createdUserAccount.roles?.role_name || "",
+      },
+    });
+
+    return {
+      employeeCode,
+      employee: createdEmployee,
+      userAccount: createdUserAccount,
+    };
+  } catch (innerError) {
+    await rollbackEmployeeCreation({ employee: createdEmployee, userAccount: createdUserAccount });
+    throw innerError;
+  }
+}
+
+// ============================================================
+// Route handler
+// ============================================================
+
 export async function POST(request) {
   const userId = await getUserIdFromRequest();
 
   try {
     const body = await request.json();
+    const { application_id, status: submittedStatus, next_status, reason, start_date } = body;
 
-    const {
-      application_id,
-      status: submittedStatus,
-      next_status,
-      reason,
-      branch_id,
-      department_id,
-      division_id,
-      unit_id,
-      position_id,
-      position_level_id,
-      start_date,
-      base_salary,
-      position_allowance,
-      living_allowance,
-      special_allowance,
-      fuel_allowance,
-      incentive_type,
-      incentive_amount,
-      oc,
-      phone_allowance,
-      additional_cost,
-      additional_compensation,
-      employment_type,
-      employment_type_id,
-      role_id,
-      payroll_types,
-      position_family_id,
-      job_id,
-    } = body;
-
-    // ========================================================
-    // Validation
-    // ========================================================
-    if( submittedStatus !== 17 ){
-      
-      if (!branch_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Branch" },
-          { status: 400 }
-        );
-      }
-
-      if (!department_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Department" },
-          { status: 400 }
-        );
-      }
-
-      if (!division_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Division" },
-          { status: 400 }
-        );
-      }
-
-      if (!unit_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Unit" },
-          { status: 400 }
-        );
-      }
-
-      if (!position_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Position" },
-          { status: 400 }
-        );
-      }
-
-      if (!position_level_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Position Level" },
-          { status: 400 }
-        );
-      }
-
-      if (!employment_type) {
-        return NextResponse.json(
-          { message: "ประเภทสำหรับสร้างรหัส" },
-          { status: 400 }
-        );
-      }
-
-      if (!employment_type_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือกประเภทการจ้างงาน" },
-          { status: 400 }
-        );
-      }
-    }
-    
-    if (!application_id) {
-      return NextResponse.json(
-        { message: "ไม่พบ Application ID" },
-        { status: 400 }
-      );
+    if (submittedStatus !== 17) {
+      const msg = firstMissingFieldMessage([
+        [body.branch_id, "กรุณาเลือก Branch"],
+        [body.department_id, "กรุณาเลือก Department"],
+        [body.division_id, "กรุณาเลือก Division"],
+        [body.unit_id, "กรุณาเลือก Unit"],
+        [body.position_id, "กรุณาเลือก Position"],
+        [body.position_level_id, "กรุณาเลือก Position Level"],
+        [body.employment_type, "ประเภทสำหรับสร้างรหัส"],
+        [body.employment_type_id, "กรุณาเลือกประเภทการจ้างงาน"],
+      ]);
+      if (msg) return badRequest(msg);
     }
 
-    if (!start_date) {
-      return NextResponse.json(
-        { message: "กรุณาระบุวันที่เริ่มงาน" },
-        { status: 400 }
-      );
-    }
+    const commonMsg = firstMissingFieldMessage([
+      [application_id, "ไม่พบ Application ID"],
+      [start_date, "กรุณาระบุวันที่เริ่มงาน"],
+    ]);
+    if (commonMsg) return badRequest(commonMsg);
 
-    // ========================================================
-    // Get Recruitment Application
-    // ========================================================
-
-    const {
-      data: get_data_emp_recrut,
-      error: get_data_emp_recrut_error,
-    } = await supabaseAdmin
+    // --- Load application ---
+    const { data: application, error: getAppError } = await supabaseAdmin
       .from("recruit_job_applications")
       .select("*")
       .eq("id", application_id)
       .single();
-
-    if (get_data_emp_recrut_error) {
-      console.error(
-        "GET RECRUIT APPLICATION ERROR:",
-        get_data_emp_recrut_error
-      );
+    if (getAppError) {
+      console.error("GET RECRUIT APPLICATION ERROR:", getAppError);
       throw new AppError("ไม่สามารถดึงข้อมูลผู้สมัครได้");
     }
-
-    if (!get_data_emp_recrut) {
-      return NextResponse.json(
-        { success: false, message: "ไม่พบข้อมูลผู้สมัคร" },
-        { status: 404 }
-      );
+    if (!application) {
+      return NextResponse.json({ success: false, message: "ไม่พบข้อมูลผู้สมัคร" }, { status: 404 });
     }
 
-    // ========================================================
-    // Staleness check: status ที่ frontend ส่งมา (จากตอนโหลดหน้า)
-    // ต้องตรงกับ status ล่าสุดใน DB ณ ตอนที่เรียก API นี้
-    // ป้องกันกรณีเปิดหน้าค้างไว้แล้วสถานะถูกเปลี่ยนไปแล้วโดยที่ไม่รู้ตัว
-    // หมายเหตุ: ใช้เพื่อ validate เท่านั้น ตัวตัดสินใจ branch logic ด้านล่าง
-    // ยังคงอิงจาก get_data_emp_recrut.status (ค่าจริงจาก DB) เสมอ
-    // ========================================================
-
+    // --- Staleness check: the status the frontend saw must match the DB now ---
     if (
       submittedStatus !== undefined &&
       submittedStatus !== null &&
-      Number(submittedStatus) !== Number(get_data_emp_recrut.status)
+      Number(submittedStatus) !== Number(application.status)
     ) {
       return NextResponse.json(
-        {
-          success: false,
-          message:
-            "สถานะของใบสมัครมีการเปลี่ยนแปลงไปแล้ว กรุณาโหลดข้อมูลใหม่อีกครั้ง",
-        },
+        { success: false, message: "สถานะของใบสมัครมีการเปลี่ยนแปลงไปแล้ว กรุณาโหลดข้อมูลใหม่อีกครั้ง" },
         { status: 409 }
       );
     }
 
-    // ========================================================
-    // status = 13/14: ไม่มาทำงาน / เลื่อนวันที่เริ่มงาน
-    // อัปเดตเฉพาะ recruit_job_applications (ไม่สร้าง employee/user account)
-    // ========================================================
+    const currentStatus = Number(application.status);
 
-    if (
-      Number(get_data_emp_recrut.status) === 13 ||
-      Number(get_data_emp_recrut.status) === 14
-    ) {
-      if (!start_date) {
-        return NextResponse.json(
-          { message: "กรุณาระบุวันที่เริ่มงาน" },
-          { status: 400 }
-        );
-      }
-
-      const rescheduleUpdatePayload = { start_date };
-
-      if (reason !== undefined && reason !== null && String(reason).trim() !== "") {
-        rescheduleUpdatePayload.status_reason = reason;
-      }
-
-      await updateRecruitJobInterviewStatus({
+    // --- status 13/14: reschedule / no-show only, no employee creation ---
+    if (currentStatus === STATUS.NO_SHOW || currentStatus === STATUS.RESCHEDULE) {
+      const errRes = await rescheduleApplication({
         applicationId: application_id,
-        status: Number(get_data_emp_recrut.status),
+        targetStatus: currentStatus,
+        startDate: start_date,
+        reason,
+        requireReason: false,
+      });
+      if (errRes) return errRes;
+
+      return NextResponse.json({ success: true, message: "อัปเดตวันที่เริ่มงานเรียบร้อยแล้ว" }, { status: 200 });
+    }
+
+    // --- status 12: save details, move to pending confirmation (17) ---
+    if (currentStatus === STATUS.STAGE_ONE) {
+      const errRes = await processStageOneApproval({
+        application,
+        body,
       });
 
-      const { error: updateRescheduleError } = await supabaseAdmin
-        .from("recruit_job_applications")
-        .update(rescheduleUpdatePayload)
-        .eq("id", application_id);
-
-      if (updateRescheduleError) {
-        console.error(
-          "UPDATE APPLICATION (STATUS 13/14) ERROR:",
-          updateRescheduleError
-        );
-        return NextResponse.json(
-          { success: false, message: "ไม่สามารถอัปเดตข้อมูลใบสมัครได้" },
-          { status: 500 }
-        );
-      }
+      if (errRes) return errRes;
 
       return NextResponse.json(
         {
           success: true,
-          message: "อัปเดตวันที่เริ่มงานเรียบร้อยแล้ว",
+          message: "บันทึกข้อมูลเรียบร้อยแล้ว",
         },
         { status: 200 }
       );
     }
 
-    // ========================================================
-    // รอบแรก: status = 12
-    // อัปเดตข้อมูลใบสมัคร แล้วเปลี่ยน status เป็น 17
-    // เพื่อรอให้ระบบเรียก API นี้อีกครั้งเพื่อยืนยันสร้างพนักงานจริง
-    // ========================================================
+    // --- status 17: either reschedule/no-show, or final confirmation (15) ---
+    if (currentStatus === STATUS.PENDING_CONFIRM) {
+      const resolvedNextStatus = next_status ? Number(next_status) : STATUS.CONFIRMED;
 
-    if (Number(get_data_emp_recrut.status) === 12) {
+      if (resolvedNextStatus === STATUS.NO_SHOW || resolvedNextStatus === STATUS.RESCHEDULE) {
+        const errRes = await rescheduleApplication({
+          applicationId: application_id,
+          targetStatus: resolvedNextStatus,
+          startDate: start_date,
+          reason,
+          requireReason: true,
+        });
+        if (errRes) return errRes;
 
-      // ========================================================
-      // Get Company
-      // ========================================================
-      const { data: get_data_company, error: get_data_company_error } = await supabaseAdmin.from("branches").select("*").eq("id", branch_id).single();
-
-      if (get_data_company_error) {
-        console.error("GET COMPANY ERROR:", get_data_company_error);
-        throw new AppError("ไม่สามารถดึงข้อมูล Branch ได้");
+        return NextResponse.json({ success: true, message: "บันทึกข้อมูลเรียบร้อยแล้ว" }, { status: 200 });
       }
 
-      const { data: get_data_payroll_companies, error: get_data_payroll_companies_error } = await supabaseAdmin.from("payroll_companies").select("*").eq("company_id", get_data_company.company_id).single();
-
-      if (get_data_payroll_companies_error) {
-        console.error("GET COMPANY ERROR:", get_data_payroll_companies_error);
-        throw new AppError("ไม่สามารถดึงข้อมูล payrol ได้");
+      if (resolvedNextStatus !== STATUS.CONFIRMED) {
+        return badRequest("การดำเนินการไม่ถูกต้อง");
+      }
+      if (!body.role_id) {
+        return badRequest("กรุณาเลือก Role");
       }
 
-      const probationDays = 119;
-      const probationEndDate = calculateProbationEndDate(
-        start_date,
-        probationDays
+      const result = await processFinalConfirmation({ application, body, userId });
+      // if (errRes) return errRes;
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: "สร้าง Employee และ User Account เรียบร้อยแล้ว",
+          employee_code: result.employeeCode,
+        },
+        { status: 201 }
       );
 
-      const application_data = {
-        branch_id,
-        department_id,
-        division_id,
-        unit_id,
-        position_id,
-        position_level_id,
-        start_date,
-        base_salary,
-        position_allowance,
-        living_allowance,
-        special_allowance,
-        fuel_allowance,
-        incentive_type,
-        incentive_amount,
-        oc,
-        phone_allowance,
-        employment_type,
-        employment_type_id,
-        employee_status_id: "21e6539f-159c-4ea8-a63a-817c97563785",
-        probation_days: 119,
-        probation_end_date: probationEndDate,
-        probation_status: "probation",
-        company_id: get_data_company.company_id,
-        branch_group_id: get_data_company.group_id,
-        payroll_company_id: get_data_payroll_companies.id,
-        payroll_type_id: payroll_types,
-        position_family_id,
-        last_job_id: job_id,
-        status: 17,
-      };
-
-      await updateRecruitJobInterviewStatus({
-        applicationId: application_id,
-        status: 17,
-      });
-
-      const { error } = await supabaseAdmin
-        .from("recruit_job_applications")
-        .update(application_data)
-        .eq("id", application_id);
-
-      if (error) {
-        console.error("UPDATE APPLICATION ERROR:", error);
-        return NextResponse.json(
-          { message: "ไม่สามารถอัปเดตข้อมูลใบสมัครได้" },
-          { status: 500 }
-        );
-      }
-
-      const compensationRows = [];
-
-      for (const item of additional_compensation ?? []) {
-        for (const [topic, amount] of Object.entries(item)) {
-          compensationRows.push({
-            application_id,
-            cost_type: "compensation",
-            topic,
-            amount: Number(amount || 0),
-          });
-        }
-      }
-
-      const additionalRows = [];
-
-      for (const item of additional_cost ?? []) {
-        if (!item.name?.trim()) continue;
-        additionalRows.push({
-          application_id,
-          cost_type: "additional",
-          topic: item.name.trim(),
-          amount: Number(item.amount || 0),
-        });
-      }      
-
-      await supabaseAdmin
-      .from("recruit_additional_cost")
-      .delete()
-      .eq("application_id", application_id)
-      .eq("cost_type", "additional");
-
-      await supabaseAdmin
-      .from("recruit_additional_cost")
-      .delete()
-      .eq("application_id", application_id)
-      .eq("cost_type", "compensation");
-
-      if (additionalRows.length > 0) {
-        await supabaseAdmin
-          .from("recruit_additional_cost")
-          .insert(additionalRows);
-      }
-
-      if (compensationRows.length > 0) {
-        await supabaseAdmin
-          .from("recruit_additional_cost")
-          .insert(compensationRows);
-      }
-
     }
 
-    // ========================================================
-    // รอบสอง: status = 17
-    // ให้เลือกว่าจะ:
-    //   - next_status 13/14: เลื่อนวันเริ่มงาน / ไม่มาทำงาน (พร้อมเหตุผล)
-    //     -> อัปเดตแค่ recruit_job_applications
-    //   - next_status 15 (หรือไม่ส่งมา = ค่า default เพื่อ backward compat):
-    //     -> ยืนยันเข้าฐานข้อมูลกลาง สร้าง Employee + User Account จริง
-    // ========================================================
-    
-    if (Number(get_data_emp_recrut.status) === 17) {
-      
-      const resolvedNextStatus = next_status ? Number(next_status) : 15;
+    // return NextResponse.json(
+    //   { success: true, message: "สร้าง Employee และ User Account เรียบร้อยแล้ว", employee_code: employeeCode },
+    //   { status: 201 }
+    // );
 
-      // --------------------------------------------------------
-      // เลือกเลื่อนวันเริ่มงาน (13) หรือ ไม่มาทำงาน (14)
-      // --------------------------------------------------------
-      if (resolvedNextStatus === 13 || resolvedNextStatus === 14) {
-        if (!reason || !String(reason).trim()) {
-          return NextResponse.json(
-            { message: "กรุณาระบุเหตุผล" },
-            { status: 400 }
-          );
-        }
-  
-        if (!start_date) {
-          return NextResponse.json(
-            { message: "กรุณาระบุวันที่เริ่มงาน" },
-            { status: 400 }
-          );
-        }
-
-        await updateRecruitJobInterviewStatus({
-          applicationId: application_id,
-          status: Number(resolvedNextStatus),
-        });
-
-        const { error: updateToRescheduleError } = await supabaseAdmin
-          .from("recruit_job_applications")
-          .update({
-            status: resolvedNextStatus,
-            start_date,
-            status_reason: reason,
-          })
-          .eq("id", application_id);
-
-        if (updateToRescheduleError) {
-          console.error(
-            "UPDATE APPLICATION (17 -> 13/14) ERROR:",
-            updateToRescheduleError
-          );
-          return NextResponse.json(
-            { success: false, message: "ไม่สามารถอัปเดตข้อมูลใบสมัครได้" },
-            { status: 500 }
-          );
-        }
-
-        return NextResponse.json(
-          {
-            success: true,
-            message: "บันทึกข้อมูลเรียบร้อยแล้ว",
-          },
-          { status: 200 }
-        );
-      }
-
-      if (resolvedNextStatus !== 15) {
-        return NextResponse.json(
-          { message: "การดำเนินการไม่ถูกต้อง" },
-          { status: 400 }
-        );
-      }
-
-      if (!role_id) {
-        return NextResponse.json(
-          { message: "กรุณาเลือก Role" },
-          { status: 400 }
-        );
-      }
-
-      // --------------------------------------------------------
-      // เลือกอัพเดตเข้าฐานข้อมูลกลาง (15)
-      // สร้าง Employee + User Account จริง
-      // --------------------------------------------------------
-
-      // เก็บ reference ไว้สำหรับ rollback ถ้าขั้นตอนหลังจากนี้ล้มเหลว
-      let createdEmployee = null;
-      let createdUserAccount = null;
-
-      try {
-        // ------------------------------------------------------
-        // Get Employee Code Setting
-        // ------------------------------------------------------
-
-        const probationDays = 119;
-        const probationEndDate = calculateProbationEndDate(
-          start_date,
-          probationDays
-        );
-
-        const {
-          data: get_data_code_setting,
-          error: get_data_code_setting_error,
-        } = await supabaseAdmin
-          .from("employee_code_settings")
-          .select("*")
-          .eq("company_id", get_data_emp_recrut.company_id)
-          .single();
-
-        if (get_data_code_setting_error) {
-          console.error(
-            "GET CODE SETTING ERROR:",
-            get_data_code_setting_error
-          );
-          throw new AppError("ไม่สามารถดึงการตั้งค่ารหัสพนักงานได้");
-        }
-
-        // ------------------------------------------------------
-        // Reserve Employee Code
-        // ------------------------------------------------------
-        const { data: rawData, error: employeeCodeError } =
-          await supabaseAdmin.rpc(EMPLOYEE_CODE_RPC, {
-            p_company_id: get_data_emp_recrut.company_id,
-            p_employee_code_setting_id: get_data_code_setting.id,
-            p_employee_type: get_data_emp_recrut.employment_type,
-            p_running_date: get_data_emp_recrut.start_date,
-          });
-
-        if (employeeCodeError) {
-          console.error("RESERVE EMPLOYEE CODE ERROR:", employeeCodeError);
-          throw new AppError("ไม่สามารถออกรหัสพนักงานได้");
-        }
-
-        const result = Array.isArray(rawData) ? rawData[0] : rawData;
-        const employeeCode = cleanText(result?.employee_code);
-
-        if (!employeeCode) {
-          throw new AppError("ไม่สามารถสร้าง Employee Code ได้");
-        }
-
-        // ------------------------------------------------------
-        // get gender name
-        // ------------------------------------------------------
-        const { data: get_gender_name, error: get_gender_name_error } =
-          await supabaseAdmin
-            .from("genders")
-            .select("gender_name_th")
-            .eq("id", get_data_emp_recrut.gender)
-            .single();
-
-        if (get_gender_name_error) {
-          console.error("GET GENDER NAME ERROR:", get_gender_name_error);
-          throw new AppError("ไม่สามารถดึงข้อมูลเพศของผู้สมัครได้");
-        }
-
-        // ------------------------------------------------------
-        // get nationality
-        // ------------------------------------------------------
-        const {
-          data: get_nationality,
-          error: get_nationality_error,
-        } = await supabaseAdmin
-          .from("nationalities")
-          .select("id, nationality_code")
-          .eq("id", get_data_emp_recrut.nationality)
-          .single();
-
-        if (get_nationality_error) {
-          console.error(
-            "GET NATIONALITY ERROR:",
-            get_nationality_error
-          );
-
-          throw new AppError("ไม่สามารถดึงข้อมูลสัญชาติของผู้สมัครได้");
-        }
-
-        const identityData = get_nationality?.nationality_code === "TH"
-            ? {
-                citizen_id: get_data_emp_recrut.identity_no,
-                tax_id: get_data_emp_recrut.identity_no,
-                passport_no: null,
-              }
-            : {
-                citizen_id: null,
-                tax_id: null,
-                passport_no: get_data_emp_recrut.identity_no,
-              };
-
-        // ------------------------------------------------------
-        // Prepare Employee Data
-        // ------------------------------------------------------
-        const insertData = {
-          employee_code: employeeCode,
-          first_name_th: get_data_emp_recrut.first_name,
-          last_name_th: get_data_emp_recrut.last_name,
-          nick_name: get_data_emp_recrut.nickname_th,
-          gender: get_gender_name.gender_name_th,
-          phone: get_data_emp_recrut.phone_number,
-          personal_email: get_data_emp_recrut.email,
-          employment_type: get_data_emp_recrut.employment_type,
-          branch_group_id: get_data_emp_recrut.branch_group_id,
-          company_id: get_data_emp_recrut.company_id,
-          branch_id: get_data_emp_recrut.branch_id,
-          department_id: get_data_emp_recrut.department_id,
-          division_id: get_data_emp_recrut.division_id,
-          unit_id: get_data_emp_recrut.unit_id,
-          position_id: get_data_emp_recrut.position_id,
-          position_level_id: get_data_emp_recrut.position_level_id,
-          job_id: get_data_emp_recrut.last_job_id,
-          payroll_company_id: get_data_emp_recrut.payroll_company_id,
-          payroll_type_id: get_data_emp_recrut.payroll_type_id,
-          employee_status_id: get_data_emp_recrut.employee_status_id,
-          employment_type_id: get_data_emp_recrut.employment_type_id,
-
-          ...identityData,
-
-          birth_date: get_data_emp_recrut.date_of_birth,
-          line_id: get_data_emp_recrut.line_id,
-          probation_days: get_data_emp_recrut.probation_days,
-          probation_end_date: probationEndDate,
-          probation_status: get_data_emp_recrut.probation_status,
-          nickname_th: get_data_emp_recrut.nickname_th,
-          nickname_en: get_data_emp_recrut.nickname_en,
-          gender_id: get_data_emp_recrut.gender,
-          marital_status_id: get_data_emp_recrut.marital_status,
-          religion_id: get_data_emp_recrut.religion,
-          nationality_id: get_data_emp_recrut.nationality,
-          hire_date: start_date,
-          start_work_date: start_date,
-          confirmation_date: start_date,
-          employee_type_digit: get_data_code_setting.running_digits,
-          employee_year_2d: get_data_code_setting.year_digits,
-          employee_running_no: get_data_code_setting.executive_digit,
-          employee_photo_url: get_data_emp_recrut.profile_image_url,
-          position_family_id: get_data_emp_recrut.position_family_id,
-          employee_photo_path: get_data_emp_recrut.profile_image_url,
-          status: "active",
-          created_by: userId,
-          updated_by: userId,
-        };
-        
-        // ------------------------------------------------------
-        // 1. Create Employee
-        // ------------------------------------------------------
-        createdEmployee = await createEmployee({
-          employeeData: insertData,
-          userId,
-        });        
-
-        // update to table employee_compensations
-        const data_employee_compensations = {
-          employee_id: createdEmployee.id,
-          position_id: get_data_emp_recrut.position_id,
-          position_level_id: get_data_emp_recrut.position_level_id,
-          payroll_company_id: get_data_emp_recrut.payroll_company_id,
-          payroll_type_id: get_data_emp_recrut.payroll_type_id,
-          currency_code: "THB",
-          base_salary: get_data_emp_recrut.base_salary,
-          source_type: "initial",
-          effective_from: getBangkokDate(),
-          effective_to: null,
-          status: "active",
-          created_by: userId,
-          updated_by: userId,
-        };
-
-        const { error: EmployeeCompensationsError } = await supabaseAdmin
-          .from("employee_compensations")
-          .insert(data_employee_compensations);
-
-        if (EmployeeCompensationsError) {
-          console.error(
-            "INSERT ADDITIONAL COST ERROR:",
-            EmployeeCompensationsError
-          );
-          throw new AppError("ไม่สามารถบันทึกข้อมูลได้");
-        }
-
-        // ------------------------------------------------------
-        // 2. Create User Account
-        // ------------------------------------------------------
-        createdUserAccount = await createUserAccount({
-          employee: createdEmployee,
-          roleId: role_id,
-          isActive: true,
-        });
-
-        await updateRecruitJobInterviewStatus({
-          applicationId: application_id,
-          status: Number(resolvedNextStatus),
-        });        
-
-
-        // ------------------------------------------------------
-        // update recruit_job_applications
-        // ------------------------------------------------------
-        const { error: updateAppError } = await supabaseAdmin
-          .from("recruit_job_applications")
-          .update({
-            emp_id: createdEmployee.id,
-            emp_code: createdEmployee.employee_code,
-            hire_date: start_date,
-            start_date: start_date,
-            probation_end_date: probationEndDate,
-            user_approve: userId,
-            status: 15,
-          })
-          .eq("id", application_id);
-
-        if (updateAppError) {
-          console.error(
-            "UPDATE APPLICATION AFTER CREATE ERROR:",
-            updateAppError
-          );
-          throw new AppError("ไม่สามารถอัปเดตสถานะใบสมัครได้");
-        }
-
-        // ------------------------------------------------------
-        // Activity Log
-        // ------------------------------------------------------
-        await writeActivityLog({
-          module_name: "approve_employees",
-          action_type: "create",
-          reference_table: "approve_employees",
-          reference_id: createdUserAccount.id,
-          description: `เพิ่มผู้ใช้งานระบบ ${createdUserAccount.username}`,
-          new_data: {
-            auth_user_id: createdUserAccount.auth_user_id,
-            employee_id: createdUserAccount.employee_id,
-            role_id: createdUserAccount.role_id,
-            username: createdUserAccount.username,
-            is_active: createdUserAccount.is_active,
-            employee_code: createdUserAccount.employees?.employee_code || "",
-            employee_name: `${
-              createdUserAccount.employees?.first_name_th || ""
-            } ${createdUserAccount.employees?.last_name_th || ""}`.trim(),
-            role_code: createdUserAccount.roles?.role_code || "",
-            role_name: createdUserAccount.roles?.role_name || "",
-          },
-        });
-      } catch (innerError) {
-        // ----------------------------------------------------
-        // ขั้นตอนใดขั้นตอนหนึ่งใน block นี้ล้มเหลว
-        // rollback สิ่งที่สร้างไปแล้วทั้งหมด (compensating transaction)
-        // ----------------------------------------------------
-        await rollbackEmployeeCreation({
-          employee: createdEmployee,
-          userAccount: createdUserAccount,
-        });
-        throw innerError;
-      }
-    }
-
-    // ========================================================
-    // Success
-    // ========================================================
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "สร้าง Employee และ User Account เรียบร้อยแล้ว",
-      },
-      { status: 201 }
-    );
+    return badRequest("สถานะใบสมัครไม่รองรับการดำเนินการนี้");
   } catch (error) {
     console.error("SAVE EMPLOYEE ERROR:", error);
-
     return NextResponse.json(
       {
         success: false,
-        message: error?.isSafeMessage
-          ? error.message
-          : "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+        message: error?.isSafeMessage ? error.message : "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
       },
       { status: 500 }
     );
   }
-}
-
-function getBangkokDate() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }

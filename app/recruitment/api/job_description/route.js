@@ -96,8 +96,30 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
+    let id_position = null;
+
+    if(body.position_mode === "special" && body.special_position_name !== undefined && body.special_position_name.trim() !== "") {
+      const { data: positionData, error: positionError } = await supabaseAdmin
+        .from("positions")
+        .insert({
+          position_code: body.special_position_name+"001", 
+          position_name: body.special_position_name , 
+          status:"active" , 
+          is_manager: false , 
+          is_executive:false , 
+          allow_multiple_assignment: false ,
+          sort_order: 0 ,
+        })
+        .select("id")
+        .single();
+      if(positionError){
+        return NextResponse.json({ message: "ไม่สามารถสร้างตำแหน่งใหม่ได้" }, { status: 500 });
+      }
+      id_position = positionData.id;
+    }
+
     const descriptionPayload = {
-      positions_id: body.positions_id,
+      positions_id: body.position_mode === "special" ? id_position : body.positions_id,
       department_id: body.department_id,
       division_id: body.division_id,
       unit_id: body.unit_id,
@@ -188,7 +210,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { message: "Created successfully", id: descriptionId },
+      { message: "Created successfully"},
       { status: 201 },
     );
   } catch (error) {

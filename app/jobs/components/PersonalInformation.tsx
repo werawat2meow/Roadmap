@@ -788,8 +788,9 @@ export default function PersonalInformation({
 
                     {/* Nickname TH */}
                     <Col xs={24} md={12}>
-                        <Form.Item label={getUIText(uiText.nicknameTh, locale)} >
+                        <Form.Item label={getUIText(uiText.nicknameTH, locale)} >
                             <Input
+                                name="nicknameTH"
                                 value={value.nicknameTH}
                                 onChange={(e) => updatePlainTextField("nicknameTH", e.target.value)}
                             />
@@ -798,8 +799,9 @@ export default function PersonalInformation({
 
                     {/* Nickname EN */}
                     <Col xs={24} md={12}>
-                        <Form.Item label={getUIText(uiText.nicknameEn, locale)} >
+                        <Form.Item label={getUIText(uiText.nicknameEN, locale)} >
                             <Input
+                                name="nicknameEN"
                                 value={value.nicknameEN}
                                 onChange={(e) => updatePlainTextField("nicknameEN", e.target.value)}
                             />
@@ -1062,7 +1064,12 @@ export default function PersonalInformation({
                                 required
                                 name="addressNo"
                                 value={value.addressNo}
-                                onChange={(e) => updatePlainTextField("addressNo", e.target.value)}
+                                onChange={(e) =>
+                                    updateField(
+                                        "addressNo",
+                                        e.target.value.replace(/[^\p{L}\p{M}\p{N}\s/]/gu, "")
+                                    )
+                                }
                             />
                         </Form.Item>
                     </Col>
@@ -1071,6 +1078,7 @@ export default function PersonalInformation({
                     <Col xs={24} md={6}>
                         <Form.Item label={getUIText(uiText.villageNo, locale)} >
                             <Input
+                                name="villageNo"
                                 value={value.villageNo}
                                 onChange={(e) => updatePlainTextField("villageNo", e.target.value)}
                             />
@@ -1081,6 +1089,7 @@ export default function PersonalInformation({
                     <Col xs={24} md={12}>
                         <Form.Item label={getUIText(uiText.street, locale)} >
                             <Input
+                                name="street"
                                 value={value.street}
                                 onChange={(e) => updatePlainTextField("street", e.target.value)}
                             />
@@ -1138,6 +1147,7 @@ export default function PersonalInformation({
                     <Col xs={24} md={12}>
                         <Form.Item label={getUIText(uiText.lineId, locale)} >
                             <Input
+                                name="lineId"
                                 value={value.lineId}
                                 onChange={(e) => updatePlainTextField("lineId", e.target.value)}
                             />
@@ -1221,6 +1231,7 @@ export default function PersonalInformation({
                         <Col xs={24}>
                             <Form.Item label={getUIText(uiText.residenceOther, locale)} >
                             <Input
+                                name="residenceOther"
                                 value={value.residenceOther}
                                 onChange={(e) => updatePlainTextField("residenceOther", e.target.value)}
                                 placeholder={
@@ -1361,7 +1372,7 @@ export default function PersonalInformation({
                                         ? "กรุณาระบุ"
                                         : "Please specify"
                                     }
-                                    onChange={(e) => updateDriverLicense("otherText", e.target.value)}
+                                    onChange={(e) => updateDriverLicense("otherText", e.target.value.replace(/[^\p{L}\p{M}\p{N}\s]/gu, ""))}
                                 />
                             </Form.Item>
                         </Col>

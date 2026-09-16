@@ -1,5 +1,5 @@
 import RecruitmentClientLayout from "@/app/recruitment/RecruitmentClientLayout";
-import "./recruitment.css";
+import "./recruitment.css"; 
 
 export const metadata = {
   title: "Recruitment System",

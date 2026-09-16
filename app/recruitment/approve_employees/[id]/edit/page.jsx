@@ -20,7 +20,11 @@ import {
   Space,
   Button,
   message,
+  Modal,
 } from "antd";
+
+
+import AntIcon from '@/components/AntIcon';
 
 const { Title, Text } = Typography;
 
@@ -40,6 +44,11 @@ export default function Page({ params }) {
 
   const [additionalItems, setAdditionalItems] = useState([]);
   const [compensationItems, setCompensationItems] = useState([]);
+
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [employeeCode, setEmployeeCode] = useState("");
+
+  const [employeeCodeCopied, setEmployeeCodeCopied] = useState(false);
 
   // ใช้เฉพาะตอน applicationStatus === 17: เลือกว่าจะเลื่อนวันเริ่มงาน (13)
   // ไม่มาทำงาน (14) หรือยืนยันเข้าฐานข้อมูลกลาง (15)
@@ -171,6 +180,7 @@ export default function Page({ params }) {
   // พร้อมทั้งไล่โหลด master ข้อมูลแบบ cascading (department -> division -> unit -> position -> position_level)
   // ให้ตรงกับค่าที่เคยเลือกไว้ เพื่อให้ Select แสดงผล label ได้ถูกต้อง
   async function populateFormFromApplication(application) {
+    
     if (!application) return;
 
     setForm((prev) => ({
@@ -183,6 +193,9 @@ export default function Page({ params }) {
       incentive_type: application.incentive_type ?? prev.incentive_type,
       incentive_amount: application.incentive_amount ?? prev.incentive_amount,
       oc: application.oc ?? prev.oc,
+      deposit: application.deposit ?? prev.deposit,
+      deduct_processing: application.deduct_processing ?? prev.deduct_processing,
+      deduct_resign_within_one_year: application.deduct_resign_within_one_year ?? prev.deduct_resign_within_one_year,
       phone_allowance: application.phone_allowance ?? prev.phone_allowance,
       employment_type: application.employment_type ?? prev.employment_type,
       employment_type_id: application.employment_type_id ?? prev.employment_type_id,
@@ -673,10 +686,17 @@ export default function Page({ params }) {
 
       if (!res.ok) { throw new Error( result.message || "ไม่สามารถบันทึกข้อมูลได้" ); }
 
-      message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
+      if(applicationStatus === 17 && actionChoice === 15){
+        // ดึงรหัสพนักงานจาก API
+        setEmployeeCode(result.employee_code || "");
 
-      // ถ้าต้องการกลับหน้ารายการ
-      // router.push("/recruitment/approve_employees");
+        // เปิด Modal
+        setSuccessModalOpen(true);
+      }else{
+        message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
+
+        router.push("/recruitment/approve_employees");
+      }
 
     } catch (error) {
       console.error("SAVE EMPLOYEE ERROR:", error);
@@ -685,6 +705,26 @@ export default function Page({ params }) {
       setSaving(false); // เพิ่มบรรทัดนี้ - reset ไม่ว่าสำเร็จหรือ error
     }
   }
+
+  useEffect(() => {
+    if (successModalOpen) {
+      setEmployeeCodeCopied(false);
+    }
+  }, [successModalOpen]);
+
+  const handleCopyEmployeeCode = async () => {
+    if (!employeeCode) return;
+
+    try {
+      await navigator.clipboard.writeText(employeeCode);
+
+      setEmployeeCodeCopied(true);
+      message.success("คัดลอกรหัสพนักงานแล้ว");
+    } catch (error) {
+      console.error("Copy employee code failed:", error);
+      message.error("ไม่สามารถคัดลอกรหัสพนักงานได้");
+    }
+  };
 
   useEffect(() => {
     if (!isChecking && !canEdit) { router.replace("/recruitment/approve_employees"); }
@@ -1616,6 +1656,121 @@ export default function Page({ params }) {
           </div>
         </Card>
       </div>
+
+      <Modal
+        open={successModalOpen}
+        onCancel={() => setSuccessModalOpen(false)}
+        footer={null}
+        centered
+        width={500}
+        closable={false}
+      >
+        <div
+          style={{
+            padding: "24px 8px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "52px",
+              marginBottom: "16px",
+            }}
+          >
+            <AntIcon
+              name="CheckCircleFilled"
+              style={{
+                fontSize: "64px",
+                color: "#52c41a",
+                marginBottom: "16px",
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: 700,
+              marginBottom: "8px",
+            }}
+          >
+            บันทึกข้อมูลสำเร็จ
+          </div>
+
+          <div
+            style={{
+              fontSize: "15px",
+              color: "#777",
+              marginBottom: "24px",
+            }}
+          >
+            ระบบได้สร้างรหัสพนักงานเรียบร้อยแล้ว
+          </div>
+
+          <div
+            style={{
+              background: "#f5f5f5",
+              borderRadius: "12px",
+              padding: "20px",
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "14px",
+                color: "#888",
+                marginBottom: "8px",
+              }}
+            >
+              รหัสพนักงาน
+            </div>
+
+            <div
+              style={{
+                fontSize: "30px",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                wordBreak: "break-all",
+              }}
+            >
+              {employeeCode || "-"}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "center",
+            }}
+          >
+            <Button
+              size="large"
+              icon={<AntIcon name="CopyOutlined" />}
+              onClick={handleCopyEmployeeCode}
+              disabled={!employeeCode}
+            >
+              {employeeCodeCopied
+                ? "Copy รหัสพนักงานแล้ว"
+                : "Copy รหัสพนักงาน"}
+            </Button>
+
+            {employeeCodeCopied && (
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => {
+                  setSuccessModalOpen(false);
+                  setEmployeeCodeCopied(false);
+                  router.push("/recruitment/approve_employees");
+                }}
+              >
+                ตกลง
+              </Button>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

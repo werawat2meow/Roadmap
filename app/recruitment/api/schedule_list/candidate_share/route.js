@@ -41,7 +41,7 @@ export async function POST(request) {
 
     const origin = request.headers.get("origin");
 
-    const url = `${origin}/recruitment/interview-candidates/${application_id}?token=${token}`;
+    const url = `${origin}/jobs/interview-candidates/${application_id}?token=${token}`;
 
     return NextResponse.json({
       success: true,

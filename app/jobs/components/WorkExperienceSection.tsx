@@ -255,7 +255,7 @@ export default function WorkExperienceSection({
                     updateRow(
                       work.id,
                       "reasonForLeaving",
-                      e.target.value
+                      e.target.value.replace(/[^\p{L}\p{M}\p{N}\s]/gu, "")
                     )
                   }
                 />

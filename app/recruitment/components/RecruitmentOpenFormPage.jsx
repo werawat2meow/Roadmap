@@ -331,7 +331,7 @@ export default function RecruitmentOpenFormPage({
   const [submitting, setSubmitting] = useState(false);
 
   const remaining = Math.max(headcountTarget - employeeCount, 0);
-  const exceedsLimit = openingCount > remaining;
+  // const exceedsLimit = openingCount > remaining;
 
   useEffect(() => {
     setLoading((s) => ({ ...s, branches: true }));
@@ -344,10 +344,6 @@ export default function RecruitmentOpenFormPage({
   useEffect(() => {
     if (!branchIds.length) {
       setDepartments([]);
-      setDepartmentId(null);
-      setDivisionId(null);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
@@ -365,9 +361,6 @@ export default function RecruitmentOpenFormPage({
   useEffect(() => {
     if (!departmentId) {
       setDivisions([]);
-      setDivisionId(null);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
@@ -385,8 +378,6 @@ export default function RecruitmentOpenFormPage({
   useEffect(() => {
     if (!divisionId) {
       setUnits([]);
-      setUnitId(null);
-      setPositionId(null);
       return;
     }
 
@@ -404,7 +395,6 @@ export default function RecruitmentOpenFormPage({
   useEffect(() => {
     if (!unitId) {
       setPositions([]);
-      setPositionId(null);
       return;
     }
 
@@ -445,9 +435,9 @@ export default function RecruitmentOpenFormPage({
       positionId &&
       startDate &&
       endDate &&
-      !exceedsLimit &&
-      openingCount > 0 &&
-      openingCount <= remaining
+      // !exceedsLimit &&
+      openingCount > 0 
+      // && openingCount <= remaining
   );
 
   async function handleSubmit(e) {
@@ -480,8 +470,8 @@ export default function RecruitmentOpenFormPage({
 
       const endpoint =
         mode === "edit"
-          ? `/recruitment/api/job_openings/${initialData.id}`
-          : "/recruitment/api/job_openings";
+          ? `/recruitment/api/job_openings/v2/${initialData.id}`
+          : "/recruitment/api/job_openings/v2";
 
       const method =
         mode === "edit"
@@ -635,18 +625,19 @@ export default function RecruitmentOpenFormPage({
                 <input
                   type="number"
                   min={1}
-                  max={remaining || 1}
+                  // max={remaining || 1}
                   value={openingCount}
                   onChange={(e) =>
                     setOpeningCount(Number(e.target.value) || 0)
                   }
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${
-                    exceedsLimit
-                      ? "border-red-400 ring-2 ring-red-100"
-                      : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  }`}
+                  className="w-full rounded-xl border px-3 py-2 outline-none"
+                  // className={`w-full rounded-xl border px-3 py-2 outline-none ${
+                  //   exceedsLimit
+                  //     ? "border-red-400 ring-2 ring-red-100"
+                  //     : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  // }`}
                 />
-                {exceedsLimit ? (
+                {/* {exceedsLimit ? (
                   <p className="mt-1 text-xs text-red-600">
                     จำนวนเปิดรับมากกว่าคงเหลือที่รับได้
                   </p>
@@ -654,7 +645,7 @@ export default function RecruitmentOpenFormPage({
                   <p className="mt-1 text-xs text-gray-500">
                     ห้ามมากกว่าจำนวนคงเหลือ( {remaining} )ที่รับได้
                   </p>
-                )}
+                )} */}
               </div>
             </div>
           </div>

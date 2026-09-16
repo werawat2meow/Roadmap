@@ -374,7 +374,7 @@ export default function Page({ params }) {
       }
 
       setSuccessMessage("บันทึกข้อมูลเรียบร้อย");
-      router.push("/recruitment/candidate");
+      router.push(`/recruitment/candidate/candidate_history/${data.application.id}`);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {

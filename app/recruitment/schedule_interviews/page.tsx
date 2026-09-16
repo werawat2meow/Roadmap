@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo , useRef } from "react";
 import Link from "next/link";
 import {
   App,
@@ -20,11 +20,14 @@ import {
   UploadProps,
   Input, // เพิ่ม
 } from "antd";
+import type { ColumnsType } from "antd/es/table";
 
 import dayjs, { Dayjs } from "dayjs";
 import AntIcon from '@/components/AntIcon';
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
+
+import CandidateExportImage from "@/app/recruitment/components/CandidateExportImage";
 
 const { Title, Text } = Typography;
 
@@ -154,6 +157,10 @@ export default function RecruitmentApplicationsPage() {
   const [selectedInterviewer, setSelectedInterviewer] =  useState<string | undefined>();
   const [loadingInterviewer, setLoadingInterviewer] = useState(false);
 
+  const [reviewerId, setReviewerId] = useState<string | undefined>(undefined);
+  const [reviewerOptions, setReviewerOptions] = useState<InterviewerOption[]>([]);
+  const [loadingReviewer, setLoadingReviewer] = useState(false);
+
   const [interviewDateTime, setInterviewDateTime] = useState<Dayjs | null>(null);
   const [remark, setRemark] = useState<string>(""); // เพิ่ม
   const [interviewErrors, setInterviewErrors] = useState<InterviewErrors>({});
@@ -170,7 +177,11 @@ export default function RecruitmentApplicationsPage() {
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
 
   const [exporting, setExporting] = useState(false);
-  const [exportingImage, setExportingImage] = useState(false); 
+  const [exportingImage, setExportingImage] = useState(false);
+
+  const [exportingImagePresentation, setExportingImagePresentation] = useState(false); 
+
+  
 
   // โหลดตัวเลือกตำแหน่งงาน (resource=positions) ครั้งเดียวตอน mount
   // ใช้ AbortController กัน request ค้างจากรอบแรกตอน React Strict Mode
@@ -205,6 +216,42 @@ export default function RecruitmentApplicationsPage() {
     return () => controller.abort();
   }, []);
 
+  const loadReviewerOptions = async () => {
+    setLoadingReviewer(true);
+
+    try {
+      const res = await fetch(
+        "/recruitment/api/schedule_interviews?resource=reviewers"
+      );
+
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "ไม่สามารถโหลดรายชื่อผู้สัมภาษณ์ได้");
+      }
+
+      setReviewerOptions(
+        (json.data ?? []).map(
+          (employee: {
+            id: string;
+            first_name_th: string;
+            last_name_th: string;
+          }) => ({
+            value: String(employee.id),
+            label: `${employee.first_name_th ?? ""} ${
+              employee.last_name_th ?? ""
+            }`.trim(),
+          })
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      message.error("ไม่สามารถโหลดรายชื่อผู้สัมภาษณ์ได้");
+    } finally {
+      setLoadingReviewer(false);
+    }
+  };
+
   const loadData = async (targetPage: number, signal?: AbortSignal) => {
     setLoading(true);
     try {
@@ -218,6 +265,9 @@ export default function RecruitmentApplicationsPage() {
       if (positionId) {
         params.set("position_id", String(positionId));
       }
+      if (reviewerId) {
+        params.set("reviewer_id", String(reviewerId));
+      }
       if (dateRange) {
         // ชื่อ param ต้องตรงกับ API: date_from / date_to
         params.set("date_from", dateRange.format("YYYY-MM-DD"));
@@ -228,7 +278,7 @@ export default function RecruitmentApplicationsPage() {
         `/recruitment/api/schedule_interviews?${params.toString()}`,
         { signal }
       );
-      const json = await res.json();
+      const json = await res.json();   
 
       // API ไม่มี field success, ต้องเช็คจาก error แทน
       if (!json.error) {
@@ -266,6 +316,7 @@ export default function RecruitmentApplicationsPage() {
         params.set("date_from", dateRange.format("YYYY-MM-DD"));
         params.set("date_to", dateRange.format("YYYY-MM-DD"));
       }
+      if (reviewerId) params.set("reviewer_id", String(reviewerId));
 
       const res = await fetch(
         `/recruitment/api/schedule_interviews/export?${params.toString()}`
@@ -275,7 +326,7 @@ export default function RecruitmentApplicationsPage() {
         const json = await res.json().catch(() => null);
         Modal.error({
           title: "เกิดข้อผิดพลาด",
-          content: json?.error || "ไม่สามารถ export ข้อมูลได้",
+          content: json?.message || "ไม่สามารถ export ข้อมูลได้",
         });
         return;
       }
@@ -307,11 +358,12 @@ export default function RecruitmentApplicationsPage() {
         params.set("date_from", dateRange.format("YYYY-MM-DD"));
         params.set("date_to", dateRange.format("YYYY-MM-DD"));
       }
+      if (reviewerId) params.set("reviewer_id", String(reviewerId));
 
       const res = await fetch(
         `/recruitment/api/schedule_interviews/export_image?${params.toString()}`
       );
-
+  
       if (!res.ok) {
         const json = await res.json().catch(() => null);
         Modal.error({
@@ -361,11 +413,15 @@ export default function RecruitmentApplicationsPage() {
    * เพื่อให้ "มีจุดเดียว" ที่ยิง API ต่อการเปลี่ยนแปลงแต่ละครั้ง
    */
 
+  useEffect(() => {
+    loadReviewerOptions();
+  }, []);
+
   // เมื่อ filter เปลี่ยน ให้ reset ไปหน้า 1 เสมอ (ไม่ยิง fetch ตรงนี้)
   useEffect(() => {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, positionId, dateRange, pageSize]);
+  }, [statusFilter, positionId, reviewerId, dateRange, pageSize]);
 
   // จุดเดียวที่ยิง API: ทำงานตอน mount, ตอน page เปลี่ยน, และตอน filter เปลี่ยน
   // (ถ้า filter เปลี่ยนตอน page ยังเป็น 1 อยู่แล้ว setPage(1) จะไม่ trigger re-render
@@ -380,7 +436,7 @@ export default function RecruitmentApplicationsPage() {
     loadData(page, controller.signal);
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, positionId, dateRange, pageSize]);
+  }, [page, statusFilter, positionId, reviewerId, dateRange, pageSize]);
 
   // ===== เปิด modal อัพเดตข้อมูล (รวมลำดับสัมภาษณ์ + สถานะ) =====
   const openUpdateModal = async (record: Application) => {
@@ -511,7 +567,33 @@ export default function RecruitmentApplicationsPage() {
     setPhotoModalOpen(true);
   };
 
-  const columns = useMemo(
+  const exportImageRef = useRef<{ openPreview: (data: any) => void }>(null);
+
+  const handleExportImagePresentation = async (applicationId: number) => {
+    try {
+      setExportingImagePresentation(true);
+
+      const response = await fetch(
+        `/recruitment/api/schedule_interviews/${applicationId}/export_presentation`
+      );
+
+      if (!response.ok) {
+        throw new Error("ไม่สามารถโหลดข้อมูลได้");
+      }
+
+      const data = await response.json();
+
+      // เปิด modal preview แทนการ export ทันที
+      exportImageRef.current?.openPreview(data);
+    } catch (error) {
+      console.error(error);
+      message.error("ไม่สามารถโหลดข้อมูลได้");
+    } finally {
+      setExportingImagePresentation(false);
+    }
+  };
+
+  const columns = useMemo<ColumnsType<Application>>(
     () => [
       {
         title: "No.",
@@ -525,11 +607,21 @@ export default function RecruitmentApplicationsPage() {
         title: "Position",
         dataIndex: ["positions", "position_name"],
         key: "position_name",
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (value: string) => value || "-",
       },
       {
         title: "Name",
         key: "first_name",
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (_: unknown, record: Application) =>
           `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`,
       },
@@ -558,36 +650,71 @@ export default function RecruitmentApplicationsPage() {
         dataIndex: "status",
         key: "status",
         width: 180,
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (value: number) => <StatusTag value={value} />,
       },
       {
         title: "Action",
         key: "action",
-        width: 120,
+        width: 300,
+        onHeaderCell: () => ({
+          style: {
+            textAlign: "center",
+          },
+        }),
         render: (_: unknown, record: Application) => (
-          <Space>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 8,
+            }}
+          >
             {canView && (
               <Link href={`/recruitment/schedule_interviews/${record.id}`}>
-                <Button type="primary">View</Button>
+                <Button type="primary" block>
+                  View
+                </Button>
               </Link>
             )}
 
             {canEdit && (
-              <Button type="primary" ghost onClick={() => openUpdateModal(record)}>
+              <Button
+                type="primary"
+                ghost
+                block
+                onClick={() => openUpdateModal(record)}
+              >
                 อัพเดตข้อมูล
               </Button>
             )}
 
             {canEdit && record.status === 5 && (
-              <Button
-                type="primary"
-                icon={<AntIcon name="UploadOutlined" />}
-                onClick={() => openPhotoModal(record)}
-              >
-                อัปเดตรูปผู้สมัคร
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  icon={<AntIcon name="UploadOutlined" />}
+                  block
+                  onClick={() => openPhotoModal(record)}
+                >
+                  อัปเดตรูปผู้สมัคร
+                </Button>
+
+                <Button
+                  type="primary"
+                  block
+                  loading={exportingImagePresentation}
+                  onClick={() => handleExportImagePresentation(record.id)}
+                >
+                  Export รูป
+                </Button>
+              </>
             )}
-          </Space>
+          </div>
         ),
       },
     ],
@@ -625,7 +752,7 @@ export default function RecruitmentApplicationsPage() {
     if (!photoApplication) return;
 
     if (!photoFile?.originFileObj) {
-      message.warning("กรุณาเลือกรูปผู้สมัคร");
+      Modal.error({ title: 'เกิดข้อผิดพลาด', content: "กรุณาเลือกรูปผู้สมัคร" });
       return;
     }
 
@@ -655,11 +782,11 @@ export default function RecruitmentApplicationsPage() {
       const json = await res.json();
 
       if (!res.ok || json.error) {
-        message.error(json.error || "ไม่สามารถอัปโหลดรูปได้");
+        Modal.error({ title: 'เกิดข้อผิดพลาด', content: json.error || "ไม่สามารถอัปโหลดรูปได้" });
         return;
       }
 
-      message.success("อัปเดตรูปผู้สมัครเรียบร้อย");
+      Modal.success({ title: '', content: "อัปเดตรูปผู้สมัครเรียบร้อย" });
 
       setPhotoModalOpen(false);
       setPhotoApplication(null);
@@ -815,6 +942,21 @@ export default function RecruitmentApplicationsPage() {
                     .includes(input.toLowerCase())
                 }
               />
+              <Select
+                allowClear
+                showSearch
+                placeholder="ผู้สัมภาษณ์"
+                value={reviewerId}
+                loading={loadingReviewer}
+                onChange={(val) => setReviewerId(val)}
+                style={{ width: 240 }}
+                options={reviewerOptions}
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />    
 
               <DatePicker
                 placeholder="วันที่เข้าสัมภาษณ์"
@@ -1031,6 +1173,8 @@ export default function RecruitmentApplicationsPage() {
           </div>
         </Space>
       </Modal>
+
+      <CandidateExportImage ref={exportImageRef} />
     </>
   );
 }

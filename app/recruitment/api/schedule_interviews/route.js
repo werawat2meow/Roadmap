@@ -210,7 +210,7 @@ export async function GET(request) {
       .in(
         "unit_positions.units.divisions.departments.branch_departments.branch_id",
         branchIds
-      );      
+      );
 
     if (branchPositionsError) {
       return NextResponse.json(
@@ -271,9 +271,6 @@ export async function GET(request) {
         }
       )
 
-      // จำกัดเฉพาะ Position ที่ User มีสิทธิ์
-      .in("position_id", allowedPositionIds)
-
       // เรียง Interview ล่าสุดก่อน
       .order("interview_order", {
         foreignTable: "recruit_job_interviews",
@@ -284,6 +281,13 @@ export async function GET(request) {
       .order("created_at", {
         ascending: false,
       });
+
+    // ============================================================
+    // จำกัด Position เฉพาะ User ที่ไม่มีสิทธิ์ all_scrop
+    // ============================================================
+    if (user.all_scrop !== true) {
+      query = query.in("position_id", allowedPositionIds);
+    }
 
     // ============================================================
     // Filter: Status

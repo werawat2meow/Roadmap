@@ -278,7 +278,7 @@ export default function RecruitmentApplicationsPage() {
         `/recruitment/api/schedule_interviews?${params.toString()}`,
         { signal }
       );
-      const json = await res.json();
+      const json = await res.json();   
 
       // API ไม่มี field success, ต้องเช็คจาก error แทน
       if (!json.error) {

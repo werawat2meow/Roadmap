@@ -15,6 +15,9 @@ import { Employee } from "@/app/roadmap/types";
 import { useSearchParams } from "next/navigation";
 import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
 import EmployeeEvaluationCompareModal from "@/app/roadmap/evaluate/components/EmployeeEvaluationCompareModal";
+import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
+import NominateEmployeeModal from "./components/NominateEmployeeModal";
+import CycleNotificationBanner from "@/app/roadmap/components/CycleNotificationBanner";
 
 type SettingsCategory = {
   id: string;
@@ -49,7 +52,11 @@ type EvaluatemgrRecord = {
     remark: string | null;
     is_included: boolean;
   }>;
-    rm_evaluation_reviewers?: { id?: string; manager_id: string; status?: string }[];
+  rm_evaluation_reviewers?: {
+    id?: string;
+    manager_id: string;
+    status?: string;
+  }[];
   employee?: {
     id: string;
     first_name_th: string;
@@ -119,6 +126,8 @@ const normalizeEvaluationType = (
 export default function EvaluateMgrPage() {
   const { user } = useAuth();
   const reviewerId = user?.employee_id;
+  const cycleInfo = getEvaluationCycleInfo();
+  const [isNominateOpen, setIsNominateOpen] = useState(false);
 
   const [pendingEvaluations, setPendingEvaluations] = useState<
     EvaluatemgrRecord[]
@@ -302,6 +311,9 @@ export default function EvaluateMgrPage() {
   const selectedFormType = normalizeEvaluationType(
     selectedEvaluation?.evaluationType,
   );
+
+  const isCycleEvaluation = selectedFormType !== "Probation";
+  const isFormLocked = isCycleEvaluation && cycleInfo.isManagerLocked;
 
   const sendEvaluationPayload = async (status: "Draft" | "Submitted") => {
     if (!reviewerId || !selectedEvaluation) return;
@@ -526,6 +538,9 @@ export default function EvaluateMgrPage() {
 
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
+      <div className="mb-4">
+        <CycleNotificationBanner />
+      </div>
       {saveNotification && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-sm rounded-3xl bg-slate-900 p-5 text-center text-white shadow-xl">
@@ -542,6 +557,29 @@ export default function EvaluateMgrPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            data-nominate-btn
+            disabled={!cycleInfo.isNominationPeriod}
+            title={
+              cycleInfo.isNominationPeriod
+                ? "ช่วงวันที่ 26-28: เสนอรายชื่อพนักงานเข้าแผนประเมิน"
+                : "ปุ่มนี้จะกดได้เฉพาะวันที่ 26-28"
+            }
+            onClick={() => {
+              if (!cycleInfo.isNominationPeriod) {
+                window.alert("ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ 26-28");
+                return;
+              }
+              setIsNominateOpen(true);
+            }}
+            className={`flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold shadow-md transition-all active:scale-95 ${
+              cycleInfo.isNominationPeriod
+                ? "cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-emerald-200/50 animate-pulse"
+                : "cursor-not-allowed bg-slate-100 text-slate-400 border-none opacity-60"
+            }`}
+          >
+            + เสนอชื่อพนักงาน
+          </button>
           {!isReadOnly && (
             <button
               onClick={async () => {
@@ -572,6 +610,7 @@ export default function EvaluateMgrPage() {
           )}
           {!isReadOnly && (
             <button
+            data-select-evaluation-btn
               onClick={() => setIsSelectOpen(true)}
               className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-150 active:scale-95 cursor-pointer"
             >
@@ -623,6 +662,16 @@ export default function EvaluateMgrPage() {
               </div>
             )}
 
+          {/* Nominate Employee Button */}
+          {isFormLocked && (
+            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 font-semibold flex items-center justify-between">
+              <span>
+                ⚠️ ขณะนี้ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่
+                9) จึงไม่สามารถบันทึกหรือส่งผลประเมินได้
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">{renderForm()}</div>
 
@@ -651,8 +700,16 @@ export default function EvaluateMgrPage() {
                 onMaxScoreChange={(value) =>
                   handleFormChange({ maxScore: value })
                 }
-                onSubmit={isReadOnly ? undefined : handleSubmit}
-                onPreview={handlePreview}
+                onSubmit={
+                  isFormLocked
+                    ? () =>
+                        window.alert(
+                          "ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่ 9)",
+                        )
+                    : isReadOnly
+                      ? undefined
+                      : handleSubmit
+                }
                 showSaveDraft={false}
               />
             </div>
@@ -696,6 +753,14 @@ export default function EvaluateMgrPage() {
         open={isCompareOpen}
         onClose={() => setIsCompareOpen(false)}
         records={compareRecords as any[]}
+      />
+      <NominateEmployeeModal
+        isOpen={isNominateOpen}
+        onClose={() => setIsNominateOpen(false)}
+        reviewerId={reviewerId || ""}
+        onSuccess={() => {
+          fetchHistory();
+        }}
       />
     </div>
   );

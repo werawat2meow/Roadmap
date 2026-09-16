@@ -63,43 +63,43 @@ export default function EmployeeEvaluationCompareModal({
               </tr>
             </thead>
             <tbody>
-              {" "}
+              
               {records.map((record, index) => (
                 <tr
                   key={record.id}
                   className="border-b border-slate-100 text-slate-500"
                 >
-                  {" "}
-                  <td className="py-3 pr-4 text-center">{index + 1}</td>{" "}
+                  
+                  <td className="py-3 pr-4 text-center">{index + 1}</td>
                   <td className="py-3 pr-4 text-center">
-                    {" "}
+                    
                     {new Date(record.created_at).toLocaleDateString(
                       "th-TH",
-                    )}{" "}
-                  </td>{" "}
+                    )}
+                  </td>
                   <td className="py-3 pr-4 text-center">
                     {record.evaluationType || "-"}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-center">
                     {record.totalScore ?? "-"}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-right">
                     {fmt(record.currentSalary)}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-right">
                     {fmt(record.newSalary)}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-center">
                     {record.new_designation || "-"}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-center">
                     {record.new_level || "-"}
-                  </td>{" "}
+                  </td>
                   <td className="py-3 pr-4 text-center">
                     {record.status}
-                  </td>{" "}
+                  </td>
                 </tr>
-              ))}{" "}
+              ))}
             </tbody>
           </table>
         </div>

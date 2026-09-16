@@ -31,7 +31,7 @@ export default function ExecutivePage() {
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
-  const [plan, setPlan] = useState("ทุกแผน");
+  const [plan, setPlan] = useState("ทุกแผนก");
   const [type, setType] = useState("ทุกประเภท");
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null,
@@ -77,7 +77,7 @@ export default function ExecutivePage() {
   // --- ส่วน Filter (ใช้ข้อมูลจริงจาก State) ---
   const planOptions = useMemo(
     () => [
-      "ทุกแผน",
+      "ทุกแผนก",
       ...new Set(employees.flatMap((e) => e.tags[0]?.label).filter(Boolean)),
     ],
     [employees],
@@ -96,7 +96,7 @@ export default function ExecutivePage() {
         employee.name.toLowerCase().includes(keyword.toLowerCase()) ||
         employee.title.toLowerCase().includes(keyword.toLowerCase());
       const planMatch =
-        plan === "ทุกแผน" || employee.tags.some((t) => t.label === plan);
+        plan === "ทุกแผนก" || employee.tags.some((t) => t.label === plan);
       const typeMatch =
         type === "ทุกประเภท" || employee.tags.some((t) => t.label === type);
       return textMatch && planMatch && typeMatch;
@@ -262,7 +262,7 @@ export default function ExecutivePage() {
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
-            className="rounded-[28px] border border-gray-200 bg-white px-4 py-3 outline-none"
+            className="rounded-[28px] border border-gray-200 bg-white px-4 py-3 outline-none text-slate-900"
           >
             {planOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -274,7 +274,7 @@ export default function ExecutivePage() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="rounded-[28px] border border-gray-200 bg-white px-4 py-3 outline-none"
+            className="rounded-[28px] border border-gray-200 bg-white px-4 py-3 outline-none text-slate-900"
           >
             {typeOptions.map((opt) => (
               <option key={opt} value={opt}>

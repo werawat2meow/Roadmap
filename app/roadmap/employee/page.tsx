@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import SearchBar from "../components/SearchBar";
 import EmployeeTable from "../components/EmployeeTable";
 import { Employee } from "../types";
 import { HelpCircle } from "lucide-react";
 import EmployeeNotice from "./components/Employeenotice";
+import { Send } from "lucide-react";
+import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 
 type ProbationAlert = {
   employeeCode: string;
@@ -14,6 +17,22 @@ type ProbationAlert = {
   threshold: number;
   daysSinceHire: number;
   daysToThreshold: number;
+};
+
+type NominatedEvaluation = {
+  id: string;
+  employee_id: string;
+  evaluationType?:
+    | "Performance"
+    | "Promote"
+    | "Progression"
+    | "Probation"
+    | null;
+  employee?: {
+    first_name_th?: string | null;
+    last_name_th?: string | null;
+    employee_code?: string | null;
+  } | null;
 };
 
 export default function EmployeePage() {
@@ -36,6 +55,99 @@ export default function EmployeePage() {
   const [pageWindowStart, setPageWindowStart] = useState<number | null>(null);
   const [probationAlerts, setProbationAlerts] = useState<ProbationAlert[]>([]);
   const [showProbationAlert, setShowProbationAlert] = useState(false);
+  const cycleInfo = getEvaluationCycleInfo();
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [isSendingEvaluationAlert, setIsSendingEvaluationAlert] =
+    useState(false);
+  const [nominatedEvaluations, setNominatedEvaluations] = useState<
+    NominatedEvaluation[]
+  >([]);
+  const [showNominatedBanner, setShowNominatedBanner] = useState<boolean>(true);
+  const [isNominationPickerOpen, setIsNominationPickerOpen] = useState(false);
+
+  useEffect(() => {
+    async function checkNominatedList() {
+      try {
+        const res = await fetch("/roadmap/api/evaluations?status=Nominated");
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setNominatedEvaluations(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load nominated count:", err);
+      }
+    }
+    checkNominatedList();
+  }, []);
+
+  const nominatedCount = nominatedEvaluations.length;
+  const nominatedEmployeeNames = nominatedEvaluations
+    .map((evaluation) => {
+      const employee = evaluation.employee;
+      const name = [employee?.first_name_th, employee?.last_name_th]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      return name || employee?.employee_code || evaluation.employee_id;
+    })
+    .filter(Boolean);
+  const nominatedPreviewNames = nominatedEmployeeNames.slice(0, 3).join(", ");
+
+  const handleSendNominationAlert = async () => {
+    const confirmSend = window.confirm(
+      "ยืนยันการส่งแจ้งเตือนไปยังหัวหน้างาน (Manager) ทุกท่าน เพื่อให้ส่งรายชื่อพนักงานเข้าแผนรอบเดือนหน้าหรือไม่?",
+    );
+    if (!confirmSend) return;
+
+    setIsSendingAlert(true);
+    try {
+      const res = await fetch("/roadmap/api/notifications/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "REQUEST_NOMINATION" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "เกิดข้อผิดพลาดในการส่งแจ้งเตือน");
+      }
+      window.alert(data.message || "ส่งแจ้งเตือนไปยังหัวหน้างานเรียบร้อยแล้ว");
+    } catch (err: any) {
+      window.alert(err.message || "ส่งแจ้งเตือนไม่สำเร็จ");
+    } finally {
+      setIsSendingAlert(false);
+    }
+  };
+
+  const handleSendEvaluationAlert = async () => {
+    const confirmSend = window.confirm(
+      "ยืนยันการส่งแจ้งเตือนให้หัวหน้าเข้ามาลงคะแนนประเมินหรือไม่?",
+    );
+
+    if (!confirmSend) return;
+
+    setIsSendingEvaluationAlert(true);
+
+    try {
+      const res = await fetch("/roadmap/api/notifications/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "REQUEST_MANAGER_EVALUATION" }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "ส่งแจ้งเตือนไม่สำเร็จ");
+      }
+
+      window.alert(data.message || "ส่งแจ้งเตือนเรียบร้อยแล้ว");
+    } catch (err: any) {
+      window.alert(err.message || "ส่งแจ้งเตือนไม่สำเร็จ");
+    } finally {
+      setIsSendingEvaluationAlert(false);
+    }
+  };
 
   useEffect(() => {
     const isDismissed = localStorage.getItem("hide_employee_guide");
@@ -281,23 +393,174 @@ export default function EmployeePage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-            Employee
-          </h1>
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+              Employee
+            </h1>
+            <button
+              onClick={openGuide}
+              className="p-1.5 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-full transition-all duration-200 cursor-pointer"
+              title="วิธีใช้งาน"
+            >
+              <HelpCircle className="w-6 h-6" />
+            </button>
+          </div>
+          <p className="mt-1 text-slate-600 font-medium">
+            รายชื่อพนักงานที่ต้องการประเมิน
+          </p>
+        </div>
+
+        {/* 👉 ปุ่มขวาบนสุด: ส่งแจ้งเตือนขอรายชื่อ (26-27) */}
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={openGuide}
-            className="p-1.5 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-full transition-all duration-200 cursor-pointer"
-            title="วิธีใช้งาน"
+            onClick={handleSendNominationAlert}
+            disabled={isSendingAlert}
+            title={
+              cycleInfo.isNominationAlert
+                ? "ช่วงวันที่ 26-27: ส่งแจ้งเตือนให้หัวหน้าเสนอรายชื่อพนักงาน"
+                : "ปุ่มนี้ใช้สำหรับส่งแจ้งเตือนขอรายชื่อ ช่วงที่ควรส่งคือวันที่ 26-27"
+            }
+            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition shadow-md active:scale-95 cursor-pointer ${
+              cycleInfo.isNominationAlert
+                ? "bg-amber-500 text-white hover:bg-amber-600 animate-pulse"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            <HelpCircle className="w-6 h-6" />
+            <Send size={15} />
+            {isSendingAlert ? "กำลังส่ง..." : "ส่งแจ้งเตือนขอรายชื่อ"}
+          </button>
+
+          <button
+            onClick={handleSendEvaluationAlert}
+            disabled={
+              !cycleInfo.isEvaluationDueSoon || isSendingEvaluationAlert
+            }
+            title={
+              cycleInfo.isEvaluationDueSoon
+                ? "ช่วงวันที่ 6-7: ส่งแจ้งเตือนให้หัวหน้าเข้ามาลงคะแนน"
+                : "ปุ่มนี้จะกดได้ช่วงวันที่ 6-7 เพื่อแจ้งหัวหน้าให้ลงคะแนน"
+            }
+            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition shadow-md active:scale-95 ${
+              cycleInfo.isEvaluationDueSoon
+                ? "cursor-pointer bg-blue-600 text-white hover:bg-blue-700"
+                : "cursor-not-allowed bg-slate-100 text-slate-400 opacity-60"
+            }`}
+          >
+            <Send size={15} />
+            {isSendingEvaluationAlert ? "กำลังส่ง..." : "ส่งแจ้งเตือนลงคะแนน"}
           </button>
         </div>
-        <p className="mt-2 text-slate-600 font-medium">
-          รายชื่อพนักงานที่ต้องการประเมิน
-        </p>
       </div>
+
+      {showNominatedBanner && nominatedCount > 0 && (
+        <div className="mb-5 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 shadow-sm flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-500 p-2 text-white shadow-sm">
+              <Send size={18} />
+            </div>
+            <div>
+              <div className="font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
+                <span>มีหัวหน้างานส่งรายชื่อพนักงานเข้ามาแล้ว</span>
+                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs text-white font-bold">
+                  {nominatedCount} คน
+                </span>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 mt-0.5">
+                หัวหน้างานได้ส่งรายชื่อพนักงานเข้าแผนรอบประเมินประจำเดือน
+                กรุณาจัดทำและออกใบประเมินภายในวันที่ 2
+              </p>
+              {nominatedPreviewNames && (
+                <p className="mt-1 text-xs font-semibold text-emerald-700">
+                  {nominatedPreviewNames}
+                  {nominatedCount > 3 ? ` +${nominatedCount - 3}` : ""}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsNominationPickerOpen(true)}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-sm transition whitespace-nowrap"
+            >
+              ไปออกใบประเมิน &rarr;
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNominatedBanner(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isNominationPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  เลือกพนักงานที่ต้องออกใบประเมิน
+                </h2>
+                <p className="text-sm text-slate-500">
+                  รายชื่อที่หัวหน้างานส่งเข้ามา
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsNominationPickerOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {nominatedEvaluations.map((evaluation) => {
+                const employee = evaluation.employee;
+                const employeeName =
+                  [employee?.first_name_th, employee?.last_name_th]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim() ||
+                  employee?.employee_code ||
+                  evaluation.employee_id;
+
+                const evaluationType =
+                  evaluation.evaluationType || "Performance";
+
+                return (
+                  <Link
+                    key={evaluation.id}
+                    href={`/roadmap/evaluate/${evaluation.employee_id}?type=${encodeURIComponent(
+                      evaluationType,
+                    )}&evaluationId=${encodeURIComponent(evaluation.id)}`}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 p-3 hover:bg-emerald-50 hover:border-emerald-200 transition"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">
+                        {employeeName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {employee?.employee_code || evaluation.employee_id}
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                      {evaluationType}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EmployeeNotice ตรงนี้ */}
       <EmployeeNotice isOpen={showGuide} onClose={closeGuide} />

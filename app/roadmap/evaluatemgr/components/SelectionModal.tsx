@@ -54,7 +54,7 @@ export default function SelectionModal({
 }: SelectionModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl ">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
           <h2 className="text-xl font-bold text-black">
             เลือกรายชื่อพนักงานที่ต้องการประเมิน

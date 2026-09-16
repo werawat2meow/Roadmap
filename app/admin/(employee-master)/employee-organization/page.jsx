@@ -1481,6 +1481,18 @@ const DEFAULT_FILTERS = {
   department_id: "",
   division_id: "",
   unit_id: "",
+
+  /*
+   * ใช้เฉพาะตอนเลือก Node จาก Tree ที่เป็น "ไม่ระบุ..."
+   * เพื่อให้รายการด้านล่างตรงกับ count ของ Node นั้นจริง ๆ
+   */
+  company_id_is_null: false,
+  branch_group_id_is_null: false,
+  branch_id_is_null: false,
+  department_id_is_null: false,
+  division_id_is_null: false,
+  unit_id_is_null: false,
+
   position_id: "",
   position_level_id: "",
   employment_type_id: "",
@@ -1808,6 +1820,21 @@ export default function EmployeeOrganizationPage() {
       }
     }
 
+    const nullKeys = [
+      "company_id_is_null",
+      "branch_group_id_is_null",
+      "branch_id_is_null",
+      "department_id_is_null",
+      "division_id_is_null",
+      "unit_id_is_null",
+    ];
+
+    for (const key of nullKeys) {
+      if (filters[key]) {
+        params.set(key, "true");
+      }
+    }
+
     return params;
   }, [
     page,
@@ -1819,6 +1846,12 @@ export default function EmployeeOrganizationPage() {
     filters.department_id,
     filters.division_id,
     filters.unit_id,
+    filters.company_id_is_null,
+    filters.branch_group_id_is_null,
+    filters.branch_id_is_null,
+    filters.department_id_is_null,
+    filters.division_id_is_null,
+    filters.unit_id_is_null,
     filters.position_id,
     filters.position_level_id,
     filters.employment_type_id,
@@ -1894,12 +1927,30 @@ export default function EmployeeOrganizationPage() {
         [key]: value,
       };
 
+      const organizationKeys = new Set([
+        "company_id",
+        "branch_group_id",
+        "branch_id",
+        "department_id",
+        "division_id",
+        "unit_id",
+      ]);
+
+      if (organizationKeys.has(key)) {
+        next[`${key}_is_null`] = false;
+      }
+
       if (key === "company_id") {
         next.branch_group_id = "";
         next.branch_id = "";
         next.department_id = "";
         next.division_id = "";
         next.unit_id = "";
+        next.branch_group_id_is_null = false;
+        next.branch_id_is_null = false;
+        next.department_id_is_null = false;
+        next.division_id_is_null = false;
+        next.unit_id_is_null = false;
       }
 
       if (key === "branch_group_id") {
@@ -1907,21 +1958,31 @@ export default function EmployeeOrganizationPage() {
         next.department_id = "";
         next.division_id = "";
         next.unit_id = "";
+        next.branch_id_is_null = false;
+        next.department_id_is_null = false;
+        next.division_id_is_null = false;
+        next.unit_id_is_null = false;
       }
 
       if (key === "branch_id") {
         next.department_id = "";
         next.division_id = "";
         next.unit_id = "";
+        next.department_id_is_null = false;
+        next.division_id_is_null = false;
+        next.unit_id_is_null = false;
       }
 
       if (key === "department_id") {
         next.division_id = "";
         next.unit_id = "";
+        next.division_id_is_null = false;
+        next.unit_id_is_null = false;
       }
 
       if (key === "division_id") {
         next.unit_id = "";
+        next.unit_id_is_null = false;
       }
 
       return next;
@@ -1952,7 +2013,7 @@ export default function EmployeeOrganizationPage() {
   }, [pageSize]);
 
   const handleTreeSelect = useCallback((node) => {
-    if (!node?.id || !node?.filters) return;
+    if (!node?.filters) return;
 
     setPage(1);
     setFilters((current) => ({
@@ -1963,6 +2024,19 @@ export default function EmployeeOrganizationPage() {
       department_id: node.filters.department_id || "",
       division_id: node.filters.division_id || "",
       unit_id: node.filters.unit_id || "",
+
+      company_id_is_null:
+        node.filters.company_id_is_null === true,
+      branch_group_id_is_null:
+        node.filters.branch_group_id_is_null === true,
+      branch_id_is_null:
+        node.filters.branch_id_is_null === true,
+      department_id_is_null:
+        node.filters.department_id_is_null === true,
+      division_id_is_null:
+        node.filters.division_id_is_null === true,
+      unit_id_is_null:
+        node.filters.unit_id_is_null === true,
     }));
   }, []);
 

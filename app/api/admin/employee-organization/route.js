@@ -222,13 +222,29 @@ function applyFilters(query, filters) {
     );
   }
 
-  const directFilters = [
+  const organizationFilters = [
     "company_id",
     "branch_group_id",
     "branch_id",
     "department_id",
     "division_id",
     "unit_id",
+  ];
+
+  for (const key of organizationFilters) {
+    const nullKey = `${key}_is_null`;
+
+    if (filters[nullKey]) {
+      nextQuery = nextQuery.is(key, null);
+      continue;
+    }
+
+    if (filters[key]) {
+      nextQuery = nextQuery.eq(key, filters[key]);
+    }
+  }
+
+  const directFilters = [
     "position_level_id",
     "position_id",
     "employment_type_id",
@@ -399,8 +415,16 @@ function buildOrganizationTree(rows) {
       const key = `${path}/${level}:${rawId}`;
       const filterKey = filterKeyByLevel[level];
 
-      if (filterKey && info.id) {
-        pathFilters[filterKey] = info.id;
+      if (filterKey) {
+        const nullKey = `${filterKey}_is_null`;
+
+        if (info.id) {
+          pathFilters[filterKey] = info.id;
+          delete pathFilters[nullKey];
+        } else {
+          delete pathFilters[filterKey];
+          pathFilters[nullKey] = true;
+        }
       }
 
       let node = map.get(key);
@@ -588,6 +612,32 @@ export async function GET(req) {
       department_id: nullableId(searchParams.get("department_id")),
       division_id: nullableId(searchParams.get("division_id")),
       unit_id: nullableId(searchParams.get("unit_id")),
+
+      company_id_is_null: parseBoolean(
+        searchParams.get("company_id_is_null"),
+        false
+      ),
+      branch_group_id_is_null: parseBoolean(
+        searchParams.get("branch_group_id_is_null"),
+        false
+      ),
+      branch_id_is_null: parseBoolean(
+        searchParams.get("branch_id_is_null"),
+        false
+      ),
+      department_id_is_null: parseBoolean(
+        searchParams.get("department_id_is_null"),
+        false
+      ),
+      division_id_is_null: parseBoolean(
+        searchParams.get("division_id_is_null"),
+        false
+      ),
+      unit_id_is_null: parseBoolean(
+        searchParams.get("unit_id_is_null"),
+        false
+      ),
+
       position_level_id: nullableId(
         searchParams.get("position_level_id")
       ),

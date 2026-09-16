@@ -672,13 +672,6 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="สัญชาติ"
             name="nationality_id"
-            rules={[
-              {
-                required: true,
-                message:
-                  "กรุณาเลือกสัญชาติเพื่อกำหนดข้อมูลยืนยันตัวตน",
-              },
-            ]}
           >
             <LazyNationalitySelect
                 disabled={disabled}
@@ -716,9 +709,6 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="เลขบัตรประชาชน"
             name="citizen_id"
-            required={
-              isThaiEmployee
-            }
             dependencies={[
               "nationality_id",
             ]}
@@ -737,17 +727,6 @@ export default function EmployeePersonalStep({
                     normalizeCitizenId(
                       value
                     );
-
-                  if (
-                    isThaiEmployee &&
-                    !citizenId
-                  ) {
-                    return Promise.reject(
-                      new Error(
-                        "พนักงานสัญชาติไทยต้องระบุเลขบัตรประชาชน"
-                      )
-                    );
-                  }
 
                   if (!citizenId) {
                     return Promise.resolve();
@@ -791,11 +770,7 @@ export default function EmployeePersonalStep({
               inputMode="numeric"
               maxLength={13}
               autoComplete="off"
-              placeholder={
-                isThaiEmployee
-                  ? "เลขบัตรประชาชน 13 หลัก *"
-                  : "เลขบัตรประชาชน (ถ้ามี)"
-              }
+              placeholder="เลขบัตรประชาชน (ถ้ามี)"
               onChange={(event) => {
                 form.setFieldValue(
                   "citizen_id",
@@ -815,9 +790,6 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="เลขหนังสือเดินทาง"
             name="passport_no"
-            required={
-              isForeignEmployee
-            }
             dependencies={[
               "nationality_id",
             ]}
@@ -836,17 +808,6 @@ export default function EmployeePersonalStep({
                     normalizePassportNo(
                       value
                     );
-
-                  if (
-                    isForeignEmployee &&
-                    !passportNo
-                  ) {
-                    return Promise.reject(
-                      new Error(
-                        "พนักงานต่างชาติต้องระบุเลขหนังสือเดินทาง"
-                      )
-                    );
-                  }
 
                   if (!passportNo) {
                     return Promise.resolve();
@@ -872,16 +833,11 @@ export default function EmployeePersonalStep({
             <Input
               disabled={
                 disabled ||
-                !nationalityId ||
-                isThaiEmployee
+                !nationalityId
               }
               maxLength={20}
               autoComplete="off"
-              placeholder={
-                isForeignEmployee
-                  ? "Passport Number *"
-                  : "Passport Number (ถ้ามี)"
-              }
+              placeholder="Passport Number (ถ้ามี)"
               onChange={(event) => {
                 form.setFieldValue(
                   "passport_no",
@@ -901,9 +857,6 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="วันหมดอายุหนังสือเดินทาง"
             name="passport_expire_date"
-            required={
-              isForeignEmployee
-            }
             dependencies={[
               "nationality_id",
               "passport_no",
@@ -914,53 +867,15 @@ export default function EmployeePersonalStep({
             normalize={(value) =>
               toDayjs(value)
             }
-            rules={[
-              ({
-                getFieldValue,
-              }) => ({
-                validator(
-                  _,
-                  value
-                ) {
-                  const passportNo =
-                    normalizePassportNo(
-                      getFieldValue(
-                        "passport_no"
-                      )
-                    );
-
-                  if (
-                    (
-                      isForeignEmployee ||
-                      passportNo
-                    ) &&
-                    !value
-                  ) {
-                    return Promise.reject(
-                      new Error(
-                        "กรุณาระบุวันหมดอายุหนังสือเดินทาง"
-                      )
-                    );
-                  }
-
-                  return Promise.resolve();
-                },
-              }),
-            ]}
           >
             <DatePicker
               disabled={
                 disabled ||
-                !nationalityId ||
-                isThaiEmployee
+                !nationalityId
               }
               format="DD/MM/YYYY"
               className="w-full"
-              placeholder={
-                isForeignEmployee
-                  ? "เลือกวันหมดอายุ *"
-                  : "เลือกวันหมดอายุ"
-              }
+              placeholder="เลือกวันหมดอายุ (ถ้ามี)"
             />
           </Form.Item>
         </Col>

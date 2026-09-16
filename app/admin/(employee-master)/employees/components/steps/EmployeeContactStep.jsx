@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import {
   Alert,
   AutoComplete,
@@ -21,6 +23,7 @@ import {
   MailOutlined,
   PhoneOutlined,
   SafetyCertificateOutlined,
+  MoneyCollectOutlined,
 } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -51,11 +54,11 @@ const TAX_FORM_OPTIONS = [
 const TAX_RESIDENT_OPTIONS = [
   {
     value: "resident",
-    label: "ผู้มีถิ่นที่อยู่ทางภาษี",
+    label: "ผู้มีถิ่นที่อยู่ในประเทศไทย (Tax Resident)",
   },
   {
     value: "non_resident",
-    label: "ผู้ไม่มีถิ่นที่อยู่ทางภาษี",
+    label: "ผู้ที่ไม่มีถิ่นที่อยู่ในประเทศไทย (Non-Tax Resident)",
   },
 ];
 
@@ -107,7 +110,7 @@ export default function EmployeeContactStep({
     Form.useWatch(
       "tax_identity_type",
       form
-    ) || "citizen_id";
+    ) || "";
 
   const citizenId =
     Form.useWatch(
@@ -127,6 +130,14 @@ export default function EmployeeContactStep({
       }
     ) || "";
 
+  const taxWithholdingEnabled =
+    Boolean(
+      Form.useWatch(
+        "tax_withholding_enabled",
+        form
+      )
+    );
+
   const socialRegistered =
     Boolean(
       Form.useWatch(
@@ -143,12 +154,151 @@ export default function EmployeeContactStep({
   const statutoryDisabled =
     disabled || mode !== "create";
 
-  const identityPreview =
-    identityType === "citizen_id"
-      ? citizenId
-      : identityType === "passport"
-        ? passportNo
+  /*
+   * Tax Identity ใช้ข้อมูลจาก Employee Master เป็นหลัก
+   * - ถ้ามี Citizen ID ให้ใช้ Citizen ID ก่อน
+   * - ถ้าไม่มี Citizen ID แต่มี Passport ให้ใช้ Passport
+   * - ถ้าไม่มีทั้งสองอย่าง สามารถเว้นว่าง หรือเลือก Tax ID อื่นได้
+   */
+  const lockedIdentityType =
+    citizenId
+      ? "citizen_id"
+      : passportNo
+        ? "passport"
         : "";
+
+  const hasPersonalIdentity =
+    Boolean(lockedIdentityType);
+
+  const taxIdentityOptions =
+    TAX_IDENTITY_OPTIONS.map(
+      (item) => ({
+        ...item,
+        disabled:
+          item.value === "citizen_id"
+            ? !citizenId
+            : item.value === "passport"
+              ? !passportNo
+              : false,
+      })
+    );
+
+  useEffect(() => {
+    /*
+     * Personal Identity เป็น Source of Truth
+     *
+     * Create:
+     *   ใช้เติม Tax Identity ก่อนสร้างพนักงาน
+     *
+     * Edit / View:
+     *   ใช้แสดงค่าอ้างอิงจากข้อมูลส่วนตัวอัตโนมัติ
+     *   แต่ยังคง Disable การแก้ Statutory History ตาม Logic เดิม
+     */
+    if (citizenId) {
+      form.setFieldsValue({
+        tax_identity_type:
+          "citizen_id",
+        tax_identification_no:
+          citizenId,
+      });
+
+      return;
+    }
+
+    if (passportNo) {
+      form.setFieldsValue({
+        tax_identity_type:
+          "passport",
+        tax_identification_no:
+          passportNo,
+      });
+
+      return;
+    }
+
+    const currentType =
+      form.getFieldValue(
+        "tax_identity_type"
+      );
+
+    if (
+      currentType === "citizen_id" ||
+      currentType === "passport"
+    ) {
+      form.setFieldsValue({
+        tax_identity_type:
+          undefined,
+        tax_identification_no:
+          "",
+      });
+    }
+  }, [
+    citizenId,
+    passportNo,
+    form,
+  ]);
+
+  /*
+   * ถ้ายังไม่มี Citizen ID / Passport
+   * ยังไม่อนุญาตให้ขึ้นทะเบียนประกันสังคม
+   * และล้างค่าที่อาจค้างจากการกรอกก่อนหน้า
+   */
+  useEffect(() => {
+    if (
+      mode !== "create" ||
+      hasPersonalIdentity
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({
+      tax_withholding_enabled:
+        false,
+      tax_withholding_company_id:
+        undefined,
+
+      social_security_registered:
+        false,
+      social_security_no: "",
+      insured_type: undefined,
+      social_security_company_id:
+        undefined,
+    });
+  }, [
+    hasPersonalIdentity,
+    form,
+    mode,
+  ]);
+
+  /*
+   * ถ้า HR เลือก "ไม่นำส่งภาษี"
+   * ให้ล้างบริษัทนำส่งภาษีออก
+   * เพื่อไม่ให้ค่าเดิมค้างอยู่ใน Form/Payload
+   */
+  useEffect(() => {
+    if (mode !== "create") {
+      return;
+    }
+
+    if (taxWithholdingEnabled) {
+      return;
+    }
+
+    form.setFieldsValue({
+      tax_filing_form_code:
+        undefined,
+      tax_resident_status:
+        undefined,
+      tax_withholding_company_id:
+        undefined,
+      statutory_effective_from:
+        null,
+    });
+  }, [
+    taxWithholdingEnabled,
+    form,
+    mode,
+  ]);
 
   return (
     <div>
@@ -290,8 +440,8 @@ export default function EmployeeContactStep({
         type="info"
         showIcon
         className="mb-4"
-        title="เลขบัตรประชาชน / Passport ใช้จากข้อมูลส่วนตัวโดยตรง"
-        description="ไม่ต้องกรอกเลขซ้ำในส่วนภาษี ให้เลือกว่าการยื่นภาษีจะอ้างอิงเลขบัตรประชาชน, Passport หรือ Tax ID อื่น ระบบจะเก็บเลขบัตรประชาชนและ Passport ที่ Employee Master เป็น Source of Truth"
+        title="ข้อมูลภาษีสามารถเว้นว่างได้ในขั้นตอนเพิ่มพนักงาน"
+        description="หากข้อมูลส่วนตัวมีเลขบัตรประชาชนหรือ Passport ระบบจะกำหนดเลขประจำตัวสำหรับภาษีและเลขประจำตัวผู้เสียภาษีให้อัตโนมัติและล็อกช่องไว้ หากยังไม่มีข้อมูล เช่น พนักงานต่างชาติที่อยู่ระหว่างจัดทำ Work Permit สามารถเว้นว่างและบันทึกพนักงานก่อนได้"
       />
 
       {mode !== "create" ? (
@@ -309,227 +459,296 @@ export default function EmployeeContactStep({
           <Form.Item
             label="เลขประจำตัวสำหรับภาษี"
             name="tax_identity_type"
-            rules={
-              mode === "create"
-                ? [
-                    {
-                      required: true,
-                      message:
-                        "กรุณาเลือกเลขประจำตัวสำหรับภาษี",
-                    },
-                    ({ getFieldValue }) => ({
-                      validator(_, value) {
-                        if (
-                          value === "citizen_id" &&
-                          !String(
-                            getFieldValue(
-                              "citizen_id"
-                            ) || ""
-                          ).trim()
-                        ) {
-                          return Promise.reject(
-                            new Error(
-                              "กรุณากรอกเลขบัตรประชาชนในข้อมูลส่วนตัวก่อน"
-                            )
-                          );
-                        }
-
-                        if (
-                          value === "passport" &&
-                          !String(
-                            getFieldValue(
-                              "passport_no"
-                            ) || ""
-                          ).trim()
-                        ) {
-                          return Promise.reject(
-                            new Error(
-                              "กรุณากรอกเลขหนังสือเดินทางในข้อมูลส่วนตัวก่อน"
-                            )
-                          );
-                        }
-
-                        return Promise.resolve();
-                      },
-                    }),
-                  ]
-                : []
+            required={
+              mode === "create" &&
+              hasPersonalIdentity
             }
+            rules={[
+              {
+                validator: (
+                  _,
+                  value
+                ) => {
+                  if (
+                    mode !== "create" ||
+                    !hasPersonalIdentity
+                  ) {
+                    return Promise.resolve();
+                  }
+
+                  if (!value) {
+                    return Promise.reject(
+                      new Error(
+                        "กรุณาระบุเลขประจำตัวสำหรับภาษี"
+                      )
+                    );
+                  }
+
+                  if (
+                    value !==
+                    lockedIdentityType
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "เลขประจำตัวสำหรับภาษีไม่ตรงกับข้อมูลส่วนตัว"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
             <Select
-              disabled={statutoryDisabled}
+              allowClear={
+                !hasPersonalIdentity
+              }
+              disabled={
+                statutoryDisabled ||
+                hasPersonalIdentity
+              }
               options={
-                TAX_IDENTITY_OPTIONS
+                taxIdentityOptions
               }
-              placeholder="เลือก Tax Identity"
-            />
-          </Form.Item>
-        </Col>
-
-        <Col xs={24} md={12}>
-          {identityType === "tax_id" ? (
-            <Form.Item
-              label="เลขประจำตัวผู้เสียภาษี"
-              name="tax_identification_no"
-              rules={
-                mode === "create"
-                  ? [
-                      {
-                        required: true,
-                        message:
-                          "กรุณากรอกเลขประจำตัวผู้เสียภาษี",
-                      },
-                    ]
-                  : []
-              }
-            >
-              <Input
-                disabled={statutoryDisabled}
-                maxLength={30}
-                placeholder="Tax Identification Number"
-              />
-            </Form.Item>
-          ) : (
-            <Form.Item
-              label={
-                identityType === "passport"
-                  ? "เลข Passport ที่ใช้อ้างอิง"
-                  : "เลขบัตรประชาชนที่ใช้อ้างอิง"
-              }
-              validateStatus={
-                mode === "create" &&
-                !identityPreview
-                  ? "error"
-                  : undefined
-              }
-              help={
-                mode === "create" &&
-                !identityPreview
-                  ? "กรุณากลับไปกรอกข้อมูลในขั้นข้อมูลส่วนตัว"
-                  : "ดึงจาก Employee Master อัตโนมัติ"
-              }
-            >
-              <Input
-                value={
-                  identityPreview || ""
-                }
-                readOnly
-                placeholder="ยังไม่มีข้อมูล"
-              />
-            </Form.Item>
-          )}
-        </Col>
-
-        <Col xs={24} md={12}>
-          <Form.Item
-            label="แบบภาษี / การยื่น ภ.ง.ด."
-            name="tax_filing_form_code"
-            rules={
-              mode === "create"
-                ? [
-                    {
-                      required: true,
-                      message:
-                        "กรุณาระบุแบบภาษี / ภ.ง.ด.",
-                    },
-                  ]
-                : []
-            }
-          >
-            <AutoComplete
-              disabled={statutoryDisabled}
-              options={TAX_FORM_OPTIONS}
-              placeholder="เช่น PND91 / ภ.ง.ด.91 หรือระบุรหัสอื่น"
-              filterOption={(input, option) =>
-                String(
-                  option?.label || ""
-                )
-                  .toLowerCase()
-                  .includes(
-                    String(input || "").toLowerCase()
-                  )
-              }
+              placeholder="เลือก Tax Identity (ถ้ามี)"
             />
           </Form.Item>
         </Col>
 
         <Col xs={24} md={12}>
           <Form.Item
-            label="สถานะผู้มีถิ่นที่อยู่ทางภาษี"
-            name="tax_resident_status"
-            rules={
-              mode === "create"
-                ? [
-                    {
-                      required: true,
-                      message:
-                        "กรุณาเลือกสถานะทางภาษี",
-                    },
-                  ]
-                : []
+            label="เลขประจำตัวผู้เสียภาษี"
+            name="tax_identification_no"
+            required={
+              mode === "create" &&
+              hasPersonalIdentity
             }
+            rules={[
+              {
+                validator: (
+                  _,
+                  value
+                ) => {
+                  if (
+                    mode !== "create" ||
+                    !hasPersonalIdentity
+                  ) {
+                    return Promise.resolve();
+                  }
+
+                  const expectedValue =
+                    citizenId ||
+                    passportNo;
+
+                  if (!value) {
+                    return Promise.reject(
+                      new Error(
+                        "กรุณาระบุเลขประจำตัวผู้เสียภาษี"
+                      )
+                    );
+                  }
+
+                  if (
+                    String(
+                      value || ""
+                    ).trim() !==
+                    String(
+                      expectedValue || ""
+                    ).trim()
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "เลขประจำตัวผู้เสียภาษีไม่ตรงกับข้อมูลส่วนตัว"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
-            <Select
-              disabled={statutoryDisabled}
-              options={
-                TAX_RESIDENT_OPTIONS
+            <Input
+              disabled={
+                statutoryDisabled ||
+                hasPersonalIdentity ||
+                identityType !==
+                  "tax_id"
               }
+              maxLength={30}
+              placeholder={
+                hasPersonalIdentity
+                  ? "ดึงจากข้อมูลส่วนตัวอัตโนมัติ"
+                  : identityType ===
+                      "tax_id"
+                    ? "Tax Identification Number (ถ้ามี)"
+                    : "เลือก Tax Identity ก่อน (ถ้ามี)"
+              }
+            />
+          </Form.Item>
+        </Col>
+
+        <Divider
+          titlePlacement="left"
+          plain
+        >
+          <Space>
+            <MoneyCollectOutlined />
+            ข้อมูลบริษัทเป็นผู้หักและนำส่งภาษี
+          </Space>
+        </Divider>
+
+        <Col xs={24} md={8}>
+          <Form.Item
+            label="บริษัทเป็นผู้หักและนำส่งภาษี"
+            name="tax_withholding_enabled"
+            valuePropName="checked"
+          >
+            <Switch
+              disabled={
+                statutoryDisabled ||
+                !hasPersonalIdentity
+              }
+              checkedChildren="บริษัทนำส่ง"
+              unCheckedChildren="ไม่นำส่ง"
             />
           </Form.Item>
         </Col>
 
         <Col xs={24} md={16}>
-          <Form.Item
-            label="บริษัทผู้จ่ายเงินได้ / บริษัทนำส่งภาษี"
-            name="tax_withholding_company_id"
-            tooltip="เลือก Legal Entity ที่ใช้หักและนำส่งภาษีของพนักงานรายนี้ ซึ่งสามารถต่างจากบริษัทที่ทำงานและบริษัทเงินเดือนได้"
-            rules={
-              mode === "create"
-                ? [
-                    {
-                      required: true,
-                      message:
-                        "กรุณาเลือกบริษัทนำส่งภาษี",
-                    },
-                  ]
-                : []
-            }
-          >
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="label"
-              loading={masterLoading}
-              disabled={statutoryDisabled}
-              options={companyOptions}
-              placeholder="เลือก Company Master"
-            />
-          </Form.Item>
+          <Text type="secondary">
+            {!hasPersonalIdentity
+              ? "กรุณากรอกเลขบัตรประชาชนหรือ Passport ในข้อมูลส่วนตัวก่อน"
+              : taxWithholdingEnabled
+                ? "บริษัทเป็นผู้หักและนำส่งภาษี กรุณากรอกข้อมูลภาษีที่เกี่ยวข้องให้ครบก่อนกดถัดไป"
+                : "พนักงานรายนี้ไม่ใช้บริษัทเป็นผู้หักและนำส่งภาษี สามารถกดถัดไปได้โดยไม่ต้องกรอกข้อมูลกลุ่มนี้"}
+          </Text>
         </Col>
 
-        <Col xs={24} md={8}>
-          <Form.Item
-            label="วันที่เริ่มมีผล"
-            name="statutory_effective_from"
-            rules={
-              mode === "create"
-                ? [
-                    {
-                      required: true,
-                      message:
-                        "กรุณาเลือกวันที่เริ่มมีผล",
-                    },
-                  ]
-                : []
-            }
-          >
-            <DatePicker
-              className="w-full"
-              format="DD/MM/YYYY"
-              disabled={statutoryDisabled}
-            />
-          </Form.Item>
-        </Col>
+        {taxWithholdingEnabled ? (
+          <>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="แบบภาษี / การยื่น ภ.ง.ด."
+                name="tax_filing_form_code"
+                required
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      "กรุณาระบุแบบภาษี / การยื่น ภ.ง.ด.",
+                  },
+                ]}
+              >
+                <AutoComplete
+                  disabled={
+                    statutoryDisabled
+                  }
+                  options={
+                    TAX_FORM_OPTIONS
+                  }
+                  placeholder="เช่น PND91 / ภ.ง.ด.91 หรือระบุรหัสอื่น"
+                  filterOption={(
+                    input,
+                    option
+                  ) =>
+                    String(
+                      option?.label ||
+                        ""
+                    )
+                      .toLowerCase()
+                      .includes(
+                        String(
+                          input || ""
+                        ).toLowerCase()
+                      )
+                  }
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="สถานะผู้มีถิ่นที่อยู่ทางภาษี"
+                name="tax_resident_status"
+                required
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      "กรุณาเลือกสถานะผู้มีถิ่นที่อยู่ทางภาษี",
+                  },
+                ]}
+              >
+                <Select
+                  disabled={
+                    statutoryDisabled
+                  }
+                  options={
+                    TAX_RESIDENT_OPTIONS
+                  }
+                  placeholder="เลือกสถานะผู้มีถิ่นที่อยู่ทางภาษี"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={16}>
+              <Form.Item
+                label="บริษัทผู้จ่ายเงินได้ / บริษัทนำส่งภาษี"
+                name="tax_withholding_company_id"
+                tooltip="เลือก Legal Entity ที่ใช้หักและนำส่งภาษีของพนักงานรายนี้ ซึ่งสามารถต่างจากบริษัทที่ทำงานและบริษัทเงินเดือนได้"
+                required
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      "กรุณาเลือกบริษัทผู้จ่ายเงินได้ / บริษัทนำส่งภาษี",
+                  },
+                ]}
+              >
+                <Select
+                  showSearch
+                  allowClear
+                  optionFilterProp="label"
+                  loading={
+                    masterLoading
+                  }
+                  disabled={
+                    statutoryDisabled
+                  }
+                  options={
+                    companyOptions
+                  }
+                  placeholder="เลือก Company Master"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={8}>
+              <Form.Item
+                label="วันที่เริ่มมีผลบังคับใช้ (Effective Date)"
+                name="statutory_effective_from"
+                required
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      "กรุณาระบุวันที่เริ่มมีผลบังคับใช้",
+                  },
+                ]}
+              >
+                <DatePicker
+                  className="w-full"
+                  format="DD/MM/YYYY"
+                  disabled={
+                    statutoryDisabled
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </>
+        ) : null}
       </Row>
 
       <Divider
@@ -550,7 +769,10 @@ export default function EmployeeContactStep({
             valuePropName="checked"
           >
             <Switch
-              disabled={statutoryDisabled}
+              disabled={
+                statutoryDisabled ||
+                !hasPersonalIdentity
+              }
               checkedChildren="ขึ้นทะเบียน"
               unCheckedChildren="ไม่ขึ้นทะเบียน"
             />
@@ -559,7 +781,9 @@ export default function EmployeeContactStep({
 
         <Col xs={24} md={16}>
           <Text type="secondary">
-            บริษัทประกันสังคมสามารถเป็นคนละนิติบุคคลกับบริษัทเงินเดือนหรือบริษัทนำส่งภาษีได้
+            {hasPersonalIdentity
+              ? "บริษัทประกันสังคมสามารถเป็นคนละนิติบุคคลกับบริษัทเงินเดือนหรือบริษัทนำส่งภาษีได้"
+              : "กรุณากรอกเลขบัตรประชาชนหรือ Passport ในข้อมูลส่วนตัวก่อน จึงจะสามารถเปิดการขึ้นทะเบียนประกันสังคมได้"}
           </Text>
         </Col>
 

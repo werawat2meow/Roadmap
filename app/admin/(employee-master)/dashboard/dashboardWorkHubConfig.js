@@ -19,6 +19,22 @@ export const DAILY_WORK_GROUPS = [
     icon: "ApartmentOutlined",
     items: [
       {
+        key: "/admin/employee-organization",
+        label: "พนักงานตามโครงสร้างองค์กร",
+        description: "ดูจำนวนและรายชื่อพนักงานตามบริษัท สังกัด แผนก ฝ่าย และหน่วยงาน",
+        href: "/admin/employee-organization",
+        permission: "ems.employee_organization.view",
+        icon: "TeamOutlined",
+      },
+      {
+        key: "/admin/employee-business-structure",
+        label: "โครงสร้างบริหารพนักงาน",
+        description: "จัดการสายการบริหาร ผู้บังคับบัญชา การครองตำแหน่ง และขอบเขตความรับผิดชอบของพนักงาน",
+        href: "/admin/employee-business-structure",
+        permission: "ems.employee_business_structure.view",
+        icon: "ApartmentOutlined",
+      },
+      {
         key: "/admin/divisional-structures",
         label: "โครงสร้างองค์กรตามแผนก",
         description: "ดูและจัดการโครงสร้างองค์กรตามแผนก",

@@ -44,11 +44,20 @@ const EMPLOYEE_OPTION_PAGE_SIZE = 20;
 
 const DEFAULT_VALUES = {
   employee_id: undefined,
-  tax_identity_type: "citizen_id",
+
+  /*
+   * UI-only control:
+   * ใช้ควบคุมว่าบริษัทเป็นผู้หักและนำส่งภาษีหรือไม่
+   * ไม่ใช่คอลัมน์ใน employee_statutory_profiles
+   */
+  tax_withholding_enabled: false,
+
+  tax_identity_type: undefined,
   tax_identification_no: "",
-  tax_filing_form_code: "PND91",
+  tax_filing_form_code: undefined,
   tax_withholding_company_id: undefined,
-  tax_resident_status: "resident",
+  tax_resident_status: undefined,
+
   social_security_registered: false,
   social_security_no: "",
   insured_type: "section_33",
@@ -193,12 +202,40 @@ function mapRecordToForm(record) {
 
   return {
     employee_id: record.employee_id || undefined,
-    tax_identity_type: record.tax_identity_type || "citizen_id",
-    tax_identification_no: record.tax_identification_no || "",
-    tax_filing_form_code: record.tax_filing_form_code || "",
-    tax_withholding_company_id: record.tax_withholding_company_id || undefined,
-    tax_resident_status: record.tax_resident_status || "resident",
-    social_security_registered: Boolean(record.social_security_registered),
+
+    /*
+     * ไม่มีคอลัมน์ tax_withholding_enabled ใน DB
+     * จึงอนุมานจากการมีบริษัทนำส่งภาษีในรายการเดิม
+     */
+    tax_withholding_enabled:
+      Boolean(
+        record.tax_withholding_company_id
+      ),
+
+    tax_identity_type:
+      record.tax_identity_type ||
+      undefined,
+
+    tax_identification_no:
+      record.tax_identification_no ||
+      "",
+
+    tax_filing_form_code:
+      record.tax_filing_form_code ||
+      undefined,
+
+    tax_withholding_company_id:
+      record.tax_withholding_company_id ||
+      undefined,
+
+    tax_resident_status:
+      record.tax_resident_status ||
+      undefined,
+
+    social_security_registered:
+      Boolean(
+        record.social_security_registered
+      ),
     social_security_no: record.social_security_no || "",
     insured_type: record.insured_type || "section_33",
     social_security_company_id: record.social_security_company_id || undefined,
@@ -547,21 +584,101 @@ export default function EmployeeStatutoryProfilesPage() {
         return;
       }
 
+      const taxWithholdingEnabled =
+        Boolean(
+          values.tax_withholding_enabled
+        );
+
+      const socialSecurityRegistered =
+        Boolean(
+          values.social_security_registered
+        );
+
+      /*
+       * สำคัญ:
+       * ถ้า HR เลือก "ไม่นำส่งภาษี"
+       * ต้องส่งข้อมูลกลุ่ม Tax Withholding เป็น null
+       * เพื่อไม่ให้ Backend มองว่าเป็นรายการนำส่งภาษี
+       *
+       * tax_withholding_enabled เป็น UI-only
+       * จึงไม่ส่งเป็นคอลัมน์ลงฐานข้อมูล
+       */
       const payload = {
-        employee_id: values.employee_id,
-        tax_identity_type: values.tax_identity_type,
-        tax_identification_no: cleanNullable(values.tax_identification_no),
-        tax_filing_form_code: cleanNullable(values.tax_filing_form_code),
-        tax_withholding_company_id: values.tax_withholding_company_id || null,
-        tax_resident_status: values.tax_resident_status || "resident",
-        social_security_registered: Boolean(values.social_security_registered),
-        social_security_no: cleanNullable(values.social_security_no),
-        insured_type: values.insured_type || null,
-        social_security_company_id: values.social_security_company_id || null,
-        effective_from: toApiDate(values.effective_from),
-        effective_to: toApiDate(values.effective_to),
-        status: values.status || "active",
-        remark: cleanNullable(values.remark),
+        employee_id:
+          values.employee_id,
+
+        tax_identity_type:
+          taxWithholdingEnabled
+            ? values.tax_identity_type ||
+              null
+            : null,
+
+        tax_identification_no:
+          taxWithholdingEnabled
+            ? cleanNullable(
+                values.tax_identification_no
+              )
+            : null,
+
+        tax_filing_form_code:
+          taxWithholdingEnabled
+            ? cleanNullable(
+                values.tax_filing_form_code
+              )
+            : null,
+
+        tax_withholding_company_id:
+          taxWithholdingEnabled
+            ? values.tax_withholding_company_id ||
+              null
+            : null,
+
+        tax_resident_status:
+          taxWithholdingEnabled
+            ? values.tax_resident_status ||
+              null
+            : null,
+
+        social_security_registered:
+          socialSecurityRegistered,
+
+        social_security_no:
+          socialSecurityRegistered
+            ? cleanNullable(
+                values.social_security_no
+              )
+            : null,
+
+        insured_type:
+          socialSecurityRegistered
+            ? values.insured_type ||
+              null
+            : null,
+
+        social_security_company_id:
+          socialSecurityRegistered
+            ? values.social_security_company_id ||
+              null
+            : null,
+
+        effective_from:
+          toApiDate(
+            values.effective_from
+          ),
+
+        effective_to:
+          toApiDate(
+            values.effective_to
+          ),
+
+        status:
+          values.status ||
+          "active",
+
+        remark:
+          cleanNullable(
+            values.remark
+          ),
       };
 
       setSaving(true);

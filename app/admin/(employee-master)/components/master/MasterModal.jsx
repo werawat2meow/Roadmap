@@ -57,7 +57,7 @@ export default function MasterModal({
         destroyOnHidden
       }
       mask={{
-        closable: !saving,
+        closable: false,
       }}
       keyboard={!saving}
       confirmLoading={saving}

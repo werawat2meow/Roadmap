@@ -182,8 +182,8 @@ export async function POST(req: Request) {
   // ถ้ากด Submit ให้เป็น In_Review ไว้ก่อน จนกว่าจะตรวจพบว่าทุกคนกดครบแล้ว
   const isNomination = body.status === "Nominated";
   if (isNomination) {
-    const day = 6;
-    // const day = new Date().getDate();
+    // const day = 6;
+    const day = new Date().getDate();
     const isNominationPeriod = day >= 26 && day <= 28;
 
     if (!isNominationPeriod) {
@@ -415,6 +415,34 @@ export async function POST(req: Request) {
     totalReviewers === 0 ||
     (totalReviewers > 0 && submittedCount === totalReviewers);
 
+    if (isManagerSubmitting) {
+    try {
+      const { data: evaluatorAccount } = await supabaseAdmin
+        .from("user_accounts")
+        .select("id")
+        .eq("employee_id", evaluatorId)
+        .maybeSingle();
+
+      if (evaluatorAccount?.id) {
+        await supabaseAdmin
+          .from("notifications")
+          .update({
+            is_read: true,
+            read_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_account_id", evaluatorAccount.id)
+          .eq("module_code", "roadmap")
+          .eq("is_read", false)
+          .or(
+            "title.ilike.%ฟอร์มประเมิน%,message.ilike.%ลงคะแนน%,message.ilike.%ประเมิน%",
+          );
+      }
+    } catch (notiErr) {
+      console.error("Failed to mark evaluation notification as read:", notiErr);
+    }
+  }
+
   // 4. กรณีครบทุกคนแล้ว และผู้ประเมินกด Submit: นำคะแนนมารวมแล้วหาค่าเฉลี่ย
   // 4. กรณีครบทุกคนแล้ว และผู้ประเมินกด Submit: นำคะแนนมารวมแล้วหาค่าเฉลี่ย
   if (isAllCompleted && isManagerSubmitting) {
@@ -567,6 +595,8 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   }
+
+  
 
   // 5. ถ้ายังประเมินไม่ครบ (เช่น 1/2 คน) หรือเป็นการ Save Draft
   let responseMessage = "บันทึกแบบร่างเรียบร้อยแล้ว";

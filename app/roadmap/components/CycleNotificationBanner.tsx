@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, ArrowRight, X } from "lucide-react";
 
+
 type ActiveAlert = {
   id: string;
   title: string;

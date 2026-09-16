@@ -94,6 +94,9 @@ export default function SettingsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchText, setSearchText] = useState("");
+  const [levelFilter, setLevelFilter] = useState("ทั้งหมด");
+  const [isLevelOpen, setIsLevelOpen] = useState(false);
   const itemsPerPage = 4;
 
   const handleTabChange = (nextTab: string) => {
@@ -102,15 +105,44 @@ export default function SettingsPage() {
   };
 
   const visibleCategories = useMemo(() => {
-    if (tab === "ทั้งหมด") {
-      return sortCategories(categories);
-    }
+    const keyword = searchText.trim().toLowerCase();
 
-    const expectedType = tabTypeMap[tab] ?? tab;
+    const getDepartmentName = (id?: string) =>
+      departments.find((item) => item.id === id)?.department_name ?? "";
+
+    const getDivisionName = (id?: string) =>
+      divisions.find((item) => item.id === id)?.division_name ?? "";
+
+    const getUnitName = (id?: string) =>
+      units.find((item) => item.id === id)?.unit_name ?? "";
+
+    const expectedType = tab === "ทั้งหมด" ? "" : (tabTypeMap[tab] ?? tab);
+
     return sortCategories(
-      categories.filter((cat) => cat.type === expectedType),
+      categories.filter((cat) => {
+        const matchTab = !expectedType || cat.type === expectedType;
+        const matchLevel =
+          levelFilter === "ทั้งหมด" || cat.level === levelFilter;
+
+        const searchableText = [
+          cat.title,
+          cat.type,
+          cat.level,
+          getDepartmentName(cat.department_id),
+          getDivisionName(cat.division_id),
+          getUnitName(cat.unit_id),
+          ...cat.items.map((item) => item.topic),
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        const matchKeyword =
+          keyword.length === 0 || searchableText.includes(keyword);
+
+        return matchTab && matchLevel && matchKeyword;
+      }),
     );
-  }, [tab, categories]);
+  }, [tab, categories, searchText, levelFilter, departments, divisions, units]);
 
   const totalPages = Math.max(
     Math.ceil(visibleCategories.length / itemsPerPage),
@@ -519,6 +551,117 @@ export default function SettingsPage() {
 
       <SettingsTabs activeTab={tab} onChange={handleTabChange} />
 
+      {tab !== "สิทธิ์การเข้าถึง" && (
+        <div className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_auto] items-center">
+          {/* 1. ช่องค้นหา (Input Search) */}
+          <input
+            type="text"
+            value={searchText}
+            onChange={(event) => {
+              setSearchText(event.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="ค้นหาหัวข้อ, Level, แผนก, ฝ่าย, หน่วย หรือตัวชี้วัด..."
+            className="w-full rounded-full border border-slate-200 bg-slate-50/50 px-5 py-2.5 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10"
+          />
+
+          {/* 2. Custom Dropdown สำหรับเลือก Level (มาแทน Select Box เดิม หายเหลี่ยมทื่อแน่นอน) */}
+          <div className="relative w-full">
+            {/* หน้าปุ่มกดดรอปดาวน์หลัก */}
+            <button
+              type="button"
+              onClick={() => setIsLevelOpen(!isLevelOpen)}
+              className="flex w-full items-center justify-between rounded-full border border-slate-200 bg-slate-50/50 pl-5 pr-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition-all focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 cursor-pointer"
+            >
+              <span className="truncate">
+                {levelFilter === "ทั้งหมด"
+                  ? "ทุก Level"
+                  : `Level ${levelFilter}`}
+              </span>
+              {/* ไอคอนลูกศรหัวชี้ลง (จะหมุนกลับด้านเท่ๆ ตอนเปิดกล่องตัวเลือก) */}
+              <svg
+                className={`h-4 w-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+                  isLevelOpen ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            {/* แผงตัวเลือกด้านล่าง (จะแสดงเฉพาะตอนคลิกเปิด) */}
+            {isLevelOpen && (
+              <>
+                {/* ม่านใสข้างหลัง สำหรับคลิกพื้นที่ว่างๆ ข้างนอกเพื่อกดปิดกล่องตัวเลือก */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsLevelOpen(false)}
+                />
+
+                <div className="absolute left-0 right-0 mt-2 z-20 max-h-60 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-1 duration-100">
+                  {/* ตัวเลือก: ทุก Level */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLevelFilter("ทั้งหมด");
+                      setCurrentPage(1);
+                      setIsLevelOpen(false);
+                    }}
+                    className={`flex w-full items-center rounded-xl px-4 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+                      levelFilter === "ทั้งหมด"
+                        ? "bg-amber-50 text-amber-700 font-bold"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    ทุก Level
+                  </button>
+
+                  {/* วนลูปตัวเลือก Level ต่างๆ (P9 - P2) */}
+                  {LEVEL_ORDER.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => {
+                        setLevelFilter(level);
+                        setCurrentPage(1);
+                        setIsLevelOpen(false);
+                      }}
+                      className={`flex w-full items-center rounded-xl px-4 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+                        levelFilter === level
+                          ? "bg-amber-50 text-amber-700 font-bold"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      Level {level}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 3. ปุ่มล้างตัวกรองสีเหลืองอำพันไล่เฉดเงา */}
+          <button
+            type="button"
+            onClick={() => {
+              setSearchText("");
+              setLevelFilter("ทั้งหมด");
+              setCurrentPage(1);
+            }}
+            className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-6 text-sm font-bold text-slate-800 shadow-md shadow-amber-100/50 transition-all hover:from-amber-500 hover:to-amber-600 active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            ล้างตัวกรอง
+          </button>
+        </div>
+      )}
+
       <div className="space-y-6 mt-6">
         {tab === "สิทธิ์การเข้าถึง" ? (
           <AccessPermissionsPanel
@@ -540,6 +683,11 @@ export default function SettingsPage() {
         ) : (
           <>
             <div className="space-y-6">
+              {pagedCategories.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                  ไม่พบข้อมูลที่ตรงกับตัวกรอง
+                </div>
+              )}
               {pagedCategories.map((category) => (
                 <CategoryCard
                   key={category.id}

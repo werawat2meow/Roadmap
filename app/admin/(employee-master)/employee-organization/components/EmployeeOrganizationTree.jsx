@@ -36,7 +36,7 @@ export default function EmployeeOrganizationTree({
       onSelect={(_, info) => {
         const node = info?.node?.raw;
 
-        if (node?.id && node?.type) {
+        if (node?.type && node?.filters) {
           onSelectNode?.(node);
         }
       }}

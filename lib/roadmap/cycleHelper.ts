@@ -8,8 +8,8 @@ export type CyclePhase =
   | "NORMAL";
 
 export function getEvaluationCycleInfo(customDate?: Date) {
-  // const now = customDate || new Date();
-  const now = customDate || new Date("2026-09-28");
+  const now = customDate || new Date();
+  // const now = customDate || new Date("2026-09-28");
   const day = now.getDate();
   
 

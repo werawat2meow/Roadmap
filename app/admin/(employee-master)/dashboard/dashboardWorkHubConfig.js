@@ -35,10 +35,10 @@ export const DAILY_WORK_GROUPS = [
         icon: "ApartmentOutlined",
       },
       {
-        key: "/admin/divisional-structures",
+        key: "/admin/divisional-structure",
         label: "โครงสร้างองค์กรตามแผนก",
         description: "ดูและจัดการโครงสร้างองค์กรตามแผนก",
-        href: "/admin/divisional-structures",
+        href: "/admin/divisional-structure",
         permission: "ems.org_structure.view",
         icon: "ApartmentOutlined",
       },
@@ -1042,7 +1042,7 @@ export const ROLE_DAILY_ACTION_KEYS = {
   EMS_ADMIN: [
     "/admin/employees",
     "/admin/employee-position-assignments",
-    "/admin/divisional-structures",
+    "/admin/divisional-structure",
     "/admin/org-chart",
     "/admin/employee-compensations",
     "/admin/employee-statutory-profiles",

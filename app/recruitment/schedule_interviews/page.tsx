@@ -1085,7 +1085,7 @@ export default function RecruitmentApplicationsPage() {
           )}
 
           {/* เพิ่มใหม่: ช่องกรอกเหตุผล เมื่อ status = 6, 7, 11 */}
-          {[6, 7, 11].includes(selectedStatus as number) && (
+          {[6, 7, 8, 9, 11].includes(selectedStatus as number) && (
             <div>
               <div style={{ marginBottom: 6 }}>
                 <Text strong>เหตุผล</Text>

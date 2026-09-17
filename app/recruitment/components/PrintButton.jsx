@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "antd";
-import { PrinterOutlined } from "@ant-design/icons";
+import AntIcon from '@/components/AntIcon';
 
 export default function PrintButton({
   label = "พิมพ์",
@@ -23,7 +23,7 @@ export default function PrintButton({
     <Button
       type={type}
       size={size}
-      icon={<PrinterOutlined />}
+      icon={<AntIcon name="PrinterOutlined" />}
       onClick={handlePrint}
       className={`print-button no-print ${className}`}
     >

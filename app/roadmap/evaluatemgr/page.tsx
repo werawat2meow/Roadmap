@@ -421,7 +421,9 @@ export default function EvaluateMgrPage() {
   const fetchHistory = useCallback(async () => {
     if (!reviewerId) return;
     const res = await fetch(
-      `/roadmap/api/evaluatemgr?reviewerId=${encodeURIComponent(reviewerId)}`,
+      `/roadmap/api/evaluatemgr?reviewerId=${encodeURIComponent(
+        reviewerId,
+      )}&status=Draft,Returned`,
     );
     const data = await res.json();
     if (res.ok && data?.success) setHistoryRecords(data.data || []);
@@ -610,7 +612,7 @@ export default function EvaluateMgrPage() {
           )}
           {!isReadOnly && (
             <button
-            data-select-evaluation-btn
+              data-select-evaluation-btn
               onClick={() => setIsSelectOpen(true)}
               className="flex items-center gap-2 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-150 active:scale-95 cursor-pointer"
             >

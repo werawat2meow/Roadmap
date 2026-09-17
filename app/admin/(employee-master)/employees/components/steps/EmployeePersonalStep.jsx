@@ -24,6 +24,7 @@ import EmployeeBirthPlaceSelector from "../EmployeeBirthPlaceSelector";
 import LazyNationalitySelect from "@/app/components/selects/LazyNationalitySelect";
 import LazyCountrySelect from "@/app/components/selects/LazyCountrySelect";
 
+import { useEffect } from "react";
 import dayjs from "dayjs";
 
 const bloodGroupOptions = [
@@ -224,15 +225,56 @@ export default function EmployeePersonalStep({
         String(nationalityId || "")
     ) || null;
 
+  const nationalityResolved =
+    Boolean(
+      nationalityId &&
+      selectedNationality
+    );
+
   const isThaiEmployee =
-    Boolean(nationalityId) &&
+    nationalityResolved &&
     isThaiNationality(
       selectedNationality
     );
 
   const isForeignEmployee =
-    Boolean(nationalityId) &&
+    nationalityResolved &&
     !isThaiEmployee;
+
+  /*
+   * สัญชาติเป็น Source of Truth ของเอกสารยืนยันตัวตน
+   * - ไทย      => บังคับเลขบัตรประชาชน 13 หลัก
+   * - ต่างชาติ => บังคับ Passport
+   *
+   * ถ้าเคยกรอกเลขบัตรประชาชนตอนเลือกสัญชาติไทย
+   * แล้วเปลี่ยนเป็นต่างชาติ ต้องล้างค่าเดิมออกทันที
+   * เพื่อไม่ให้ Step ภาษีหยิบ Citizen ID เก่าไปใช้อ้างอิง
+   */
+  useEffect(() => {
+    if (!isForeignEmployee) {
+      return;
+    }
+
+    const currentCitizenId =
+      form.getFieldValue(
+        "citizen_id"
+      );
+
+    if (!currentCitizenId) {
+      return;
+    }
+
+    form.setFields([
+      {
+        name: "citizen_id",
+        value: "",
+        errors: [],
+      },
+    ]);
+  }, [
+    form,
+    isForeignEmployee,
+  ]);
 
   const titleOptions =
     buildOptions(titles, {
@@ -672,6 +714,13 @@ export default function EmployeePersonalStep({
           <Form.Item
             label="สัญชาติ"
             name="nationality_id"
+            rules={[
+              {
+                required: true,
+                message:
+                  "กรุณาเลือกสัญชาติ",
+              },
+            ]}
           >
             <LazyNationalitySelect
                 disabled={disabled}
@@ -729,6 +778,14 @@ export default function EmployeePersonalStep({
                     );
 
                   if (!citizenId) {
+                    if (isThaiEmployee) {
+                      return Promise.reject(
+                        new Error(
+                          "กรุณากรอกเลขบัตรประชาชน 13 หลัก"
+                        )
+                      );
+                    }
+
                     return Promise.resolve();
                   }
 
@@ -770,7 +827,11 @@ export default function EmployeePersonalStep({
               inputMode="numeric"
               maxLength={13}
               autoComplete="off"
-              placeholder="เลขบัตรประชาชน (ถ้ามี)"
+              placeholder={
+                isThaiEmployee
+                  ? "กรอกเลขบัตรประชาชน 13 หลัก"
+                  : "เลขบัตรประชาชน"
+              }
               onChange={(event) => {
                 form.setFieldValue(
                   "citizen_id",
@@ -810,6 +871,14 @@ export default function EmployeePersonalStep({
                     );
 
                   if (!passportNo) {
+                    if (isForeignEmployee) {
+                      return Promise.reject(
+                        new Error(
+                          "กรุณากรอกเลขหนังสือเดินทาง (Passport)"
+                        )
+                      );
+                    }
+
                     return Promise.resolve();
                   }
 
@@ -837,7 +906,11 @@ export default function EmployeePersonalStep({
               }
               maxLength={20}
               autoComplete="off"
-              placeholder="Passport Number (ถ้ามี)"
+              placeholder={
+                isForeignEmployee
+                  ? "กรอก Passport Number"
+                  : "Passport Number (ถ้ามี)"
+              }
               onChange={(event) => {
                 form.setFieldValue(
                   "passport_no",

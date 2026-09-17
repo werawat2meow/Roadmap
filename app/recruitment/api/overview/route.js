@@ -124,6 +124,54 @@ function createDateRange(start, end) {
   return result;
 }
 
+function createWeeklyTrend(daily, monthEnd) {
+  const dailyMap = new Map(
+    daily.map((item) => [item.date, item.count])
+  );
+  const monthFormatter = new Intl.DateTimeFormat("th-TH", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  const weekly = [];
+
+  let weekStart = daily[0]?.date;
+
+  while (weekStart && weekStart < monthEnd) {
+    const weekStartDate = new Date(`${weekStart}T00:00:00Z`);
+    const daysUntilSunday = (7 - weekStartDate.getUTCDay()) % 7;
+    const sunday = new Date(weekStartDate);
+
+    sunday.setUTCDate(sunday.getUTCDate() + daysUntilSunday);
+
+    const nextWeekStart = new Date(sunday);
+    nextWeekStart.setUTCDate(nextWeekStart.getUTCDate() + 1);
+
+    const nextWeekStartString = nextWeekStart.toISOString().slice(0, 10);
+    const endExclusive =
+      nextWeekStartString < monthEnd ? nextWeekStartString : monthEnd;
+    const dates = createDateRange(weekStart, endExclusive);
+    const endDate = dates[dates.length - 1];
+    const monthLabel = monthFormatter.format(weekStartDate);
+
+    weekly.push({
+      week: weekly.length + 1,
+      label: `${Number(weekStart.slice(8, 10))} - ${Number(
+        endDate.slice(8, 10)
+      )} ${monthLabel}`,
+      startDate: weekStart,
+      endDate,
+      count: dates.reduce(
+        (total, date) => total + (dailyMap.get(date) || 0),
+        0
+      ),
+    });
+
+    weekStart = endExclusive;
+  }
+
+  return weekly;
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -132,12 +180,13 @@ export async function GET(request) {
 
     const todayParts = getBangkokDateParts();
 
+    const monthMatch = monthParam?.match(/^(\d{4})-(\d{2})$/);
     const selectedYear = monthParam
-      ? Number(monthParam.split("-")[0])
+      ? Number(monthMatch?.[1])
       : todayParts.year;
 
     const selectedMonth = monthParam
-      ? Number(monthParam.split("-")[1])
+      ? Number(monthMatch?.[2])
       : todayParts.month;
 
     if (
@@ -398,60 +447,7 @@ export async function GET(request) {
      * -------------------------------------------------------
      */
 
-    const weeklyDates = createDateRange(
-      weekStart,
-      weekEnd
-    );
-
-    const weeklyMap = new Map(
-      daily.map((item) => [item.date, item.count])
-    );
-
-    /*
-     * Need data outside selected month when
-     * current week overlaps previous month.
-     */
-
-    const { data: weeklyData, error: weeklyDataError } =
-      await supabaseAdmin
-        .from("recruit_application_daily_stats")
-        .select("application_date, application_count")
-        .gte("application_date", weekStart)
-        .lt("application_date", weekEnd)
-        .order("application_date", {
-          ascending: true,
-        });
-
-    if (weeklyDataError) {
-      throw weeklyDataError;
-    }
-
-    for (const item of weeklyData || []) {
-      weeklyMap.set(
-        item.application_date,
-        Number(item.application_count)
-      );
-    }
-
-    const dayNames = [
-      "อาทิตย์",
-      "จันทร์",
-      "อังคาร",
-      "พุธ",
-      "พฤหัสบดี",
-      "ศุกร์",
-      "เสาร์",
-    ];
-
-    const weekly = weeklyDates.map((date) => {
-      const dateObj = new Date(`${date}T00:00:00Z`);
-
-      return {
-        date,
-        day: dayNames[dateObj.getUTCDay()],
-        count: weeklyMap.get(date) || 0,
-      };
-    });
+    const weekly = createWeeklyTrend(daily, monthEnd);
 
     return NextResponse.json({
       success: true,

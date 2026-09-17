@@ -14,13 +14,7 @@ import {
   Typography,
   Space,
 } from "antd";
-import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  BarChartOutlined,
-  CalendarOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
+import AntIcon from '@/components/AntIcon';
 import {
   ResponsiveContainer,
   LineChart,
@@ -47,8 +41,10 @@ type DailyData = {
 };
 
 type WeeklyData = {
-  date: string;
-  day: string;
+  week: number;
+  label: string;
+  startDate: string;
+  endDate: string;
   count: number;
 };
 
@@ -102,7 +98,7 @@ function ChangePercent({ value }: { value: number }) {
 
   return (
     <Tag
-      icon={isUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+      icon={isUp ? <AntIcon name="ArrowUpOutlined" /> : <AntIcon name="ArrowDownOutlined" />}
       color={isUp ? "green" : "red"}
     >
       {Math.abs(value)}%
@@ -200,8 +196,10 @@ export default function RecruitmentPage() {
     if (!data?.weekly) return [];
 
     return data.weekly.map((item) => ({
-      day: item.day,
-      date: item.date,
+      week: item.week,
+      label: item.label,
+      startDate: item.startDate,
+      endDate: item.endDate,
       count: item.count,
     }));
   }, [data]);
@@ -339,7 +337,7 @@ export default function RecruitmentPage() {
                     </div>
 
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-red-500 shadow-md shadow-orange-300/50">
-                      <ClockCircleOutlined className="text-xl text-white" />
+                      <AntIcon name="ClockCircleOutlined" className="text-xl text-white" />
                     </div>
                   </div>
 
@@ -388,7 +386,7 @@ export default function RecruitmentPage() {
                     </div>
 
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-md shadow-violet-300/50">
-                      <BarChartOutlined className="text-xl text-white" />
+                      <AntIcon name="BarChartOutlined" className="text-xl text-white" />
                     </div>
                   </div>
 
@@ -437,7 +435,7 @@ export default function RecruitmentPage() {
                     </div>
 
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-md shadow-blue-300/50">
-                      <CalendarOutlined className="text-xl text-white" />
+                      <AntIcon name="CalendarOutlined" className="text-xl text-white" />
                     </div>
                   </div>
 
@@ -574,7 +572,11 @@ export default function RecruitmentPage() {
 
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
-                          <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                          <XAxis
+                            dataKey="label"
+                            tick={{ fontSize: 11 }}
+                            interval={0}
+                          />
 
                           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
 

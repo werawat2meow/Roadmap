@@ -23,7 +23,7 @@ export default function PrintButton({
     <Button
       type={type}
       size={size}
-      icon={<AntIcon name="PrinterOutlined"/>}
+      icon={<AntIcon name="PrinterOutlined" />}
       onClick={handlePrint}
       className={`print-button no-print ${className}`}
     >

@@ -149,6 +149,26 @@ export default function SettingsPage() {
     1,
   );
 
+  const visiblePageNumbers = useMemo(() => {
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let startPage = Math.max(currentPage - 2, 1);
+    let endPage = startPage + maxVisiblePages - 1;
+
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = totalPages - maxVisiblePages + 1;
+    }
+
+    return Array.from(
+      { length: endPage - startPage + 1 },
+      (_, index) => startPage + index,
+    );
+  }, [currentPage, totalPages]);
+
   const pagedCategories = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return visibleCategories.slice(startIndex, startIndex + itemsPerPage);
@@ -728,22 +748,20 @@ export default function SettingsPage() {
                   </button>
 
                   <div className="flex flex-wrap items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <button
-                          key={page}
-                          type="button"
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1 text-sm rounded-md ${
-                            currentPage === page
-                              ? "bg-blue-600 text-white font-bold"
-                              : "text-slate-600 bg-white hover:bg-slate-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ),
-                    )}
+                    {visiblePageNumbers.map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm rounded-md ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white font-bold"
+                            : "text-slate-600 bg-white hover:bg-slate-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
 
                   <button

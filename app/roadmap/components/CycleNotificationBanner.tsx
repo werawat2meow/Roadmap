@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, ArrowRight, X } from "lucide-react";
-
+import { getEvaluationCycleInfo  } from "@/lib/roadmap/cycleHelper";
 
 type ActiveAlert = {
   id: string;
@@ -30,13 +30,30 @@ export default function CycleNotificationBanner() {
 
         if (notiJson.success && Array.isArray(notiJson.data)) {
           // หาแจ้งเตือนที่เกี่ยวกับ roadmap หรือ nomination ที่ยังไม่ได้อ่าน
-          const roadmapAlert = notiJson.data.find(
-            (n: any) =>
-              (n.module_code === "roadmap" ||
-                n.notification_type?.includes("roadmap") ||
-                n.notification_type?.includes("nomination")) &&
-              !n.is_read,
-          );
+          const cycleInfo = getEvaluationCycleInfo();
+
+          const roadmapAlert = notiJson.data.find((n: any) => {
+            const text = `${n.title || ""} ${n.message || ""}`;
+
+            const isRoadmap =
+              n.module_code === "roadmap" ||
+              n.notification_type?.includes("roadmap") ||
+              n.notification_type?.includes("nomination") ||
+              n.notification_type?.includes("evaluation");
+
+            const isNominationAlert =
+              text.includes("เสนอชื่อ") ||
+              text.includes("ส่งรายชื่อ") ||
+              n.notification_type?.includes("nomination");
+
+            if (!isRoadmap || n.is_read) return false;
+
+            // ถ้าเป็นแจ้งเตือนเสนอชื่อ แต่ตอนนี้ไม่ใช่วันที่ 26-28 แล้ว ให้ข้าม
+            if (isNominationAlert && !cycleInfo.isNominationPeriod)
+              return false;
+
+            return true;
+          });
 
           if (roadmapAlert) {
             const text = `${roadmapAlert.title || ""} ${roadmapAlert.message || ""}`;

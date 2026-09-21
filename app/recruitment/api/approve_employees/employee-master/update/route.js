@@ -382,6 +382,17 @@ async function processStageOneApproval({ application, body }) {
     throw new AppError("ไม่สามารถดึงข้อมูล payrol ได้");
   }
 
+  const { data: empstatus, error: empstatusError } = await supabaseAdmin
+    .from("employee_statuses")
+    .select("id")
+    .eq("status_code", "PROBATION")
+    .single();
+
+  if (empstatusError || !empstatus?.id) {
+    console.error("GET PROBATION EMPLOYEE STATUS ERROR:", empstatusError);
+    throw new AppError("ไม่พบสถานะพนักงานรหัส PROBATION");
+  }
+
   const probationDays = 119;
   const probationEndDate = calculateProbationEndDate(body.start_date, probationDays);
 
@@ -407,10 +418,9 @@ async function processStageOneApproval({ application, body }) {
     phone_allowance: body.phone_allowance,
     employment_type: body.employment_type,
     employment_type_id: body.employment_type_id,
-    employee_status_id: "21e6539f-159c-4ea8-a63a-817c97563785",
+    employee_status_id: empstatus.id,
     probation_days: probationDays,
     probation_end_date: probationEndDate,
-    probation_status: "probation",
     company_id: company.company_id,
     branch_group_id: company.group_id,
     payroll_company_id: payrollCompany.id,

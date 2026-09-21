@@ -52,6 +52,16 @@ export interface DriverLicense {
   otherText: string;
 }
 
+export type DriverLicenseType = "car" | "motorcycle" | "other";
+
+export interface DriverLicenseDocument {
+  id: string;
+  type: DriverLicenseType;
+  file?: File | null;
+  fileName?: string;
+  filePath?: string;
+}
+
 export interface EmergencyContact {
   name: string;
   phone: string;
@@ -208,6 +218,7 @@ export interface JobApplicationPayload {
   computerSkills: ComputerSkill[];
   languageSkills: LanguageSkill[];
   documents: ApplicationDocument[];
+  driverLicenseDocuments: DriverLicenseDocument[];
   agreement: Agreement;
 }
 
@@ -226,6 +237,7 @@ export interface ApplicationInitialData {
   computerSkills?: Partial<ComputerSkill>[];
   languageSkills?: Partial<LanguageSkill>[];
   documents?: Partial<ApplicationDocument>[];
+  driverLicenseDocuments?: Partial<DriverLicenseDocument>[];
   agreement?: Partial<Agreement>;
 }
 
@@ -246,6 +258,8 @@ export interface PersonalInformationProps {
   language: LanguageCode;
   value: PersonalInformationData;
   onChange: (value: PersonalInformationData) => void;
+  driverLicenseDocuments: DriverLicenseDocument[];
+  onDriverLicenseDocumentsChange: (value: DriverLicenseDocument[]) => void;
   form: FormInstance;
   position: PositionInfo;
 }

@@ -51,6 +51,8 @@ import {
   WorkExperienceSectionProps,
   DocumentsSectionProps,
   AddressValue,
+  DriverLicenseDocument,
+  DriverLicenseType,
 } from "@/app/jobs/types/types";
 
 import {
@@ -144,6 +146,10 @@ export default function RegisterPage() {
   const [languageSkills, setLanguageSkills] = useState<LanguageSkill[]>([createLanguageSkillRow(),]);
 
   const [documents, setDocuments] = useState<ApplicationDocument[]>(createDefaultDocuments());
+
+  const [driverLicenseDocuments, setDriverLicenseDocuments] = useState<
+    DriverLicenseDocument[]
+  >([]);
 
 
   /* ---------------------------------------------------------------------- */
@@ -292,6 +298,9 @@ export default function RegisterPage() {
         computerSkills,
         languageSkills,
         documents: documents.map(({ file, ...rest }: any) => rest),
+        driverLicenseDocuments: driverLicenseDocuments.map(
+          ({ file, ...rest }) => rest
+        ),
         agreement: {
           certify: true,
           pdpa: true,
@@ -302,6 +311,15 @@ export default function RegisterPage() {
       documents.forEach((doc: any) => {
         if (doc?.file instanceof File) {
           formData.append(doc.id, doc.file, doc.file.name);
+        }
+      });
+      driverLicenseDocuments.forEach((document) => {
+        if (document.file instanceof File) {
+          formData.append(
+            document.id,
+            document.file,
+            document.file.name
+          );
         }
       });
       formData.append("payload", JSON.stringify(payload));
@@ -631,6 +649,8 @@ export default function RegisterPage() {
                 onPositionChange={handlePositionChange}
                 value={personal}
                 onChange={setPersonal}
+                driverLicenseDocuments={driverLicenseDocuments}
+                onDriverLicenseDocumentsChange={setDriverLicenseDocuments}
                 showBranchSelect={showBranchSelect}
                 sourceBranchId={sourceBranchId}
                 branches={branches}
@@ -787,6 +807,8 @@ interface RegisterPersonalInformationProps {
   onPositionChange: (value: string | number | undefined) => void;
   value: PersonalInformationData;
   onChange: (value: PersonalInformationData) => void;
+  driverLicenseDocuments: DriverLicenseDocument[];
+  onDriverLicenseDocumentsChange: (value: DriverLicenseDocument[]) => void;
   // ------------------------------------------------------------------
   // ค่าที่เกี่ยวกับสังกัด / รอบเปิดรับสมัคร ต้องส่งลงมาจาก RegisterPage
   // เพราะเดิม component นี้อ้างถึงตัวแปรเหล่านี้ตรงๆ ทั้งที่ไม่ได้อยู่ใน
@@ -815,6 +837,8 @@ function PersonalInformation({
   onPositionChange,
   value,
   onChange,
+  driverLicenseDocuments,
+  onDriverLicenseDocumentsChange,
   showBranchSelect,
   sourceBranchId,
   branches,
@@ -1362,6 +1386,65 @@ function PersonalInformation({
       },
     });
   };
+
+  const updateDriverLicenseSelection = (
+    type: DriverLicenseType,
+    checked: boolean
+  ) => {
+    updateDriverLicense(type, checked);
+
+    if (!checked) {
+      onDriverLicenseDocumentsChange(
+        driverLicenseDocuments.filter((document) => document.type !== type)
+      );
+    }
+  };
+
+  const beforeDriverLicenseUpload =
+    (type: DriverLicenseType): UploadProps["beforeUpload"] =>
+    (file) => {
+      const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
+
+      if (!allowedTypes.includes(file.type)) {
+        message.error(
+          language === "TH"
+            ? "รองรับเฉพาะไฟล์ PNG, JPG, JPEG และ PDF"
+            : "Only PNG, JPG, JPEG and PDF files are supported."
+        );
+        return Upload.LIST_IGNORE;
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        message.error(
+          language === "TH"
+            ? "ขนาดไฟล์ต้องไม่เกิน 2 MB"
+            : "File size must not exceed 2 MB."
+        );
+        return Upload.LIST_IGNORE;
+      }
+
+      const nextDocument: DriverLicenseDocument = {
+        id: `driverLicense-${type}`,
+        type,
+        file,
+        fileName: file.name,
+      };
+      const hasExistingDocument = driverLicenseDocuments.some(
+        (document) => document.type === type
+      );
+
+      onDriverLicenseDocumentsChange(
+        hasExistingDocument
+          ? driverLicenseDocuments.map((document) =>
+              document.type === type
+                ? { ...document, ...nextDocument }
+                : document
+            )
+          : [...driverLicenseDocuments, nextDocument]
+      );
+
+      return false;
+    };
 
   const updateEmergencyContact = (
     key: keyof typeof value.emergencyContact,
@@ -2249,7 +2332,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.car}
                       onChange={(e) =>
-                      updateDriverLicense("car", e.target.checked)
+                      updateDriverLicenseSelection("car", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseCar, locale)}
@@ -2259,7 +2342,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.motorcycle}
                       onChange={(e) =>
-                      updateDriverLicense("motorcycle", e.target.checked)
+                      updateDriverLicenseSelection("motorcycle", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseMotorcycle, locale)}
@@ -2269,7 +2352,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.other}
                       onChange={(e) =>
-                      updateDriverLicense("other", e.target.checked)
+                      updateDriverLicenseSelection("other", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseOther, locale)}
@@ -2301,6 +2384,88 @@ function PersonalInformation({
                   />
                 </Form.Item>
               </Col>
+            )}
+
+            {(value.driverLicense.car ||
+              value.driverLicense.motorcycle ||
+              value.driverLicense.other) && (
+              <Col xs={24}>
+                <Alert
+                  title={
+                    language === "TH"
+                      ? "ไฟล์เอกสารใบขับขี่ต้องมีขนาดไม่เกิน 2 MB ต่อไฟล์"
+                      : "Each driver's license document must not exceed 2 MB."
+                  }
+                  type="warning"
+                  showIcon
+                />
+              </Col>
+            )}
+
+            {(
+              [
+                {
+                  type: "car" as const,
+                  selected: value.driverLicense.car,
+                  label: getUIText(uiText.driverLicenseCar, locale),
+                },
+                {
+                  type: "motorcycle" as const,
+                  selected: value.driverLicense.motorcycle,
+                  label: getUIText(uiText.driverLicenseMotorcycle, locale),
+                },
+                {
+                  type: "other" as const,
+                  selected: value.driverLicense.other,
+                  label:
+                    value.driverLicense.otherText ||
+                    getUIText(uiText.driverLicenseOther, locale),
+                },
+              ]
+                .filter((license) => license.selected)
+                .map((license) => {
+                  const document = driverLicenseDocuments.find(
+                    (item) => item.type === license.type
+                  );
+
+                  return (
+                    <Col xs={24} md={8} key={license.type}>
+                      <Form.Item
+                        label={
+                          language === "TH"
+                            ? `แนบเอกสารใบขับขี่: ${license.label}`
+                            : `Attach license document: ${license.label}`
+                        }
+                      >
+                        <Upload
+                          accept=".png,.jpg,.jpeg,.pdf"
+                          maxCount={1}
+                          beforeUpload={beforeDriverLicenseUpload(license.type)}
+                          showUploadList={false}
+                        >
+                          <Button icon={<AntIcon name="UploadOutlined" />}>
+                            {document?.fileName
+                              ? language === "TH"
+                                ? "เปลี่ยนไฟล์"
+                                : "Replace file"
+                              : language === "TH"
+                              ? "เลือกไฟล์"
+                              : "Choose file"}
+                          </Button>
+                        </Upload>
+
+                        {document?.fileName && (
+                          <Text
+                            type="success"
+                            style={{ display: "block", marginTop: 8 }}
+                          >
+                            {document.fileName}
+                          </Text>
+                        )}
+                      </Form.Item>
+                    </Col>
+                  );
+                })
             )}
           </Row>
         </Card>

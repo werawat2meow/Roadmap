@@ -185,7 +185,7 @@ export default function Page({ params }) {
 
       if (!res.ok) {
         throw new Error(result.message || "Load candidate detail failed");
-      }
+      }    
 
       setData(result ?? null);
     } catch (err) {

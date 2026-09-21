@@ -9,6 +9,20 @@ import {
 export const runtime = "nodejs";
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const DRIVER_LICENSE_TYPES = ["car", "motorcycle", "other"] as const;
+
+function getDriverLicenseDocuments(payload: any) {
+  return (payload.driverLicenseDocuments ?? []).filter(
+    (document: any) =>
+      DRIVER_LICENSE_TYPES.includes(document.type) &&
+      payload.personal?.driverLicense?.[document.type] === true
+  );
+}
+
+function getFileBaseName(fileName: string) {
+  const extensionIndex = fileName.lastIndexOf(".");
+  return extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
+}
 
 function validateDocumentFileSizes(
   documents: any[] | undefined,
@@ -211,7 +225,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
-    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    const driverLicenseDocuments = getDriverLicenseDocuments(payload);
+    const sizeError = validateDocumentFileSizes(
+      [...(payload.documents ?? []), ...driverLicenseDocuments],
+      formData
+    );
     if (sizeError) {
       return NextResponse.json(
         { success: false, message: sizeError },
@@ -434,6 +452,10 @@ export async function POST(request: NextRequest) {
       /* -------------------------------------------------------- */
 
       const uploadedFiles: Record<string, { path: string; url: string }> = {};
+      const uploadedDriverLicenseFiles: Record<
+        string,
+        { path: string; url: string; fileName: string }
+      > = {};
 
       for (const document of payload.documents ?? []) {
         const file = formData?.get(document.id);
@@ -450,6 +472,25 @@ export async function POST(request: NextRequest) {
         uploadedFiles[document.id] = {
           path: uploaded.key,
           url: uploaded.url,
+        };
+      }
+
+      for (const document of driverLicenseDocuments) {
+        const file = formData?.get(document.id);
+
+        if (!(file instanceof File)) continue;
+
+        const uploaded = await uploadFileToSpaces(
+          file,
+          `job-recruitment/${applicationId}/driverLicense/${document.type}`,
+          getFileBaseName(file.name)
+        );
+
+        uploadedKeys.push(uploaded.key);
+        uploadedDriverLicenseFiles[document.id] = {
+          path: uploaded.key,
+          url: uploaded.url,
+          fileName: file.name,
         };
       }
 
@@ -470,6 +511,34 @@ export async function POST(request: NextRequest) {
           const { error } = await supabaseAdmin
             .from("recruit_job_documents")
             .insert(documentRows);
+          if (error) throw error;
+        }
+      }
+
+
+      if (driverLicenseDocuments.length > 0) {
+        const driverLicenseRows = driverLicenseDocuments
+          .filter(
+            (item: any) => uploadedDriverLicenseFiles[item.id] !== undefined
+          )
+          .map((item: any) => ({
+            application_id: applicationId,
+            document_type:
+              item.type === "other" ? "otherdriverLicense" : item.type,
+            title:
+              item.type === "other"
+                ? personal.driverLicense?.otherText?.trim() || null
+                : null,
+            file_name: uploadedDriverLicenseFiles[item.id].fileName,
+            file_path: uploadedDriverLicenseFiles[item.id].path,
+            file_url: uploadedDriverLicenseFiles[item.id].url,
+            updated_at: new Date().toISOString(),
+          }));
+
+        if (driverLicenseRows.length > 0) {
+          const { error } = await supabaseAdmin
+            .from("recruit_job_documents")
+            .insert(driverLicenseRows);
           if (error) throw error;
         }
       }
@@ -565,7 +634,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
-    const sizeError = validateDocumentFileSizes(payload.documents, formData);
+    const driverLicenseDocuments = getDriverLicenseDocuments(payload);
+    const sizeError = validateDocumentFileSizes(
+      [...(payload.documents ?? []), ...driverLicenseDocuments],
+      formData
+    );
     if (sizeError) {
       return NextResponse.json(
         { success: false, message: sizeError },
@@ -799,6 +872,10 @@ export async function PUT(request: NextRequest) {
       /* -------------------------------------------------------- */
 
       const uploadedFiles: Record<string, { path: string; url: string }> = {};
+      const uploadedDriverLicenseFiles: Record<
+        string,
+        { path: string; url: string; fileName: string }
+      > = {};
 
       for (const document of payload.documents ?? []) {
         const file = formData?.get(document.id);
@@ -815,6 +892,25 @@ export async function PUT(request: NextRequest) {
         uploadedFiles[document.id] = {
           path: uploaded.key,
           url: uploaded.url,
+        };
+      }
+
+      for (const document of driverLicenseDocuments) {
+        const file = formData?.get(document.id);
+
+        if (!(file instanceof File)) continue;
+
+        const uploaded = await uploadFileToSpaces(
+          file,
+          `job-recruitment/${applicationId}/driverLicense/${document.type}`,
+          getFileBaseName(file.name)
+        );
+
+        uploadedKeys.push(uploaded.key);
+        uploadedDriverLicenseFiles[document.id] = {
+          path: uploaded.key,
+          url: uploaded.url,
+          fileName: file.name,
         };
       }
 
@@ -835,6 +931,34 @@ export async function PUT(request: NextRequest) {
           const { error } = await supabaseAdmin
             .from("recruit_job_documents")
             .insert(documentRows);
+          if (error) throw error;
+        }
+      }
+
+
+      if (driverLicenseDocuments.length > 0) {
+        const driverLicenseRows = driverLicenseDocuments
+          .filter(
+            (item: any) => uploadedDriverLicenseFiles[item.id] !== undefined
+          )
+          .map((item: any) => ({
+            application_id: applicationId,
+            document_type:
+              item.type === "other" ? "otherdriverLicense" : item.type,
+            title:
+              item.type === "other"
+                ? personal.driverLicense?.otherText?.trim() || null
+                : null,
+            file_name: uploadedDriverLicenseFiles[item.id].fileName,
+            file_path: uploadedDriverLicenseFiles[item.id].path,
+            file_url: uploadedDriverLicenseFiles[item.id].url,
+            updated_at: new Date().toISOString(),
+          }));
+
+        if (driverLicenseRows.length > 0) {
+          const { error } = await supabaseAdmin
+            .from("recruit_job_documents")
+            .insert(driverLicenseRows);
           if (error) throw error;
         }
       }

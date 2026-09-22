@@ -31,7 +31,7 @@ export async function GET(request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Not set company Data" },
+        { error: "User ของท่านไม่ได้ตั้งค่า scope งานไว้" },
         { status: 401 }
       );
     }

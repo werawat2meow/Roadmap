@@ -32,7 +32,7 @@ export async function GET(request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "User ของท่านไม่ได้ตั้งค่า scrop งานไว้" },
+        { error: "User ของท่านไม่ได้ตั้งค่า scope งานไว้" },
         { status: 401 }
       );
     }

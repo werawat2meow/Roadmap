@@ -8,6 +8,7 @@ import AddCategoryModal from "./components/AddCategoryModal";
 import AccessPermissionsPanel from "./components/AccessPermissionsPanel";
 import { swalConfirm, swalError, swalSuccess } from "../../components/Swal";
 import SettingsTour from "./components/SettingsTour";
+import CycleSettingsPanel from "./components/CycleSettingsPanel";
 
 type Item = {
   id: string;
@@ -565,13 +566,15 @@ export default function SettingsPage() {
             : "จัดการหัวข้อและตัวชี้วัดการประเมิน"
         }
         onAdd={
-          tab !== "สิทธิ์การเข้าถึง" ? () => setModalOpen(true) : undefined
+          tab !== "สิทธิ์การเข้าถึง" && tab !== "รอบการประเมิน"
+            ? () => setModalOpen(true)
+            : undefined
         }
       />
 
       <SettingsTabs activeTab={tab} onChange={handleTabChange} />
 
-      {tab !== "สิทธิ์การเข้าถึง" && (
+      {tab !== "สิทธิ์การเข้าถึง" && tab !== "รอบการประเมิน" && (
         <div className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_auto] items-center">
           {/* 1. ช่องค้นหา (Input Search) */}
           <input
@@ -700,6 +703,8 @@ export default function SettingsPage() {
             onSelectUser={setSelectedUserId}
             onUpdateUser={handleUpdateUser}
           />
+        ) : tab === "รอบการประเมิน" ? (
+          <CycleSettingsPanel />
         ) : (
           <>
             <div className="space-y-6">

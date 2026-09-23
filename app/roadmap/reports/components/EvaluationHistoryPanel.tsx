@@ -39,6 +39,15 @@ type EvaluationRecord = {
   evaluationCount: number;
   approvedByName?: string;
   scorePercent: string;
+  rawEmployeeId?: string;
+  evaluationPeriodContinued?: string;
+  isProbationExtended?: boolean;
+  probationExtendPeriod?: string;
+  probationExtendedLateData?: { count: number; minutes: number }[];
+  employeeProbationStatus?: string | null;
+  employeeProbationEndDate?: string | null;
+  employeeConfirmationDate?: string | null;
+  canConfirmProbation?: boolean;
 };
 
 const MONTH_OPTIONS = [
@@ -151,6 +160,45 @@ export default function EvaluationHistoryPanel({
       setIsPreviewOpen(true);
     }
     setIsLoadingPreview(false);
+  };
+
+  const handleConfirmProbation = async (record: EvaluationRecord) => {
+    const confirmed = window.confirm(
+      "ยืนยันอัปเดตพนักงานคนนี้เป็นพนักงานประจำ?",
+    );
+
+    if (!confirmed) return;
+
+    const res = await fetch("/roadmap/api/employees/confirm-probation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeId: record.rawEmployeeId,
+        evaluationId: record.id,
+      }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.success) {
+      window.alert(json.error || "อัปเดตไม่สำเร็จ");
+      return;
+    }
+
+    window.alert("อัปเดตเป็นพนักงานประจำเรียบร้อยแล้ว");
+
+    setRows((prev) =>
+      prev.map((item) =>
+        item.id === record.id
+          ? {
+              ...item,
+              employeeProbationStatus: "passed",
+              employeeConfirmationDate: new Date().toISOString(),
+              canConfirmProbation: false,
+            }
+          : item,
+      ),
+    );
   };
 
   const columns: {
@@ -440,15 +488,54 @@ export default function EvaluationHistoryPanel({
       <ReportTable
         columns={columns}
         rows={filteredRows.map((row) => ({
-          ...row,
+          name: row.name,
+          branch: row.branch,
+          department: row.department,
+          division: row.division,
+          unit: row.unit,
+          level: row.level,
+          scorePercent: row.scorePercent,
+          approvedByName: row.approvedByName || "ไม่ระบุ",
+          status: (
+            <div className="flex flex-col items-center gap-1">
+              <span>{row.status}</span>
+
+              {row.isProbationExtended && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
+                  ต่อโปร
+                  {row.probationExtendPeriod
+                    ? ` (${row.probationExtendPeriod})`
+                    : ""}
+                </span>
+              )}
+
+              {row.employeeConfirmationDate && (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">
+                  พนักงานประจำ
+                </span>
+              )}
+            </div>
+          ),
           actions: (
-            <button
-              className="rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 active:from-amber-600 active:to-yellow-600 text-amber-950 text-xs font-semibold px-4 py-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={() => handlePreview(row)}
-              disabled={isLoadingPreview}
-            >
-              Preview
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                className="rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 active:from-amber-600 active:to-yellow-600 text-amber-950 text-xs font-semibold px-4 py-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => handlePreview(row)}
+                disabled={isLoadingPreview}
+              >
+                Preview
+              </button>
+
+              {row.canConfirmProbation && (
+                <button
+                  type="button"
+                  onClick={() => handleConfirmProbation(row)}
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
+                >
+                  อัปเดตเป็นพนักงานประจำ
+                </button>
+              )}
+            </div>
           ),
         }))}
       />

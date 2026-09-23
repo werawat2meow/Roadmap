@@ -59,6 +59,48 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
+    if (action === "approve") {
+      const { data: evaluation, error: evalFetchError } = await supabaseAdmin
+        .from("rm_evaluations")
+        .select(
+          `
+      id,
+      employee_id,
+      extra_data,
+      evaluation_period_continued,
+      rm_evaluation_types(name)
+    `,
+        )
+        .eq("id", evaluationId)
+        .maybeSingle();
+
+      if (evalFetchError) throw evalFetchError;
+
+      const evaluationTypeName =
+        (evaluation?.rm_evaluation_types as any)?.name ?? "";
+
+      const isProbationExtended =
+        evaluationTypeName === "Probation" &&
+        Boolean(
+          evaluation?.evaluation_period_continued?.trim() ||
+          evaluation?.extra_data?.isProbationExtended,
+        );
+
+      if (isProbationExtended) {
+        const continuedEndDate =
+          evaluation?.evaluation_period_continued?.split(" - ")?.[1] || null;
+
+        await supabaseAdmin
+          .from("employees")
+          .update({
+            probation_status: "extended",
+            probation_end_date: continuedEndDate,
+            updated_at: now,
+          })
+          .eq("id", evaluation.employee_id);
+      }
+    }
+
     // 🔥 เพิ่มส่วนนี้: ถ้าเป็นการตีกลับแก้ไข ให้รีเซ็ตสถานะของผู้ประเมินทุกคนกลับเป็น Draft
     if (action === "return") {
       await supabaseAdmin

@@ -18,6 +18,7 @@ import EmployeeEvaluationCompareModal from "@/app/roadmap/evaluate/components/Em
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import NominateEmployeeModal from "./components/NominateEmployeeModal";
 import CycleNotificationBanner from "@/app/roadmap/components/CycleNotificationBanner";
+import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
 
 type SettingsCategory = {
   id: string;
@@ -126,7 +127,8 @@ const normalizeEvaluationType = (
 export default function EvaluateMgrPage() {
   const { user } = useAuth();
   const reviewerId = user?.employee_id;
-  const cycleInfo = getEvaluationCycleInfo();
+  const { settings: cycleSettings } = useRoadmapCycleSettings();
+  const cycleInfo = getEvaluationCycleInfo(undefined, cycleSettings);
   const [isNominateOpen, setIsNominateOpen] = useState(false);
 
   const [pendingEvaluations, setPendingEvaluations] = useState<
@@ -564,12 +566,14 @@ export default function EvaluateMgrPage() {
             disabled={!cycleInfo.isNominationPeriod}
             title={
               cycleInfo.isNominationPeriod
-                ? "ช่วงวันที่ 26-28: เสนอรายชื่อพนักงานเข้าแผนประเมิน"
-                : "ปุ่มนี้จะกดได้เฉพาะวันที่ 26-28"
+                ? `ช่วงวันที่ ${cycleSettings.nominationStartDay}-${cycleSettings.nominationEndDay}: เสนอรายชื่อพนักงานเข้าแผนประเมิน`
+                : `ปุ่มนี้จะกดได้เฉพาะวันที่ ${cycleSettings.nominationStartDay}-${cycleSettings.nominationEndDay}`
             }
             onClick={() => {
               if (!cycleInfo.isNominationPeriod) {
-                window.alert("ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ 26-28");
+                window.alert(
+                  `ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ ${cycleSettings.nominationStartDay}-${cycleSettings.nominationEndDay}`,
+                );
                 return;
               }
               setIsNominateOpen(true);
@@ -668,8 +672,9 @@ export default function EvaluateMgrPage() {
           {isFormLocked && (
             <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 font-semibold flex items-center justify-between">
               <span>
-                ⚠️ ขณะนี้ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่
-                9) จึงไม่สามารถบันทึกหรือส่งผลประเมินได้
+                ⚠️ ขณะนี้ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่{" "}
+                {cycleSettings.managerLockDay})
+                จึงไม่สามารถบันทึกหรือส่งผลประเมินได้
               </span>
             </div>
           )}
@@ -706,7 +711,7 @@ export default function EvaluateMgrPage() {
                   isFormLocked
                     ? () =>
                         window.alert(
-                          "ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่ 9)",
+                          `ระบบปิดรับผลการประเมินประจำรอบแล้ว (สิ้นสุดกำหนดวันที่ ${cycleSettings.managerLockDay})`,
                         )
                     : isReadOnly
                       ? undefined

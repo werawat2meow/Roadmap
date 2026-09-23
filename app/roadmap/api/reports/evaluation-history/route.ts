@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level",
+      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level,extra_data,evaluation_period_continued",
     )
     .eq("evaluation_type_id", typeRow.id)
     .in("status", ["Completed", "SalaryUpdated"]);
@@ -69,7 +69,6 @@ export async function GET(req: Request) {
     );
   }
 
-
   const employeeIds = [
     ...new Set([
       ...(evalRows || []).map((r: any) => r.employee_id),
@@ -89,6 +88,9 @@ export async function GET(req: Request) {
     first_name_th,
     last_name_th,
     email,
+    probation_status,
+    probation_end_date,
+    confirmation_date,
     branches(branch_name),
     departments(department_name),
     divisions(division_name),
@@ -176,9 +178,7 @@ export async function GET(req: Request) {
 
   const requesterIds = [
     ...new Set(
-      (evalRows || [])
-        .map((r: any) => r.evaluator_id)
-        .filter(Boolean),
+      (evalRows || []).map((r: any) => r.evaluator_id).filter(Boolean),
     ),
   ];
 
@@ -210,7 +210,10 @@ export async function GET(req: Request) {
         .in("id", requesterEmployeeIds);
 
     if (requesterEmpError) {
-      console.error("Failed to load requester employee info", requesterEmpError);
+      console.error(
+        "Failed to load requester employee info",
+        requesterEmpError,
+      );
       return NextResponse.json(
         { success: false, error: requesterEmpError.message },
         { status: 500 },
@@ -254,7 +257,8 @@ export async function GET(req: Request) {
       level: positionLevel?.level_code || positionLevel?.level_name || "",
       position: employee.positions?.position_name || "",
       requesterName: item.evaluator_id
-        ? `${employeeMap.get(item.evaluator_id)?.first_name_th || ""} ${employeeMap.get(item.evaluator_id)?.last_name_th || ""}`.trim() || "ไม่ระบุ"
+        ? `${employeeMap.get(item.evaluator_id)?.first_name_th || ""} ${employeeMap.get(item.evaluator_id)?.last_name_th || ""}`.trim() ||
+          "ไม่ระบุ"
         : "ไม่ระบุ",
       currentSalary: item.currentSalary ?? 0,
       newSalary: item.newSalary ?? 0,
@@ -270,6 +274,27 @@ export async function GET(req: Request) {
       approvedByName: item.approved_by
         ? approverNameByUserId.get(item.approved_by) || "ไม่ระบุ"
         : "ไม่ระบุ",
+      rawEmployeeId: item.employee_id,
+      evaluationPeriodContinued: item.evaluation_period_continued ?? "",
+      isProbationExtended: Boolean(
+        item.evaluation_period_continued ||
+        item.extra_data?.isProbationExtended,
+      ),
+      probationExtendPeriod:
+        item.evaluation_period_continued ||
+        item.extra_data?.probationExtendPeriod ||
+        "",
+      probationExtendedLateData:
+        item.extra_data?.probationExtendedLateData ?? [],
+      employeeProbationStatus: employee.probation_status ?? null,
+      employeeProbationEndDate: employee.probation_end_date ?? null,
+      employeeConfirmationDate: employee.confirmation_date ?? null,
+      canConfirmProbation:
+        evaluationType === "Probation" &&
+        item.status === "Completed" &&
+        !item.evaluation_period_continued &&
+        !item.extra_data?.isProbationExtended &&
+        !employee.confirmation_date,
     };
   });
 

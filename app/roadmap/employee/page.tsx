@@ -9,6 +9,7 @@ import { HelpCircle } from "lucide-react";
 import EmployeeNotice from "./components/Employeenotice";
 import { Send } from "lucide-react";
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
+import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
 
 type ProbationAlert = {
   employeeCode: string;
@@ -32,6 +33,9 @@ type NominatedEvaluation = {
     first_name_th?: string | null;
     last_name_th?: string | null;
     employee_code?: string | null;
+    probationStatus?: string | null;
+    probationEndDate?: string | null;
+    confirmationDate?: string | null;
   } | null;
 };
 
@@ -55,7 +59,8 @@ export default function EmployeePage() {
   const [pageWindowStart, setPageWindowStart] = useState<number | null>(null);
   const [probationAlerts, setProbationAlerts] = useState<ProbationAlert[]>([]);
   const [showProbationAlert, setShowProbationAlert] = useState(false);
-  const cycleInfo = getEvaluationCycleInfo();
+  const { settings: cycleSettings } = useRoadmapCycleSettings();
+  const cycleInfo = getEvaluationCycleInfo(undefined, cycleSettings);
   const [isSendingAlert, setIsSendingAlert] = useState(false);
   const [isSendingEvaluationAlert, setIsSendingEvaluationAlert] =
     useState(false);
@@ -412,15 +417,15 @@ export default function EmployeePage() {
           </p>
         </div>
 
-        {/* 👉 ปุ่มขวาบนสุด: ส่งแจ้งเตือนขอรายชื่อ (26-27) */}
+        {/* 👉 ปุ่มขวาบนสุด: ส่งแจ้งเตือนขอรายชื่อ */}
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleSendNominationAlert}
             disabled={isSendingAlert}
             title={
               cycleInfo.isNominationAlert
-                ? "ช่วงวันที่ 26-27: ส่งแจ้งเตือนให้หัวหน้าเสนอรายชื่อพนักงาน"
-                : "ปุ่มนี้ใช้สำหรับส่งแจ้งเตือนขอรายชื่อ ช่วงที่ควรส่งคือวันที่ 26-27"
+                ? `ช่วงวันที่ ${cycleSettings.nominationAlertStartDay}-${cycleSettings.nominationAlertEndDay}: ส่งแจ้งเตือนให้หัวหน้าเสนอรายชื่อพนักงาน`
+                : `ปุ่มนี้ใช้สำหรับส่งแจ้งเตือนขอรายชื่อ ช่วงที่ควรส่งคือวันที่ ${cycleSettings.nominationAlertStartDay}-${cycleSettings.nominationAlertEndDay}`
             }
             className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition shadow-md active:scale-95 cursor-pointer ${
               cycleInfo.isNominationAlert
@@ -439,8 +444,8 @@ export default function EmployeePage() {
             }
             title={
               cycleInfo.isEvaluationDueSoon
-                ? "ช่วงวันที่ 6-7: ส่งแจ้งเตือนให้หัวหน้าเข้ามาลงคะแนน"
-                : "ปุ่มนี้จะกดได้ช่วงวันที่ 6-7 เพื่อแจ้งหัวหน้าให้ลงคะแนน"
+                ? `ช่วงวันที่ ${cycleSettings.evaluationAlertStartDay}-${cycleSettings.evaluationAlertEndDay}: ส่งแจ้งเตือนให้หัวหน้าเข้ามาลงคะแนน`
+                : `ปุ่มนี้จะกดได้ช่วงวันที่ ${cycleSettings.evaluationAlertStartDay}-${cycleSettings.evaluationAlertEndDay} เพื่อแจ้งหัวหน้าให้ลงคะแนน`
             }
             className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition shadow-md active:scale-95 ${
               cycleInfo.isEvaluationDueSoon
@@ -469,7 +474,7 @@ export default function EmployeePage() {
               </div>
               <p className="text-xs md:text-sm text-slate-600 mt-0.5">
                 หัวหน้างานได้ส่งรายชื่อพนักงานเข้าแผนรอบประเมินประจำเดือน
-                กรุณาจัดทำและออกใบประเมินภายในวันที่ 2
+                กรุณาจัดทำและออกใบประเมินภายในวันที่ {cycleSettings.hrPrepareDeadlineDay}
               </p>
               {nominatedPreviewNames && (
                 <p className="mt-1 text-xs font-semibold text-emerald-700">

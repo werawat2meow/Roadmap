@@ -28,4 +28,7 @@ export interface Employee {
   level?: string;
   status: EmployeeStatus;
   hireDate?: string;
+  probationStatus?: string | null;
+  probationEndDate?: string | null;
+  confirmationDate?: string | null;
 }

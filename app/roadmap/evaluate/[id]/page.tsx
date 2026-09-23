@@ -436,6 +436,9 @@ export default function EvaluateEmployeePage() {
     setIsSaving(true);
     const evaluationId = editingEvaluationId?.trim() || undefined;
     const isUpdate = Boolean(evaluationId);
+    const isProbationExtended =
+      activeTab === "Probation" &&
+      Boolean(formData.evaluationPeriodContinued?.trim());
 
     const payload = {
       evaluationId,
@@ -452,6 +455,9 @@ export default function EvaluateEmployeePage() {
         expectationRows: formData.expectationRows,
         summaryData: formData.summaryData,
         disciplineData: formData.disciplineData,
+        isProbationExtended,
+        probationExtendPeriod: formData.evaluationPeriodContinued,
+        probationExtendedLateData: formData.disciplineData.lateExtended,
       },
     };
 

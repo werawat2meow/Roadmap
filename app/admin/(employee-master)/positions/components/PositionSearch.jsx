@@ -22,6 +22,8 @@ export default function PositionSearch({
   onReset,
   onCreate,
 
+  canCreate = false,
+
   loading = false,
 }) {
   const handleSearch = () => {
@@ -91,21 +93,23 @@ export default function PositionSearch({
         </Space>
       </Col>
 
-      <Col
-        xs={24}
-        lg={6}
-        style={{
-          textAlign: "right",
-        }}
-      >
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={onCreate}
+      {canCreate && (
+        <Col
+          xs={24}
+          lg={6}
+          style={{
+            textAlign: "right",
+          }}
         >
-          เพิ่มตำแหน่ง
-        </Button>
-      </Col>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={onCreate}
+          >
+            เพิ่มตำแหน่ง
+          </Button>
+        </Col>
+      )}
     </Row>
   );
 }

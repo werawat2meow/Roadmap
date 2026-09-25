@@ -54,6 +54,30 @@ function findById(
   );
 }
 
+function findByCode(
+  rows = [],
+  key,
+  value
+) {
+  if (
+    !Array.isArray(rows) ||
+    !key ||
+    !value
+  ) {
+    return null;
+  }
+
+  return (
+    rows.find(
+      (item) =>
+        String(
+          item?.[key] ?? ""
+        ) ===
+        String(value)
+    ) || null
+  );
+}
+
 /* =========================================================
    GET DISPLAY VALUE
 ========================================================= */
@@ -278,6 +302,20 @@ export default function EmployeeReviewStep({
       values.social_security_company_id
     );
 
+  const taxResidencyStatus =
+    findByCode(
+      masterData.taxResidencyStatuses,
+      "residency_code",
+      values.tax_resident_status
+    );
+
+  const insuredType =
+    findByCode(
+      masterData.ssoCategories,
+      "category_code",
+      values.insured_type
+    );
+
   /* =========================================================
      ACCOUNT / ROLE
   ========================================================= */
@@ -471,7 +509,14 @@ export default function EmployeeReviewStep({
 
         <Descriptions.Item label="สถานะผู้มีถิ่นที่อยู่ทางภาษี">
           {values.tax_withholding_enabled
-            ? values.tax_resident_status || "-"
+            ? getValue(
+                taxResidencyStatus,
+                [
+                  "residency_name_th",
+                  "residency_name_en",
+                  "residency_code",
+                ]
+              )
             : "-"}
         </Descriptions.Item>
 
@@ -496,7 +541,14 @@ export default function EmployeeReviewStep({
 
         <Descriptions.Item label="ประเภทผู้ประกันตน">
           {values.social_security_registered
-            ? values.insured_type || "-"
+            ? getValue(
+                insuredType,
+                [
+                  "category_name_th",
+                  "category_name_en",
+                  "category_code",
+                ]
+              )
             : "-"}
         </Descriptions.Item>
 

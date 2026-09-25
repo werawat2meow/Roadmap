@@ -182,7 +182,7 @@ export async function POST(req: Request) {
   // ถ้ากด Submit ให้เป็น In_Review ไว้ก่อน จนกว่าจะตรวจพบว่าทุกคนกดครบแล้ว
   const isNomination = body.status === "Nominated";
   if (isNomination) {
-    // const day = 6;
+    // const day = 28;
     const day = new Date().getDate();
     const isNominationPeriod = day >= 26 && day <= 28;
 

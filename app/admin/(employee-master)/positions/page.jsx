@@ -157,6 +157,10 @@ export default function PositionsPage() {
   }
 
   function handleCreate() {
+    if (!canCreate) {
+      return;
+    }
+
     setEditingItem(null);
     setModalOpen(true);
   }
@@ -312,29 +316,25 @@ export default function PositionsPage() {
         search={searchInput}
         setSearch={setSearchInput}
         loading={loading}
+
+        canCreate={canCreate}
+
         onSearch={handleSearch}
         onReset={handleReset}
-        onCreate={
-          canCreate
-            ? handleCreate
-            : undefined
-        }
+        onCreate={handleCreate}
       />
 
       <PositionTable
         loading={loading}
         data={items}
+
+        canView={canView}
+        canEdit={canEdit}
+        canDelete={canDelete}
+
         onView={handleView}
-        onEdit={
-          canEdit
-            ? handleEdit
-            : undefined
-        }
-        onDelete={
-          canDelete
-            ? handleDelete
-            : undefined
-        }
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
 
       <div

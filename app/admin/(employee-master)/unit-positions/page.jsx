@@ -536,7 +536,7 @@ export default function UnitPositionsPage() {
       <Card className="shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">วางแผนอัตรากำลังตามหน่วย</h2>
+            <h2 className="text-2xl font-bold">วางแผนตำแหน่งที่เปิดรับและสร้างผังโครงสร้างองค์กรตามจำนวนตำแหน่ง</h2>
             <p className="mt-1 text-gray-500">
               Workforce Planning: กำหนด Target Headcount และติดตาม Position Slot / Filled / Vacant / Gap ตามโครงสร้างองค์กร
             </p>

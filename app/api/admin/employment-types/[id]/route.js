@@ -52,9 +52,9 @@ export async function PATCH(req, { params }) {
       );
     }
 
-    if (probation_required && ![30, 60, 90, 120].includes(probation_days)) {
+    if (probation_required && (!Number.isInteger(probation_days) || probation_days <= 0 || probation_days > 365)) {
       return NextResponse.json(
-        { success: false, error: "กรุณาเลือกระยะเวลาทดลองงาน 30, 60, 90 หรือ 120 วัน" },
+        { success: false, error: "กรุณากรอกระยะเวลาทดลองงานเป็นจำนวนวัน 1-365 วัน" },
         { status: 400 }
       );
     }

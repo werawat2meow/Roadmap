@@ -383,13 +383,13 @@ export default function EmployeePositionAssignmentModal({
       }
       title={
         isEdit
-          ? "แก้ไข Employee Position Assignment"
-          : "เพิ่ม Employee Position Assignment"
+          ? "แก้ไขการจัดพนักงานลงตำแหน่ง"
+          : "จัดพนักงานลงตำแหน่ง"
       }
       okText={
         isEdit
           ? "บันทึกการแก้ไข"
-          : "เพิ่ม Assignment"
+          : "จัดพนักงานลงตำแหน่ง"
       }
       cancelText="ยกเลิก"
       confirmLoading={
@@ -412,8 +412,8 @@ export default function EmployeePositionAssignmentModal({
         type="info"
         showIcon
         className="mb-4"
-        title="Scope เดียวกับโครงสร้างองค์กร"
-        description="ระบบจะแสดงเฉพาะ Position Slot และพนักงานที่อยู่ใน Company → Branch Group → Branch → Department → Division → Unit ที่ผู้ใช้มีสิทธิ์เท่านั้น และ Backend จะตรวจ Scope ซ้ำอีกครั้ง"
+        title="เลือกตำแหน่งก่อน แล้วจึงเลือกพนักงาน"
+        description="ระบบจะแสดงเฉพาะตำแหน่ง/อัตราและพนักงานที่อยู่ในขอบเขตองค์กรที่คุณมีสิทธิ์ดู หากเป็นตำแหน่งหลัก ระบบจะแสดงเฉพาะพนักงานที่มี Position ตรงกับตำแหน่ง/อัตราที่เลือก"
       />
 
       <Form
@@ -436,7 +436,7 @@ export default function EmployeePositionAssignmentModal({
           <Col span={24}>
 
             <Form.Item
-              label="Position Slot"
+              label="ตำแหน่ง / อัตรา"
               name="position_slot_id"
               rules={[
                 {
@@ -444,14 +444,14 @@ export default function EmployeePositionAssignmentModal({
                     true,
 
                   message:
-                    "กรุณาเลือก Position Slot",
+                    "กรุณาเลือกตำแหน่ง / อัตรา",
                 },
               ]}
             >
               <Select
                 showSearch
                 optionFilterProp="label"
-                placeholder="เลือก Position Slot"
+                placeholder="เลือกตำแหน่ง / อัตราที่ต้องการจัดพนักงาน"
                 options={
                   slotOptions
                 }
@@ -467,6 +467,29 @@ export default function EmployeePositionAssignmentModal({
                 }}
               />
             </Form.Item>
+
+            {selectedSlot ? (
+              <Alert
+                type="info"
+                showIcon
+                className="mb-4"
+                title={
+                  selectedSlot.slot_name ||
+                  selectedSlot.positions?.position_name ||
+                  selectedSlot.slot_code ||
+                  "ตำแหน่งที่เลือก"
+                }
+                description={
+                  `รหัสอัตรา: ${
+                    selectedSlot.slot_code || "-"
+                  } | ตำแหน่ง: ${
+                    selectedSlot.positions?.position_name ||
+                    selectedSlot.slot_name ||
+                    "-"
+                  }`
+                }
+              />
+            ) : null}
 
           </Col>
 
@@ -499,8 +522,8 @@ export default function EmployeePositionAssignmentModal({
                 }
                 placeholder={
                   selectedSlot
-                    ? "พิมพ์รหัสหรือชื่อพนักงาน"
-                    : "กรุณาเลือก Position Slot ก่อน"
+                    ? "เลือกพนักงาน หรือพิมพ์รหัส/ชื่อเพื่อค้นหา"
+                    : "กรุณาเลือกตำแหน่ง / อัตราก่อน"
                 }
                 options={
                   employeeOptions
@@ -511,8 +534,40 @@ export default function EmployeePositionAssignmentModal({
                 onSearch={
                   refreshEmployees
                 }
+                onOpenChange={(
+                  open
+                ) => {
+                  if (
+                    open &&
+                    selectedSlot &&
+                    employeeOptions.length ===
+                      0 &&
+                    !employeeLoading
+                  ) {
+                    refreshEmployees(
+                      ""
+                    );
+                  }
+                }}
+                notFoundContent={
+                  employeeLoading
+                    ? "กำลังโหลดรายชื่อพนักงาน..."
+                    : selectedSlot
+                      ? isPrimary
+                        ? "ไม่พบพนักงานที่มีตำแหน่งตรงกับตำแหน่ง / อัตรานี้"
+                        : "ไม่พบพนักงานในขอบเขตองค์กรของตำแหน่ง / อัตรานี้"
+                      : "กรุณาเลือกตำแหน่ง / อัตราก่อน"
+                }
               />
             </Form.Item>
+
+            {selectedSlot ? (
+              <div className="-mt-3 mb-4 text-xs text-slate-500">
+                {employeeLoading
+                  ? "กำลังโหลดรายชื่อพนักงาน..."
+                  : `พบพนักงานที่เลือกได้ ${employeeOptions.length} คน`}
+              </div>
+            ) : null}
 
           </Col>
 
@@ -526,7 +581,7 @@ export default function EmployeePositionAssignmentModal({
           >
 
             <Form.Item
-              label="Assignment Type"
+              label="ประเภทการครองตำแหน่ง"
               name="assignment_type"
             >
               <Select
@@ -535,25 +590,25 @@ export default function EmployeePositionAssignmentModal({
                     value:
                       "primary",
                     label:
-                      "Primary",
+                      "ตำแหน่งหลัก (Primary)",
                   },
                   {
                     value:
                       "acting",
                     label:
-                      "Acting / รักษาการ",
+                      "รักษาการ (Acting)",
                   },
                   {
                     value:
                       "secondary",
                     label:
-                      "Secondary",
+                      "ตำแหน่งรอง (Secondary)",
                   },
                   {
                     value:
                       "temporary",
                     label:
-                      "Temporary",
+                      "ชั่วคราว (Temporary)",
                   },
                 ]}
                 onChange={(
@@ -589,7 +644,7 @@ export default function EmployeePositionAssignmentModal({
           >
 
             <Form.Item
-              label="Primary Assignment"
+              label="ตำแหน่งหลัก"
               name="is_primary"
               valuePropName="checked"
             >

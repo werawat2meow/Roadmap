@@ -833,31 +833,33 @@ export default function BranchesPage() {
       </div>
       
       {/* Madal แสดงข้อมูล  */}
-      {openModal && ( 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+      {openModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:rounded-3xl">
 
-            <div className="border-b border-slate-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">
+            {/* Header - sticky ด้านบน */}
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+              <h2 className="text-lg font-bold text-slate-800 sm:text-xl">
                 {editingBranch ? "แก้ไขสังกัด" : "เพิ่มสังกัด"}
               </h2>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="mt-1 text-sm text-slate-500">
                 {editingBranch ? "ปรับปรุงข้อมูลสังกัด" : "กรอกข้อมูลสังกัดใหม่"}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+            {/* Body - scroll ได้ */}
+            <div className="grid grid-cols-1 gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-6">
 
               {/* รูปภาพสังกัด */}
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   รูปภาพสังกัด
                 </label>
 
-                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 sm:rounded-3xl sm:p-4">
                   {form.branch_image_url ? (
-                    <div className="mb-4 flex h-48 w-full items-center justify-center rounded-2xl bg-white">
-                      <div className="flex h-36 w-36 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="mb-4 flex h-36 w-full items-center justify-center rounded-2xl bg-white sm:h-48">
+                      <div className="flex h-28 w-28 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 sm:h-36 sm:w-36">
                         <img
                           src={form.branch_image_url}
                           alt="Branch preview"
@@ -866,7 +868,7 @@ export default function BranchesPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mb-4 flex h-48 items-center justify-center rounded-2xl bg-white text-sm text-slate-400">
+                    <div className="mb-4 flex h-36 items-center justify-center rounded-2xl bg-white text-sm text-slate-400 sm:h-48">
                       ยังไม่มีรูปภาพ
                     </div>
                   )}
@@ -875,7 +877,7 @@ export default function BranchesPage() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     onChange={(e) => handleSelectImage(e.target.files?.[0])}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-sm"
                   />
 
                   <p className="mt-2 text-xs text-slate-400">
@@ -983,12 +985,10 @@ export default function BranchesPage() {
                       : "border-slate-200 hover:border-slate-300 focus-within:border-slate-500 focus-within:ring-4 focus-within:ring-slate-100"
                   }`}
                 >
-                  {/* Left Icon */}
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors">
                     <PhoneOutlined className="text-base" />
                   </div>
 
-                  {/* Divider */}
                   <div className="absolute left-[52px] top-3 bottom-3 w-px bg-slate-200" />
 
                   <div className="px-4 py-3">
@@ -1038,7 +1038,7 @@ export default function BranchesPage() {
                 )}
               </div>
 
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   สถานะ
                 </label>
@@ -1059,43 +1059,30 @@ export default function BranchesPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            {/* Footer - sticky ด้านล่าง, stack บนมือถือ */}
+            <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={handleCloseModal}
                 disabled={saving}
-                className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                className="w-full rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 sm:w-auto"
               >
                 Cancel
               </button>
 
-              {(
-                (
-                  editingBranch &&
-                  canEditRecord(
-                    editingBranch
-                  )
-                ) ||
-                (
-                  !editingBranch &&
-                  canCreate
-                )
-              ) && (
+              {((editingBranch && canEditRecord(editingBranch)) ||
+                (!editingBranch && canCreate)) && (
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white ${
+                  className={`w-full rounded-2xl px-5 py-3 text-sm font-semibold text-white sm:w-auto ${
                     saving
                       ? "cursor-not-allowed bg-slate-400"
                       : "bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
-                  {saving
-                    ? "Saving..."
-                    : editingBranch
-                      ? "Update"
-                      : "Save"}
+                  {saving ? "Saving..." : editingBranch ? "Update" : "Save"}
                 </button>
               )}
             </div>

@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 
 import {
+  useEffect,
   useMemo,
 } from "react";
 
@@ -317,38 +318,22 @@ export default function EmployeePayrollStep({
 
   const paymentMethodOptions =
     useMemo(
-      () => {
-        const payrollMethods =
-          paymentMethods.filter(
+      () =>
+        paymentMethods
+          .filter(
             (item) =>
               item?.supports_payroll !==
               false
-          );
-
-        const bankMethods =
-          payrollMethods.filter(
-            (item) =>
-              item?.bank_required ===
-                true ||
-              item?.payment_type ===
-                "bank_transfer"
-          );
-
-        const rows =
-          bankMethods.length > 0
-            ? bankMethods
-            : payrollMethods;
-
-        return rows.map(
-          (item) => ({
-            value: item.id,
-            label:
-              getPaymentMethodLabel(
-                item
-              ),
-          })
-        );
-      },
+          )
+          .map(
+            (item) => ({
+              value: item.id,
+              label:
+                getPaymentMethodLabel(
+                  item
+                ),
+            })
+          ),
       [paymentMethods]
     );
 
@@ -374,6 +359,53 @@ export default function EmployeePayrollStep({
     ) ||
     selectedPaymentMethod?.payment_type ===
       "bank_transfer";
+
+  /*
+   * CASH / วิธีจ่ายที่ไม่ใช้บัญชีธนาคาร:
+   * ล้างข้อมูลธนาคารเดิมเพื่อไม่ให้ค่าที่เคยกรอกค้างไปกับ Payload
+   *
+   * ทำเฉพาะ Create Step นี้
+   * ไม่กระทบ Employee API / Payroll / Compensation logic อื่น
+   */
+  useEffect(() => {
+    if (
+      mode !== "create" ||
+      !paymentMethodId ||
+      !selectedPaymentMethod ||
+      paymentMethodRequiresBank
+    ) {
+      return;
+    }
+
+    form.setFields([
+      {
+        name: "bank_id",
+        value: undefined,
+        errors: [],
+      },
+      {
+        name: "bank_account_no",
+        value: "",
+        errors: [],
+      },
+      {
+        name: "bank_account_name",
+        value: "",
+        errors: [],
+      },
+      {
+        name: "bank_branch_name",
+        value: "",
+        errors: [],
+      },
+    ]);
+  }, [
+    form,
+    mode,
+    paymentMethodId,
+    paymentMethodRequiresBank,
+    selectedPaymentMethod,
+  ]);
 
   const selectedSalaryBand =
     useMemo(
@@ -838,8 +870,8 @@ export default function EmployeePayrollStep({
           <Alert
             showIcon
             type="info"
-            title="บัญชีธนาคารพนักงาน"
-            description="หากกำหนดบัญชีในขั้นตอนนี้ ระบบจะสร้างบัญชีหลักใน employee_bank_accounts หลังสร้างพนักงานสำเร็จ โดยเลขบัญชีจะเก็บเป็นตัวเลข 10 หลักและแสดงผลแบบมีขีด"
+            title="วิธีรับเงินเดือนพนักงาน"
+            description="เลือกวิธีการจ่ายเงินก่อน หากเป็นโอนเข้าบัญชีธนาคาร ระบบจะแสดงข้อมูลธนาคารให้กรอก หากเป็นเงินสดจะไม่ต้องระบุข้อมูลธนาคาร"
             className="mb-4"
           />
 
@@ -862,10 +894,59 @@ export default function EmployeePayrollStep({
                     paymentMethodOptions
                   }
                   optionFilterProp="label"
+                  onChange={(value) => {
+                    const nextMethod =
+                      paymentMethods.find(
+                        (item) =>
+                          sameId(
+                            item.id,
+                            value
+                          )
+                      ) || null;
+
+                    const nextRequiresBank =
+                      Boolean(
+                        nextMethod
+                          ?.bank_required
+                      ) ||
+                      nextMethod
+                        ?.payment_type ===
+                        "bank_transfer";
+
+                    if (
+                      !value ||
+                      !nextRequiresBank
+                    ) {
+                      form.setFields([
+                        {
+                          name: "bank_id",
+                          value: undefined,
+                          errors: [],
+                        },
+                        {
+                          name: "bank_account_no",
+                          value: "",
+                          errors: [],
+                        },
+                        {
+                          name: "bank_account_name",
+                          value: "",
+                          errors: [],
+                        },
+                        {
+                          name: "bank_branch_name",
+                          value: "",
+                          errors: [],
+                        },
+                      ]);
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
 
+            {paymentMethodRequiresBank ? (
+              <>
             <Col
               xs={24}
               md={12}
@@ -1097,6 +1178,19 @@ export default function EmployeePayrollStep({
                 />
               </Form.Item>
             </Col>
+              </>
+            ) : selectedPaymentMethod ? (
+              <Col xs={24}>
+                <Alert
+                  showIcon
+                  type="success"
+                  title="วิธีการจ่ายเงินนี้ไม่ต้องใช้บัญชีธนาคาร"
+                  description={`${getPaymentMethodLabel(
+                    selectedPaymentMethod
+                  )} สามารถเพิ่มพนักงานต่อได้โดยไม่ต้องกรอกธนาคาร เลขที่บัญชี ชื่อบัญชี หรือสาขาธนาคาร`}
+                />
+              </Col>
+            ) : null}
           </Row>
         </>
       ) : (
@@ -1109,12 +1203,6 @@ export default function EmployeePayrollStep({
         />
       )}
 
-      {/* <Alert
-        showIcon
-        type="info"
-        title="ไม่เก็บเงินเดือนฐานไว้ในตาราง employees"
-        description="ตอนสร้างพนักงาน ระบบจะบันทึก Base Salary พร้อม Position, Payroll Company/Type/Group และ Salary Band/snapshot ช่วงเงินเดือนเมื่อมีการเลือก Band"
-      /> */}
     </div>
   );
 }

@@ -201,7 +201,7 @@ export default function OrgChartNodeCard({
         <div>
           {visibleOccupants.length ? (
             <Space
-              direction="vertical"
+              orientation="vertical"
               size={6}
               style={{
                 width: "100%",

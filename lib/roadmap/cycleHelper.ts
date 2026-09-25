@@ -9,7 +9,7 @@ export type CyclePhase =
 
 export function getEvaluationCycleInfo(customDate?: Date) {
   const now = customDate || new Date();
-  // const now = customDate || new Date("2026-10-06");
+  // const now = customDate || new Date("2026-09-28");
   const day = now.getDate();
   
 

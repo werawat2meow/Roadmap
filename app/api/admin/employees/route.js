@@ -16,7 +16,6 @@ import {
 } from "@/lib/employee/employeeTransaction";
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 import {
-  EMPLOYEE_STATUTORY_MODULE,
   hasEmployeeStatutoryPayload,
   normalizeEmployeeStatutoryPayload,
   validateEmployeeStatutoryPayload,
@@ -791,6 +790,8 @@ async function getEmployeeSummary({
   `;
 
   const applySummaryFilters = (query) => {
+    query = query.eq("is_deleted", false);
+
     if (companyId) {
       query = query.eq("company_id", companyId);
     }
@@ -1936,6 +1937,8 @@ export async function GET(req) {
     const applyListFilters = (inputQuery) => {
       let query = inputQuery;
 
+      query = query.eq("is_deleted", false);
+
       if (search) {
         query = query.or(
           [
@@ -2630,10 +2633,9 @@ if (
        Employee Wizard ส่งข้อมูล Tax / ภ.ง.ด. / SSO
        เข้ามาพร้อมการสร้างพนักงาน
 
-       ต้องมี Permission:
-       ems.employee_statutory_profiles.create
-
-       และต้องผ่าน Employee Organization Scope เดียวกัน
+       ใช้ Permission + Organization Scope ของ
+       ems.employees.create ที่ตรวจผ่าน guard ด้านบนแล้ว
+       เพื่อให้การสร้างข้อมูลเริ่มต้นเป็นส่วนหนึ่งของ Employee Wizard
     ----------------------------------------------------- */
 
     const initialStatutoryEnabled =
@@ -2641,36 +2643,9 @@ if (
         body
       );
 
-    let statutoryGuard = null;
     let initialStatutoryProfile = null;
 
     if (initialStatutoryEnabled) {
-      statutoryGuard =
-        await requireScopedAccess(
-          EMPLOYEE_STATUTORY_MODULE,
-          "create",
-          {
-            scopeType: "employee",
-          }
-        );
-
-      if (!statutoryGuard.ok) {
-        return statutoryGuard.response;
-      }
-
-      if (
-        !statutoryGuard.canAccessEmployee(
-          employee
-        )
-      ) {
-        return errorResponse(
-          "คุณไม่มีสิทธิ์กำหนดข้อมูลภาษีและประกันสังคมให้พนักงานใน Scope องค์กรที่เลือก",
-          {
-            status: 403,
-          }
-        );
-      }
-
       initialStatutoryProfile =
         normalizeEmployeeStatutoryPayload(
           body,
@@ -2678,6 +2653,52 @@ if (
             employee,
           }
         );
+
+      /*
+       * SSO-only:
+       * employee_statutory_profiles บังคับ Tax Identity เป็น NOT NULL
+       * แม้บริษัทไม่นำส่งภาษี จึงต้องคง Identity ของพนักงานไว้
+       * และล้างเฉพาะข้อมูลกลุ่มการยื่น/นำส่งภาษี
+       */
+      const taxWithholdingEnabled =
+        parseBoolean(
+          body?.tax_withholding_enabled,
+          false
+        );
+
+      if (!taxWithholdingEnabled) {
+        const statutoryIdentityType =
+          initialStatutoryProfile
+            ?.tax_identity_type ||
+          (employee?.citizen_id
+            ? "citizen_id"
+            : employee?.passport_no
+              ? "passport"
+              : null);
+
+        const statutoryIdentityNo =
+          initialStatutoryProfile
+            ?.tax_identification_no ||
+          (statutoryIdentityType ===
+          "citizen_id"
+            ? employee?.citizen_id
+            : statutoryIdentityType ===
+                "passport"
+              ? employee?.passport_no
+              : null);
+
+        initialStatutoryProfile = {
+          ...initialStatutoryProfile,
+
+          tax_identity_type:
+            statutoryIdentityType,
+          tax_identification_no:
+            statutoryIdentityNo,
+          tax_filing_form_code: null,
+          tax_resident_status: null,
+          tax_withholding_company_id: null,
+        };
+      }
 
       const statutoryValidationError =
         validateEmployeeStatutoryPayload(
@@ -2730,7 +2751,9 @@ if (
        */
       employee.tax_id =
         initialStatutoryProfile
-          .tax_identification_no;
+          .tax_identification_no ||
+        employee.tax_id ||
+        null;
 
       employee.social_security_no =
         initialStatutoryProfile
@@ -2741,39 +2764,14 @@ if (
     }
 
     /* -----------------------------------------------------
-       INITIAL BANK ACCOUNT PERMISSION + MASTER VALIDATION
+       INITIAL BANK ACCOUNT MASTER VALIDATION
 
-       ถ้ามีการส่งข้อมูลบัญชีธนาคารมาจาก Employee Wizard
-       ต้องผ่าน ems.employee_bank_accounts.create ด้วย
+       ข้อมูลบัญชีธนาคารเริ่มต้นเป็นส่วนหนึ่งของ Employee Wizard
+       ใช้ Permission + Organization Scope ของ
+       ems.employees.create ที่ตรวจผ่าน guard ด้านบนแล้ว
     ----------------------------------------------------- */
 
-    let bankAccountGuard =
-      null;
-
     if (initialBankAccountEnabled) {
-      bankAccountGuard =
-        await requireScopedAccess(
-          "ems.employee_bank_accounts",
-          "create"
-        );
-
-      if (!bankAccountGuard.ok) {
-        return bankAccountGuard.response;
-      }
-
-      if (
-        !bankAccountGuard.canAccessEmployee(
-          employee
-        )
-      ) {
-        return errorResponse(
-          "คุณไม่มีสิทธิ์เพิ่มบัญชีธนาคารให้พนักงานใน Scope องค์กรที่เลือก",
-          {
-            status: 403,
-          }
-        );
-      }
-
       if (
         !isUuid(
           initialBankAccount.bank_id
@@ -3027,18 +3025,6 @@ if (
     ) {
       return errorResponse(
         "กรุณาเลือกบทบาทผู้ใช้งาน",
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      account.create_user_account &&
-      !account.auth_email
-    ) {
-      return errorResponse(
-        "กรุณาระบุอีเมลสำหรับสร้างบัญชีผู้ใช้งาน",
         {
           status: 400,
         }
@@ -3437,7 +3423,6 @@ if (
       }
 
       const actorId =
-        bankAccountGuard?.access?.id ||
         guard?.access?.id ||
         null;
 
@@ -3582,7 +3567,6 @@ if (
       }
 
       const actorId =
-        statutoryGuard?.access?.id ||
         guard?.access?.id ||
         null;
 

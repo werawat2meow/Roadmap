@@ -1274,6 +1274,30 @@ export default function EmployeeOrganizationStep({
       [jobs]
     );
 
+  /*
+   * Job ของ Employee ถูกกำหนดจาก Position
+   * ซ่อนช่อง Job ไว้ก่อน และแสดงเฉพาะเมื่อ
+   * Position ที่เลือกมี job_id กำหนดไว้แล้ว
+   */
+  const selectedPositionJob =
+    useMemo(
+      () =>
+        positions.find(
+          (item) =>
+            String(item?.id || "") ===
+            String(positionId || "")
+        ) || null,
+      [
+        positions,
+        positionId,
+      ]
+    );
+
+  const hasConfiguredJob =
+    Boolean(
+      selectedPositionJob?.job_id
+    );
+
   /* =======================================================
      COST STRUCTURE OPTIONS
   ======================================================= */
@@ -2068,22 +2092,23 @@ export default function EmployeeOrganizationStep({
           </Form.Item>
         </Col>
 
-        <Col xs={24}>
-          <Form.Item
-            label="บทบาทงาน / Job"
-            name="job_id"
-          >
-            <Select
-              showSearch
-              allowClear
-              loading={masterLoading}
-              disabled={disabled}
-              options={jobOptions}
-              optionFilterProp="label"
-              placeholder="เลือกบทบาทงาน"
-            />
-          </Form.Item>
-        </Col>
+        {hasConfiguredJob ? (
+          <Col xs={24}>
+            <Form.Item
+              label="บทบาทงาน / Job"
+              name="job_id"
+            >
+              <Select
+                showSearch
+                loading={masterLoading}
+                disabled
+                options={jobOptions}
+                optionFilterProp="label"
+                placeholder="กำหนดจากตำแหน่งอัตโนมัติ"
+              />
+            </Form.Item>
+          </Col>
+        ) : null}
       </Row>
 
       {/* ===================================================

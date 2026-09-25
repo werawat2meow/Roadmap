@@ -2,6 +2,7 @@
 
 import {
   useState,
+  useEffect,
 } from "react";
 
 import {
@@ -19,6 +20,7 @@ import {
   Button,
   Alert,
   Typography,
+  Checkbox,
 } from "antd";
 
 import {
@@ -39,6 +41,14 @@ import Image from "next/image";
 import {useAuth,} from "@/contexts/AuthContext";
 
 const {Title,Text,} = Typography;
+
+/* =========================================================
+   Remember Me — Local Storage Keys
+========================================================= */
+
+const REMEMBER_KEY = "hrms_remember_me";
+const REMEMBER_USERNAME_KEY = "hrms_remember_username";
+const REMEMBER_PASSWORD_KEY = "hrms_remember_password";
 
 /* =========================================================
    Helpers
@@ -250,6 +260,42 @@ export default function LoginPage() {
     useState("");
 
   /* =======================================================
+     Remember Me — Load Saved Credentials On Mount
+  ======================================================= */
+
+  useEffect(() => {
+    try {
+      const remembered =
+        window.localStorage.getItem(
+          REMEMBER_KEY
+        ) === "1";
+
+      if (remembered) {
+        const savedUsername =
+          window.localStorage.getItem(
+            REMEMBER_USERNAME_KEY
+          ) || "";
+
+        const savedPassword =
+          window.localStorage.getItem(
+            REMEMBER_PASSWORD_KEY
+          ) || "";
+
+        form.setFieldsValue({
+          username: savedUsername,
+          password: savedPassword,
+          rememberMe: true,
+        });
+      }
+    } catch {
+      /*
+       * เผื่อ localStorage ใช้งานไม่ได้ (Private Mode ฯลฯ)
+       * ไม่ต้องทำอะไร ปล่อยให้ฟอร์มว่างตามปกติ
+       */
+    }
+  }, [form]);
+
+  /* =======================================================
      Submit
   ======================================================= */
 
@@ -364,6 +410,46 @@ export default function LoginPage() {
           throw new Error(
             "บัญชีผู้ใช้งานยังไม่ได้รับสิทธิ์เข้าใช้งาน Portal"
           );
+        }
+
+        /* ===============================================
+           Remember Me — Save Or Clear Credentials
+        =============================================== */
+
+        try {
+          if (values.rememberMe) {
+            window.localStorage.setItem(
+              REMEMBER_KEY,
+              "1"
+            );
+
+            window.localStorage.setItem(
+              REMEMBER_USERNAME_KEY,
+              username
+            );
+
+            window.localStorage.setItem(
+              REMEMBER_PASSWORD_KEY,
+              values.password || ""
+            );
+          } else {
+            window.localStorage.removeItem(
+              REMEMBER_KEY
+            );
+
+            window.localStorage.removeItem(
+              REMEMBER_USERNAME_KEY
+            );
+
+            window.localStorage.removeItem(
+              REMEMBER_PASSWORD_KEY
+            );
+          }
+        } catch {
+          /*
+           * localStorage ใช้งานไม่ได้ ข้ามไป
+           * ไม่กระทบขั้นตอนการ Login
+           */
         }
 
         /* ===============================================
@@ -580,6 +666,7 @@ export default function LoginPage() {
                 autoComplete="off"
                 size="large"
                 requiredMark={false}
+                initialValues={{ rememberMe: false }}
               >
                 <Form.Item
                   label={
@@ -626,7 +713,7 @@ export default function LoginPage() {
                       message: "กรุณากรอก Password",
                     },
                   ]}
-                  className="!mb-5"
+                  className="!mb-3"
                 >
                   <Input.Password
                     prefix={
@@ -639,6 +726,21 @@ export default function LoginPage() {
                     }
                     className="!h-12 !rounded-xl !border-slate-200 !bg-slate-50/70 !px-4 hover:!border-[#7894B1] focus:!border-[#123A63]"
                   />
+                </Form.Item>
+
+                {/* =========================================
+                    Remember Me Checkbox
+                ========================================= */}
+                <Form.Item
+                  name="rememberMe"
+                  valuePropName="checked"
+                  className="!mb-5"
+                >
+                  <Checkbox>
+                    <span className="text-sm text-slate-600">
+                      จำรหัสผ่าน
+                    </span>
+                  </Checkbox>
                 </Form.Item>
 
                 <div className="mb-6 flex items-start gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-xs leading-5 text-slate-500">

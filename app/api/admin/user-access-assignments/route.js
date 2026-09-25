@@ -161,7 +161,7 @@ async function enrichAssignments(items = []) {
           username,
           is_active,
           last_login_at,
-          employees (
+          employees!user_accounts_employee_id_fkey (
             id,
             employee_code,
             first_name_th,

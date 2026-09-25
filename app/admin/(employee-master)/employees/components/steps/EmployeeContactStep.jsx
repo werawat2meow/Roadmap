@@ -51,35 +51,135 @@ const TAX_FORM_OPTIONS = [
   { value: "PND94", label: "PND94 / ภ.ง.ด.94" },
 ];
 
-const TAX_RESIDENT_OPTIONS = [
-  {
-    value: "resident",
-    label: "ผู้มีถิ่นที่อยู่ในประเทศไทย (Tax Resident)",
-  },
-  {
-    value: "non_resident",
-    label: "ผู้ที่ไม่มีถิ่นที่อยู่ในประเทศไทย (Non-Tax Resident)",
-  },
-];
+function buildTaxResidencyOptions(rows = []) {
+  return (rows || [])
+    .filter(
+      (item) =>
+        item?.residency_code
+    )
+    .map((item) => ({
+      value:
+        item.residency_code,
+        label: `${item.residency_name_th || item.residency_code}${item.residency_name_en ? ` / ${item.residency_name_en}` : ''}`
+    }));
+}
 
-const INSURED_TYPE_OPTIONS = [
-  {
-    value: "section_33",
-    label: "มาตรา 33",
-  },
-  {
-    value: "section_39",
-    label: "มาตรา 39",
-  },
-  {
-    value: "section_40",
-    label: "มาตรา 40",
-  },
-  {
-    value: "custom",
-    label: "อื่น ๆ",
-  },
-];
+function buildInsuredTypeOptions(rows = []) {
+  return (rows || [])
+    .filter(
+      (item) =>
+        item?.category_code
+    )
+    .map((item) => ({
+      value:
+        item.category_code,
+      label:
+        item.category_name_th ||
+        item.category_name_en ||
+        item.category_code,
+    }));
+}
+
+function findCompanyById(
+  companies = [],
+  companyId
+) {
+  if (!companyId) {
+    return null;
+  }
+
+  return (
+    (companies || []).find(
+      (item) =>
+        String(item?.id || "") ===
+        String(companyId)
+    ) || null
+  );
+}
+
+function normalizeEffectiveDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (
+    typeof value?.format ===
+    "function"
+  ) {
+    return value.format(
+      "YYYY-MM-DD"
+    );
+  }
+
+  return String(value)
+    .trim()
+    .slice(0, 10);
+}
+
+function findCompanyStatutorySetting(
+  rows = [],
+  companyId,
+  effectiveDate
+) {
+  if (!companyId) {
+    return null;
+  }
+
+  const targetDate =
+    normalizeEffectiveDate(
+      effectiveDate
+    );
+
+  const matches =
+    (rows || [])
+      .filter(
+        (item) =>
+          String(
+            item?.company_id ||
+              ""
+          ) ===
+            String(companyId) &&
+          item?.status ===
+            "active"
+      )
+      .filter((item) => {
+        if (!targetDate) {
+          return true;
+        }
+
+        const from =
+          String(
+            item?.effective_from ||
+              ""
+          ).slice(0, 10);
+
+        const to =
+          item?.effective_to
+            ? String(
+                item.effective_to
+              ).slice(0, 10)
+            : "9999-12-31";
+
+        return (
+          (!from ||
+            from <= targetDate) &&
+          targetDate <= to
+        );
+      })
+      .sort((a, b) =>
+        String(
+          b?.effective_from ||
+            ""
+        ).localeCompare(
+          String(
+            a?.effective_from ||
+              ""
+          )
+        )
+      );
+
+  return matches[0] || null;
+}
 
 function buildCompanyOptions(companies = []) {
   return (companies || [])
@@ -97,6 +197,152 @@ function buildCompanyOptions(companies = []) {
           : name,
       };
     });
+}
+
+function isThaiNationality(item) {
+  if (!item) {
+    return false;
+  }
+
+  const codes = [
+    item.nationality_code,
+    item.iso2,
+    item.iso3,
+  ]
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toUpperCase()
+    )
+    .filter(Boolean);
+
+  if (
+    codes.includes("TH") ||
+    codes.includes("THA") ||
+    codes.includes("THAI")
+  ) {
+    return true;
+  }
+
+  const nameTh =
+    String(
+      item.nationality_name_th ||
+        ""
+    ).trim();
+
+  const nameEn =
+    String(
+      item.nationality_name_en ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  return (
+    nameTh === "ไทย" ||
+    nameTh === "สัญชาติไทย" ||
+    nameEn === "thai" ||
+    nameEn === "thailand"
+  );
+}
+
+function compactPhoneNumber(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[\s\-()]/g, "");
+}
+
+function validatePhoneNumber(
+  value,
+  {
+    mobile = false,
+  } = {}
+) {
+  if (!value) {
+    return Promise.resolve();
+  }
+
+  const raw =
+    String(value).trim();
+
+  if (
+    !/^[0-9+\-\s()]+$/.test(
+      raw
+    )
+  ) {
+    return Promise.reject(
+      new Error(
+        "เบอร์โทรศัพท์ใช้ได้เฉพาะตัวเลข + - ( ) และช่องว่าง"
+      )
+    );
+  }
+
+  const compact =
+    compactPhoneNumber(
+      raw
+    );
+
+  /*
+   * International:
+   * รองรับรูปแบบ E.164 เช่น +66812345678
+   * จำนวนตัวเลขรวม 8-15 หลัก
+   */
+  if (
+    compact.startsWith("+")
+  ) {
+    if (
+      /^\+[1-9]\d{7,14}$/.test(
+        compact
+      )
+    ) {
+      return Promise.resolve();
+    }
+
+    return Promise.reject(
+      new Error(
+        "รูปแบบเบอร์โทรต่างประเทศไม่ถูกต้อง เช่น +66812345678"
+      )
+    );
+  }
+
+  /*
+   * เบอร์มือถือไทย:
+   * 10 หลัก และขึ้นต้น 06 / 08 / 09
+   */
+  if (mobile) {
+    if (
+      /^0[689]\d{8}$/.test(
+        compact
+      )
+    ) {
+      return Promise.resolve();
+    }
+
+    return Promise.reject(
+      new Error(
+        "เบอร์มือถือไทยต้องมี 10 หลัก และขึ้นต้นด้วย 06, 08 หรือ 09"
+      )
+    );
+  }
+
+  /*
+   * โทรศัพท์บ้าน / ที่ทำงาน:
+   * รองรับเลขไทย 9-10 หลักที่ขึ้นต้นด้วย 0
+   * เพื่อรองรับทั้งโทรศัพท์พื้นฐานและเบอร์มือถือบริษัท
+   */
+  if (
+    /^0\d{8,9}$/.test(
+      compact
+    )
+  ) {
+    return Promise.resolve();
+  }
+
+  return Promise.reject(
+    new Error(
+      "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง เช่น 021234567, 0812345678 หรือ +6621234567"
+    )
+  );
 }
 
 export default function EmployeeContactStep({
@@ -130,6 +376,15 @@ export default function EmployeeContactStep({
       }
     ) || "";
 
+  const nationalityId =
+    Form.useWatch(
+      "nationality_id",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
   const taxWithholdingEnabled =
     Boolean(
       Form.useWatch(
@@ -146,20 +401,118 @@ export default function EmployeeContactStep({
       )
     );
 
+  const taxWithholdingCompanyId =
+    Form.useWatch(
+      "tax_withholding_company_id",
+      form
+    );
+
+  const socialSecurityCompanyId =
+    Form.useWatch(
+      "social_security_company_id",
+      form
+    );
+
+  const statutoryEffectiveFrom =
+    Form.useWatch(
+      "statutory_effective_from",
+      form
+    );
+
+  const startWorkDate =
+    Form.useWatch(
+      "start_work_date",
+      {
+        form,
+        preserve: true,
+      }
+    );
+
+  const selectedNationality =
+    (
+      masterData?.nationalities ||
+      []
+    ).find(
+      (item) =>
+        String(
+          item?.id ||
+            ""
+        ) ===
+        String(
+          nationalityId ||
+            ""
+        )
+    ) ||
+    null;
+
+  const nationalityResolved =
+    Boolean(
+      nationalityId &&
+      selectedNationality
+    );
+
+  const isThaiEmployee =
+    nationalityResolved &&
+    isThaiNationality(
+      selectedNationality
+    );
+
+  const isForeignEmployee =
+    nationalityResolved &&
+    !isThaiEmployee;
+
   const companyOptions =
     buildCompanyOptions(
-      masterData?.companies
+      (masterData?.companies || []).filter(
+        (item) => {
+          if (mode !== "create") {
+            return true;
+          }
+
+          return (
+            String(
+              item?.status || ""
+            )
+              .trim()
+              .toLowerCase() ===
+            "active"
+          );
+        }
+      )
+    );
+
+  const taxResidencyOptions = buildTaxResidencyOptions(masterData?.taxResidencyStatuses);
+
+  const insuredTypeOptions =
+    buildInsuredTypeOptions(
+      masterData?.ssoCategories
+    );
+
+  const selectedTaxCompany =
+    findCompanyById(
+      masterData?.companies,
+      taxWithholdingCompanyId
+    );
+
+  const selectedSsoCompany =
+    findCompanyById(
+      masterData?.companies,
+      socialSecurityCompanyId
+    );
+
+  const selectedSsoRegistration =
+    findCompanyStatutorySetting(
+      masterData
+        ?.companyStatutorySettings,
+      socialSecurityCompanyId,
+      statutoryEffectiveFrom ||
+        startWorkDate
     );
 
   const statutoryDisabled =
     disabled || mode !== "create";
 
-  /*
-   * Tax Identity ใช้ข้อมูลจาก Employee Master เป็นหลัก
-   * - ถ้ามี Citizen ID ให้ใช้ Citizen ID ก่อน
-   * - ถ้าไม่มี Citizen ID แต่มี Passport ให้ใช้ Passport
-   * - ถ้าไม่มีทั้งสองอย่าง สามารถเว้นว่าง หรือเลือก Tax ID อื่นได้
-   */
+
   const lockedIdentityType =
     citizenId
       ? "citizen_id"
@@ -184,16 +537,6 @@ export default function EmployeeContactStep({
     );
 
   useEffect(() => {
-    /*
-     * Personal Identity เป็น Source of Truth
-     *
-     * Create:
-     *   ใช้เติม Tax Identity ก่อนสร้างพนักงาน
-     *
-     * Edit / View:
-     *   ใช้แสดงค่าอ้างอิงจากข้อมูลส่วนตัวอัตโนมัติ
-     *   แต่ยังคง Disable การแก้ Statutory History ตาม Logic เดิม
-     */
     if (citizenId) {
       form.setFieldsValue({
         tax_identity_type:
@@ -238,11 +581,6 @@ export default function EmployeeContactStep({
     form,
   ]);
 
-  /*
-   * ถ้ายังไม่มี Citizen ID / Passport
-   * ยังไม่อนุญาตให้ขึ้นทะเบียนประกันสังคม
-   * และล้างค่าที่อาจค้างจากการกรอกก่อนหน้า
-   */
   useEffect(() => {
     if (
       mode !== "create" ||
@@ -270,11 +608,6 @@ export default function EmployeeContactStep({
     mode,
   ]);
 
-  /*
-   * ถ้า HR เลือก "ไม่นำส่งภาษี"
-   * ให้ล้างบริษัทนำส่งภาษีออก
-   * เพื่อไม่ให้ค่าเดิมค้างอยู่ใน Form/Payload
-   */
   useEffect(() => {
     if (mode !== "create") {
       return;
@@ -300,6 +633,134 @@ export default function EmployeeContactStep({
     mode,
   ]);
 
+  useEffect(() => {
+    if (
+      mode !== "create" ||
+      !taxWithholdingEnabled ||
+      form.getFieldValue(
+        "tax_resident_status"
+      )
+    ) {
+      return;
+    }
+
+    const firstTaxResidency =
+      masterData
+        ?.taxResidencyStatuses
+        ?.[0]
+        ?.residency_code;
+
+    if (firstTaxResidency) {
+      form.setFieldValue(
+        "tax_resident_status",
+        firstTaxResidency
+      );
+    }
+  }, [
+    taxWithholdingEnabled,
+    form,
+    masterData?.taxResidencyStatuses,
+    mode,
+  ]);
+
+  useEffect(() => {
+    if (
+      mode !== "create" ||
+      !socialRegistered ||
+      form.getFieldValue(
+        "insured_type"
+      )
+    ) {
+      return;
+    }
+
+    const ssoCategories =
+      masterData?.ssoCategories ||
+      [];
+
+    const defaultCategory =
+      ssoCategories.find(
+        (item) =>
+          item?.is_default ===
+          true
+      ) ||
+      ssoCategories[0] ||
+      null;
+
+    if (
+      defaultCategory
+        ?.category_code
+    ) {
+      form.setFieldValue(
+        "insured_type",
+        defaultCategory
+          .category_code
+      );
+    }
+  }, [
+    socialRegistered,
+    form,
+    masterData?.ssoCategories,
+    mode,
+  ]);
+
+  /*
+   * เลขประกันสังคมของพนักงาน
+   *
+   * - สัญชาติไทย:
+   *   ใช้เลขบัตรประชาชนเป็นเลขประกันสังคมอัตโนมัติ
+   *   และไม่ให้กรอกซ้ำ
+   *
+   * - ต่างชาติ:
+   *   ไม่ใช้ Passport เป็นเลขประกันสังคม
+   *   เปิดให้ HR กรอกเลขผู้ประกันตนที่ได้รับจากประกันสังคม
+   *
+   * ทำเฉพาะ Create เพื่อไม่เขียนทับ Effective History
+   */
+  useEffect(() => {
+    if (
+      mode !== "create" ||
+      !socialRegistered ||
+      !nationalityResolved
+    ) {
+      return;
+    }
+
+    if (isThaiEmployee) {
+      form.setFieldValue(
+        "social_security_no",
+        String(
+          citizenId ||
+            ""
+        )
+          .replace(/\D/g, "")
+          .slice(0, 13)
+      );
+
+      return;
+    }
+
+    if (isForeignEmployee) {
+      /*
+       * เมื่อเปลี่ยนจากไทยเป็นต่างชาติ
+       * ให้ล้างเลขที่เคย Auto จาก Citizen ID
+       * จากนั้น User สามารถกรอกเลขผู้ประกันตนต่างชาติได้เอง
+       */
+      form.setFieldValue(
+        "social_security_no",
+        ""
+      );
+    }
+  }, [
+    citizenId,
+    form,
+    isForeignEmployee,
+    isThaiEmployee,
+    mode,
+    nationalityResolved,
+    socialRegistered,
+  ]);
+
   return (
     <div>
       <Divider
@@ -319,16 +780,25 @@ export default function EmployeeContactStep({
             name="mobile_phone"
             rules={[
               {
-                pattern:
-                  /^[0-9+\-\s()]{8,20}$/,
-                message:
-                  "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง",
+                validator: (
+                  _,
+                  value
+                ) =>
+                  validatePhoneNumber(
+                    value,
+                    {
+                      mobile: true,
+                    }
+                  ),
               },
             ]}
           >
             <Input
               disabled={disabled}
-              placeholder="เช่น 0812345678"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={25}
+              placeholder="เช่น 0812345678 หรือ +66812345678"
               prefix={<PhoneOutlined />}
             />
           </Form.Item>
@@ -338,10 +808,24 @@ export default function EmployeeContactStep({
           <Form.Item
             label="โทรศัพท์บ้าน"
             name="home_phone"
+            rules={[
+              {
+                validator: (
+                  _,
+                  value
+                ) =>
+                  validatePhoneNumber(
+                    value
+                  ),
+              },
+            ]}
           >
             <Input
               disabled={disabled}
-              placeholder="โทรศัพท์บ้าน"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={25}
+              placeholder="เช่น 021234567 หรือ +6621234567"
               prefix={<PhoneOutlined />}
             />
           </Form.Item>
@@ -351,10 +835,24 @@ export default function EmployeeContactStep({
           <Form.Item
             label="โทรศัพท์ที่ทำงาน"
             name="work_phone"
+            rules={[
+              {
+                validator: (
+                  _,
+                  value
+                ) =>
+                  validatePhoneNumber(
+                    value
+                  ),
+              },
+            ]}
           >
             <Input
               disabled={disabled}
-              placeholder="โทรศัพท์ที่ทำงาน"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={25}
+              placeholder="เช่น 021234567, 0812345678 หรือ +6621234567"
               prefix={<PhoneOutlined />}
             />
           </Form.Item>
@@ -668,6 +1166,21 @@ export default function EmployeeContactStep({
               </Form.Item>
             </Col>
 
+            {
+              taxWithholdingEnabled &&
+              !masterLoading &&
+              taxResidencyOptions.length === 0
+            ? (
+              <Col xs={24}>
+                <Alert
+                  showIcon
+                  type="warning"
+                  title="ยังไม่มี Master สถานะผู้มีถิ่นที่อยู่ทางภาษี"
+                  description="กรุณาตั้งค่าที่เมนู สถานะผู้มีถิ่นที่อยู่ทางภาษี ก่อนบันทึกพนักงานที่นำส่งภาษี"
+                />
+              </Col>
+            ) : null}
+
             <Col xs={24} md={12}>
               <Form.Item
                 label="สถานะผู้มีถิ่นที่อยู่ทางภาษี"
@@ -685,8 +1198,11 @@ export default function EmployeeContactStep({
                   disabled={
                     statutoryDisabled
                   }
+                  loading={
+                    masterLoading
+                  }
                   options={
-                    TAX_RESIDENT_OPTIONS
+                    taxResidencyOptions
                   }
                   placeholder="เลือกสถานะผู้มีถิ่นที่อยู่ทางภาษี"
                 />
@@ -724,6 +1240,42 @@ export default function EmployeeContactStep({
                 />
               </Form.Item>
             </Col>
+
+            {taxWithholdingCompanyId ? (
+              <>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="เลขประจำตัวผู้เสียภาษีบริษัท"
+                  >
+                    <Input
+                      readOnly
+                      value={
+                        selectedTaxCompany
+                          ?.tax_id ||
+                        ""
+                      }
+                      placeholder="ยังไม่ได้กำหนด Tax ID ใน Company Master"
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="เลขสาขาภาษี"
+                  >
+                    <Input
+                      readOnly
+                      value={
+                        selectedTaxCompany
+                          ?.branch_no ||
+                        ""
+                      }
+                      placeholder="ยังไม่ได้กำหนดเลขสาขาใน Company Master"
+                    />
+                  </Form.Item>
+                </Col>
+              </>
+            ) : null}
 
             <Col xs={24} md={8}>
               <Form.Item
@@ -789,26 +1341,104 @@ export default function EmployeeContactStep({
 
         {socialRegistered ? (
           <>
+            {
+              !masterLoading &&
+              insuredTypeOptions.length === 0
+            ? (
+              <Col xs={24}>
+                <Alert
+                  showIcon
+                  type="warning"
+                  message="ยังไม่มี Master ประเภทผู้ประกันตน"
+                  description="กรุณาตั้งค่าที่เมนู ประเภทผู้ประกันตน ก่อนบันทึกพนักงานที่ขึ้นทะเบียนประกันสังคม"
+                />
+              </Col>
+            ) : null}
+
             <Col xs={24} md={8}>
               <Form.Item
                 label="เลขประกันสังคม"
                 name="social_security_no"
+                dependencies={[
+                  "citizen_id",
+                  "nationality_id",
+                ]}
                 rules={
                   mode === "create"
                     ? [
                         {
                           required: true,
                           message:
-                            "กรุณากรอกเลขประกันสังคม",
+                            isThaiEmployee
+                              ? "กรุณากรอกเลขบัตรประชาชนในข้อมูลส่วนตัว"
+                              : "กรุณากรอกเลขประกันสังคม",
+                        },
+                        {
+                          validator: (
+                            _,
+                            value
+                          ) => {
+                            if (
+                              !value
+                            ) {
+                              return Promise.resolve();
+                            }
+
+                            if (
+                              isThaiEmployee
+                            ) {
+                              const expected =
+                                String(
+                                  citizenId ||
+                                    ""
+                                )
+                                  .replace(
+                                    /\D/g,
+                                    ""
+                                  )
+                                  .slice(
+                                    0,
+                                    13
+                                  );
+
+                              if (
+                                String(
+                                  value ||
+                                    ""
+                                ) !==
+                                expected
+                              ) {
+                                return Promise.reject(
+                                  new Error(
+                                    "เลขประกันสังคมของพนักงานไทยต้องตรงกับเลขบัตรประชาชน"
+                                  )
+                                );
+                              }
+                            }
+
+                            return Promise.resolve();
+                          },
                         },
                       ]
                     : []
                 }
               >
                 <Input
-                  disabled={statutoryDisabled}
+                  disabled={
+                    statutoryDisabled ||
+                    isThaiEmployee
+                  }
+                  inputMode={
+                    isThaiEmployee
+                      ? "numeric"
+                      : "text"
+                  }
                   maxLength={20}
-                  placeholder="เลขประกันสังคม"
+                  placeholder={
+                    isThaiEmployee
+                      ? "ดึงจากเลขบัตรประชาชนอัตโนมัติ"
+                      : "กรอกเลขผู้ประกันตน"
+                  }
                 />
               </Form.Item>
             </Col>
@@ -831,8 +1461,11 @@ export default function EmployeeContactStep({
               >
                 <Select
                   disabled={statutoryDisabled}
+                  loading={
+                    masterLoading
+                  }
                   options={
-                    INSURED_TYPE_OPTIONS
+                    insuredTypeOptions
                   }
                   placeholder="เลือกประเภทผู้ประกันตน"
                 />
@@ -867,6 +1500,78 @@ export default function EmployeeContactStep({
                 />
               </Form.Item>
             </Col>
+
+            {socialSecurityCompanyId ? (
+              <>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="เลขบัญชีนายจ้างประกันสังคม"
+                  >
+                    <Input
+                      readOnly
+                      value={
+                        selectedSsoRegistration
+                          ?.sso_employer_account_no ||
+                        ""
+                      }
+                      placeholder="ยังไม่ได้ตั้งทะเบียน SSO ของบริษัท"
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="เลขสาขาประกันสังคม"
+                  >
+                    <Input
+                      readOnly
+                      value={
+                        selectedSsoRegistration
+                          ?.sso_branch_no ||
+                        ""
+                      }
+                      placeholder="ยังไม่ได้ตั้งเลขสาขา SSO"
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="บริษัททะเบียน SSO"
+                  >
+                    <Input
+                      readOnly
+                      value={
+                        selectedSsoCompany
+                          ?.company_code
+                          ? `${selectedSsoCompany.company_code} - ${
+                              selectedSsoCompany.company_name_th ||
+                              selectedSsoCompany.company_name_en ||
+                              "-"
+                            }`
+                          : selectedSsoCompany
+                              ?.company_name_th ||
+                            selectedSsoCompany
+                              ?.company_name_en ||
+                            ""
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+
+                {!masterLoading &&
+                !selectedSsoRegistration ? (
+                  <Col xs={24}>
+                    <Alert
+                      showIcon
+                      type="warning"
+                      title="ยังไม่พบทะเบียนประกันสังคมของบริษัทที่เลือก"
+                      description="กรุณาตรวจสอบเมนู ทะเบียนภาษีและประกันสังคมบริษัท เพื่อกำหนดเลขบัญชีนายจ้างและเลขสาขา SSO"
+                    />
+                  </Col>
+                ) : null}
+              </>
+            ) : null}
           </>
         ) : null}
       </Row>

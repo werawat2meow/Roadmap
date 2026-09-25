@@ -276,6 +276,38 @@ export default function EmployeePersonalStep({
     isForeignEmployee,
   ]);
 
+  /*
+   * สถานที่เกิดแบบ จังหวัด / อำเภอ / ตำบล
+   * ใช้เฉพาะพนักงานสัญชาติไทย
+   *
+   * สำคัญ:
+   * ล้างค่าเฉพาะเมื่อระบบยืนยันแล้วว่าเป็น "ต่างชาติ"
+   * เพื่อไม่ให้ค่าเดิมของพนักงานไทยถูกล้างระหว่าง Master Data กำลังโหลด
+   */
+  useEffect(() => {
+    if (
+      !nationalityResolved ||
+      isThaiEmployee
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({
+      birth_province_code:
+        undefined,
+      birth_district_code:
+        undefined,
+      birth_subdistrict_code:
+        undefined,
+      birth_postcode: "",
+      birth_place: "",
+    });
+  }, [
+    form,
+    nationalityResolved,
+    isThaiEmployee,
+  ]);
+
   const titleOptions =
     buildOptions(titles, {
       codeKey: "title_code",
@@ -954,17 +986,22 @@ export default function EmployeePersonalStep({
         </Col>
       </Row>
 
-      <Divider
-        titlePlacement="left"
-        plain
-      >
-        สถานที่เกิด
-      </Divider>
+     
+      {isThaiEmployee ? (
+        <>
+          <Divider
+            titlePlacement="left"
+            plain
+          >
+            สถานที่เกิด
+          </Divider>
 
-      <EmployeeBirthPlaceSelector
-        form={form}
-        disabled={disabled}
-      />
+          <EmployeeBirthPlaceSelector
+            form={form}
+            disabled={disabled}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

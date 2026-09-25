@@ -1511,7 +1511,6 @@ export async function PATCH(req,{ params }) {
   }
 }
 
-
 /* =========================================================
    DELETE /api/admin/employees/[id]
 
@@ -1819,21 +1818,182 @@ export async function DELETE(req,{ params }) {
     }
 
     /* =====================================================
-       9. Prevent Delete If Dependencies Exist
+       9. Soft Delete If Dependencies Exist
+
+       ถ้ามีข้อมูลอ้างอิง:
+       - ห้าม Hard Delete
+       - เก็บ Employee และ History ทั้งหมดไว้
+       - ซ่อนจากรายการปกติด้วย is_deleted = true
+       - ปิด User Account แต่ไม่ลบ Account / Auth User
     ===================================================== */
 
-    if (dependencies.length > 0 && !forceDelete) {
-      return errorResponse(
-        "ไม่สามารถลบพนักงานที่มีข้อมูลอ้างอิงอยู่ กรุณาเปลี่ยนสถานะเป็นลาออกหรือไม่ใช้งานแทน",
-        {
-          status: 409,
+    if (dependencies.length > 0) {
+      const actorId =
+        guard?.access?.id ||
+        null;
 
-          details: {
+      const deletedAt =
+        new Date().toISOString();
+
+      const {
+        data: softDeletedEmployee,
+        error: softDeleteError,
+      } =
+        await supabaseAdmin
+          .from("employees")
+          .update({
+            is_deleted: true,
+            deleted_at: deletedAt,
+            deleted_by: actorId,
+            delete_reason:
+              "มีข้อมูลอ้างอิงในระบบ",
+            updated_at: deletedAt,
+          })
+          .eq("id", id)
+          .select(
+            `
+              id,
+              employee_code,
+              is_deleted,
+              deleted_at,
+              deleted_by,
+              delete_reason
+            `
+          )
+          .single();
+
+      if (softDeleteError) {
+        console.error(
+          "Soft delete employee error:",
+          softDeleteError
+        );
+
+        return errorResponse(
+          "ไม่สามารถลบพนักงานแบบเก็บประวัติได้",
+          {
+            status:
+              getErrorStatus(
+                softDeleteError
+              ),
+
+            error:
+              softDeleteError.message,
+          }
+        );
+      }
+
+      let userAccountDeactivated =
+        false;
+
+      if (account?.id) {
+        const {
+          error:
+            deactivateAccountError,
+        } =
+          await supabaseAdmin
+            .from("user_accounts")
+            .update({
+              is_active: false,
+              updated_at: deletedAt,
+            })
+            .eq("id", account.id);
+
+        if (deactivateAccountError) {
+          console.error(
+            "Deactivate user account after soft delete error:",
+            deactivateAccountError
+          );
+
+          const {
+            error: rollbackSoftDeleteError,
+          } =
+            await supabaseAdmin
+              .from("employees")
+              .update({
+                is_deleted: false,
+                deleted_at: null,
+                deleted_by: null,
+                delete_reason: null,
+                updated_at:
+                  new Date().toISOString(),
+              })
+              .eq("id", id);
+
+          if (rollbackSoftDeleteError) {
+            console.error(
+              "Rollback soft delete employee error:",
+              rollbackSoftDeleteError
+            );
+          }
+
+          return errorResponse(
+            "ไม่สามารถปิดบัญชีผู้ใช้งานของพนักงานได้ จึงยกเลิกการลบแบบเก็บประวัติ",
+            {
+              status:
+                getErrorStatus(
+                  deactivateAccountError
+                ),
+
+              error:
+                deactivateAccountError.message,
+            }
+          );
+        }
+
+        userAccountDeactivated =
+          true;
+      }
+
+      try {
+        await writeActivityLog({
+          moduleName: "employees",
+          actionType: "DELETE",
+          referenceTable: "employees",
+          referenceId: id,
+          description:
+            `ลบพนักงานแบบเก็บประวัติ ${current.employee_code} ${getEmployeeFullNameTh(current)}`,
+
+          oldData: {
+            employee: current,
+            user_account: account,
             dependencies,
-
-            recommendation:
-              "เปลี่ยน status เป็น resigned หรือ inactive",
+            force_delete: forceDelete,
+            delete_auth_user:
+              deleteAuthUser,
           },
+
+          newData: {
+            employee:
+              softDeletedEmployee,
+            delete_type:
+              "soft_delete",
+            user_account_deactivated:
+              userAccountDeactivated,
+          },
+        });
+      } catch (logError) {
+        console.error(
+          "Write employee soft delete log error:",
+          logError
+        );
+      }
+
+      return successResponse(
+        {
+          id,
+          employee_code:
+            current.employee_code,
+          delete_type:
+            "soft_delete",
+          dependencies,
+          user_account_deactivated:
+            userAccountDeactivated,
+          auth_user_deleted:
+            false,
+        },
+        {
+          message:
+            "พนักงานมีข้อมูลอ้างอิง ระบบจึงลบแบบเก็บประวัติและปิดบัญชีผู้ใช้งานเรียบร้อยแล้ว",
         }
       );
     }

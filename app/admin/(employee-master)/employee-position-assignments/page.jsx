@@ -1256,7 +1256,7 @@ export default function EmployeePositionAssignmentsPage() {
         !canCreate
       ) {
         swalError(
-          "คุณไม่มีสิทธิ์เพิ่ม Employee Position Assignment"
+          "คุณไม่มีสิทธิ์จัดพนักงานลงตำแหน่ง"
         );
 
         return;
@@ -1283,7 +1283,7 @@ export default function EmployeePositionAssignmentsPage() {
         !canEdit
       ) {
         swalError(
-          "คุณไม่มีสิทธิ์แก้ไข Employee Position Assignment"
+          "คุณไม่มีสิทธิ์แก้ไขการจัดพนักงานลงตำแหน่ง"
         );
 
         return;
@@ -1337,7 +1337,7 @@ export default function EmployeePositionAssignmentsPage() {
         !canEdit
       ) {
         swalError(
-          "คุณไม่มีสิทธิ์แก้ไข Employee Position Assignment"
+          "คุณไม่มีสิทธิ์แก้ไขการจัดพนักงานลงตำแหน่ง"
         );
 
         return;
@@ -1348,7 +1348,7 @@ export default function EmployeePositionAssignmentsPage() {
         !canCreate
       ) {
         swalError(
-          "คุณไม่มีสิทธิ์เพิ่ม Employee Position Assignment"
+          "คุณไม่มีสิทธิ์จัดพนักงานลงตำแหน่ง"
         );
 
         return;
@@ -1397,14 +1397,14 @@ export default function EmployeePositionAssignmentsPage() {
         ) {
           throw new Error(
             payload?.error ||
-              "ไม่สามารถบันทึก Assignment ได้"
+              "ไม่สามารถบันทึกการจัดพนักงานลงตำแหน่งได้"
           );
         }
 
         swalSuccess(
           isEdit
-            ? "แก้ไข Employee Position Assignment เรียบร้อยแล้ว"
-            : "เพิ่ม Employee Position Assignment เรียบร้อยแล้ว"
+            ? "แก้ไขการจัดพนักงานลงตำแหน่งเรียบร้อยแล้ว"
+            : "จัดพนักงานลงตำแหน่งเรียบร้อยแล้ว"
         );
 
         setModalOpen(
@@ -1455,7 +1455,7 @@ export default function EmployeePositionAssignmentsPage() {
         !canDelete
       ) {
         swalError(
-          "คุณไม่มีสิทธิ์ลบ Employee Position Assignment"
+          "คุณไม่มีสิทธิ์ลบการจัดพนักงานลงตำแหน่ง"
         );
 
         return;
@@ -1508,12 +1508,12 @@ export default function EmployeePositionAssignmentsPage() {
         ) {
           throw new Error(
             payload?.error ||
-              "ไม่สามารถลบ Assignment ได้"
+              "ไม่สามารถลบการจัดพนักงานลงตำแหน่งได้"
           );
         }
 
         swalSuccess(
-          "ลบ Employee Position Assignment เรียบร้อยแล้ว"
+          "ลบการจัดพนักงานลงตำแหน่งเรียบร้อยแล้ว"
         );
 
         setDrawerOpen(
@@ -1632,12 +1632,11 @@ export default function EmployeePositionAssignmentsPage() {
                   level={3}
                   className="!mb-0"
                 >
-                  Employee Position Assignments
+                  จัดพนักงานลงตำแหน่ง
                 </Title>
 
                 <Text type="secondary">
-                  จัดการผู้ครอง Position Slot, Primary, Acting,
-                  Secondary และประวัติช่วงเวลาการครองตำแหน่ง
+                  เลือกตำแหน่ง/อัตราที่กำหนดไว้ แล้วจัดพนักงานเข้าครองตำแหน่ง พร้อมกำหนดประเภทและช่วงเวลาที่มีผล
                 </Text>
               </div>
 
@@ -1742,7 +1741,7 @@ export default function EmployeePositionAssignmentsPage() {
           assignments.length ===
             0 ? (
             <div className="p-12">
-              <Empty description="ยังไม่มี Employee Position Assignment ตามเงื่อนไขที่เลือก" />
+              <Empty description="ยังไม่มีข้อมูลการจัดพนักงานลงตำแหน่งตามเงื่อนไขที่เลือก" />
             </div>
           ) : (
             <EmployeePositionAssignmentTable

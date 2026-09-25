@@ -280,7 +280,8 @@ export async function GET(req) {
       let selfQuery = supabaseAdmin
         .from("employees")
         .select(EMPLOYEE_REPORT_SELECT)
-        .eq("id", currentEmployeeId);
+        .eq("id", currentEmployeeId)
+        .eq("is_deleted", false);
 
       selfQuery = applyReportFilters(
         selfQuery,
@@ -320,7 +321,8 @@ export async function GET(req) {
         {
           count: "exact",
         }
-      );
+      )
+      .eq("is_deleted", false);
 
     query =
       guard.applyEmployeeScope(query);

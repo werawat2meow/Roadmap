@@ -5,9 +5,6 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
-const NO_ACCESS_UUID =
-  "00000000-0000-0000-0000-000000000000";
-
 const USER_ACCOUNT_SELECT = `
   id,
   auth_user_id,
@@ -18,19 +15,24 @@ const USER_ACCOUNT_SELECT = `
   last_login_at,
   created_at,
   updated_at,
-  employees (
+
+  employees:employees!user_accounts_employee_id_fkey (
     id,
     employee_code,
     first_name_th,
     last_name_th,
+    company_id,
     branch_group_id,
     branch_id,
     department_id,
     division_id,
     unit_id,
-    status
+    position_id,
+    status,
+    is_deleted
   ),
-  roles (
+
+  roles:roles!user_accounts_role_id_fkey (
     id,
     role_code,
     role_name,
@@ -45,39 +47,54 @@ function jsonError(error, status = 500) {
       success: false,
       error,
     },
-    { status }
+    {
+      status,
+    }
   );
 }
 
-function normalizeSearch(value) {
+function cleanText(value) {
   return String(value || "")
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 function fullName(employee) {
-  return `${employee?.first_name_th || ""} ${
-    employee?.last_name_th || ""
-  }`.trim();
+  return [
+    employee?.first_name_th,
+    employee?.last_name_th,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
 function mapUserAccountRow(item) {
   return {
-    id: item?.id,
-    auth_user_id: item?.auth_user_id || null,
-    employee_id: item?.employee_id || null,
-    role_id: item?.role_id || null,
-    username: item?.username || "",
-    is_active: Boolean(item?.is_active),
-    last_login_at: item?.last_login_at || null,
-    created_at: item?.created_at || null,
-    updated_at: item?.updated_at || null,
+    id: item?.id || null,
+    auth_user_id:
+      item?.auth_user_id || null,
+    employee_id:
+      item?.employee_id || null,
+    role_id:
+      item?.role_id || null,
+    username:
+      item?.username || "",
+    is_active:
+      Boolean(item?.is_active),
+    last_login_at:
+      item?.last_login_at || null,
+    created_at:
+      item?.created_at || null,
+    updated_at:
+      item?.updated_at || null,
 
     employee_code:
       item?.employees?.employee_code || "-",
     employee_name:
       fullName(item?.employees) || "-",
 
+    company_id:
+      item?.employees?.company_id || null,
     branch_group_id:
       item?.employees?.branch_group_id || null,
     branch_id:
@@ -88,6 +105,12 @@ function mapUserAccountRow(item) {
       item?.employees?.division_id || null,
     unit_id:
       item?.employees?.unit_id || null,
+    position_id:
+      item?.employees?.position_id || null,
+    employee_status:
+      item?.employees?.status || null,
+    employee_is_deleted:
+      Boolean(item?.employees?.is_deleted),
 
     role_code:
       item?.roles?.role_code || "-",
@@ -100,71 +123,100 @@ function mapUserAccountRow(item) {
   };
 }
 
-function matchesSearch(item, search) {
-  if (!search) {
-    return true;
-  }
-
-  const values = [
-    item?.username,
-    item?.employee_code,
-    item?.employee_name,
-    item?.role_code,
-    item?.role_name,
-  ];
-
-  return values.some((value) =>
-    String(value || "")
-      .toLowerCase()
-      .includes(search)
-  );
-}
-
-async function resolveScopedEmployeeIds(guard) {
+async function getScopedEmployeeIds(
+  guard
+) {
   if (guard?.hasAllScope) {
     return null;
   }
 
-  let query = supabaseAdmin
-    .from("employees")
-    .select("id");
+  const ids = [];
+  const pageSize = 500;
+  let page = 0;
 
-  query = guard.applyEmployeeScope(query);
+  while (true) {
+    const from =
+      page * pageSize;
+    const to =
+      from + pageSize - 1;
 
-  const { data, error } = await query;
+    let query =
+      supabaseAdmin
+        .from("employees")
+        .select(`
+          id,
+          company_id,
+          branch_group_id,
+          branch_id,
+          department_id,
+          division_id,
+          unit_id
+        `)
+        .eq("is_deleted", false)
+        .order(
+          "id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        );
 
-  if (error) {
-    throw error;
+    query =
+      guard.applyEmployeeScope(
+        query
+      );
+
+    const {
+      data,
+      error,
+    } =
+      await query;
+
+    if (error) {
+      throw error;
+    }
+
+    const rows =
+      data || [];
+
+    ids.push(
+      ...rows
+        .map(
+          (item) =>
+            item?.id
+        )
+        .filter(Boolean)
+    );
+
+    if (
+      rows.length <
+      pageSize
+    ) {
+      break;
+    }
+
+    page += 1;
   }
 
-  return (data || [])
-    .map((item) => item?.id)
-    .filter(Boolean)
-    .map(String);
+  return [
+    ...new Set(ids),
+  ];
 }
 
-async function assertEmployeeInScope(
-  guard,
+async function loadEmployeeForScope(
   employeeId
 ) {
   if (!employeeId) {
-    if (guard?.hasAllScope) {
-      return {
-        ok: true,
-        employee: null,
-      };
-    }
-
-    return {
-      ok: false,
-      response: jsonError(
-        "บัญชีผู้ใช้งานต้องผูกกับพนักงานที่อยู่ในขอบเขตสิทธิ์ของคุณ",
-        403
-      ),
-    };
+    return null;
   }
 
-  const { data: employee, error } =
+  const {
+    data,
+    error,
+  } =
     await supabaseAdmin
       .from("employees")
       .select(`
@@ -172,50 +224,32 @@ async function assertEmployeeInScope(
         employee_code,
         first_name_th,
         last_name_th,
+        company_id,
         branch_group_id,
         branch_id,
         department_id,
         division_id,
         unit_id,
-        status
+        position_id,
+        status,
+        is_deleted
       `)
-      .eq("id", employeeId)
+      .eq(
+        "id",
+        employeeId
+      )
       .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  if (!employee) {
-    return {
-      ok: false,
-      response: jsonError(
-        "ไม่พบพนักงานที่เลือก",
-        404
-      ),
-    };
-  }
-
-  if (
-    !guard?.hasAllScope &&
-    !guard.canAccessEmployee(employee)
-  ) {
-    return {
-      ok: false,
-      response: jsonError(
-        "พนักงานที่เลือกอยู่นอกขอบเขตสิทธิ์ของคุณ",
-        403
-      ),
-    };
-  }
-
-  return {
-    ok: true,
-    employee,
-  };
+  return data || null;
 }
 
-async function validateRole(roleId) {
+async function validateRole(
+  roleId
+) {
   if (!roleId) {
     return {
       ok: true,
@@ -223,13 +257,20 @@ async function validateRole(roleId) {
     };
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("roles")
-    .select(
-      "id, role_code, role_name, is_active, is_system"
-    )
-    .eq("id", roleId)
-    .maybeSingle();
+  const {
+    data,
+    error,
+  } =
+    await supabaseAdmin
+      .from("roles")
+      .select(
+        "id, role_code, role_name, is_active, is_system"
+      )
+      .eq(
+        "id",
+        roleId
+      )
+      .maybeSingle();
 
   if (error) {
     throw error;
@@ -238,20 +279,25 @@ async function validateRole(roleId) {
   if (!data) {
     return {
       ok: false,
-      response: jsonError(
-        "ไม่พบ Role ที่เลือก",
-        400
-      ),
+      response:
+        jsonError(
+          "ไม่พบ Role ที่เลือก",
+          400
+        ),
     };
   }
 
-  if (data.is_active === false) {
+  if (
+    data.is_active ===
+    false
+  ) {
     return {
       ok: false,
-      response: jsonError(
-        "Role ที่เลือกไม่ได้เปิดใช้งาน",
-        400
-      ),
+      response:
+        jsonError(
+          "Role ที่เลือกไม่ได้เปิดใช้งาน",
+          400
+        ),
     };
   }
 
@@ -264,139 +310,209 @@ async function validateRole(roleId) {
 /* =========================================================
    GET /api/admin/user-accounts
 
-   Permission:
-   access.user_accounts.view
-
-   Scope:
-   ใช้ requireScopedAccess ของกลางจาก Login
-   แล้ว Scope ผ่าน employee ของ user account
+   Collection route:
+   - ไม่มี params.id
+   - ใช้ Permission access.user_accounts.view
+   - จำกัดข้อมูลตาม Employee Scope
 ========================================================= */
 export async function GET(req) {
   try {
-    const guard = await requireScopedAccess(
-      "access.user_accounts",
-      "view",
-      {
-        scopeType: "employee",
-      }
-    );
+    const guard =
+      await requireScopedAccess(
+        "access.user_accounts",
+        "view",
+        {
+          scopeType:
+            "employee",
+        }
+      );
 
     if (!guard.ok) {
       return guard.response;
     }
 
-    const { searchParams } = new URL(req.url);
+    const {
+      searchParams,
+    } =
+      new URL(req.url);
 
-    const search = normalizeSearch(
-      searchParams.get("search")
-    );
+    const search =
+      cleanText(
+        searchParams.get(
+          "search"
+        )
+      ).toLowerCase();
 
-    const status = String(
-      searchParams.get("status") || ""
-    ).trim();
-
-    const page = Math.max(
-      Number(searchParams.get("page") || 1),
-      1
-    );
-
-    const pageSize = Math.min(
+    const page =
       Math.max(
         Number(
-          searchParams.get("pageSize") || 20
-        ),
+          searchParams.get(
+            "page"
+          )
+        ) || 1,
         1
-      ),
-      100
-    );
+      );
+
+    const pageSize =
+      Math.min(
+        Math.max(
+          Number(
+            searchParams.get(
+              "pageSize"
+            )
+          ) || 20,
+          1
+        ),
+        100
+      );
 
     const scopedEmployeeIds =
-      await resolveScopedEmployeeIds(guard);
+      await getScopedEmployeeIds(
+        guard
+      );
 
-    let query = supabaseAdmin
-      .from("user_accounts")
-      .select(USER_ACCOUNT_SELECT)
-      .order("created_at", {
-        ascending: false,
+    if (
+      Array.isArray(
+        scopedEmployeeIds
+      ) &&
+      scopedEmployeeIds.length ===
+        0
+    ) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        pagination: {
+          page,
+          pageSize,
+          total: 0,
+          totalPages: 0,
+        },
       });
+    }
 
-    if (scopedEmployeeIds !== null) {
-      if (!scopedEmployeeIds.length) {
-        query = query.eq(
-          "employee_id",
-          NO_ACCESS_UUID
+    let query =
+      supabaseAdmin
+        .from(
+          "user_accounts"
+        )
+        .select(
+          USER_ACCOUNT_SELECT
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
         );
-      } else {
-        query = query.in(
+
+    if (
+      Array.isArray(
+        scopedEmployeeIds
+      )
+    ) {
+      query =
+        query.in(
           "employee_id",
           scopedEmployeeIds
         );
-      }
     }
 
-    const { data, error } = await query;
+    const {
+      data,
+      error,
+    } =
+      await query;
 
     if (error) {
       throw error;
     }
 
-    const scopedRows = (data || []).map(
-      mapUserAccountRow
-    );
+    let mapped =
+      (data || [])
+        .map(
+          mapUserAccountRow
+        );
 
-    const summary = {
-      total: scopedRows.length,
-      active: scopedRows.filter(
-        (item) => item.is_active
-      ).length,
-      inactive: scopedRows.filter(
-        (item) => !item.is_active
-      ).length,
-      never_login: scopedRows.filter(
-        (item) => !item.last_login_at
-      ).length,
-    };
+    /*
+     * Soft-deleted Employee
+     * ไม่ควรนำกลับมาให้เลือกกำหนด Scope ใหม่
+     *
+     * สำหรับ account ที่ไม่ได้ผูก employee:
+     * - แสดงได้เฉพาะผู้มี all scope
+     */
+    mapped =
+      mapped.filter(
+        (item) => {
+          if (
+            item.employee_id &&
+            item.employee_is_deleted
+          ) {
+            return false;
+          }
 
-    const filteredRows = scopedRows.filter(
-      (item) => {
-        if (
-          status === "active" &&
-          !item.is_active
-        ) {
-          return false;
+          if (
+            !guard?.hasAllScope &&
+            !item.employee_id
+          ) {
+            return false;
+          }
+
+          return true;
         }
+      );
 
-        if (
-          status === "inactive" &&
-          item.is_active
-        ) {
-          return false;
-        }
+    if (search) {
+      mapped =
+        mapped.filter(
+          (item) => {
+            const haystack = [
+              item.username,
+              item.employee_code,
+              item.employee_name,
+              item.role_code,
+              item.role_name,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
 
-        return matchesSearch(item, search);
-      }
-    );
+            return haystack.includes(
+              search
+            );
+          }
+        );
+    }
 
-    const total = filteredRows.length;
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
+    const total =
+      mapped.length;
+
+    const from =
+      (page - 1) *
+      pageSize;
+
+    const to =
+      from +
+      pageSize;
+
+    const paginatedData =
+      mapped.slice(
+        from,
+        to
+      );
 
     return NextResponse.json({
       success: true,
-      data: filteredRows.slice(from, to),
-      summary,
+      data:
+        paginatedData,
       pagination: {
         page,
         pageSize,
         total,
-        totalPages: Math.max(
-          Math.ceil(total / pageSize),
-          1
-        ),
-      },
-      scope: {
-        unrestricted:
-          scopedEmployeeIds === null,
+        totalPages:
+          Math.ceil(
+            total /
+              pageSize
+          ),
       },
     });
   } catch (error) {
@@ -419,38 +535,51 @@ export async function GET(req) {
    access.user_accounts.create
 
    Scope:
-   employee_id ที่เลือกต้องผ่าน Scope ของ Login User
+   employee ที่ผูกกับ account ต้องอยู่ใน Scope
 ========================================================= */
 export async function POST(req) {
-  let createdAuthUserId = null;
-  let userAccountPersisted = false;
+  let createdAuthUserId =
+    null;
 
   try {
-    const guard = await requireScopedAccess(
-      "access.user_accounts",
-      "create",
-      {
-        scopeType: "employee",
-      }
-    );
+    const guard =
+      await requireScopedAccess(
+        "access.user_accounts",
+        "create",
+        {
+          scopeType:
+            "employee",
+        }
+      );
 
     if (!guard.ok) {
       return guard.response;
     }
 
-    const body = await req.json();
+    const body =
+      await req.json();
 
     const employee_id =
-      body?.employee_id || null;
-    const role_id = body?.role_id || null;
-    const username = String(
-      body?.username || ""
-    ).trim();
-    const password = String(
-      body?.password || ""
-    ).trim();
+      body?.employee_id ||
+      null;
+
+    const role_id =
+      body?.role_id ||
+      null;
+
+    const username =
+      cleanText(
+        body?.username
+      );
+
+    const password =
+      cleanText(
+        body?.password
+      );
+
     const is_active =
-      body?.is_active ?? true;
+      body?.is_active ??
+      true;
 
     if (!username) {
       return jsonError(
@@ -466,41 +595,89 @@ export async function POST(req) {
       );
     }
 
-    if (password.length < 6) {
+    if (
+      password.length < 6
+    ) {
       return jsonError(
         "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
         400
       );
     }
 
-    const employeeAccess =
-      await assertEmployeeInScope(
-        guard,
-        employee_id
-      );
+    if (employee_id) {
+      const employee =
+        await loadEmployeeForScope(
+          employee_id
+        );
 
-    if (!employeeAccess.ok) {
-      return employeeAccess.response;
+      if (!employee) {
+        return jsonError(
+          "ไม่พบพนักงานที่เลือก",
+          404
+        );
+      }
+
+      if (
+        employee.is_deleted ===
+        true
+      ) {
+        return jsonError(
+          "ไม่สามารถสร้างบัญชีให้พนักงานที่ถูกลบออกจากระบบแล้ว",
+          400
+        );
+      }
+
+      if (
+        !guard?.hasAllScope &&
+        !guard.canAccessEmployee(
+          employee
+        )
+      ) {
+        return jsonError(
+          "พนักงานที่เลือกอยู่นอกขอบเขตสิทธิ์ของคุณ",
+          403
+        );
+      }
+    } else if (
+      !guard?.hasAllScope
+    ) {
+      return jsonError(
+        "บัญชีผู้ใช้งานต้องผูกกับพนักงานที่อยู่ในขอบเขตสิทธิ์ของคุณ",
+        403
+      );
     }
 
-    const roleCheck = await validateRole(
-      role_id
-    );
+    const roleResult =
+      await validateRole(
+        role_id
+      );
 
-    if (!roleCheck.ok) {
-      return roleCheck.response;
+    if (
+      !roleResult.ok
+    ) {
+      return roleResult.response;
     }
 
     const {
-      data: existingUser,
-      error: existingUserError,
-    } = await supabaseAdmin
-      .from("user_accounts")
-      .select("id")
-      .eq("username", username)
-      .maybeSingle();
+      data:
+        existingUser,
+      error:
+        existingUserError,
+    } =
+      await supabaseAdmin
+        .from(
+          "user_accounts"
+        )
+        .select("id")
+        .eq(
+          "username",
+          username
+        )
+        .maybeSingle();
 
-    if (existingUserError) {
+    if (
+      existingUserError
+    ) {
       throw existingUserError;
     }
 
@@ -513,19 +690,31 @@ export async function POST(req) {
 
     if (employee_id) {
       const {
-        data: existingEmployee,
-        error: existingEmployeeError,
-      } = await supabaseAdmin
-        .from("user_accounts")
-        .select("id")
-        .eq("employee_id", employee_id)
-        .maybeSingle();
+        data:
+          existingEmployee,
+        error:
+          existingEmployeeError,
+      } =
+        await supabaseAdmin
+          .from(
+            "user_accounts"
+          )
+          .select("id")
+          .eq(
+            "employee_id",
+            employee_id
+          )
+          .maybeSingle();
 
-      if (existingEmployeeError) {
+      if (
+        existingEmployeeError
+      ) {
         throw existingEmployeeError;
       }
 
-      if (existingEmployee) {
+      if (
+        existingEmployee
+      ) {
         return jsonError(
           "พนักงานคนนี้มีบัญชีผู้ใช้งานแล้ว",
           400
@@ -534,119 +723,154 @@ export async function POST(req) {
     }
 
     const hashedPassword =
-      await bcrypt.hash(password, 10);
+      await bcrypt.hash(
+        password,
+        10
+      );
 
-    const fakeEmail = `${username.toLowerCase()}_${Date.now()}@local.user`;
+    const fakeEmail =
+      `${username
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9._-]/g,
+          "_"
+        )}_${Date.now()}@local.user`;
 
     const {
-      data: createdAuthUser,
-      error: authError,
+      data:
+        createdAuthUser,
+      error:
+        authError,
     } =
-      await supabaseAdmin.auth.admin.createUser({
-        email: fakeEmail,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          username,
-        },
-      });
+      await supabaseAdmin
+        .auth
+        .admin
+        .createUser({
+          email:
+            fakeEmail,
+          password,
+          email_confirm:
+            true,
+          user_metadata: {
+            username,
+          },
+        });
 
     if (authError) {
-      const message = String(
-        authError?.message || ""
-      ).toLowerCase();
-
-      if (
-        message.includes(
-          "already been registered"
-        )
-      ) {
-        return jsonError(
-          "บัญชี Auth ของ Username นี้มีอยู่แล้ว กรุณาใช้ Username อื่น",
-          400
-        );
-      }
-
       throw authError;
     }
 
     createdAuthUserId =
-      createdAuthUser?.user?.id || null;
+      createdAuthUser
+        ?.user
+        ?.id ||
+      null;
 
-    if (!createdAuthUserId) {
+    if (
+      !createdAuthUserId
+    ) {
       throw new Error(
-        "ไม่สามารถสร้าง Auth User ได้"
+        "ไม่สามารถสร้าง auth user ได้"
       );
     }
 
-    const { data, error } =
+    const {
+      data,
+      error,
+    } =
       await supabaseAdmin
-        .from("user_accounts")
+        .from(
+          "user_accounts"
+        )
         .insert({
-          auth_user_id: createdAuthUserId,
+          auth_user_id:
+            createdAuthUserId,
           employee_id,
           role_id,
           username,
           is_active,
-          password_hash: hashedPassword,
+          password_hash:
+            hashedPassword,
         })
-        .select(USER_ACCOUNT_SELECT)
+        .select(
+          USER_ACCOUNT_SELECT
+        )
         .single();
 
     if (error) {
       throw error;
     }
 
-    userAccountPersisted = true;
-
-    const mapped = mapUserAccountRow(data);
+    const mapped =
+      mapUserAccountRow(
+        data
+      );
 
     await writeActivityLog({
-      module_name: "user_accounts",
-      action_type: "create",
-      reference_table: "user_accounts",
-      reference_id: mapped.id,
-      description: `เพิ่มผู้ใช้งานระบบ ${mapped.username}`,
+      module_name:
+        "user_accounts",
+      action_type:
+        "create",
+      reference_table:
+        "user_accounts",
+      reference_id:
+        mapped.id,
+      description:
+        `เพิ่มผู้ใช้งานระบบ ${mapped.username}`,
       new_data: {
-        employee_id: mapped.employee_id,
-        role_id: mapped.role_id,
-        username: mapped.username,
-        is_active: mapped.is_active,
+        auth_user_id:
+          mapped.auth_user_id,
+        employee_id:
+          mapped.employee_id,
+        role_id:
+          mapped.role_id,
+        username:
+          mapped.username,
+        is_active:
+          mapped.is_active,
         employee_code:
           mapped.employee_code,
         employee_name:
           mapped.employee_name,
-        role_code: mapped.role_code,
-        role_name: mapped.role_name,
+        role_code:
+          mapped.role_code,
+        role_name:
+          mapped.role_name,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "เพิ่มผู้ใช้งานระบบสำเร็จ",
-      data: mapped,
+      message:
+        "เพิ่มผู้ใช้งานระบบสำเร็จ",
+      data:
+        mapped,
     });
   } catch (error) {
+    if (
+      createdAuthUserId
+    ) {
+      try {
+        await supabaseAdmin
+          .auth
+          .admin
+          .deleteUser(
+            createdAuthUserId
+          );
+      } catch (
+        cleanupError
+      ) {
+        console.error(
+          "CREATE_USER_ACCOUNT_AUTH_CLEANUP_ERROR:",
+          cleanupError
+        );
+      }
+    }
+
     console.error(
       "CREATE_USER_ACCOUNT_ERROR:",
       error
     );
-
-    if (
-      createdAuthUserId &&
-      !userAccountPersisted
-    ) {
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(
-          createdAuthUserId
-        );
-      } catch (rollbackError) {
-        console.error(
-          "ROLLBACK_AUTH_USER_ERROR:",
-          rollbackError
-        );
-      }
-    }
 
     return jsonError(
       error?.message ||

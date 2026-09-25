@@ -537,7 +537,7 @@ export const Menu = [
     title: "ORGANIZATION",
     icon: "BankOutlined",
     items: [
-      { label: "โครงสร้างองค์กรตามแผนก", href: "/admin/divisional-structures",icon: <ShopOutlined />,permission: "ems.org_structure.view",},
+      { label: "โครงสร้างองค์กรตามแผนก", href: "/admin/divisional-structures",icon: <ShopOutlined />,permission: "ems.org_structure.view",},     /// //////////////     เกินมา
       { label: "การครองตำแหน่งองค์กร",href: "/admin/employee-position-assignments",icon: <ShopOutlined />,permission: "ems.org_structure.view",},
       { label: "Position Slot", href: "/admin//admin/org-position-slots",icon: <ShopOutlined />,permission: "ems.org_structure.view",},
       { label: "บริษัท", "href": "/admin/companies", "icon": "ShopOutlined", "permission": "ems.companies.view" },
@@ -603,12 +603,81 @@ export const Menu = [
     title: "TAX & SOCIAL SECURITY",
     icon: "SafetyCertificateOutlined",
     items: [
-      { label: "โปรไฟล์ภาษี", "href": "/admin/tax-profiles", "icon": "SafetyCertificateOutlined", "permission": "ems.tax_profiles.view" },
-      { label: "อัตราภาษี", "href": "/admin/tax-rates", "icon": "BarChartOutlined", "permission": "ems.tax_rates.view" },
-      { label: "ประกันสังคม", "href": "/admin/social-security", "icon": "SafetyOutlined", "permission": "ems.social_security.view" },
-      { label: "ภาษีและประกันสังคมพนักงาน", href: "/admin/employee-statutory-profiles", icon: "IdcardOutlined", permission: "ems.employee_statutory_profiles.view",},
-      { label: "กองทุนสำรองเลี้ยงชีพ", "href": "/admin/provident-funds", "icon": "WalletOutlined", "permission": "ems.provident_funds.view" }
-    ]
+      {
+        label: "ทะเบียนภาษีและประกันสังคมบริษัท",
+        href: "/admin/company-statutory-settings",
+        icon: "BankOutlined",
+        permission: "ems.company_statutory_settings.view",
+      },
+
+      {
+        label: "* ค่าคงที่ภาษีและประกันสังคม",
+        href: "/admin/statutory-settings",
+        icon: "SettingOutlined",
+        permission: "ems.statutory_settings.view",
+      },
+
+      {
+        label: "* อัตราภาษี",
+        href: "/admin/tax-rates",
+        icon: "BarChartOutlined",
+        permission: "ems.tax_rates.view",
+      },
+
+      {
+        label: "ค่าลดหย่อนภาษี",
+        href: "/admin/tax-deductions",
+        icon: "MinusSquareOutlined",
+        permission: "ems.tax_deductions.view",
+      },
+
+      {
+        label: "ประเภทผู้ประกันตน",
+        href: "/admin/sso-categories",
+        icon: "TeamOutlined",
+        permission: "ems.sso_categories.view",
+      },
+
+      {
+        label: "สถานะผู้มีถิ่นที่อยู่ทางภาษี",
+        href: "/admin/tax-residency-status",
+        icon: "GlobalOutlined",
+        permission: "ems.tax_residency.view",
+      },
+      {
+        label: "โปรไฟล์ภาษี",
+        href: "/admin/tax-profiles",
+        icon: "SafetyCertificateOutlined",
+        permission: "ems.tax_profiles.view",
+      },
+
+      {
+        label: "ประกันสังคม",
+        href: "/admin/social-security",
+        icon: "SafetyOutlined",
+        permission: "ems.social_security.view",
+      },
+
+      {
+        label: "กองทุนเงินทดแทน",
+        href: "/admin/workmen-compensation-fund",
+        icon: "SafetyOutlined",
+        permission: "ems.wcf.view",
+      },
+
+      {
+        label: "กองทุนสำรองเลี้ยงชีพ",
+        href: "/admin/provident-funds",
+        icon: "WalletOutlined",
+        permission: "ems.provident_funds.view",
+      },
+      {
+        label: "ภาษีและประกันสังคมพนักงาน",
+        href: "/admin/employee-statutory-profiles",
+        icon: "IdcardOutlined",
+        permission: "ems.employee_statutory_profiles.view",
+      },
+    ],
   },
 
   {
@@ -831,23 +900,6 @@ export const MenuHRMS = [
   },
 
   {
-    title: "ORGANIZATION",
-    icon: "BankOutlined",
-    items: [
-      { label: "โครงสร้างองค์กรตามแผนก", href: "/admin/divisional-structures", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-      { label: "การครองตำแหน่งองค์กร", href: "/admin/employee-position-assignments", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-      { label: "Position Slot", href: "/admin/org-position-slots", icon: "ShopOutlined", permission: "ems.org_structure.view" },
-      { label: "ผังโครงสร้างองค์กร (Org Chart)", href: "/admin/org-chart", icon: "ApartmentOutlined", permission: "ems.org_chart.view" },
-      { label: "บริษัท", href: "/admin/companies", icon: "ShopOutlined", permission: "ems.companies.view" },
-      { label: "กรุ๊ปสังกัด", href: "/admin/branch-groups", icon: "AppstoreOutlined", permission: "ems.branch_groups.view" },
-      { label: "สังกัด", href: "/admin/branches", icon: "EnvironmentOutlined", permission: "ems.branches.view" },
-      { label: "แผนก", href: "/admin/departments", icon: "ApartmentOutlined", permission: "ems.departments.view" },
-      { label: "ฝ่าย", href: "/admin/divisions", icon: "ClusterOutlined", permission: "ems.divisions.view" },
-      { label: "หน่วยงาน", href: "/admin/units", icon: "TeamOutlined", permission: "ems.units.view" }
-    ]
-  },
-
-  {
     title: "JOB ARCHITECTURE",
     icon: "ProfileOutlined",
     items: [
@@ -861,13 +913,7 @@ export const MenuHRMS = [
       { label: "เส้นทางอาชีพ", href: "/admin/career-paths", icon: "ApartmentOutlined", permission: "ems.career_paths.view" }
     ]
   },
-  // ฟาง HRM 
-  // รองรับทั้ง Expat ต่างชาติ + แรงงาน MOU เช่น เมียนมา/ลาว/กัมพูชา ผมแนะนำขยายให้ครบวงจรประมาณนี้ครับ โดยยัง ไม่เอาเงินเดือน/Payroll มาปนในหมวดนี้
 
-
-  // ฟังก์ชั่นหลักๆๆ 
-   // 1. 
-  // User Manual ระบบ HRMS  คู่มือการใช้งานระบบ 
   {
     title: "EMPLOYEE COMPLIANCE",
     icon: "SafetyCertificateOutlined",
@@ -988,13 +1034,26 @@ export const MenuHRMS = [
     title: "TAX & SOCIAL SECURITY",
     icon: "SafetyCertificateOutlined",
     items: [
-      // { label: "โปรไฟล์ภาษี", href: "/admin/tax-profiles", icon: "SafetyCertificateOutlined", permission: "ems.tax_profiles.view" },
-      // { label: "อัตราภาษี", href: "/admin/tax-rates", icon: "BarChartOutlined", permission: "ems.tax_rates.view" },
-      // { label: "ประกันสังคม", href: "/admin/social-security", icon: "SafetyOutlined", permission: "ems.social_security.view" },
+      // มีอยู่แล้ว
+      { label: "โปรไฟล์ภาษี", href: "/admin/tax-profiles", icon: "SafetyCertificateOutlined", permission: "ems.tax_profiles.view" },
+      { label: "อัตราภาษี", href: "/admin/tax-rates", icon: "BarChartOutlined", permission: "ems.tax_rates.view" },
+      { label: "ประกันสังคม", href: "/admin/social-security", icon: "SafetyOutlined", permission: "ems.social_security.view" },
+      { label: "กองทุนสำรองเลี้ยงชีพ", href: "/admin/provident-funds", icon: "WalletOutlined", permission: "ems.provident_funds.view" },
 
-      { label: "กองทุนสำรองเลี้ยงชีพ", href: "/admin/provident-funds", icon: "WalletOutlined", permission: "ems.provident_funds.view" }
+      // ★ ต้องมี ก่อนรับพนักงานใหม่คนแรกเข้าระบบ (ผูกกับข้อมูลพนักงานโดยตรง)
+      { label: "ค่าลดหย่อนภาษี *", href: "/admin/tax-deductions", icon: "MinusSquareOutlined", permission: "ems.tax_deductions.view" },
+      { label: "ประเภทผู้ประกันตน *", href: "/admin/sso-categories", icon: "TeamOutlined", permission: "ems.sso_categories.view" },
+      { label: "สถานะผู้มีถิ่นที่อยู่ทางภาษี *", href: "/admin/tax-residency-status", icon: "GlobalOutlined", permission: "ems.tax_residency.view" },
+
+      // สำคัญระดับบริษัท ตั้งครั้งเดียวแต่ต้องมีก่อน go-live payroll
+      { label: "กองทุนเงินทดแทน *", href: "/admin/workmen-compensation-fund", icon: "SafetyOutlined", permission: "ems.wcf.view" },
+
+      // ใช้งานหลัง payroll run แล้ว ไม่ blocking การรับพนักงานใหม่
+      { label: "หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)", href: "/admin/withholding-certificates", icon: "FileProtectOutlined", permission: "ems.withholding_certs.view" },
+      { label: "แบบยื่นภาษี (ภ.ง.ด.1 / 1ก)", href: "/admin/tax-filings", icon: "FileTextOutlined", permission: "ems.tax_filings.view" }
     ]
   },
+
 
   {
     title: "INSURANCE (ประกัน)",
@@ -1244,6 +1303,76 @@ export const MenuHRMS = [
 ];
 
 
+/*
+{
+  "version": 1,
+  "purpose": "เพิ่ม Benefit Setup และทางลัดสิทธิ์สวัสดิการพนักงานใน HR Dashboard",
+  "dashboard_action": {
+    "key": "benefitEntitlements",
+    "label": "สิทธิ์สวัสดิการพนักงาน",
+    "description": "ตรวจและจัดการสิทธิ์สวัสดิการของพนักงานตามแผนและกฎเกณฑ์",
+    "href": "/admin/benefit-entitlements",
+    "permission": "benefits.entitlements.view",
+    "icon": "SolutionOutlined"
+  },
+  "setup_group": {
+    "key": "employee-benefits",
+    "order": 6,
+    "title": "สวัสดิการพนักงาน",
+    "subtitle": "ตั้งค่าประเภท แผน และกฎเกณฑ์ก่อนให้ระบบคำนวณ/ผูกสิทธิ์ตอนเพิ่มพนักงาน",
+    "icon": "SolutionOutlined",
+    "employeeSetupLevel": "required",
+    "items": [
+      {
+        "label": "ประเภทสวัสดิการ",
+        "href": "/admin/benefit-types",
+        "permission": "benefits.benefit_types.view"
+      },
+      {
+        "label": "แผนสวัสดิการ",
+        "href": "/admin/benefit-plans",
+        "permission": "benefits.benefit_plans.view"
+      },
+      {
+        "label": "กฎเกณฑ์สวัสดิการ (Policy Rules)",
+        "href": "/admin/benefit-policy-rules",
+        "permission": "benefits.policy_rules.view"
+      },
+      {
+        "label": "สิทธิ์สวัสดิการพนักงาน (Entitlements)",
+        "href": "/admin/benefit-entitlements",
+        "permission": "benefits.entitlements.view"
+      }
+    ]
+  },
+  "recommended_dashboard_roles": [
+    "HR_OFFICER",
+    "HR_SUPERVISOR",
+    "ASST_HR_MANAGER",
+    "HR_MANAGER",
+    "EMS_ADMIN"
+  ],
+  "integration_notes": [
+    "DashboardWorkHub.jsx ไม่ต้องแก้ ถ้า dashboardWorkHubConfig.js merge JSON นี้เข้า DASHBOARD_ACTIONS และ SETUP_GUIDE_GROUPS",
+    "Permission ยังคงเป็นตัวตัดสินว่ารายการใดจะแสดง",
+    "Benefit Types / Plans / Policy Rules เป็น Master Setup",
+    "Benefit Entitlements เป็นข้อมูลสิทธิ์รายพนักงาน ไม่ควร Hardcode ใน Employee Wizard"
+  ],
+  "integration": {
+    "minimal_files": 2,
+    "files": [
+      "app/admin/dashboardWorkHubConfig.js (หรือ path ปัจจุบันของไฟล์ dashboardWorkHubConfig ในโปรเจกต์)",
+      "dashboard-benefit-setup.json"
+    ],
+    "dashboard_work_hub_change_required": false,
+    "reason": "DashboardWorkHub.jsx อ่าน DASHBOARD_ACTIONS / ROLE_DAILY_ACTION_KEYS / SETUP_GUIDE_GROUPS จาก dashboardWorkHubConfig อยู่แล้ว และ SolutionOutlined มีอยู่ใน ICONS แล้ว"
+  }
+}
+
+
+
+
+*/
 // /admin/employee-statutory-profiles    หน้านี้ ต้องทำ Filter ให้ User สามารถดูข้อมูลภาษี และ ระกันสังคม ได้ ที่จ่ายไม่ตรงกัน แต่ละบริษัท และ แต่ละสาขา และ แต่ละหน่วยงานได้
 
 /*
@@ -1318,131 +1447,3 @@ Wage = xxx บาท / วัน
 
 
 */
-
-/*
-  ทำไฟล์ Excell ในการ insert  Database  Employees  import  
-
-  เก็บรหัสพนักงานเก่า 
- 
-*/
-/***
- * 
- * 
- * 
- * 
- * 
- * 
- * Phase 1 (ต้องมี ก่อนทำ Employee)
-  ✅ Payroll Cycles
-  ✅ Payroll Companies
-  ✅ Payroll Groups
-  ✅ Salary Components   รายการเงินเดือนนน   
-  ✅ Tax Profiles     โปรไฟล์ภาษี เริ่ม 
-  ✅ Banks      เสร็จแล้ววว 
-  ✅ Payment Methods   เสร็จแล้ววว
-
-
-  แล้วไปที่ HR Master เสร็จ แล้ว ไป Employee Master ได้เลยย
-  เสร็จแล้วสามารถไปทำ Employee ได้เลย เพราะพนักงานจะอ้างอิงข้อมูลเหล่านี้
-
-  /* =========================================================
-   * PAYROLL SETUP
-    
-  {
-    title: "PAYROLL SETUP",
-    icon: <WalletOutlined />,
-    items: [
-      {
-        label: "รอบการจ่ายเงิน",
-        href: "/admin/payroll-types",
-        icon: <TagsOutlined />,
-        permission: "ems.payroll_types.view",
-      },
-      {
-        label: "บริษัทเงินเดือน",
-        href: "/admin/payroll-companies",
-        icon: <BankOutlined />,
-        permission: "ems.payroll_companies.view",
-      },
-      {
-        label: "กลุ่มเงินเดือน",
-        href: "/admin/payroll-groups",
-        icon: <AppstoreOutlined />,
-        permission: "ems.payroll_groups.view",
-      },
-      {
-        label: "รายการเงินเดือน",
-        href: "/admin/salary-components",
-        icon: <DollarOutlined />,
-        permission: "ems.salary_components.view",
-      },
-      {
-        label: "ประเภทเงินได้",
-        href: "/admin/earning-types",
-        icon: <FundProjectionScreenOutlined />,
-        permission: "ems.earning_types.view",
-      },
-      {
-        label: "ประเภทรายการหัก",
-        href: "/admin/deduction-types",
-        icon: <FileTextOutlined />,
-        permission: "ems.deduction_types.view",
-      },
-      {
-        label: "สูตรการคำนวณเงินเดือน",
-        href: "/admin/payroll-formulas",
-        icon: <FunctionOutlined />,
-        permission: "ems.payroll_formulas.view",
-      },
-      {
-        label: "ตัวแปรสูตรคำนวณ",
-        href: "/admin/formula-variables",
-        icon: <CodeOutlined />,
-        permission: "ems.formula_variables.view",
-      },
-      {
-        label: "โครงสร้างเงินเดือน",
-        href: "/admin/salary-structures",
-        icon: <ApartmentOutlined />,
-        permission: "ems.salary_structures.view",
-      },
-    ],
-  },
-
-  /* =========================================================
-   * PAYROLL PROCESS
-
-  {
-    title: "PAYROLL PROCESS",
-    icon: <CalendarOutlined />,
-    items: [
-      {
-        label: "งวดเงินเดือน",
-        href: "/admin/payroll-periods",
-        icon: <CalendarOutlined />,
-        permission: "ems.payroll_periods.view",
-      },
-      {
-        label: "ประมวลผลเงินเดือน",
-        href: "/admin/payroll-runs",
-        icon: <WalletOutlined />,
-        permission: "ems.payroll_runs.view",
-      },
-    ],
-  },
-
-
-
-
-
-
-// ==== อัตราภาษี /admin/tax-rates ====
-description: "ตั้งค่าโครงสร้างอัตราภาษีเงินได้บุคคลธรรมดาแบบขั้นบันได (Progressive Tax) ตามประกาศกรมสรรพากร ใช้เป็นฐานในการคำนวณภาษีหัก ณ ที่จ่ายของพนักงานทั้งหมด ควรอัปเดตทุกครั้งที่มีการเปลี่ยนแปลงอัตราภาษีจากทางราชการ"
-
-// ==== ประกันสังคม /admin/social-security ====
-description: "จัดการอัตราเงินสมทบประกันสังคมของนายจ้างและลูกจ้าง เพดานเงินเดือนที่ใช้คำนวณ และเลขที่บัญชีนายจ้างที่ขึ้นทะเบียนกับสำนักงานประกันสังคม ข้อมูลนี้จะถูกใช้คำนวณยอดหักประกันสังคมในสลิปเงินเดือนของพนักงาน"
-
-// ==== กองทุนสำรองเลี้ยงชีพ /admin/provident-funds ====
-description: "จัดการแผนกองทุนสำรองเลี้ยงชีพ (Provident Fund) รวมถึงอัตราเงินสะสมของพนักงานและเงินสมทบของบริษัท สามารถกำหนดได้หลายแผนตามกลุ่มพนักงาน และดูประวัติการนำส่งเงินเข้ากองทุนของแต่ละคนได้"
- * 
- */

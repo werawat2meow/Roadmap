@@ -1,8 +1,8 @@
 "use client";
 
 import {useCallback,useEffect,useMemo,useState,} from "react";
-import {Form,message,Modal,} from "antd";
-import {TeamOutlined,} from "@ant-design/icons";
+import {Form,message,Modal,Segmented,} from "antd";
+import {ApartmentOutlined,TeamOutlined,UnorderedListOutlined,} from "@ant-design/icons";
 import dayjs from "dayjs";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
@@ -11,6 +11,7 @@ import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageI
 import EmployeeSearch from "./components/EmployeeSearch";
 import EmployeeSummaryCards from "./components/EmployeeSummaryCards";
 import EmployeeTable from "./components/EmployeeTable";
+import EmployeeOrganizationView from "./components/EmployeeOrganizationView";
 import EmployeeWizardModal from "./components/EmployeeWizardModal";
 import {EMPLOYEE_STEP_FIELDS, EMPLOYEE_WIZARD_STEPS} from "./components/EmployeeWizardForm";
 import useScopedPermissions from "@/hooks/useScopedPermissions";
@@ -82,13 +83,13 @@ const DEFAULT_FORM_VALUES = {
   tax_identity_type: undefined,
   tax_identification_no: "",
   tax_filing_form_code: undefined,
-  tax_resident_status: "resident",
+  tax_resident_status: undefined,
   tax_withholding_company_id: undefined,
   statutory_effective_from: dayjs(),
 
   social_security_registered: false,
   social_security_no: "",
-  insured_type: "section_33",
+  insured_type: undefined,
   social_security_company_id: undefined,
 
   /* Legacy compatibility */
@@ -206,9 +207,9 @@ const MASTER_ENDPOINTS = {
   positionLevels:
     "/api/admin/position-levels?all=true&status=active&scope_context=ems.employees",
   positionFamilyLevels:
-    "/api/admin/position-family-levels?all=true",
+    "/api/admin/position-family-levels?all=true&scope_context=ems.employees",
   unitPositions:
-    "/api/admin/unit-positions?all=true&status=active",
+    "/api/admin/unit-positions?all=true&status=active&scope_context=ems.employees",
   jobs:
     "/api/admin/jobs?all=true&status=active",
   businessUnits:
@@ -247,6 +248,12 @@ const MASTER_ENDPOINTS = {
     "/api/admin/payment-methods?all=true&status=active&supports_payroll=true",
   employeeCodeSettings:
     "/api/admin/employee-code-settings?all=true&status=active&scope_context=ems.employees",
+  companyStatutorySettings:
+    "/api/admin/company-statutory-settings?all=true&status=active&scope_context=ems.employees",
+  taxResidencyStatuses:
+    "/api/admin/tax-residency-status?all=true&status=active&scope_context=ems.employees",
+  ssoCategories:
+    "/api/admin/sso-categories?all=true&status=active&scope_context=ems.employees",
   roles:
     "/api/admin/roles?all=true&is_active=true",
 };
@@ -614,7 +621,7 @@ function createEmployeeFormValues(record) {
       undefined,
 
     tax_resident_status:
-      "resident",
+      undefined,
 
     tax_withholding_company_id:
       undefined,
@@ -635,9 +642,7 @@ function createEmployeeFormValues(record) {
       "",
 
     insured_type:
-      record.social_security_no
-        ? "section_33"
-        : undefined,
+      undefined,
 
     social_security_company_id:
       undefined,
@@ -1644,6 +1649,27 @@ export default function EmployeesPage() {
 
   const [employees,setEmployees,] = useState([]);
 
+  /*
+   * หน้า Employee ใช้ข้อมูล/Permission ชุดเดิม
+   * แต่สามารถสลับการแสดงผลได้ 2 มุมมอง
+   * - list      = ตารางรายชื่อเดิม
+   * - structure = พนักงานตามโครงสร้างองค์กร
+   */
+  const [
+    employeeView,
+    setEmployeeView,
+  ] = useState("list");
+
+  const [
+    structureEmployees,
+    setStructureEmployees,
+  ] = useState([]);
+
+  const [
+    structureLoading,
+    setStructureLoading,
+  ] = useState(false);
+
   const [summary, setSummary] = useState({
     total: 0,
     active: 0,
@@ -1693,6 +1719,9 @@ export default function EmployeesPage() {
     paymentMethods: [],
 
     employeeCodeSettings: [],
+    companyStatutorySettings: [],
+    taxResidencyStatuses: [],
+    ssoCategories: [],
     roles: [],
     positionFamilies: [],
     positionLevels: [],
@@ -2137,6 +2166,171 @@ export default function EmployeesPage() {
       hasUserAccount,
     ]);
 
+  /*
+   * โหลดข้อมูลทั้งหมดเฉพาะตอนเปิดมุมมองโครงสร้าง
+   *
+   * ใช้ Endpoint เดิม + Permission/Scope เดิมของ employees
+   * และส่ง Filter ชุดเดียวกับตารางรายชื่อ
+   * จึงไม่เปลี่ยน Business Logic ของ Employee API
+   */
+  const fetchStructureEmployees =
+    useCallback(async () => {
+      if (
+        !canView ||
+        employeeView !==
+          "structure"
+      ) {
+        return;
+      }
+
+      setStructureLoading(true);
+
+      try {
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "all",
+          "true"
+        );
+
+        if (debouncedSearch) {
+          params.set(
+            "search",
+            debouncedSearch
+          );
+        }
+
+        if (companyId) {
+          params.set(
+            "company_id",
+            companyId
+          );
+        }
+
+        if (branchGroupId) {
+          params.set(
+            "branch_group_id",
+            branchGroupId
+          );
+        }
+
+        if (branchId) {
+          params.set(
+            "branch_id",
+            branchId
+          );
+        }
+
+        if (departmentId) {
+          params.set(
+            "department_id",
+            departmentId
+          );
+        }
+
+        if (employeeStatusId) {
+          params.set(
+            "employee_status_id",
+            employeeStatusId
+          );
+        }
+
+        if (employmentTypeId) {
+          params.set(
+            "employment_type_id",
+            employmentTypeId
+          );
+        }
+
+        if (status) {
+          params.set(
+            "status",
+            status
+          );
+        }
+
+        if (hasUserAccount) {
+          params.set(
+            "has_user_account",
+            hasUserAccount
+          );
+        }
+
+        const response =
+          await fetch(
+            `/api/admin/employees?${params.toString()}`,
+            {
+              method:
+                "GET",
+
+              cache:
+                "no-store",
+            }
+          );
+
+        let result = null;
+
+        try {
+          result =
+            await response.json();
+        } catch {
+          result = null;
+        }
+
+        if (!response.ok) {
+          message.error(
+            getApiMessage(
+              result,
+              "ไม่สามารถโหลดมุมมองโครงสร้างองค์กรได้"
+            )
+          );
+
+          setStructureEmployees(
+            []
+          );
+
+          return;
+        }
+
+        setStructureEmployees(
+          normalizeRows(
+            result
+          )
+        );
+      } catch (error) {
+        console.error(
+          "fetchStructureEmployees exception:",
+          error
+        );
+
+        setStructureEmployees(
+          []
+        );
+
+        message.error(
+          error?.message ||
+            "ไม่สามารถโหลดมุมมองโครงสร้างองค์กรได้"
+        );
+      } finally {
+        setStructureLoading(
+          false
+        );
+      }
+    }, [
+      canView,
+      employeeView,
+      debouncedSearch,
+      companyId,
+      branchGroupId,
+      branchId,
+      departmentId,
+      employeeStatusId,
+      employmentTypeId,
+      status,
+      hasUserAccount,
+    ]);
+
   useEffect(() => {
     if (
       authLoading ||
@@ -2169,6 +2363,26 @@ export default function EmployeesPage() {
     user,
     canView,
     fetchEmployees,
+  ]);
+
+  useEffect(() => {
+    if (
+      authLoading ||
+      !user ||
+      !canView ||
+      employeeView !==
+        "structure"
+    ) {
+      return;
+    }
+
+    fetchStructureEmployees();
+  }, [
+    authLoading,
+    user,
+    canView,
+    employeeView,
+    fetchStructureEmployees,
   ]);
 
   const handleCreate =
@@ -2331,7 +2545,6 @@ export default function EmployeesPage() {
               "create_user_account",
               "update_user_account",
               "role_id",
-              "auth_email",
             ]);
 
           const accountEnabled = modalMode === "create"? Boolean(values.create_user_account): Boolean(values.update_user_account);
@@ -2341,12 +2554,6 @@ export default function EmployeesPage() {
             return;
           }
 
-          if (accountEnabled && !cleanText(values.auth_email)) {
-            message.warning(
-              "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ"
-            );
-            return;
-          }
         }
 
         setCurrentStep(
@@ -2944,19 +3151,6 @@ export default function EmployeesPage() {
         return;
       }
 
-      if (
-        accountEnabled &&
-        !payload.auth_email
-      ) {
-        message.warning(
-          "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ"
-        );
-
-        setCurrentStep(6);
-
-        return;
-      }
-
       setSaving(true);
 
       const url =
@@ -3086,6 +3280,13 @@ export default function EmployeesPage() {
       }
 
       if (
+        employeeView ===
+        "structure"
+      ) {
+        await fetchStructureEmployees();
+      }
+
+      if (
         !isEdit &&
         page !== 1
       ) {
@@ -3145,7 +3346,9 @@ export default function EmployeesPage() {
     form,
     selectedRecord,
     page,
+    employeeView,
     fetchEmployees,
+    fetchStructureEmployees,
     scopedMasterData.positionLevelBands,
     scopedMasterData.positions,
   ]);
@@ -3189,6 +3392,13 @@ export default function EmployeesPage() {
           );
 
           if (
+            employeeView ===
+            "structure"
+          ) {
+            await fetchStructureEmployees();
+          }
+
+          if (
             employees.length === 1 &&
             page > 1
           ) {
@@ -3221,59 +3431,31 @@ export default function EmployeesPage() {
       [
         employees.length,
         page,
+        employeeView,
         fetchEmployees,
+        fetchStructureEmployees,
       ]
     );
 
-  const handleDelete = useCallback((record) => {
+  const handleDelete = useCallback(async (record) => {
       if (!canDelete) {
         message.warning(
           "คุณไม่มีสิทธิ์ลบข้อมูลพนักงาน"
         );
         return;
       }
+
       const account = getUserAccount(record);
-      if (account?.roles ?.is_system === true) {
+
+      if (account?.roles?.is_system === true) {
         message.warning(
           "ไม่สามารถลบพนักงานที่เชื่อมกับบัญชีระบบได้"
         );
         return;
       }
 
-      Modal.confirm({
-        title:"ยืนยันการลบพนักงาน",
-        centered: true,
-        width: 520,
-        content: (
-          <div>
-            <p>
-              ต้องการลบพนักงาน{" "}
-              <strong>
-                {record.employee_code}
-              </strong>{" "}
-              ใช่หรือไม่
-            </p>
-
-            <p className="mt-2 text-orange-600">
-              หากพนักงานมีข้อมูลเงินเดือน สวัสดิการ
-              ทักษะ หรือสายบังคับบัญชา
-              ระบบจะไม่อนุญาตให้ลบ
-            </p>
-          </div>
-        ),
-        okText: "ลบ",
-        cancelText: "ยกเลิก",
-        okButtonProps: {
-          danger: true,
-        },
-        onOk: async () => {
-          await executeDelete(
-            record
-          );
-        },
-      });
-    },
-    [canDelete,executeDelete,]
+      await executeDelete(record);
+    },[canDelete,executeDelete,]
   );
 
   const handleSearchChange = useCallback((value) => {
@@ -3395,13 +3577,28 @@ export default function EmployeesPage() {
 );
 
   const handleRefresh = useCallback(async () => {
-    await Promise.all([
+    const requests = [
       fetchMasterData(),
       fetchEmployees(),
-    ]);
+    ];
+
+    if (
+      employeeView ===
+      "structure"
+    ) {
+      requests.push(
+        fetchStructureEmployees()
+      );
+    }
+
+    await Promise.all(
+      requests
+    );
   }, [
+    employeeView,
     fetchMasterData,
     fetchEmployees,
+    fetchStructureEmployees,
   ]);
 
   const canEditSelectedRecord = useMemo(() => {
@@ -3524,29 +3721,125 @@ export default function EmployeesPage() {
       }
 
       table={
-        <>
-          <div className="mt-6">
-            <EmployeeTable
-              dataSource={employees}
-              loading={loading}
-              deletingId={deletingId}
+        <div className="mt-6 space-y-4">
+          <div className="flex justify-end">
+            <Segmented
+              value={
+                employeeView
+              }
+              options={[
+                {
+                  value:
+                    "structure",
 
-              page={page}
-              pageSize={pageSize}
-              total={total}
+                  label:
+                    "โครงสร้างองค์กร",
 
-              canView={canView}
-              canEdit={canEdit}
-              canDelete={canDelete}
+                  icon:
+                    <ApartmentOutlined />,
+                },
+                {
+                  value:
+                    "list",
 
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+                  label:
+                    "รายชื่อพนักงาน",
 
-              onChange={handleTableChange}
+                  icon:
+                    <UnorderedListOutlined />,
+                },
+              ]}
+              onChange={(
+                value
+              ) => {
+                setEmployeeView(
+                  value
+                );
+              }}
             />
           </div>
-        </>
+
+          {employeeView ===
+          "structure" ? (
+            <EmployeeOrganizationView
+              employees={
+                structureEmployees
+              }
+              loading={
+                structureLoading
+              }
+              deletingId={
+                deletingId
+              }
+
+              canView={
+                canView
+              }
+              canEdit={
+                canEdit
+              }
+              canDelete={
+                canDelete
+              }
+
+              onView={
+                handleView
+              }
+              onEdit={
+                handleEdit
+              }
+              onDelete={
+                handleDelete
+              }
+            />
+          ) : (
+            <EmployeeTable
+              dataSource={
+                employees
+              }
+              loading={
+                loading
+              }
+              deletingId={
+                deletingId
+              }
+
+              page={
+                page
+              }
+              pageSize={
+                pageSize
+              }
+              total={
+                total
+              }
+
+              canView={
+                canView
+              }
+              canEdit={
+                canEdit
+              }
+              canDelete={
+                canDelete
+              }
+
+              onView={
+                handleView
+              }
+              onEdit={
+                handleEdit
+              }
+              onDelete={
+                handleDelete
+              }
+
+              onChange={
+                handleTableChange
+              }
+            />
+          )}
+        </div>
       }
 
       modal={

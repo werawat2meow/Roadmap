@@ -540,24 +540,21 @@ export default function EmploymentTypesPage() {
               {form.probation_required && (
                 <div>
                   <label className="mb-2 block text-sm font-medium">
-                  ระยะเวลาทดลองงาน
+                    ระยะเวลาทดลองงาน (วัน)
                   </label>
 
-                  <select
+                  <input
+                    type="number"
+                    min={1}
                     value={form.probation_days}
-                    onChange={(e)=>
-                    setForm(prev=>({
-                    ...prev,
-                    probation_days:Number(e.target.value),
-                    }))
-                  }
-                  className="w-full rounded-2xl border px-4 py-3"
-                  >
-                    <option value={30}>30 วัน</option>
-                    <option value={60}>60 วัน</option>
-                    <option value={90}>90 วัน</option>
-                    <option value={120}>120 วัน</option>
-                  </select>
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        probation_days: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
                 </div>
               )}
               

@@ -304,7 +304,7 @@ export async function GET(request) {
       }
     } else {
       // Default status
-      query = query.in("status", [4,5,6,8,9,10,11,]);
+      query = query.in("status", [4,5,6,8,10,11,]);
     }
 
     // ============================================================

@@ -28,6 +28,7 @@ const APPLICATION_STATUS = [
   { value: 1, label: "รอพิจารณา" },
   { value: 2, label: "HRD ส่งต่อ HRM" },
   { value: 3, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
+  { value: 9, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
   { value: 4, label: "นัดสัมภาษณ์" },
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },

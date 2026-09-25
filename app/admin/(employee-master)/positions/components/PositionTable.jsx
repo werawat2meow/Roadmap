@@ -20,6 +20,12 @@ export default function PositionTable({
 
   data = [],
 
+  canView = false,
+
+  canEdit = false,
+
+  canDelete = false,
+
   onEdit,
 
   onDelete,
@@ -206,32 +212,40 @@ export default function PositionTable({
       render: (_, row) => (
         <Space>
 
-          <Tooltip title="รายละเอียด">
-            <Button
-              icon={<EyeOutlined />}
-              onClick={() =>
-                onView?.(row)
-              }
-            />
-          </Tooltip>
+          {canView && (
+            <Tooltip title="รายละเอียด">
+              <Button
+                icon={<EyeOutlined />}
+                onClick={() =>
+                  onView?.(row)
+                }
+              />
+            </Tooltip>
+          )}
 
-          <Tooltip title="แก้ไข">
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() =>
-                onEdit?.(row)
-              }
-            />
-          </Tooltip>
+          {canEdit && (
+            <Tooltip title="แก้ไข">
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() =>
+                  onEdit?.(row)
+                }
+              />
+            </Tooltip>
+          )}
 
-          <Tooltip title="ลบ">
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onDelete?.(row)}
-            />
-          </Tooltip>
+          {canDelete && (
+            <Tooltip title="ลบ">
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() =>
+                  onDelete?.(row)
+                }
+              />
+            </Tooltip>
+          )}
 
         </Space>
       ),

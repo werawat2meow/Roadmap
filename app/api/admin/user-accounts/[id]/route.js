@@ -15,7 +15,7 @@ const USER_ACCOUNT_SELECT = `
   last_login_at,
   created_at,
   updated_at,
-  employees (
+  employees!user_accounts_employee_id_fkey (
     id,
     employee_code,
     first_name_th,

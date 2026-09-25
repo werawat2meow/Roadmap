@@ -233,6 +233,7 @@ export async function GET(req) {
       .select(
         EMPLOYEE_REPORT_EXPORT_SELECT
       )
+      .eq("is_deleted", false)
       .order("employee_code", {
         ascending: true,
       });
@@ -273,6 +274,7 @@ export async function GET(req) {
           "id",
           currentEmployeeId
         )
+        .eq("is_deleted", false)
         .maybeSingle();
 
       if (selfError) {

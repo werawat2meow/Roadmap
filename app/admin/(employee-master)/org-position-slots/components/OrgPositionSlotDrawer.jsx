@@ -331,7 +331,7 @@ export default function OrgPositionSlotDrawer({
                   </div>
 
                   <Space
-                    direction="vertical"
+                    orientation="vertical"
                     size={2}
                     align="end"
                   >

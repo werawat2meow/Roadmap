@@ -24,6 +24,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 
+
 import {
   useEffect,
   useMemo,
@@ -266,22 +267,11 @@ export default function EmployeeAccountStep({
      MASTER DATA
   ========================================================= */
 
-  const settings =
-    masterData
-      .employeeCodeSettings ||
-    [];
-
-  const roles =
-    masterData.roles || [];
-
-  const positions =
-    masterData.positions || [];
-
-  const employmentTypes =
-    masterData.employmentTypes || [];
-
-  const nationalities =
-    masterData.nationalities || [];
+  const settings = masterData.employeeCodeSettings ||[];
+  const roles = masterData.roles || [];
+  const positions = masterData.positions || [];
+  const employmentTypes = masterData.employmentTypes || [];
+  const nationalities = masterData.nationalities || [];
 
   const positionId =
     Form.useWatch(
@@ -531,31 +521,18 @@ export default function EmployeeAccountStep({
 
   const roleOptions = useMemo(() => {
     return roles.filter((item) => {
-    
         if ( item?.is_active === false) {
           return false;
         }
-
-        const roleCode =
-          String(
-            item?.role_code || ""
-          )
-            .trim()
-            .toUpperCase();
-        if (
-          roleCode ===
-            "SUPER_ADMIN" &&
-          !isSuperAdmin
-        ) {
+        const roleCode = String(item?.role_code || "").trim().toUpperCase();
+        if (["SUPER_ADMIN", "MANAGE"].includes(roleCode) && !isSuperAdmin) {
           return false;
         }
-
         return true;
       })
       .map((item) => ({
         value:
           item.id,
-
         label:
           item.role_code
             ? `${item.role_code} - ${
@@ -613,28 +590,10 @@ export default function EmployeeAccountStep({
     form,
   ]);
 
-  /* =========================================================
-     ACCOUNT ENABLED
-  ========================================================= */
-
-  const accountEnabled =
-    mode === "create"
-      ? Boolean(
-          createUserAccount
-        )
-      : Boolean(
-          updateUserAccount
-        );
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  const accountEnabled = mode === "create"? Boolean(createUserAccount): Boolean(updateUserAccount);
 
   return (
     <div>
-      {/* =====================================================
-          EMPLOYEE CODE
-      ===================================================== */}
 
       <Divider
         titlePlacement="left"
@@ -646,13 +605,6 @@ export default function EmployeeAccountStep({
           การสร้างรหัสพนักงาน
         </Space>
       </Divider>
-
-      {/* =====================================================
-          EDIT / VIEW
-
-          Employee Code
-          ไม่ Generate ใหม่
-      ===================================================== */}
 
       {(
         mode === "edit" ||
@@ -740,11 +692,7 @@ export default function EmployeeAccountStep({
                     masterLoading
                   }
 
-                  disabled={
-                    disabled ||
-                    masterLoading ||
-                    !companyId
-                  }
+                  disabled
 
                   placeholder={
                     !companyId
@@ -1011,21 +959,6 @@ export default function EmployeeAccountStep({
               <Form.Item
                 label="อีเมลสำหรับเข้าสู่ระบบ"
                 name="auth_email"
-                rules={[
-                  {
-                    required: true,
-
-                    message:
-                      "กรุณากรอกอีเมลสำหรับเข้าสู่ระบบ",
-                  },
-                  {
-                    type:
-                      "email",
-
-                    message:
-                      "รูปแบบอีเมลไม่ถูกต้อง",
-                  },
-                ]}
               >
                 <Input
                   disabled={
@@ -1058,9 +991,7 @@ export default function EmployeeAccountStep({
                   disabled={
                     disabled
                   }
-
                   checkedChildren="ใช้งาน"
-
                   unCheckedChildren="ปิดใช้งาน"
                 />
               </Form.Item>
@@ -1068,42 +999,26 @@ export default function EmployeeAccountStep({
           </>
         )}
       </Row>
-
-      {/* =====================================================
-          INITIAL LOGIN
-      ===================================================== */}
-
-      <Alert
-        showIcon
-        type="warning"
-
-        icon={
-          <KeyOutlined />
-        }
-
-        title="Username และรหัสผ่านเริ่มต้น"
-
-        description="เมื่อสร้างพนักงานสำเร็จ ระบบจะใช้รหัสพนักงานเป็น Username และรหัสผ่านชั่วคราว จากนั้น Hash ด้วย bcrypt ก่อนบันทึกลง user_accounts.password_hash"
-      />
-
-      {/* =====================================================
-          ROLE + PERMISSION INFO
-      ===================================================== */}
-
-      <div className="mt-4">
         <Alert
           showIcon
           type="info"
-
-          icon={
-            <LockOutlined />
+          title="Role หมายถึงสิทธิ์การเข้าถึงระบบของพนักงาน"
+          description={
+            <ul className="mb-0 list-disc pl-4 space-y-0.5">
+              <li><b>ACCESS_ADMIN</b> — ใช้กับพนักงาน (ผู้ดูแล User/Role)</li>
+              <li><b>ASST_HR_MANAGER</b> — ใช้กับพนักงาน (Asst. HR Manager)</li>
+              <li><b>AUDITOR</b> — ใช้กับพนักงาน (Audit)</li>
+              <li><b>EMS_ADMIN</b> — ใช้กับพนักงาน [ผู้ดูแลระบบ Employee]</li>
+              <li><b>EMS_VIEWER</b> — ใช้กับพนักงาน (ผู้บริหารระดับสูง)</li>
+              <li><b>HR_EXECUTIVE</b> — ใช้กับพนักงาน (Chief HR / ผู้บริหาร HR)</li>
+              <li><b>HR_MANAGER</b> — ใช้กับพนักงาน (HR Manager) </li>
+              <li><b>HR_OFFICER</b> — ใช้กับพนักงาน (HR Officer) </li>
+              <li><b>HR_SUPERVISOR</b> — ใช้กับพนักงาน (HR Supervisor)</li>
+              <li><b>พนักงานทั่วไป</b> — ใช้กับพนักงานทั่วไปในองค์กร</li>
+            </ul>
           }
-
-          title="Role และ Permission"
-
-          description="บัญชีผู้ใช้งานเก็บ role_id เพียงหนึ่ง Role โดยแต่ละ Role สามารถมีหลาย Permission ผ่านตาราง role_permissions"
+          className="mb-5"
         />
-      </div>
     </div>
   );
 }

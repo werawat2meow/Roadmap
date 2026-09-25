@@ -1,12 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Select } from "antd";
 import Swal from "sweetalert2";
+import LoadingOrb from "@/app/components/LoadingOrb";
+import usePageGuard from "@/hooks/usePageGuard";
 
-const initialForm = { emp_name: "" };
+const initialForm = { 
+  emp_name_th: "",
+  emp_name_en: "",
+  position_id: null,
+};
 
 export default function ContractSignatoriesPage() {
+
+  const { isChecking, canView, canCreate } = usePageGuard({
+    module: "recruitment.contract.signatories",
+    unauthorizedRedirect: "/recruitment",
+  });
+
   const [items, setItems] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,6 +44,7 @@ export default function ContractSignatoriesPage() {
       }
 
       setItems(result.data || []);
+      setPositions(result.positions || []);
     } catch (loadError) {
       setError(loadError.message || "ไม่สามารถโหลดข้อมูลได้");
     } finally {
@@ -38,9 +53,14 @@ export default function ContractSignatoriesPage() {
   }, []);
 
   useEffect(() => {
+    if (isChecking || !canView) return;
+
     const timeoutId = window.setTimeout(loadData, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadData]);
+  }, [canView, isChecking, loadData]);
+
+  if (isChecking) return <LoadingOrb />;
+  if (!canView) return null;
 
   const openCreateModal = () => {
     setSelectedItem(null);
@@ -50,7 +70,11 @@ export default function ContractSignatoriesPage() {
 
   const openEditModal = (item) => {
     setSelectedItem(item);
-    setForm({ emp_name: item.emp_name || "" });
+    setForm({
+      emp_name_th: item.emp_name_th || "",
+      emp_name_en: item.emp_name_en || "",
+      position_id: item.position_id ?? null,
+    });
     setModalOpen(true);
   };
 
@@ -63,12 +87,14 @@ export default function ContractSignatoriesPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const empName = form.emp_name.trim();
+    const empNameTh = form.emp_name_th?.trim();
+    const empNameEn = form.emp_name_en?.trim();
 
-    if (!empName) {
+    if (!empNameTh || !empNameEn || form.position_id === null) {
       await Swal.fire({
         icon: "warning",
-        title: "กรุณากรอกชื่อ-นามสกุล",
+        title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        text: "กรุณากรอกชื่อทั้งภาษาไทยและภาษาอังกฤษ และเลือกตำแหน่ง",
         confirmButtonText: "ตกลง",
       });
       return;
@@ -84,7 +110,11 @@ export default function ContractSignatoriesPage() {
       const response = await fetch(url, {
         method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emp_name: empName }),
+        body: JSON.stringify({
+          emp_name_th: empNameTh,
+          emp_name_en: empNameEn,
+          position_id: form.position_id,
+        }),
       });
       const result = await response.json();
 
@@ -139,7 +169,9 @@ export default function ContractSignatoriesPage() {
       }
 
       setItems((current) =>
-        current.map((row) => (row.id === item.id ? result.data : row))
+        current.map((row) =>
+          row.id === item.id ? { ...row, ...result.data } : row
+        )
       );
       await Swal.fire({
         icon: "success",
@@ -192,6 +224,7 @@ export default function ContractSignatoriesPage() {
                 <tr className="text-center text-slate-600">
                   <th className="w-24 px-4 py-3 font-medium">ลำดับ</th>
                   <th className="px-4 py-3 text-left font-medium">ชื่อ-นามสกุล</th>
+                  <th className="px-4 py-3 text-left font-medium">ตำแหน่ง</th>
                   <th className="w-36 px-4 py-3 font-medium">สถานะ</th>
                   <th className="w-36 px-4 py-3 font-medium">Action</th>
                 </tr>
@@ -199,13 +232,13 @@ export default function ContractSignatoriesPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                       กำลังโหลดข้อมูล...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-red-600">
+                    <td colSpan={5} className="px-4 py-10 text-center text-red-600">
                       <p>{error}</p>
                       <button
                         type="button"
@@ -218,7 +251,7 @@ export default function ContractSignatoriesPage() {
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                       ไม่พบข้อมูล
                     </td>
                   </tr>
@@ -226,7 +259,15 @@ export default function ContractSignatoriesPage() {
                   items.map((item, index) => (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="px-4 py-4 text-center text-slate-700">{index + 1}</td>
-                      <td className="px-4 py-4 font-medium text-slate-800">{item.emp_name}</td>
+                      <td className="px-4 py-4 font-medium text-slate-800">
+                        <div>{item.emp_name_th || "-"}</div>
+                        <div className="mt-1 text-sm font-normal text-slate-500">
+                          {item.emp_name_en || "-"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-slate-700">
+                        {item.position_name || "-"}
+                      </td>
                       <td className="px-4 py-4 text-center">
                         <label className="inline-flex cursor-pointer items-center">
                           <span className="relative inline-flex items-center">
@@ -236,7 +277,7 @@ export default function ContractSignatoriesPage() {
                               checked={Boolean(item.status)}
                               disabled={busyId === item.id}
                               onChange={() => handleToggleStatus(item)}
-                              aria-label={`เปลี่ยนสถานะ ${item.emp_name}`}
+                              aria-label={`เปลี่ยนสถานะ ${item.emp_name_th || item.emp_name_en}`}
                             />
                             <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-green-500 peer-disabled:opacity-50" />
                             <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5" />
@@ -287,21 +328,78 @@ export default function ContractSignatoriesPage() {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <label htmlFor="emp_name" className="mb-2 block text-sm font-medium text-slate-700">
-                ชื่อ-นามสกุล <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="emp_name"
-                name="emp_name"
-                type="text"
-                value={form.emp_name}
-                onChange={(event) => setForm({ emp_name: event.target.value })}
-                placeholder="กรอกชื่อ-นามสกุล"
-                autoFocus
-                maxLength={255}
-                required
-                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
+              <div>
+                <label htmlFor="emp_name_th" className="mb-2 block text-sm font-medium text-slate-700">
+                  ชื่อ-นามสกุล ( TH ) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="emp_name_th"
+                  name="emp_name_th"
+                  type="text"
+                  value={form.emp_name_th}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      emp_name_th: event.target.value,
+                    }))
+                  }
+                  placeholder="กรอกชื่อ-นามสกุล TH"
+                  autoFocus
+                  maxLength={255}
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="emp_name_en" className="mb-2 block text-sm font-medium text-slate-700">
+                  ชื่อ-นามสกุล ( EN ) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="emp_name_en"
+                  name="emp_name_en"
+                  type="text"
+                  value={form.emp_name_en}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      emp_name_en: event.target.value,
+                    }))
+                  }
+                  placeholder="กรอกชื่อ-นามสกุล EN"
+                  autoFocus
+                  maxLength={255}
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label htmlFor="position_id" className="mb-2 block text-sm font-medium text-slate-700">
+                  ตำแหน่ง <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  id="position_id"
+                  showSearch
+                  allowClear
+                  value={form.position_id ?? undefined}
+                  placeholder="เลือกหรือค้นหาตำแหน่ง"
+                  optionFilterProp="label"
+                  options={positions.map((position) => ({
+                    value: position.id,
+                    label: position.position_name,
+                  }))}
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      position_id: value ?? null,
+                    }))
+                  }
+                  notFoundContent="ไม่พบตำแหน่ง"
+                  className="w-full"
+                  size="large"
+                />
+              </div>
 
               <div className="mt-6 flex justify-end gap-2">
                 <button

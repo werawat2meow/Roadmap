@@ -73,6 +73,11 @@ export default function SidebarContent({
             icon: "SnippetsOutlined",
             href: "/recruitment/report_summary_recruit",
           },
+          {
+            label: "Approved employees",
+            icon: "SnippetsOutlined",
+            href: "/recruitment/report/approve_emp",
+          },
         ],
       },
       {

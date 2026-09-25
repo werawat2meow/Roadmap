@@ -6,6 +6,10 @@ export {
 } from "./contractData";
 export { ContractDataError } from "./errors";
 export {
+  ensureContractNumberForApplication,
+  generateContractNumber,
+} from "./contractNumber";
+export {
   formatContractDateEN,
   formatContractDateTH,
   formatContractMoney,

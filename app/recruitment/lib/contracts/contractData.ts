@@ -26,9 +26,9 @@ type ContractApplicationRow = {
   current_address_no: string | null;
   village_no: number | null;
   street: string | null;
-  sub_district: string | null;
-  district: string | null;
-  province: string | null;
+  province_id: string | number | null;
+  district_id: string | number | null;
+  subdistrict_id: string | number | null;
   postal_code: string | null;
   company_id: string | null;
   branch_id: string | null;
@@ -41,6 +41,7 @@ type ContractApplicationRow = {
   hire_date: string | null;
   probation_end_date: string | null;
   probation_days: number | null;
+  contract_number: string | null;
   base_salary: ContractNumericValue;
   position_allowance: ContractNumericValue;
 };
@@ -50,9 +51,9 @@ type CompanyRow = {
   company_name_th: string;
   company_name_en: string | null;
   address: string | null;
-  subdistrict: string | null;
-  district: string | null;
-  province: string | null;
+  province_code: string | number | null;
+  district_code: string | number | null;
+  subdistrict_code: string | number | null;
   postcode: string | null;
 };
 
@@ -88,6 +89,25 @@ type PositionLevelRow = {
   level_name: string;
 };
 
+type GeothaiAddressType = "province" | "district" | "subdistrict";
+
+type GeothaiName = {
+  nameTH: string;
+  nameEN: string;
+};
+
+type ResolvedGeothaiAddress = {
+  province: GeothaiName | null;
+  district: GeothaiName | null;
+  subdistrict: GeothaiName | null;
+};
+
+type GeothaiAddressCodes = {
+  provinceId: string | number | null;
+  districtId: string | number | null;
+  subdistrictId: string | number | null;
+};
+
 type ApprovedContractScope = {
   id: string;
   companyId: string;
@@ -111,6 +131,72 @@ function joinNonEmpty(values: Array<string | number | null | undefined>): string
     .join(" ");
 
   return result || null;
+}
+
+function isGeothaiApiData(
+  value: unknown,
+): value is { name_th: string; name_en: string } {
+  if (!value || typeof value !== "object") return false;
+
+  const data = value as Record<string, unknown>;
+  return typeof data.name_th === "string" && typeof data.name_en === "string";
+}
+
+async function getGeothaiName(
+  requestUrl: string,
+  type: GeothaiAddressType,
+  id: string | number | null,
+): Promise<GeothaiName | null> {
+  if (id === null || String(id).trim() === "") return null;
+
+  const url = new URL("/jobs/api/geothai", requestUrl);
+  url.searchParams.set("type", type);
+  url.searchParams.set("id", String(id));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const payload: unknown = await response.json().catch(() => null);
+    const data =
+      payload && typeof payload === "object" && "data" in payload
+        ? (payload as { data?: unknown }).data
+        : null;
+
+    if (!response.ok || !isGeothaiApiData(data)) {
+      throw new Error(`Invalid geothai ${type} response`);
+    }
+
+    return {
+      nameTH: data.name_th.trim(),
+      nameEN: data.name_en.trim(),
+    };
+  } catch (error) {
+    throw new ContractDataError(
+      "DATABASE_ERROR",
+      "ไม่สามารถอ่านข้อมูลที่อยู่จากระบบข้อมูลจังหวัดได้",
+      { cause: error },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveGeothaiAddress(
+  requestUrl: string,
+  codes: GeothaiAddressCodes,
+): Promise<ResolvedGeothaiAddress> {
+  const [province, district, subdistrict] = await Promise.all([
+    getGeothaiName(requestUrl, "province", codes.provinceId),
+    getGeothaiName(requestUrl, "district", codes.districtId),
+    getGeothaiName(requestUrl, "subdistrict", codes.subdistrictId),
+  ]);
+
+  return { province, district, subdistrict };
 }
 
 function combineAmount(
@@ -138,9 +224,9 @@ async function getApprovedApplication(contractId: string): Promise<ContractAppli
       current_address_no,
       village_no,
       street,
-      sub_district,
-      district,
-      province,
+      province_id,
+      district_id,
+      subdistrict_id,
       postal_code,
       company_id,
       branch_id,
@@ -153,6 +239,7 @@ async function getApprovedApplication(contractId: string): Promise<ContractAppli
       hire_date,
       probation_end_date,
       probation_days,
+      contract_number,
       base_salary,
       position_allowance
     `)
@@ -199,9 +286,15 @@ async function getApprovedContractScope(contractId: string): Promise<ApprovedCon
 }
 
 export async function getEmploymentContractData(
-  contractId: string
+  contractId: string,
+  requestUrl: string,
 ): Promise<EmploymentContractBaseData> {
   const application = await getApprovedApplication(contractId);
+  const employeeGeothaiAddressPromise = resolveGeothaiAddress(requestUrl, {
+    provinceId: application.province_id,
+    districtId: application.district_id,
+    subdistrictId: application.subdistrict_id,
+  });
 
   if (!application.company_id || !application.emp_id) {
     throw new ContractDataError(
@@ -222,7 +315,7 @@ export async function getEmploymentContractData(
       supabaseAdmin
         .from("companies")
         .select(
-          "id, company_name_th, company_name_en, address, subdistrict, district, province, postcode"
+          "id, company_name_th, company_name_en, address, province_code, district_code, subdistrict_code, postcode"
         )
         .eq("id", application.company_id)
         .maybeSingle(),
@@ -293,13 +386,22 @@ export async function getEmploymentContractData(
   }
 
   const titleId = employee.title_id ?? application.title_id;
-  const titleResult = titleId
-    ? await supabaseAdmin
-        .from("titles")
-        .select("title_name_th, title_name_en")
-        .eq("id", titleId)
-        .maybeSingle()
-    : { data: null, error: null };
+  const companyGeothaiAddressPromise = resolveGeothaiAddress(requestUrl, {
+    provinceId: company.province_code,
+    districtId: company.district_code,
+    subdistrictId: company.subdistrict_code,
+  });
+  const [titleResult, employeeGeothaiAddress, companyGeothaiAddress] = await Promise.all([
+    titleId
+      ? supabaseAdmin
+          .from("titles")
+          .select("title_name_th, title_name_en")
+          .eq("id", titleId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    employeeGeothaiAddressPromise,
+    companyGeothaiAddressPromise,
+  ]);
 
   if (titleResult.error) {
     throw new ContractDataError("DATABASE_ERROR", "ไม่สามารถอ่านข้อมูลคำนำหน้าชื่อได้", {
@@ -315,7 +417,7 @@ export async function getEmploymentContractData(
   return {
     contract: {
       id: application.id,
-      contractNo: null,
+      contractNo: application.contract_number,
       contractDateTH: null,
       contractDateEN: null,
       startDateTH: formatContractDateTH(startDate),
@@ -333,12 +435,18 @@ export async function getEmploymentContractData(
       nameEN: company.company_name_en,
       addressTH: joinNonEmpty([
         company.address,
-        company.subdistrict,
-        company.district,
-        company.province,
+        companyGeothaiAddress.subdistrict?.nameTH,
+        companyGeothaiAddress.district?.nameTH,
+        companyGeothaiAddress.province?.nameTH,
         company.postcode,
       ]),
-      addressEN: null,
+      addressEN: joinNonEmpty([
+        company.address,
+        companyGeothaiAddress.subdistrict?.nameEN,
+        companyGeothaiAddress.district?.nameEN,
+        companyGeothaiAddress.province?.nameEN,
+        company.postcode,
+      ]),
     },
     employee: {
       id: employee.id,
@@ -346,22 +454,30 @@ export async function getEmploymentContractData(
       firstNameTH: employee.first_name_th,
       lastNameTH: employee.last_name_th,
       prefixEN: title?.title_name_en ?? null,
-      firstNameEN: employee.first_name_en,
-      lastNameEN: employee.last_name_en,
+      firstNameEN: employee.first_name_th,
+      lastNameEN: employee.last_name_th,
       addressTH: joinNonEmpty([
         application.current_address_no,
         application.village_no,
         application.street,
-        application.sub_district,
-        application.district,
-        application.province,
+        employeeGeothaiAddress.subdistrict?.nameTH,
+        employeeGeothaiAddress.district?.nameTH,
+        employeeGeothaiAddress.province?.nameTH,
         application.postal_code,
       ]),
-      addressEN: null,
+      addressEN: joinNonEmpty([
+        application.current_address_no,
+        application.village_no,
+        application.street,
+        employeeGeothaiAddress.subdistrict?.nameEN,
+        employeeGeothaiAddress.district?.nameEN,
+        employeeGeothaiAddress.province?.nameEN,
+        application.postal_code,
+      ]),
       positionTH: position?.position_name ?? null,
-      positionEN: null,
+      positionEN: position?.position_name ?? null,
       departmentTH: department?.department_name ?? null,
-      departmentEN: null,
+      departmentEN: department?.department_name ?? null,
       level: joinNonEmpty([level?.level_code, level?.level_name]),
       salary,
       positionAllowance,
@@ -457,10 +573,11 @@ export async function getContractAccessScope(
 
 export async function buildEmploymentContractData(
   contractId: string,
-  selectedSigner: ContractSigner
+  selectedSigner: ContractSigner,
+  requestUrl: string,
 ): Promise<EmploymentContractData> {
   const [contract, allowedSigners] = await Promise.all([
-    getEmploymentContractData(contractId),
+    getEmploymentContractData(contractId, requestUrl),
     getContractSigners(contractId),
   ]);
   const signer = allowedSigners.find((item) => item.id === selectedSigner.id);

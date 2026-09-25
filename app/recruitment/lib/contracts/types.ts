@@ -36,7 +36,7 @@ export interface EmploymentContractBaseData {
     nameTH: string;
     nameEN: NullableText;
     addressTH: NullableText;
-    /** The current companies schema has no English-address field. */
+    /** Built from companies.address/postcode and English names returned by geothai. */
     addressEN: NullableText;
   };
   employee: {
@@ -48,7 +48,7 @@ export interface EmploymentContractBaseData {
     firstNameEN: NullableText;
     lastNameEN: NullableText;
     addressTH: NullableText;
-    /** The current employee/application schema has no English-address field. */
+    /** Built from shared address fields and English names returned by geothai. */
     addressEN: NullableText;
     positionTH: NullableText;
     /** The current positions schema has no English-name field. */

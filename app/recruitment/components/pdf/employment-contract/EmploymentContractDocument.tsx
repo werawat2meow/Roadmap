@@ -21,6 +21,28 @@ import {
 
 registerEmploymentContractFonts();
 
+const CONTRACT_TIME_ZONE = "Asia/Bangkok";
+
+function getExportContractDate(date: Date): {
+  th: string;
+  en: string;
+} {
+  return {
+    th: new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: CONTRACT_TIME_ZONE,
+    }).format(date),
+    en: new Intl.DateTimeFormat("en-US-u-ca-gregory", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: CONTRACT_TIME_ZONE,
+    }).format(date),
+  };
+}
+
 function staticPart(text: string, bold = false): ContractTextPart {
   return { text, bold };
 }
@@ -37,6 +59,7 @@ export function EmploymentContractDocument({
 }: EmploymentContractDocumentProps) {
   
   const resolvedConfig = { ...CONTRACT_PDF_CONFIG, ...config };
+  const exportContractDate = getExportContractDate(new Date());
   const variables = createEmploymentContractTemplateVariables(data);
   const sections = resolveContractSections(
     employment119DaysSections,
@@ -58,7 +81,7 @@ export function EmploymentContractDocument({
     staticPart(", represented by "),
     dynamicPart(variables.employerNameEN),
     staticPart(", position of "),
-    dynamicPart(variables.employerPositionEN),
+    dynamicPart(variables.employerPositionTH),
     staticPart(", hereinafter referred to as the “Employer”, of the one part."),
   ];
   const employeeIntroductionTH: ContractTextPart[] = [
@@ -70,7 +93,7 @@ export function EmploymentContractDocument({
   ];
   const employeeIntroductionEN: ContractTextPart[] = [
     staticPart("And "),
-    dynamicPart(variables.employeeNameEN),
+    dynamicPart(variables.employeeNameTH),
     staticPart(", residing at "),
     dynamicPart(variables.employeeAddressEN),
     staticPart(", hereinafter referred to as the “Employee”, of the other part."),
@@ -131,7 +154,7 @@ export function EmploymentContractDocument({
             highlightDynamicText={resolvedConfig.highlightDynamicText}
             parts={[
               staticPart("สัญญาฉบับนี้ทำขึ้น ณ เมื่อวันที่ "),
-              dynamicPart(variables.contractDateTH),
+              dynamicPart(exportContractDate.th),
             ]}
           />
           <ContractParagraph
@@ -139,7 +162,7 @@ export function EmploymentContractDocument({
             highlightDynamicText={resolvedConfig.highlightDynamicText}
             parts={[
               staticPart("This contract was made on "),
-              dynamicPart(variables.contractDateEN),
+              dynamicPart(exportContractDate.en),
             ]}
           />
         </View>

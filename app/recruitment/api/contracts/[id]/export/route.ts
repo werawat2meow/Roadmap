@@ -7,6 +7,7 @@ import {
 import { isEmployerSignatureType } from "@/app/recruitment/components/pdf/employment-contract/types";
 import {
   buildEmploymentContractData,
+  ensureContractNumberForApplication,
   getContractSigners,
 } from "@/app/recruitment/lib/contracts";
 import {
@@ -112,7 +113,12 @@ export async function POST(
       );
     }
 
-    const contractData = await buildEmploymentContractData(id, signer);
+    await ensureContractNumberForApplication(id);
+    const contractData = await buildEmploymentContractData(
+      id,
+      signer,
+      request.url,
+    );
     const logoDataUri = await fetchImageAsDataUri(contractData.company.logo);
     const document = EmploymentContractDocument({
       data: contractData,

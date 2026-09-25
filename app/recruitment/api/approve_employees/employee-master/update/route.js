@@ -3,18 +3,18 @@
 //  createEmployee, createUserAccount, rollbackEmployeeCreation,
 //  writeActivityLog, updateRecruitJobInterviewStatus,
 //  calculateProbationEndDate, getBangkokDate, cleanText,
-//  EMPLOYEE_CODE_RPC)
+//  EMPLOYEE_CODE_RPC, generateContractNumber)
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
+import { generateContractNumber } from "@/app/recruitment/lib/contracts";
 import { cleanText } from "@/lib/employee/employeePayload";
 import { writeActivityLog } from "@/lib/activityLogger";
 
 const EMPLOYEE_CODE_RPC = "reserve_employee_code";
-
 function getBangkokDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
@@ -591,6 +591,12 @@ async function processFinalConfirmation({ application, body, userId }) {
 
     createdUserAccount = await createUserAccount({ employee: createdEmployee, roleId: body.role_id, isActive: true });
 
+    // ----------------------------------------------------------
+    // Generate Contract Number
+    // ทำเฉพาะตอนยืนยันเป็น status = 15
+    // ----------------------------------------------------------
+    const contractNumber = await generateContractNumber(application);
+
     await updateRecruitJobInterviewStatus({ applicationId: application.id, status: STATUS.CONFIRMED });
 
     const { error: updateAppError } = await supabaseAdmin
@@ -623,6 +629,7 @@ async function processFinalConfirmation({ application, body, userId }) {
         position_family_id: body.position_family_id,
         emp_id: createdEmployee.id,
         emp_code: createdEmployee.employee_code,
+        contract_number: contractNumber,
         hire_date: body.start_date,
         start_date: body.start_date,
         probation_end_date: probationEndDate,

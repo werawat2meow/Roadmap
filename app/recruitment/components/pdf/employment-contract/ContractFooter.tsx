@@ -47,7 +47,7 @@ export function ContractFooter({
     >
       <View style={styles.signatureRow}>
         <View style={styles.signatureColumn}>
-          <Text style={styles.signatureLine}>ลงชื่อ............................................</Text>
+          <Text style={styles.signatureLine}>ลงชื่อ..................................................................</Text>
           <Text style={styles.signatureLine}>{employerSignatureLabel}</Text>
           <Text style={styles.signatureName}>({employer.nameTH})</Text>
           {employer.nameEN ? (
@@ -61,12 +61,12 @@ export function ContractFooter({
         </View>
 
         <View style={styles.signatureColumn}>
-          <Text style={styles.signatureLine}>ลงชื่อ............................................</Text>
+          <Text style={styles.signatureLine}>ลงชื่อ..................................................................</Text>
           <Text style={styles.signatureLine}>ลูกจ้าง</Text>
           <Text style={styles.signatureName}>({employeeNameTH})</Text>
-          {employeeNameEN ? (
+          {/* {employeeNameEN ? (
             <Text style={styles.signatureName}>({employeeNameEN})</Text>
-          ) : null}
+          ) : null} */}
           {employeePositionName ? (
             <Text style={styles.signaturePosition}>
               {employeePositionName}

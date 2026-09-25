@@ -199,6 +199,45 @@ function buildCompanyOptions(companies = []) {
     });
 }
 
+function buildSsoCompanyOptions(rows = []) {
+  const map = new Map();
+
+  for (const item of rows || []) {
+    const companyId =
+      item?.company_id;
+
+    if (!companyId) {
+      continue;
+    }
+
+    const key =
+      String(companyId);
+
+    if (map.has(key)) {
+      continue;
+    }
+
+    const name =
+      item?.company_name_th ||
+      item?.company_name_en ||
+      "-";
+
+    map.set(key, {
+      value:
+        companyId,
+
+      label:
+        item?.company_code
+          ? `${item.company_code} - ${name}`
+          : name,
+    });
+  }
+
+  return Array.from(
+    map.values()
+  );
+}
+
 function isThaiNationality(item) {
   if (!item) {
     return false;
@@ -461,18 +500,24 @@ export default function EmployeeContactStep({
     nationalityResolved &&
     !isThaiEmployee;
 
-  const companyOptions =
+  const scopedCompanies = masterData?.companies || [];
+  const statutoryCompanies = masterData?.statutoryCompanies ||
+  [];
+
+  /*
+  * Tax Company
+  * ต้อง Scope ตามสิทธิ์ User
+  */
+  const taxCompanyOptions =
     buildCompanyOptions(
-      (masterData?.companies || []).filter(
+      scopedCompanies.filter(
         (item) => {
           if (mode !== "create") {
             return true;
           }
 
           return (
-            String(
-              item?.status || ""
-            )
+            String(item?.status || "")
               .trim()
               .toLowerCase() ===
             "active"
@@ -481,33 +526,76 @@ export default function EmployeeContactStep({
       )
     );
 
-  const taxResidencyOptions = buildTaxResidencyOptions(masterData?.taxResidencyStatuses);
+  /*
+  * SSO Company
+  * สามารถเลือกบริษัทอื่นนอก Scope ได้
+  */
+  const ssoCompanyOptions = buildSsoCompanyOptions(
+    statutoryCompanies.filter(
+      (item) => {
+        if (mode !== "create") {
+          return true;
+        }
+
+        return (
+          String(item?.status || "")
+            .trim()
+            .toLowerCase() ===
+            "active" &&
+          String(
+            item?.company_status || ""
+          )
+            .trim()
+            .toLowerCase() ===
+            "active"
+        );
+      }
+    )
+  );
+
+  const taxResidencyOptions =
+    buildTaxResidencyOptions(
+      masterData?.taxResidencyStatuses
+    );
 
   const insuredTypeOptions =
     buildInsuredTypeOptions(
       masterData?.ssoCategories
     );
 
+  /*
+  * Tax ใช้บริษัทที่อยู่ใน Scope
+  */
   const selectedTaxCompany =
     findCompanyById(
-      masterData?.companies,
+      scopedCompanies,
       taxWithholdingCompanyId
     );
 
-  const selectedSsoCompany =
-    findCompanyById(
-      masterData?.companies,
-      socialSecurityCompanyId
-    );
+  /*
+  * SSO ใช้บริษัททั้งหมด
+  */
+  const selectedSsoCompany =statutoryCompanies.find(
+    (item) =>
+      String(
+        item?.company_id || ""
+      ) ===
+      String(
+        socialSecurityCompanyId ||
+          ""
+      )
+  ) || null;
 
-  const selectedSsoRegistration =
-    findCompanyStatutorySetting(
-      masterData
-        ?.companyStatutorySettings,
-      socialSecurityCompanyId,
-      statutoryEffectiveFrom ||
-        startWorkDate
-    );
+  /*
+  * SSO Registration
+  * ต้องใช้ Master ที่ไม่ถูก Company Scope
+  */
+  const selectedSsoRegistration = findCompanyStatutorySetting(
+    statutoryCompanies,
+    socialSecurityCompanyId,
+    statutoryEffectiveFrom ||
+      startWorkDate
+  );
 
   const statutoryDisabled =
     disabled || mode !== "create";
@@ -1234,7 +1322,7 @@ export default function EmployeeContactStep({
                     statutoryDisabled
                   }
                   options={
-                    companyOptions
+                    taxCompanyOptions
                   }
                   placeholder="เลือก Company Master"
                 />
@@ -1495,7 +1583,7 @@ export default function EmployeeContactStep({
                   optionFilterProp="label"
                   loading={masterLoading}
                   disabled={statutoryDisabled}
-                  options={companyOptions}
+                  options={ssoCompanyOptions}
                   placeholder="เลือก Company Master"
                 />
               </Form.Item>

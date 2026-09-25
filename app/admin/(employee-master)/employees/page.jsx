@@ -188,6 +188,8 @@ const DEFAULT_FORM_VALUES = {
 const MASTER_ENDPOINTS = {
   companies:
     "/api/admin/companies?all=true&status=active&scope_context=ems.employees",
+  statutoryCompanies:
+    "/api/admin/employees/statutory-companies",
   branchGroups:
     "/api/admin/branch-groups?all=true&status=active&scope_context=ems.employees",
   branches:
@@ -1688,6 +1690,8 @@ export default function EmployeesPage() {
 
   const [ masterData,setMasterData,] = useState({
     companies: [],
+    // Tax / SSO Company ไม่ Scope
+    statutoryCompanies: [],
     branchGroups: [],
     branches: [],
     departments: [],

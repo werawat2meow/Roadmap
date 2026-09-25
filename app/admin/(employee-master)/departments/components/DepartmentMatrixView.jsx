@@ -22,14 +22,12 @@ function BranchLogo({ branch, compact = false }) {
   const sizeClass = compact ? "h-10 w-10" : "h-14 w-14";
 
   return (
-    <div
-      className={`flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm`}
-    >
+    <div className={`flex ${sizeClass} shrink-0 items-center justify-center bg-white/75 p-1.5`}>
       {branch?.branch_image_url ? (
         <img
           src={branch.branch_image_url}
           alt={branch.branch_name || branch.branch_code || "Branch"}
-          className="h-full w-full object-cover"
+          className="max-h-full max-w-full object-contain"
         />
       ) : (
         <span className="text-[8px] text-slate-400">LOGO</span>
@@ -156,15 +154,6 @@ function MobileMatrix({
                   </div>
                 </div>
 
-                <span
-                  className={`shrink-0 border px-2.5 py-1 text-[10px] font-bold ${
-                    department.status === "active"
-                      ? "border-green-600/30 bg-green-50 text-green-700"
-                      : "border-red-600/30 bg-red-50 text-red-600"
-                  }`}
-                >
-                  {department.status === "active" ? "ACTIVE" : "INACTIVE"}
-                </span>
               </div>
             </div>
 
@@ -302,9 +291,6 @@ function DesktopMatrix({
               </th>
               <th rowSpan={2} className="min-w-[220px] border border-slate-400 px-3 py-2 text-center font-bold">
                 Department
-              </th>
-              <th rowSpan={2} className="w-[92px] border border-slate-400 px-2 py-2 text-center font-bold">
-                Status
               </th>
               {manageEnabled && (
                 <th
@@ -454,18 +440,6 @@ function DesktopMatrix({
                       </div>
                     </td>
 
-                    <td className="border border-slate-300 bg-white px-2 py-3 text-center align-middle">
-                      <span
-                        className={`inline-flex border px-2 py-1 text-[9px] font-bold ${
-                          department.status === "active"
-                            ? "border-green-300 bg-green-50 text-green-700"
-                            : "border-red-300 bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {department.status === "active" ? "ACTIVE" : "INACTIVE"}
-                      </span>
-                    </td>
-
                     {manageEnabled && (
                       <td
                         data-matrix-no-print
@@ -492,7 +466,7 @@ function DesktopMatrix({
               <tr>
                 <td
                   colSpan={
-                    Math.max(branchGroups.length, 1) + 3 + (manageEnabled ? 1 : 0)
+                    Math.max(branchGroups.length, 1) + 2 + (manageEnabled ? 1 : 0)
                   }
                   className="border border-slate-300 bg-white px-6 py-12 text-center text-slate-400"
                 >
@@ -523,7 +497,6 @@ function DesktopMatrix({
                 <td className="border border-slate-400 px-3 py-2 text-right font-bold">
                   รวม {departments.length} แผนก
                 </td>
-                <td className="border border-slate-400 px-2 py-2 text-center font-bold">-</td>
                 {manageEnabled && (
                   <td
                     data-matrix-no-print

@@ -38,6 +38,9 @@ export default function ExecutivePage() {
   );
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [salaryEffectiveMonth, setSalaryEffectiveMonth] = useState("");
   const [pendingAction, setPendingAction] = useState<
     "reject" | "return" | null
   >(null);
@@ -148,15 +151,18 @@ export default function ExecutivePage() {
 
   const handleStatusUpdate = async (
     action: "approve" | "reject" | "return",
-    rejectionNote?: string,
+    note?: string,
+    salaryMonth?: string,
   ) => {
     if (!selectedEmployee) return;
 
-    if (
-      (action === "reject" || action === "return") &&
-      !rejectionNote?.trim()
-    ) {
-      alert("กรุณากรอกเหตุผลก่อนดำเนินการ");
+    if (action === "approve" && !note?.trim()) {
+      alert("กรุณาระบุหมายเหตุการอนุมัติ");
+      return;
+    }
+
+    if ((action === "reject" || action === "return") && !note?.trim()) {
+      alert("กรุณาระบุเหตุผล");
       return;
     }
 
@@ -176,7 +182,10 @@ export default function ExecutivePage() {
         body: JSON.stringify({
           evaluationId: selectedEmployee.id,
           action,
-          rejectionNote,
+          rejectionNote:
+            action === "reject" || action === "return" ? note : undefined,
+          approvalNote: action === "approve" ? note : undefined,
+          salaryEffectiveMonth: action === "approve" ? salaryMonth : undefined,
         }),
       });
 
@@ -192,8 +201,11 @@ export default function ExecutivePage() {
         );
         setSelectedEmployee(null);
         setRejectModalOpen(false);
+        setApproveModalOpen(false);
         setPendingAction(null);
         setRejectionReason("");
+        setApprovalNote("");
+        setSalaryEffectiveMonth("");
         window.location.reload();
       } else {
         alert("เกิดข้อผิดพลาด: " + result.error);
@@ -301,6 +313,93 @@ export default function ExecutivePage() {
         </div>
       </div>
 
+      {approveModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[28px] bg-white p-6 shadow-2xl border border-slate-200">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">
+                  Approval Note
+                </p>
+                <h2 className="text-xl font-bold text-slate-900">
+                  หมายเหตุการอนุมัติ
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  ระบุรายละเอียด เช่น ปรับเงินรอบเดือนไหน
+                  หรืออนุมัติแล้วแต่ปรับเงินภายหลัง
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setApproveModalOpen(false);
+                  setApprovalNote("");
+                  setSalaryEffectiveMonth("");
+                }}
+                className="cursor-pointer rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-bold text-slate-700">
+                  รอบเดือนที่ปรับเงิน
+                </label>
+                <input
+                  value={salaryEffectiveMonth}
+                  onChange={(e) => setSalaryEffectiveMonth(e.target.value)}
+                  placeholder="เช่น พ.ย. 2569 / ยังไม่ปรับเงิน"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-bold text-slate-700">
+                  หมายเหตุการอนุมัติ *
+                </label>
+                <textarea
+                  value={approvalNote}
+                  onChange={(e) => setApprovalNote(e.target.value)}
+                  placeholder="เช่น อนุมัติแล้ว ปรับเงินรอบเดือน พ.ย. 2569 / อนุมัติแล้ว แต่ยังไม่ปรับเงินเดือน"
+                  className="w-full min-h-[140px] rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() =>
+                  handleStatusUpdate(
+                    "approve",
+                    approvalNote,
+                    salaryEffectiveMonth,
+                  )
+                }
+                className="cursor-pointer flex-1 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600"
+              >
+                อนุมัติพร้อมหมายเหตุ
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setApproveModalOpen(false);
+                  setApprovalNote("");
+                  setSalaryEffectiveMonth("");
+                }}
+                className="cursor-pointer flex-1 rounded-2xl bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rejectModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-xl rounded-[28px] bg-white p-6 shadow-2xl border border-slate-200">
@@ -383,7 +482,7 @@ export default function ExecutivePage() {
           setPendingAction(null);
           setRejectionReason("");
         }}
-        onApprove={() => handleStatusUpdate("approve")}
+        onApprove={() => setApproveModalOpen(true)}
         onReject={() => {
           setPendingAction("reject");
           setRejectModalOpen(true);

@@ -38,6 +38,8 @@ type EvaluationRecord = {
   status: string;
   evaluationCount: number;
   approvedByName?: string;
+  approvalNote?: string | null;
+  salaryEffectiveMonth?: string | null;
   scorePercent: string;
   rawEmployeeId?: string;
   evaluationPeriodContinued?: string;
@@ -499,6 +501,21 @@ export default function EvaluationHistoryPanel({
           status: (
             <div className="flex flex-col items-center gap-1">
               <span>{row.status}</span>
+
+              {row.salaryEffectiveMonth && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 ring-1 ring-blue-100">
+                  รอบปรับเงิน: {row.salaryEffectiveMonth}
+                </span>
+              )}
+
+              {row.approvalNote && (
+                <span
+                  className="max-w-[220px] truncate text-[11px] font-medium text-slate-500"
+                  title={row.approvalNote}
+                >
+                  หมายเหตุ: {row.approvalNote}
+                </span>
+              )}
 
               {row.isProbationExtended && (
                 <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">

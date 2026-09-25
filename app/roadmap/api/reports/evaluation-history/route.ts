@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level,extra_data,evaluation_period_continued",
+      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level,extra_data,evaluation_period_continued,approval_note,salary_effective_month",
     )
     .eq("evaluation_type_id", typeRow.id)
     .in("status", ["Completed", "SalaryUpdated"]);
@@ -271,6 +271,8 @@ export async function GET(req: Request) {
       maxScore,
       scorePercent,
       status: item.status,
+      approvalNote: item.approval_note ?? null,
+      salaryEffectiveMonth: item.salary_effective_month ?? null,
       approvedByName: item.approved_by
         ? approverNameByUserId.get(item.approved_by) || "ไม่ระบุ"
         : "ไม่ระบุ",

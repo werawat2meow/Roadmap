@@ -14,7 +14,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { evaluationId, action, rejectionNote } = body;
+    const {
+      evaluationId,
+      action,
+      rejectionNote,
+      approvalNote,
+      salaryEffectiveMonth,
+    } = body;
 
     if (
       !evaluationId ||
@@ -23,6 +29,12 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { success: false, error: "ข้อมูลไม่ครบหรือ action ไม่ถูกต้อง" },
+        { status: 400 },
+      );
+    }
+    if (action === "approve" && !approvalNote?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "กรุณาระบุหมายเหตุการอนุมัติ" },
         { status: 400 },
       );
     }
@@ -41,6 +53,10 @@ export async function POST(req: Request) {
     if (action === "approve") {
       updatePayload.approved_by = auth.user.id;
       updatePayload.approved_at = now;
+      updatePayload.approval_note = approvalNote?.trim() || null;
+      updatePayload.salary_effective_month =
+        salaryEffectiveMonth?.trim() || null;
+
       updatePayload.rejected_by = null;
       updatePayload.rejected_at = null;
       updatePayload.rejection_note = null;
@@ -50,6 +66,8 @@ export async function POST(req: Request) {
       updatePayload.rejection_note = rejectionNote || null;
       updatePayload.approved_by = null;
       updatePayload.approved_at = null;
+      updatePayload.approval_note = null;
+      updatePayload.salary_effective_month = null;
     }
 
     const { error } = await supabaseAdmin

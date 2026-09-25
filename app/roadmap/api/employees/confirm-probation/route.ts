@@ -41,7 +41,10 @@ export async function POST(req: Request) {
     const evaluationTypeName =
       (evaluation.rm_evaluation_types as any)?.name ?? "";
 
-    if (evaluation.status !== "Completed" || evaluationTypeName !== "Probation") {
+    if (
+      evaluation.status !== "Completed" ||
+      evaluationTypeName !== "Probation"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -53,7 +56,7 @@ export async function POST(req: Request) {
 
     const isExtended = Boolean(
       evaluation.evaluation_period_continued?.trim() ||
-        evaluation.extra_data?.isProbationExtended,
+      evaluation.extra_data?.isProbationExtended,
     );
 
     if (isExtended) {
@@ -66,12 +69,31 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: fulltimeType, error: fulltimeTypeError } = await supabaseAdmin
+      .from("employment_types")
+      .select("id")
+      .eq("type_code", "FULLTIME")
+      .maybeSingle();
+
+    if (fulltimeTypeError) throw fulltimeTypeError;
+
+    if (!fulltimeType?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ไม่พบประเภทพนักงาน FULLTIME ในตาราง employment_types",
+        },
+        { status: 400 },
+      );
+    }
+
     const now = new Date().toISOString();
 
     const { error: updateError } = await supabaseAdmin
       .from("employees")
       .update({
         probation_status: "passed",
+        employment_type_id: fulltimeType.id,
         confirmation_date: now,
         updated_at: now,
       })

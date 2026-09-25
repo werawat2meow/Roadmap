@@ -25,6 +25,7 @@ import {
   ClockCircleOutlined,
   DollarOutlined,
   DownOutlined,
+  UpOutlined,
   FileTextOutlined,
   IdcardOutlined,
   ImportOutlined,
@@ -34,7 +35,6 @@ import {
   SettingOutlined,
   SolutionOutlined,
   TeamOutlined,
-  UpOutlined,
   UserOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -73,6 +73,39 @@ const ICONS = {
   UserOutlined: <UserOutlined />,
   WalletOutlined: <WalletOutlined />,
 };
+
+const SETUP_LEVEL_META = {
+  required: {
+    key: "required",
+    title: "จำเป็นก่อนเพิ่มพนักงานใหม่",
+    description:
+      "ควรตั้งค่ากลุ่มนี้ให้ครบก่อนเริ่มเพิ่มพนักงาน เพื่อให้ข้อมูลองค์กร ตำแหน่ง Payroll และรหัสพนักงานพร้อมใช้งาน",
+    tag: "จำเป็น",
+    color: "volcano",
+  },
+  conditional: {
+    key: "conditional",
+    title: "ตั้งค่าตามเงื่อนไขการใช้งาน",
+    description:
+      "ตั้งค่าเมื่อองค์กรหรือพนักงานมีการใช้งาน เช่น ภาษี/ประกันสังคม ธนาคาร Cost Structure หรือบัญชีผู้ใช้",
+    tag: "ตามเงื่อนไข",
+    color: "gold",
+  },
+  additional: {
+    key: "additional",
+    title: "การตั้งค่าเพิ่มเติม",
+    description:
+      "ไม่ใช่ข้อมูลหลักที่ต้องตั้งให้ครบก่อนเพิ่มพนักงาน สามารถกลับมาตั้งค่าเพิ่มเติมเมื่อเริ่มใช้งานโมดูลนั้น",
+    tag: "เพิ่มเติม",
+    color: "blue",
+  },
+};
+
+const SETUP_LEVEL_ORDER = [
+  "required",
+  "conditional",
+  "additional",
+];
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -174,6 +207,37 @@ export default function DashboardWorkHub({ user }) {
       }))
       .filter((group) => group.items.length > 0);
   }, [user]);
+
+  const setupSections = useMemo(() => {
+    return SETUP_LEVEL_ORDER
+      .map((level) => ({
+        ...SETUP_LEVEL_META[level],
+        groups: setupGroups.filter(
+          (group) =>
+            (group.employeeSetupLevel || "additional") === level
+        ),
+      }))
+      .filter((section) => section.groups.length > 0);
+  }, [setupGroups]);
+
+  const requiredSetupSection = useMemo(
+    () => setupSections.find((section) => section.key === "required") || null,
+    [setupSections]
+  );
+
+  const secondarySetupSections = useMemo(
+    () => setupSections.filter((section) => section.key !== "required"),
+    [setupSections]
+  );
+
+  const requiredSetupItemCount = useMemo(() => {
+    if (!requiredSetupSection) return 0;
+
+    return requiredSetupSection.groups.reduce(
+      (total, group) => total + group.items.length,
+      0
+    );
+  }, [requiredSetupSection]);
 
   const searchableActions = useMemo(() => {
     const actionItems = Object.values(DASHBOARD_ACTIONS)
@@ -455,20 +519,49 @@ export default function DashboardWorkHub({ user }) {
 
           <Card
             data-dashboard-tour="setup-guide"
-            title="ตั้งค่าพื้นฐาน HRMS"
+            title={
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600 shadow-sm">
+                  <SafetyCertificateOutlined />
+                </div>
+                <div>
+                  <div className="text-[22px] font-bold text-slate-900">
+                    ตั้งค่าพื้นฐาน HRMS
+                  </div>
+                  <div className="mt-0.5 text-xs font-normal text-slate-500">
+                    Setup ที่ใช้เตรียมระบบ HRMS 
+                  </div>
+                </div>
+              </div>
+            }
             extra={
               <Space size={8} wrap>
-                <Tag color="gold">ทำครั้งแรก / กลับมาเมื่อมีการเปลี่ยนแปลง</Tag>
+                <Tag
+                  color="blue"
+                  style={{
+                    fontSize: "17px",
+                    padding: "6px 14px",
+                    lineHeight: "24px",
+                    fontWeight: 700,
+                  }}
+                >
+                  ส่วนสำคัญก่อนเพิ่มพนักงาน
+                </Tag>
+
                 <Button
-                  size="small"
                   onClick={() => setSetupGuideOpen((current) => !current)}
                   icon={setupGuideOpen ? <UpOutlined /> : <DownOutlined />}
+                  style={{
+                    height: 46,
+                    fontSize: "17px",
+                    padding: "0 24px",
+                  }}
                 >
                   {setupGuideOpen ? "ปิด" : "เปิด"}
                 </Button>
               </Space>
             }
-            className="rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm"
+            className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm"
           >
             <DashboardSetupJourney
               user={user}
@@ -476,56 +569,198 @@ export default function DashboardWorkHub({ user }) {
             />
 
             {setupGuideOpen ? (
-              <>
-                <div className="mb-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  <strong>ไม่ใช่ Step ที่ต้องทำซ้ำทุกวัน:</strong> ลำดับด้านบนใช้เป็นแนวทางจากขั้นแรกถึงขั้นสุดท้ายตอนเริ่มระบบ
-                  ส่วนรายการด้านล่างคือทางลัดไปยัง Master / Setup ทั้งหมดที่บัญชีนี้มี Permission
-                </div>
-
-                {setupGroups.length ? (
-                  <Row gutter={[18, 18]}>
-                    {setupGroups.map((group) => (
-                      <Col xs={24} lg={12} xxl={8} key={group.key}>
-                        <Card
-                          size="small"
-                          className="h-full rounded-2xl border-slate-200 bg-slate-50/60"
-                        >
-                          <div className="mb-3 flex items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-blue-600 shadow-sm">
-                              {ICONS[group.icon] || <SettingOutlined />}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-slate-900">
-                                {group.order}. {group.title}
-                              </div>
-                              <div className="mt-0.5 text-xs text-slate-500">
-                                {group.subtitle}
-                              </div>
-                            </div>
+              setupGroups.length ? (
+                <div className="mt-5 flex flex-col gap-8">
+                {requiredSetupSection ? (
+                  <div className="overflow-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-slate-50 shadow-sm">
+                    <div className="border-b border-blue-100 bg-white px-5 py-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600">
+                            <SafetyCertificateOutlined />
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            {group.items.map((item) => (
-                              <Button
-                                key={item.href}
-                                size="small"
-                                onClick={() => go(item.href)}
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-lg font-bold text-slate-900">
+                                จำเป็นก่อนเพิ่มพนักงานใหม่
+                              </span>
+                              <Tag
+                                color="blue"
+                                style={{
+                                  marginInlineEnd: 0,
+                                  fontWeight: 700,
+                                }}
                               >
-                                {item.label}
-                              </Button>
-                            ))}
+                                จำเป็น
+                              </Tag>
+                            </div>
+
+                            <div className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
+                              กลุ่มนี้เป็นข้อมูลพื้นฐานที่ควรตั้งค่าให้พร้อมก่อนสร้างพนักงาน
+                              เพื่อให้ข้อมูลสังกัด ตำแหน่ง Payroll และรหัสพนักงานพร้อมใช้งาน
+                            </div>
                           </div>
-                        </Card>
-                      </Col>
-                    ))}
-                  </Row>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
+                          <div className="text-2xl font-bold text-slate-900">
+                            {requiredSetupSection.groups.length}
+                          </div>
+                          <div className="text-xs leading-5 text-slate-600">
+                            หมวดจำเป็น
+                            <br />
+                            {requiredSetupItemCount} รายการ
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 md:p-5">
+                      <Alert
+                        showIcon
+                        type="info"
+                        title="แนะนำให้ตั้งค่าส่วนนี้ให้พร้อมก่อนเพิ่มพนักงาน"
+                        description="รายการด้านล่างคือข้อมูลตั้งต้นที่มักจำเป็นในระบบ HRMS เช่น ข้อมูลอ้างอิง โครงสร้างองค์กร Job Architecture Payroll และ Employee Master"
+                        className="mb-5 rounded-xl"
+                      />
+
+                      <Row gutter={[18, 18]}>
+                        {requiredSetupSection.groups.map((group) => (
+                          <Col xs={24} lg={12} xxl={8} key={group.key}>
+                            <Card
+                              size="small"
+                              className="h-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                            >
+                              <div className="-mx-3 -mt-3 mb-4 border-b border-blue-100 bg-blue-50/70 px-4 py-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white text-lg text-blue-600 shadow-sm">
+                                    {ICONS[group.icon] || <SettingOutlined />}
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="font-bold text-slate-900">
+                                        {group.order}. {group.title}
+                                      </div>
+                                      <Tag
+                                        color="blue"
+                                        style={{
+                                          marginInlineEnd: 0,
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        จำเป็น
+                                      </Tag>
+                                    </div>
+
+                                    <div className="mt-1 text-xs leading-5 text-slate-600">
+                                      {group.subtitle}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                {group.items.map((item) => (
+                                  <Button
+                                    key={item.href}
+                                    block
+                                    onClick={() => go(item.href)}
+                                    className="!flex !h-auto min-h-10 !items-center !justify-between !whitespace-normal !rounded-lg !border-blue-200 !px-3 !py-2 text-left hover:!border-blue-400 hover:!text-blue-600"
+                                  >
+                                    <span>{item.label}</span>
+                                    <ArrowRightOutlined />
+                                  </Button>
+                                ))}
+                              </div>
+                            </Card>
+                          </Col>
+                        ))}
+                      </Row>
+                    </div>
+                  </div>
                 ) : (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="User นี้ไม่มี Permission สำหรับหน้าตั้งค่า"
+                  <Alert
+                    showIcon
+                    type="warning"
+                    message="ยังไม่พบรายการตั้งค่าที่ถูกกำหนดเป็น “จำเป็น”"
+                    description="ตรวจสอบค่า employeeSetupLevel ใน dashboardWorkHubConfig ว่ากลุ่มที่ต้องทำก่อนเพิ่มพนักงานถูกกำหนดเป็น required แล้ว"
+                    className="rounded-xl"
                   />
                 )}
-              </>
+
+                {secondarySetupSections.map((section) => (
+                  <div key={section.key}>
+                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <Space size={8} wrap>
+                          <Tag color={section.color}>{section.tag}</Tag>
+                          <span className="text-base font-semibold text-slate-900">
+                            {section.title}
+                          </span>
+                        </Space>
+                        <div className="mt-1 text-sm text-slate-500">
+                          {section.description}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Row gutter={[18, 18]}>
+                      {section.groups.map((group) => (
+                        <Col xs={24} lg={12} xxl={8} key={group.key}>
+                          <Card
+                            size="small"
+                            className="h-full rounded-2xl border-slate-200 bg-slate-50/60 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                          >
+                            <div className="mb-3 flex items-start gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-blue-600 shadow-sm">
+                                {ICONS[group.icon] || <SettingOutlined />}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="font-semibold text-slate-900">
+                                    {group.order}. {group.title}
+                                  </div>
+                                  <Tag
+                                    color={section.color}
+                                    style={{ marginInlineEnd: 0 }}
+                                  >
+                                    {section.tag}
+                                  </Tag>
+                                </div>
+
+                                <div className="mt-0.5 text-xs text-slate-500">
+                                  {group.subtitle}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {group.items.map((item) => (
+                                <Button
+                                  key={item.href}
+                                  size="small"
+                                  onClick={() => go(item.href)}
+                                >
+                                  {item.label}
+                                </Button>
+                              ))}
+                            </div>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                ))}
+                </div>
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="User นี้ไม่มี Permission สำหรับหน้าตั้งค่า"
+                />
+              )
             ) : null}
           </Card>
         </>

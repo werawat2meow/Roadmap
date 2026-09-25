@@ -387,18 +387,15 @@ export default function EmployeeTable({
 
     {
       title: "สถานะพนักงาน",
-
       key: "employee_status",
-
       width: 160,
-
       align: "center",
-
       render: (_, record) => {
         const employeeStatus =
           getEmployeeStatus(
             record
           );
+        
 
         if (!employeeStatus) {
           return (

@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("employees")
-    .select(`
+    .select(
+      `
       id,
       employee_code,
       email,
@@ -12,6 +13,9 @@ export async function GET() {
       last_name_th,
       first_name_en,
       last_name_en,
+      probation_status,
+      probation_end_date,
+      confirmation_date,
       nick_name,
       status,
       hire_date,
@@ -30,7 +34,8 @@ export async function GET() {
           position_levels(level_code)
         )
       )
-    `)
+    `,
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -45,7 +50,8 @@ export async function GET() {
       item.positions?.position_level_mappings?.find(
         (m: any) => m.position_levels,
       )?.position_levels?.level_code ||
-      item.positions?.position_level_mappings?.[0]?.position_levels?.level_code ||
+      item.positions?.position_level_mappings?.[0]?.position_levels
+        ?.level_code ||
       "";
 
     return {
@@ -70,6 +76,9 @@ export async function GET() {
       level: positionLevel,
       status: item.status || "Active",
       hireDate: item.hire_date || null,
+      probationStatus: item.probation_status,
+      probationEndDate: item.probation_end_date,
+      confirmationDate: item.confirmation_date,
     };
   });
 

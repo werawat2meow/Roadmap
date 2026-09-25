@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { createNotification } from "@/lib/notifications/createNotification";
+import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
+import { getRoadmapCycleSettings } from "@/lib/roadmap/cycleSettingsServer";
 
 const isUuid = (value: string) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -181,16 +183,16 @@ export async function POST(req: Request) {
   const isManagerSubmitting = body.status === "Submitted";
   // ถ้ากด Submit ให้เป็น In_Review ไว้ก่อน จนกว่าจะตรวจพบว่าทุกคนกดครบแล้ว
   const isNomination = body.status === "Nominated";
-  if (isNomination) {
-    // const day = 28;
-    const day = new Date().getDate();
-    const isNominationPeriod = day >= 26 && day <= 28;
 
-    if (!isNominationPeriod) {
+  const cycleSettings = await getRoadmapCycleSettings();
+
+  if (isNomination) {
+    const cycleInfo = getEvaluationCycleInfo(undefined, cycleSettings);
+
+    if (!cycleInfo.isNominationPeriod) {
       return NextResponse.json(
         {
-          success: false,
-          error: "ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ 26-28",
+          error: `ระบบเปิดรับเสนอรายชื่อเฉพาะวันที่ ${cycleSettings.nominationStartDay}-${cycleSettings.nominationEndDay}`,
         },
         { status: 403 },
       );
@@ -312,7 +314,7 @@ export async function POST(req: Request) {
           user_account_id: hr.id,
           notification_type: "roadmap_nomination_submitted",
           title: "📥 ได้รับรายชื่อพนักงานเข้าแผนรอบประเมิน",
-          message: `หัวหน้างานได้ส่งรายชื่อพนักงาน (${requestedTypeName || "ประเมิน"}) เข้ามาแล้ว กรุณาตรวจสอบและออกใบประเมินภายในวันที่ 2`,
+          message: `หัวหน้างานได้ส่งรายชื่อพนักงาน (${requestedTypeName || "ประเมิน"}) เข้ามาแล้ว กรุณาตรวจสอบและออกใบประเมินภายในวันที่ ${cycleSettings.hrPrepareDeadlineDay}`,
           module_code: "roadmap",
           action_url: `/roadmap/evaluate/${body.employeeId}`,
           priority: "warning",
@@ -415,7 +417,7 @@ export async function POST(req: Request) {
     totalReviewers === 0 ||
     (totalReviewers > 0 && submittedCount === totalReviewers);
 
-    if (isManagerSubmitting) {
+  if (isManagerSubmitting) {
     try {
       const { data: evaluatorAccount } = await supabaseAdmin
         .from("user_accounts")
@@ -595,8 +597,6 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   }
-
-  
 
   // 5. ถ้ายังประเมินไม่ครบ (เช่น 1/2 คน) หรือเป็นการ Save Draft
   let responseMessage = "บันทึกแบบร่างเรียบร้อยแล้ว";

@@ -118,6 +118,8 @@ model RmEvaluation {
   rejected_by                                             String?                @db.Uuid
   rejected_at                                             DateTime?              @db.Timestamptz(6)
   rejection_note                                          String?
+  approval_note                                           String?
+  salary_effective_month                                  String?
   reviewers                                               RmEvaluationReviewer[]
   scores                                                  RmEvaluationScore[]
   user_accounts_rm_evaluations_approved_byTouser_accounts user_accounts?         @relation("rm_evaluations_approved_byTouser_accounts", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -316,21 +318,22 @@ model mfa_challenges {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model mfa_factors {
-  id                           String           @id @db.Uuid
-  user_id                      String           @db.Uuid
+  id                           String                  @id @db.Uuid
+  user_id                      String                  @db.Uuid
   friendly_name                String?
   factor_type                  factor_type
   status                       factor_status
-  created_at                   DateTime         @db.Timestamptz(6)
-  updated_at                   DateTime         @db.Timestamptz(6)
+  created_at                   DateTime                @db.Timestamptz(6)
+  updated_at                   DateTime                @db.Timestamptz(6)
   secret                       String?
   phone                        String?
-  last_challenged_at           DateTime?        @unique @db.Timestamptz(6)
+  last_challenged_at           DateTime?               @unique @db.Timestamptz(6)
   web_authn_credential         Json?
-  web_authn_aaguid             String?          @db.Uuid
+  web_authn_aaguid             String?                 @db.Uuid
   last_webauthn_challenge_data Json?
   mfa_challenges               mfa_challenges[]
-  users                        users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                        users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mfa_recovery_code_sets       mfa_recovery_code_sets?
 
   @@unique([user_id, phone], map: "unique_phone_factor_per_user")
   @@index([user_id, created_at], map: "factor_id_created_at_idx")
@@ -423,6 +426,7 @@ model one_time_tokens {
   relates_to String
   created_at DateTime            @default(now()) @db.Timestamp(6)
   updated_at DateTime            @default(now()) @db.Timestamp(6)
+  expires_at DateTime?           @db.Timestamptz(6)
   users      users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, token_type])
@@ -549,6 +553,8 @@ model sessions {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_domains {
   id              String        @id @db.Uuid
   sso_provider_id String        @db.Uuid
@@ -578,6 +584,8 @@ model sso_domains {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_providers {
   id                String              @id @db.Uuid
   resource_id       String?
@@ -586,6 +594,8 @@ model sso_providers {
   disabled          Boolean?
   saml_providers    saml_providers[]
   saml_relay_states saml_relay_states[]
+  scim_tokens       scim_tokens[]
+  scim_users        scim_users[]
   sso_domains       sso_domains[]
 
   @@index([resource_id], map: "sso_providers_resource_id_pattern_idx")
@@ -609,47 +619,51 @@ model sso_providers {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model users {
-  instance_id                 String?                @db.Uuid
-  id                          String                 @id @db.Uuid
-  aud                         String?                @db.VarChar(255)
-  role                        String?                @db.VarChar(255)
-  email                       String?                @db.VarChar(255)
-  encrypted_password          String?                @db.VarChar(255)
-  email_confirmed_at          DateTime?              @db.Timestamptz(6)
-  invited_at                  DateTime?              @db.Timestamptz(6)
-  confirmation_token          String?                @db.VarChar(255)
-  confirmation_sent_at        DateTime?              @db.Timestamptz(6)
-  recovery_token              String?                @db.VarChar(255)
-  recovery_sent_at            DateTime?              @db.Timestamptz(6)
-  email_change_token_new      String?                @db.VarChar(255)
-  email_change                String?                @db.VarChar(255)
-  email_change_sent_at        DateTime?              @db.Timestamptz(6)
-  last_sign_in_at             DateTime?              @db.Timestamptz(6)
+  instance_id                 String?                 @db.Uuid
+  id                          String                  @id @db.Uuid
+  aud                         String?                 @db.VarChar(255)
+  role                        String?                 @db.VarChar(255)
+  email                       String?                 @db.VarChar(255)
+  encrypted_password          String?                 @db.VarChar(255)
+  email_confirmed_at          DateTime?               @db.Timestamptz(6)
+  invited_at                  DateTime?               @db.Timestamptz(6)
+  confirmation_token          String?                 @db.VarChar(255)
+  confirmation_sent_at        DateTime?               @db.Timestamptz(6)
+  recovery_token              String?                 @db.VarChar(255)
+  recovery_sent_at            DateTime?               @db.Timestamptz(6)
+  email_change_token_new      String?                 @db.VarChar(255)
+  email_change                String?                 @db.VarChar(255)
+  email_change_sent_at        DateTime?               @db.Timestamptz(6)
+  last_sign_in_at             DateTime?               @db.Timestamptz(6)
   raw_app_meta_data           Json?
   raw_user_meta_data          Json?
   is_super_admin              Boolean?
-  created_at                  DateTime?              @db.Timestamptz(6)
-  updated_at                  DateTime?              @db.Timestamptz(6)
-  phone                       String?                @unique
-  phone_confirmed_at          DateTime?              @db.Timestamptz(6)
-  phone_change                String?                @default("")
-  phone_change_token          String?                @default("") @db.VarChar(255)
-  phone_change_sent_at        DateTime?              @db.Timestamptz(6)
-  confirmed_at                DateTime?              @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
-  email_change_token_current  String?                @default("") @db.VarChar(255)
-  email_change_confirm_status Int?                   @default(0) @db.SmallInt
-  banned_until                DateTime?              @db.Timestamptz(6)
-  reauthentication_token      String?                @default("") @db.VarChar(255)
-  reauthentication_sent_at    DateTime?              @db.Timestamptz(6)
-  is_sso_user                 Boolean                @default(false)
-  deleted_at                  DateTime?              @db.Timestamptz(6)
-  is_anonymous                Boolean                @default(false)
+  created_at                  DateTime?               @db.Timestamptz(6)
+  updated_at                  DateTime?               @db.Timestamptz(6)
+  phone                       String?                 @unique
+  phone_confirmed_at          DateTime?               @db.Timestamptz(6)
+  phone_change                String?                 @default("")
+  phone_change_token          String?                 @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime?               @db.Timestamptz(6)
+  confirmed_at                DateTime?               @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?                 @default("") @db.VarChar(255)
+  email_change_confirm_status Int?                    @default(0) @db.SmallInt
+  banned_until                DateTime?               @db.Timestamptz(6)
+  reauthentication_token      String?                 @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime?               @db.Timestamptz(6)
+  is_sso_user                 Boolean                 @default(false)
+  deleted_at                  DateTime?               @db.Timestamptz(6)
+  is_anonymous                Boolean                 @default(false)
   identities                  identities[]
   mfa_factors                 mfa_factors[]
+  mfa_recovery_code_sets      mfa_recovery_code_sets?
   oauth_authorizations        oauth_authorizations[]
   oauth_consents              oauth_consents[]
   one_time_tokens             one_time_tokens[]
+  scim_users                  scim_users[]
   sessions                    sessions[]
   webauthn_challenges         webauthn_challenges[]
   webauthn_credentials        webauthn_credentials[]
@@ -1220,17 +1234,17 @@ model branches {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model companies {
-  id                                                                                            String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  company_code                                                                                  String                          @unique
+  id                                                                                            String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_code                                                                                  String                                @unique
   company_name_th                                                                               String
   company_name_en                                                                               String?
   tax_id                                                                                        String?
   phone                                                                                         String?
   email                                                                                         String?
-  status                                                                                        String                          @default("active")
-  sort_order                                                                                    Int                             @default(0)
-  created_at                                                                                    DateTime                        @default(now()) @db.Timestamptz(6)
-  updated_at                                                                                    DateTime                        @default(now()) @db.Timestamptz(6)
+  status                                                                                        String                                @default("active")
+  sort_order                                                                                    Int                                   @default(0)
+  created_at                                                                                    DateTime                              @default(now()) @db.Timestamptz(6)
+  updated_at                                                                                    DateTime                              @default(now()) @db.Timestamptz(6)
   branch_no                                                                                     String?
   address                                                                                       String?
   province                                                                                      String?
@@ -1240,13 +1254,14 @@ model companies {
   website                                                                                       String?
   logo_url                                                                                      String?
   logo_path                                                                                     String?
-  tax_branch_type                                                                               String?                         @default("head_office")
+  tax_branch_type                                                                               String?                               @default("head_office")
   tax_branch_name                                                                               String?
-  country_code                                                                                  String?                         @default("TH")
+  country_code                                                                                  String?                               @default("TH")
   province_code                                                                                 String?
   district_code                                                                                 String?
   subdistrict_code                                                                              String?
   branches                                                                                      branches[]
+  company_statutory_settings                                                                    company_statutory_settings[]
   compensation_policies                                                                         compensation_policies[]
   compensation_policy_scopes                                                                    compensation_policy_scopes[]
   deduction_types                                                                               deduction_types[]
@@ -1254,9 +1269,10 @@ model companies {
   employee_code_counters                                                                        employee_code_counters[]
   employee_code_settings                                                                        employee_code_settings[]
   employee_running_numbers                                                                      employee_running_numbers[]
-  employee_statutory_profiles_employee_statutory_profiles_social_security_company_idTocompanies employee_statutory_profiles[]   @relation("employee_statutory_profiles_social_security_company_idTocompanies")
-  employee_statutory_profiles_employee_statutory_profiles_tax_withholding_company_idTocompanies employee_statutory_profiles[]   @relation("employee_statutory_profiles_tax_withholding_company_idTocompanies")
+  employee_statutory_profiles_employee_statutory_profiles_social_security_company_idTocompanies employee_statutory_profiles[]         @relation("employee_statutory_profiles_social_security_company_idTocompanies")
+  employee_statutory_profiles_employee_statutory_profiles_tax_withholding_company_idTocompanies employee_statutory_profiles[]         @relation("employee_statutory_profiles_tax_withholding_company_idTocompanies")
   employees                                                                                     employees[]
+  employment_contract_running_numbers                                                           employment_contract_running_numbers[]
   foreign_employment_schemes                                                                    foreign_employment_schemes[]
   foreign_worker_document_types                                                                 foreign_worker_document_types[]
   formula_variables                                                                             formula_variables[]
@@ -1463,6 +1479,10 @@ model employees {
   biometric_no                                                                      String?
   employee_card_no                                                                  String?
   salary_structure_id                                                               String?                             @db.Uuid
+  is_deleted                                                                        Boolean                             @default(false)
+  deleted_at                                                                        DateTime?                           @db.Timestamptz(6)
+  deleted_by                                                                        String?                             @db.Uuid
+  delete_reason                                                                     String?
   benefit_entitlements                                                              benefit_entitlements[]
   benefit_requests                                                                  benefit_requests[]
   benefit_usage_logs                                                                benefit_usage_logs[]
@@ -1483,6 +1503,7 @@ model employees {
   companies                                                                         companies?                          @relation(fields: [company_id], references: [id], onUpdate: NoAction)
   cost_centers                                                                      cost_centers?                       @relation(fields: [cost_center_id], references: [id], onUpdate: NoAction)
   countries                                                                         countries?                          @relation(fields: [country_id], references: [id], onUpdate: NoAction)
+  user_accounts_employees_deleted_byTouser_accounts                                 user_accounts?                      @relation("employees_deleted_byTouser_accounts", fields: [deleted_by], references: [id], onUpdate: NoAction)
   departments                                                                       departments?                        @relation(fields: [department_id], references: [id], onUpdate: NoAction)
   divisions                                                                         divisions?                          @relation(fields: [division_id], references: [id], onUpdate: NoAction)
   employee_statuses                                                                 employee_statuses?                  @relation(fields: [employee_status_id], references: [id], onUpdate: NoAction)
@@ -1542,6 +1563,7 @@ model employees {
   @@index([position_level_id], map: "idx_employees_position_level_id")
   @@index([supervisor_employee_id], map: "idx_employees_supervisor")
   @@index([salary_structure_id], map: "idx_employees_salary_structure_id")
+  @@index([is_deleted], map: "idx_employees_is_deleted")
   @@schema("public")
 }
 
@@ -1781,34 +1803,35 @@ model permissions {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model positions {
-  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  position_code               String                        @unique(map: "positions_code_key")
-  position_name               String
-  short_name                  String?
-  description                 String?
-  position_group              String?
-  position_family_id          String?                       @db.Uuid
-  job_id                      String?                       @db.Uuid
-  is_manager                  Boolean                       @default(false)
-  is_executive                Boolean                       @default(false)
-  allow_multiple_assignment   Boolean                       @default(false)
-  status                      String                        @default("active")
-  sort_order                  Int                           @default(0)
-  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
-  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
-  career_path_steps           career_path_steps[]
-  employee_compensations      employee_compensations[]
-  employees                   employees[]
-  org_position_slots          org_position_slots[]
-  position_level_mappings     position_level_mappings[]
-  position_levels_assignments position_levels_assignments[]
-  position_families           position_families?            @relation(fields: [position_family_id], references: [id], onUpdate: NoAction, map: "fk_position_family")
-  jobs                        jobs?                         @relation(fields: [job_id], references: [id], onUpdate: NoAction, map: "fk_positions_job")
-  recruit_job_applications    recruit_job_applications[]
-  recruit_job_description     recruit_job_description[]
-  recruit_job_mix_language    recruit_job_mix_language[]
-  recruit_job_open            recruit_job_open[]
-  unit_positions              unit_positions[]
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  position_code                String                         @unique(map: "positions_code_key")
+  position_name                String
+  short_name                   String?
+  description                  String?
+  position_group               String?
+  position_family_id           String?                        @db.Uuid
+  job_id                       String?                        @db.Uuid
+  is_manager                   Boolean                        @default(false)
+  is_executive                 Boolean                        @default(false)
+  allow_multiple_assignment    Boolean                        @default(false)
+  status                       String                         @default("active")
+  sort_order                   Int                            @default(0)
+  created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  career_path_steps            career_path_steps[]
+  employee_compensations       employee_compensations[]
+  employees                    employees[]
+  org_position_slots           org_position_slots[]
+  position_level_mappings      position_level_mappings[]
+  position_levels_assignments  position_levels_assignments[]
+  position_families            position_families?             @relation(fields: [position_family_id], references: [id], onUpdate: NoAction, map: "fk_position_family")
+  jobs                         jobs?                          @relation(fields: [job_id], references: [id], onUpdate: NoAction, map: "fk_positions_job")
+  recruit_contract_signatories recruit_contract_signatories[]
+  recruit_job_applications     recruit_job_applications[]
+  recruit_job_description      recruit_job_description[]
+  recruit_job_mix_language     recruit_job_mix_language[]
+  recruit_job_open             recruit_job_open[]
+  unit_positions               unit_positions[]
 
   @@index([position_name], map: "idx_positions_name")
   @@index([sort_order], map: "idx_positions_sort_order")
@@ -2075,6 +2098,7 @@ model user_accounts {
   employee_compensation_approval_logs                                                             employee_compensation_approval_logs[]
   employee_compensations_employee_compensations_created_byTouser_accounts                         employee_compensations[]              @relation("employee_compensations_created_byTouser_accounts")
   employee_compensations_employee_compensations_updated_byTouser_accounts                         employee_compensations[]              @relation("employee_compensations_updated_byTouser_accounts")
+  employees_employees_deleted_byTouser_accounts                                                   employees[]                           @relation("employees_deleted_byTouser_accounts")
   foreign_employment_schemes_foreign_employment_schemes_created_byTouser_accounts                 foreign_employment_schemes[]          @relation("foreign_employment_schemes_created_byTouser_accounts")
   foreign_employment_schemes_foreign_employment_schemes_updated_byTouser_accounts                 foreign_employment_schemes[]          @relation("foreign_employment_schemes_updated_byTouser_accounts")
   foreign_worker_document_types_foreign_worker_document_types_created_byTouser_accounts           foreign_worker_document_types[]       @relation("foreign_worker_document_types_created_byTouser_accounts")
@@ -2269,6 +2293,7 @@ model recruit_job_applications {
   deposit                                                      BigInt?
   deduct_processing                                            BigInt?
   deduct_resign_within_one_year                                BigInt?
+  contract_number                                              String?                          @db.VarChar
   recruit_additional_cost                                      recruit_additional_cost[]
   recruit_candidate_share_tokens                               recruit_candidate_share_tokens[]
   branch_groups                                                branch_groups?                   @relation(fields: [branch_group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -2294,7 +2319,7 @@ model recruit_job_applications {
   titles                                                       titles?                          @relation(fields: [title_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   units                                                        units?                           @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user_accounts                                                user_accounts?                   @relation(fields: [user_approve], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  recruit_job_documents                                        recruit_job_documents[]          @ignore
+  recruit_job_documents                                        recruit_job_documents[] @ignore
   recruit_job_education_history                                recruit_job_education_history[]
   recruit_job_interviews                                       recruit_job_interviews[]
   recruit_job_skills                                           recruit_job_skills[]
@@ -3369,6 +3394,8 @@ model employee_code_settings {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model employee_running_numbers {
   id                       String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id               String                 @db.Uuid
@@ -3723,6 +3750,8 @@ model salary_components {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4115,6 +4144,8 @@ model recruit_additional_cost {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model deduction_types {
   id                                                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                              String         @db.Uuid
@@ -4152,6 +4183,8 @@ model deduction_types {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4315,8 +4348,8 @@ model employee_statutory_profiles {
   tax_identity_type                                                           String     @default("citizen_id")
   tax_identification_no                                                       String
   tax_filing_form_code                                                        String?
-  tax_withholding_company_id                                                  String     @db.Uuid
-  tax_resident_status                                                         String     @default("resident")
+  tax_withholding_company_id                                                  String?    @db.Uuid
+  tax_resident_status                                                         String?    @default("resident")
   social_security_registered                                                  Boolean    @default(false)
   social_security_no                                                          String?
   insured_type                                                                String?
@@ -4331,7 +4364,7 @@ model employee_statutory_profiles {
   updated_at                                                                  DateTime   @default(now()) @db.Timestamptz(6)
   employees                                                                   employees  @relation(fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   companies_employee_statutory_profiles_social_security_company_idTocompanies companies? @relation("employee_statutory_profiles_social_security_company_idTocompanies", fields: [social_security_company_id], references: [id], onUpdate: NoAction)
-  companies_employee_statutory_profiles_tax_withholding_company_idTocompanies companies  @relation("employee_statutory_profiles_tax_withholding_company_idTocompanies", fields: [tax_withholding_company_id], references: [id], onUpdate: NoAction)
+  companies_employee_statutory_profiles_tax_withholding_company_idTocompanies companies? @relation("employee_statutory_profiles_tax_withholding_company_idTocompanies", fields: [tax_withholding_company_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([effective_from], map: "idx_employee_statutory_profiles_effective_from")
   @@index([employee_id], map: "idx_employee_statutory_profiles_employee_id")
@@ -4343,6 +4376,8 @@ model employee_statutory_profiles {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model formula_variables {
@@ -4379,6 +4414,8 @@ model formula_variables {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model hr_policies {
@@ -4439,6 +4476,8 @@ model hr_policy_versions {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model payroll_formulas {
   id                                                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                               String         @db.Uuid
@@ -4477,6 +4516,8 @@ model payroll_formulas {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model payroll_periods {
@@ -4545,6 +4586,8 @@ model payroll_run_items {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model payroll_runs {
   id                                                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                           String              @db.Uuid
@@ -4602,6 +4645,8 @@ model recruit_benefit_center {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model social_security_settings {
@@ -4663,6 +4708,8 @@ model tax_rate_brackets {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model tax_rate_sets {
@@ -4888,6 +4935,217 @@ model work_permit_types {
   @@schema("public")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model mfa_recovery_code_sets {
+  id                        String               @id @db.Uuid
+  user_id                   String               @unique @db.Uuid
+  mfa_factor_id             String               @unique @db.Uuid
+  failed_verification_count Int                  @default(0)
+  verification_locked_until DateTime?            @db.Timestamptz(6)
+  created_at                DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime             @default(now()) @db.Timestamptz(6)
+  mfa_factors               mfa_factors          @relation(fields: [mfa_factor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                     users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mfa_recovery_codes        mfa_recovery_codes[]
+
+  @@schema("auth")
+}
+
+model mfa_recovery_codes {
+  id                       String                 @id @db.Uuid
+  mfa_recovery_code_set_id String                 @db.Uuid
+  code_hash                String
+  consumed_at              DateTime?              @db.Timestamptz(6)
+  created_at               DateTime               @default(now()) @db.Timestamptz(6)
+  mfa_recovery_code_sets   mfa_recovery_code_sets @relation(fields: [mfa_recovery_code_set_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mfa_recovery_code_set_id], map: "mfa_recovery_codes_set_id_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model scim_tokens {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  token_hash      String        @unique
+  prefix          String
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime?     @db.Timestamptz(6)
+  revoked_at      DateTime?     @db.Timestamptz(6)
+  last_used_at    DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at])
+  @@index([revoked_at])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+model scim_users {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  user_id         String?       @db.Uuid
+  resource        Json
+  user_name       String        @default(dbgenerated("lower((resource ->> 'userName'::text))"))
+  external_id     String?       @default(dbgenerated("(resource ->> 'externalId'::text)"))
+  active          Boolean       @default(dbgenerated("COALESCE(((resource ->> 'active'::text))::boolean, true)"))
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?        @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([deleted_at])
+  @@index([sso_provider_id])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model company_statutory_settings {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id              String    @db.Uuid
+  sso_employer_account_no String?
+  sso_branch_no           String?
+  wcf_registration_no     String?
+  effective_from          DateTime  @db.Date
+  effective_to            DateTime? @db.Date
+  status                  String    @default("active")
+  remark                  String?
+  created_by              String?   @db.Uuid
+  updated_by              String?   @db.Uuid
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  companies               companies @relation(fields: [company_id], references: [id])
+
+  @@unique([company_id, effective_from], map: "uq_company_statutory_settings_company_effective_from")
+  @@index([company_id], map: "idx_company_statutory_settings_company")
+  @@index([effective_from, effective_to], map: "idx_company_statutory_settings_effective")
+  @@index([status], map: "idx_company_statutory_settings_status")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model recruit_contract_signatories {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  emp_name_th String?    @db.VarChar
+  status      Boolean?
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  emp_name_en String?    @db.VarChar
+  position_id String?    @db.Uuid
+  positions   positions? @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rm_cycle_settings {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nomination_alert_start_day Int      @default(26)
+  nomination_alert_end_day   Int      @default(27)
+  nomination_start_day       Int      @default(26)
+  nomination_end_day         Int      @default(28)
+  hr_prepare_deadline_day    Int      @default(2)
+  evaluation_alert_start_day Int      @default(6)
+  evaluation_alert_end_day   Int      @default(7)
+  manager_lock_day           Int      @default(9)
+  created_at                 DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sso_categories {
+  id                             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_code                  String   @unique(map: "uq_sso_categories_code")
+  category_name_th               String
+  category_name_en               String?
+  section_no                     Int?
+  requires_employer_registration Boolean  @default(false)
+  is_default                     Boolean  @default(false)
+  sort_order                     Int      @default(0)
+  status                         String   @default("active")
+  remark                         String?
+  created_by                     String?  @db.Uuid
+  updated_by                     String?  @db.Uuid
+  created_at                     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, sort_order], map: "idx_sso_categories_status_sort")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model statutory_settings {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  setting_group   String
+  setting_code    String
+  setting_name_th String
+  setting_name_en String?
+  value_type      String    @default("number")
+  value_numeric   Decimal?  @db.Decimal(18, 4)
+  value_text      String?
+  unit            String?
+  effective_from  DateTime  @db.Date
+  effective_to    DateTime? @db.Date
+  status          String    @default("active")
+  description     String?
+  created_by      String?   @db.Uuid
+  updated_by      String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([setting_code, effective_from], map: "uq_statutory_settings_code_effective_from")
+  @@index([effective_from, effective_to], map: "idx_statutory_settings_effective_dates")
+  @@index([setting_group], map: "idx_statutory_settings_group")
+  @@index([status], map: "idx_statutory_settings_status")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tax_residency_statuses {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residency_code    String   @unique(map: "uq_tax_residency_statuses_code")
+  residency_name_th String
+  residency_name_en String?
+  sort_order        Int      @default(0)
+  status            String   @default("active")
+  remark            String?
+  created_by        String?  @db.Uuid
+  updated_by        String?  @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, sort_order], map: "idx_tax_residency_statuses_status_sort")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model employment_contract_running_numbers {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id     String    @db.Uuid
+  company_code   String    @db.VarChar(20)
+  running_number Int       @default(0)
+  running_month  Int       @db.SmallInt
+  running_year   Int
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  companies      companies @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+
+  @@unique([company_id, running_month, running_year], map: "employment_contract_running_n_company_id_running_month_runn_key")
+  @@schema("public")
+}
+
 enum aal_level {
   aal1
   aal2
@@ -4914,6 +5172,7 @@ enum factor_type {
   totp
   webauthn
   phone
+  recovery_code
 
   @@schema("auth")
 }

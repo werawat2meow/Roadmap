@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, ArrowRight, X } from "lucide-react";
 import { getEvaluationCycleInfo  } from "@/lib/roadmap/cycleHelper";
+import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
 
 type ActiveAlert = {
   id: string;
@@ -18,6 +19,7 @@ export default function CycleNotificationBanner() {
   const { user } = useAuth();
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const { settings: cycleSettings } = useRoadmapCycleSettings();
 
   useEffect(() => {
     async function loadAlerts() {
@@ -30,7 +32,7 @@ export default function CycleNotificationBanner() {
 
         if (notiJson.success && Array.isArray(notiJson.data)) {
           // หาแจ้งเตือนที่เกี่ยวกับ roadmap หรือ nomination ที่ยังไม่ได้อ่าน
-          const cycleInfo = getEvaluationCycleInfo();
+          const cycleInfo = getEvaluationCycleInfo(undefined, cycleSettings);
 
           const roadmapAlert = notiJson.data.find((n: any) => {
             const text = `${n.title || ""} ${n.message || ""}`;
@@ -48,7 +50,7 @@ export default function CycleNotificationBanner() {
 
             if (!isRoadmap || n.is_read) return false;
 
-            // ถ้าเป็นแจ้งเตือนเสนอชื่อ แต่ตอนนี้ไม่ใช่วันที่ 26-28 แล้ว ให้ข้าม
+            // ถ้าเป็นแจ้งเตือนเสนอชื่อ แต่ตอนนี้ไม่อยู่ในช่วงเสนอชื่อแล้ว ให้ข้าม
             if (isNominationAlert && !cycleInfo.isNominationPeriod)
               return false;
 
@@ -83,7 +85,7 @@ export default function CycleNotificationBanner() {
     }
 
     loadAlerts();
-  }, [user]);
+  }, [user, cycleSettings]);
 
   if (dismissed || !activeAlert) return null;
 

@@ -1,30 +1,99 @@
 // lib/roadmap/cycleHelper.ts
 
-export type CyclePhase = 
-  | "NOMINATING"      // 26 - 28: หัวหน้าส่งชื่อเข้าแผน
-  | "HR_PREPARING"    // 29 ถึง 2: HRM ออกใบประเมิน
-  | "EVALUATING"       // 3 ถึง 7 (เตือนวันที่ 6-7): หัวหน้าทำประเมิน
-  | "LOCKED"          // 9 เป็นต้นไป: ปิดรับผลประเมินของหัวหน้า
+export type CyclePhase =
+  | "NOMINATING"
+  | "HR_PREPARING"
+  | "EVALUATING"
+  | "LOCKED"
   | "NORMAL";
 
-export function getEvaluationCycleInfo(customDate?: Date) {
+export type RoadmapCycleSettings = {
+  nominationAlertStartDay: number;
+  nominationAlertEndDay: number;
+  nominationStartDay: number;
+  nominationEndDay: number;
+  hrPrepareDeadlineDay: number;
+  evaluationAlertStartDay: number;
+  evaluationAlertEndDay: number;
+  managerLockDay: number;
+};
+
+export const defaultRoadmapCycleSettings: RoadmapCycleSettings = {
+  nominationAlertStartDay: 26,
+  nominationAlertEndDay: 27,
+  nominationStartDay: 26,
+  nominationEndDay: 28,
+  hrPrepareDeadlineDay: 2,
+  evaluationAlertStartDay: 6,
+  evaluationAlertEndDay: 7,
+  managerLockDay: 9,
+};
+
+export function mapCycleSettingsFromApi(data: any): RoadmapCycleSettings {
+  return {
+    nominationAlertStartDay:
+      data?.nomination_alert_start_day ??
+      defaultRoadmapCycleSettings.nominationAlertStartDay,
+    nominationAlertEndDay:
+      data?.nomination_alert_end_day ??
+      defaultRoadmapCycleSettings.nominationAlertEndDay,
+    nominationStartDay:
+      data?.nomination_start_day ??
+      defaultRoadmapCycleSettings.nominationStartDay,
+    nominationEndDay:
+      data?.nomination_end_day ??
+      defaultRoadmapCycleSettings.nominationEndDay,
+    hrPrepareDeadlineDay:
+      data?.hr_prepare_deadline_day ??
+      defaultRoadmapCycleSettings.hrPrepareDeadlineDay,
+    evaluationAlertStartDay:
+      data?.evaluation_alert_start_day ??
+      defaultRoadmapCycleSettings.evaluationAlertStartDay,
+    evaluationAlertEndDay:
+      data?.evaluation_alert_end_day ??
+      defaultRoadmapCycleSettings.evaluationAlertEndDay,
+    managerLockDay:
+      data?.manager_lock_day ?? defaultRoadmapCycleSettings.managerLockDay,
+  };
+}
+
+function isDayInRange(day: number, start: number, end: number) {
+  if (start <= end) {
+    return day >= start && day <= end;
+  }
+
+  return day >= start || day <= end;
+}
+
+export function getEvaluationCycleInfo(
+  customDate?: Date,
+  settings: RoadmapCycleSettings = defaultRoadmapCycleSettings,
+) {
   const now = customDate || new Date();
-  // const now = customDate || new Date("2026-09-28");
   const day = now.getDate();
-  
 
-  // 1. วันที่ 26 - 28: ช่วงส่งชื่อ
-  const isNominationPeriod = day >= 26 && day <= 28;
-  const isNominationAlert = day >= 26 && day <= 27;
+  const isNominationPeriod = isDayInRange(
+    day,
+    settings.nominationStartDay,
+    settings.nominationEndDay,
+  );
 
-  // 2. ภายในวันที่ 2 (หรือ 29 ถึง 2): ช่วง HRM ออกใบประเมิน
-  const isHrPreparePeriod = day >= 29 || day <= 2;
+  const isNominationAlert = isDayInRange(
+    day,
+    settings.nominationAlertStartDay,
+    settings.nominationAlertEndDay,
+  );
 
-  // 3. วันที่ 6 - 7: หัวหน้าต้องทำให้เสร็จ
-  const isEvaluationDueSoon = day >= 6 && day <= 7;
+  const isHrPreparePeriod =
+    day > settings.nominationEndDay || day <= settings.hrPrepareDeadlineDay;
 
-  // 4. วันที่ 9 เป็นต้นไป: ล็อคไม่ให้หัวหน้าส่ง/แก้ไข
-  const isManagerLocked = day >= 9;
+  const isEvaluationDueSoon = isDayInRange(
+    day,
+    settings.evaluationAlertStartDay,
+    settings.evaluationAlertEndDay,
+  );
+
+  const isManagerLocked = day >= settings.managerLockDay;
 
   let phase: CyclePhase = "NORMAL";
   if (isNominationPeriod) phase = "NOMINATING";

@@ -1,4 +1,4 @@
-import { Employee, EmployeeStatus } from '../types';
+import { Employee, EmployeeStatus } from "../types";
 import Link from "next/link";
 
 type StatusBadgeProps = {
@@ -6,13 +6,16 @@ type StatusBadgeProps = {
 };
 
 const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const baseClasses = "px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap";
+  const baseClasses =
+    "px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap";
   const statusClasses: Record<EmployeeStatus, string> = {
-    'Active': 'bg-green-100 text-green-800',
-    'Inactive': 'bg-gray-100 text-gray-800',
-    'On Leave': 'bg-yellow-100 text-yellow-800',
+    Active: "bg-green-100 text-green-800",
+    Inactive: "bg-gray-100 text-gray-800",
+    "On Leave": "bg-yellow-100 text-yellow-800",
   };
-  return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
+  return (
+    <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>
+  );
 };
 
 type EmployeeTableProps = {
@@ -40,16 +43,29 @@ export default function EmployeeTable({ employees }: EmployeeTableProps) {
           <thead>
             {/* 🌟 ปรับหัวตารางให้เป็นสีเทาอ่อน มีมิติ และเข้าพวกกับข้อมูลด้านล่าง */}
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">Employee Code</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[20%]">Department</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[15%]">Position</th>
-              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold text-center w-[15%]">Management</th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">
+                Employee
+              </th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[25%]">
+                Employee Code
+              </th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[20%]">
+                Department
+              </th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold w-[15%]">
+                Position
+              </th>
+              <th className="py-3.5 px-5 text-xs uppercase tracking-wider font-semibold text-center w-[15%]">
+                Management
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
             {employees.map((employee) => (
-              <tr key={employee.id} className="hover:bg-slate-50/40 transition-colors duration-150">
+              <tr
+                key={employee.id}
+                className="hover:bg-slate-50/40 transition-colors duration-150"
+              >
                 {/* 1. คอลัมน์พนักงานและวงกลม Avatar */}
                 <td className="py-3.5 px-5">
                   <div className="flex items-center">
@@ -58,20 +74,41 @@ export default function EmployeeTable({ employees }: EmployeeTableProps) {
                       {getAvatarText(employee.name)}
                     </div>
                     <div className="ml-3">
-                      <p className="font-medium text-slate-800 whitespace-nowrap text-sm">{employee.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800 whitespace-nowrap text-sm">
+                          {employee.name}
+                        </p>
+
+                        {employee.probationStatus === "extended" && (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 whitespace-nowrap">
+                            ต่อโปร
+                            {employee.probationEndDate
+                              ? `ถึง ${new Date(
+                                  employee.probationEndDate,
+                                ).toLocaleDateString("th-TH")}`
+                              : ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
-                
+
                 {/* 2. คอลัมน์ ID พนักงาน */}
-                <td className="py-3.5 px-5 text-xs font-mono text-slate-500 select-all">{employee.employeeCode}</td>
-                
+                <td className="py-3.5 px-5 text-xs font-mono text-slate-500 select-all">
+                  {employee.employeeCode}
+                </td>
+
                 {/* 3. คอลัมน์แผนก */}
-                <td className="py-3.5 px-5 text-sm text-slate-600">{employee.department}</td>
-                
+                <td className="py-3.5 px-5 text-sm text-slate-600">
+                  {employee.department}
+                </td>
+
                 {/* 4. คอลัมน์ตำแหน่งงาน */}
-                <td className="py-3.5 px-5 text-sm text-slate-600">{employee.role}</td>
-                
+                <td className="py-3.5 px-5 text-sm text-slate-600">
+                  {employee.role}
+                </td>
+
                 {/* 5. คอลัมน์ปุ่มจัดการกดประเมิน */}
                 <td className="py-3.5 px-5 text-center">
                   <Link

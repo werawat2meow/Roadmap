@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
 
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
@@ -59,6 +58,7 @@ async function prepareImage(
 
   if (detected === "image/webp") {
     try {
+      const { default: sharp } = await import("sharp");
       const convertedBuffer = await sharp(buffer, {
         failOn: "error",
         limitInputPixels: 40_000_000,

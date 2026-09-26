@@ -16,9 +16,9 @@ export const styles = StyleSheet.create({
     fontFamily: CONTRACT_FONT_FAMILY,
     fontSize: 9.5,
     lineHeight: 1.24,
-    paddingTop: 142,
+    paddingTop: 118,
     paddingRight: 52,
-    paddingBottom: 112,
+    paddingBottom: 104,
     paddingLeft: 52,
   },
   pageWithoutFixedFooter: {
@@ -26,46 +26,46 @@ export const styles = StyleSheet.create({
   },
   header: {
     position: "absolute",
-    top: 28,
+    top: 26,
     right: 52,
     left: 52,
-    height: 98,
+    height: 86,
     display: "flex",
     flexDirection: "row",
     alignItems: "flex-start",
   },
   headerLogoColumn: {
-    width: 102,
-    height: 94,
+    width: 104,
+    height: 86,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     marginRight: 14,
   },
   headerLogo: {
-    width: 92,
-    height: 92,
+    width: 96,
+    height: 86,
     objectFit: "contain",
   },
   headerCompany: {
     flexGrow: 1,
-    paddingTop: 1,
+    paddingTop: 0,
   },
   companyNameEN: {
     fontSize: 15,
     fontWeight: 700,
     lineHeight: 1.14,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   companyNameTH: {
     fontSize: 13,
     fontWeight: 700,
     lineHeight: 1.16,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   companyAddress: {
     fontSize: 9.5,
     lineHeight: 1.22,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   contractNumber: {
     display: "flex",
@@ -83,7 +83,7 @@ export const styles = StyleSheet.create({
   },
   titleBlock: {
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 15,
   },
   titleTH: {
     fontSize: 17,
@@ -96,11 +96,11 @@ export const styles = StyleSheet.create({
     lineHeight: 1.16,
   },
   introduction: {
-    marginBottom: 9,
+    marginBottom: 7,
   },
   paragraphGroup: {
     width: "100%",
-    marginBottom: 7,
+    marginBottom: 3.5,
   },
   paragraphTH: {
     color: CONTRACT_COLORS.black,
@@ -113,6 +113,10 @@ export const styles = StyleSheet.create({
     fontSize: 8.6,
     fontWeight: 400,
     lineHeight: 1.23,
+  },
+  thaiBreakOpportunity: {
+    fontSize: 0.01,
+    lineHeight: 0.01,
   },
   dynamic: {
     color: CONTRACT_COLORS.dynamic,
@@ -127,7 +131,7 @@ export const styles = StyleSheet.create({
   },
   section: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 5,
   },
   sectionRow: {
     width: "100%",
@@ -150,12 +154,13 @@ export const styles = StyleSheet.create({
     minWidth: 0,
   },
   childSection: {
-    marginTop: 6,
+    width: "auto",
+    marginTop: 3,
   },
   closingSection: {
     width: "100%",
-    marginTop: 22,
-    marginBottom: 8,
+    marginTop: 16,
+    marginBottom: 5,
   },
   closingParagraphGroup: {
     marginBottom: 3,
@@ -164,7 +169,6 @@ export const styles = StyleSheet.create({
     color: CONTRACT_COLORS.black,
     fontSize: 9.5,
     fontWeight: 400,
-    textIndent: 48,
   },
   closingParagraphTH: {
     lineHeight: 1.34,
@@ -184,12 +188,14 @@ export const styles = StyleSheet.create({
     height: 78,
   },
   signatureRow: {
+    width: "100%",
     display: "flex",
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   signatureColumn: {
-    width: "43%",
+    width: "46%",
     alignItems: "center",
   },
   signatureLine: {

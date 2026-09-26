@@ -99,17 +99,25 @@ export function formatContractDateEN(value: ContractDateValue): string | null {
   }).format(date);
 }
 
-export function formatContractMoney(value: ContractNumericValue): string {
+function formatContractMoneyAmount(value: ContractNumericValue): string | null {
   const amount = toContractNumber(value);
-  if (amount === null) return "-";
+  if (amount === null) return null;
 
   const hasSatang = Math.round(Math.abs(amount) * 100) % 100 !== 0;
-  const formatted = new Intl.NumberFormat("th-TH", {
+  return new Intl.NumberFormat("th-TH", {
     minimumFractionDigits: hasSatang ? 2 : 0,
     maximumFractionDigits: 2,
   }).format(amount);
+}
 
-  return `${formatted} บาท`;
+export function formatContractMoney(value: ContractNumericValue): string {
+  const formatted = formatContractMoneyAmount(value);
+  return formatted === null ? "-" : `${formatted} บาท`;
+}
+
+export function formatContractMoneyEN(value: ContractNumericValue): string {
+  const formatted = formatContractMoneyAmount(value);
+  return formatted === null ? "-" : `${formatted} baht`;
 }
 
 function readThaiUnderMillion(value: number): string {

@@ -5,7 +5,10 @@ import type {
   ContractTextPart,
   EmploymentContractData,
 } from "../types";
-import { formatContractMoney } from "../formatContractData";
+import {
+  formatContractMoney,
+  formatContractMoneyEN,
+} from "../formatContractData";
 
 const text = (value: string, bold = false): ContractTextPart => ({
   text: value,
@@ -84,7 +87,7 @@ export const employment119DaysSections: ContractSection[] = [
     ],
     en: [
       text("The employer agrees to hire "),
-      variable("employeeNameEN"),
+      variable("employeeNameTH"),
       text(" to work as "),
       variable("positionEN"),
       text(" at "),
@@ -113,11 +116,11 @@ export const employment119DaysSections: ContractSection[] = [
     ],
     en: [
       text("The employee will be paid "),
-      variable("salary"),
+      variable("salaryEN"),
       text(" per month, with a position allowance of "),
-      variable("positionAllowance"),
+      variable("positionAllowanceEN"),
       text(", for a total of "),
-      variable("totalSalary"),
+      variable("totalSalaryEN"),
       text(" (before income tax and social security deductions)."),
     ],
   },
@@ -269,6 +272,21 @@ function joinName(values: Array<string | null | undefined>): string {
   return name || "-";
 }
 
+function joinEnglishName(
+  prefix: string | null | undefined,
+  firstName: string | null | undefined,
+  lastName: string | null | undefined
+): string {
+  const normalizedFirstName = firstName?.trim();
+  const normalizedLastName = lastName?.trim();
+
+  if (!normalizedFirstName && !normalizedLastName) return "-";
+
+  return [prefix?.trim(), normalizedFirstName, normalizedLastName]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function createEmploymentContractTemplateVariables(
   data: EmploymentContractData
 ): ContractTemplateVariables {
@@ -278,19 +296,24 @@ export function createEmploymentContractTemplateVariables(
       data.employee.firstNameTH,
       data.employee.lastNameTH,
     ]),
-    employeeNameEN: joinName([
+    employeeNameEN: joinEnglishName(
       data.employee.prefixEN,
       data.employee.firstNameEN,
-      data.employee.lastNameEN,
-    ]),
+      data.employee.lastNameEN
+    ),
     positionTH: displayText(data.employee.positionTH),
     positionEN: displayText(data.employee.positionEN),
     level: displayText(data.employee.level),
     departmentTH: displayText(data.employee.departmentTH),
     departmentEN: displayText(data.employee.departmentEN),
     salary: formatContractMoney(data.employee.salary),
+    salaryEN: formatContractMoneyEN(data.employee.salary),
     positionAllowance: formatContractMoney(data.employee.positionAllowance),
+    positionAllowanceEN: formatContractMoneyEN(
+      data.employee.positionAllowance
+    ),
     totalSalary: formatContractMoney(data.employee.totalSalary),
+    totalSalaryEN: formatContractMoneyEN(data.employee.totalSalary),
     startDateTH: displayText(data.contract.startDateTH),
     startDateEN: displayText(data.contract.startDateEN),
     endDateTH: displayText(data.contract.endDateTH),

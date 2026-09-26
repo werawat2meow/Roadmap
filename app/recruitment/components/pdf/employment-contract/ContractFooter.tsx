@@ -38,6 +38,7 @@ export function ContractFooter({
         employee.lastNameEN,
       ])
     : "";
+  const employerNameEN = employer.nameEN?.trim() || "";
 
   return (
     <View
@@ -50,8 +51,8 @@ export function ContractFooter({
           <Text style={styles.signatureLine}>ลงชื่อ..................................................................</Text>
           <Text style={styles.signatureLine}>{employerSignatureLabel}</Text>
           <Text style={styles.signatureName}>({employer.nameTH})</Text>
-          {employer.nameEN ? (
-            <Text style={styles.signatureName}>({employer.nameEN})</Text>
+          {employerNameEN ? (
+            <Text style={styles.signatureName}>({employerNameEN})</Text>
           ) : null}
           {employerPositionName ? (
             <Text style={styles.signaturePosition}>
@@ -64,9 +65,9 @@ export function ContractFooter({
           <Text style={styles.signatureLine}>ลงชื่อ..................................................................</Text>
           <Text style={styles.signatureLine}>ลูกจ้าง</Text>
           <Text style={styles.signatureName}>({employeeNameTH})</Text>
-          {/* {employeeNameEN ? (
+          {employeeNameEN ? (
             <Text style={styles.signatureName}>({employeeNameEN})</Text>
-          ) : null} */}
+          ) : null}
           {employeePositionName ? (
             <Text style={styles.signaturePosition}>
               {employeePositionName}

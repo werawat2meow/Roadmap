@@ -79,7 +79,7 @@ export function EmploymentContractDocument({
     staticPart("Between "),
     dynamicPart(variables.companyNameEN),
     staticPart(", represented by "),
-    dynamicPart(variables.employerNameEN),
+    dynamicPart(variables.employerNameTH),
     staticPart(", position of "),
     dynamicPart(variables.employerPositionTH),
     staticPart(", hereinafter referred to as the “Employer”, of the one part."),

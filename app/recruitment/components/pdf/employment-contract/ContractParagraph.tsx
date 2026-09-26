@@ -2,6 +2,7 @@ import { Text, View } from "@react-pdf/renderer";
 
 import type { ContractTextPart } from "@/app/recruitment/lib/contracts";
 
+import { segmentThaiTextForLineBreaks } from "./fonts";
 import { styles } from "./styles";
 
 interface ContractParagraphProps {
@@ -12,11 +13,13 @@ interface ContractParagraphProps {
   variant?: "default" | "closing";
 }
 
+const CLOSING_PARAGRAPH_FIRST_LINE_INDENT = "\u00A0".repeat(18);
+
 export function ContractParagraph({
   parts,
   language,
   highlightDynamicText,
-  minPresenceAhead = 20,
+  minPresenceAhead = 8,
   variant = "default",
 }: ContractParagraphProps) {
   if (parts.length === 0) return null;
@@ -41,6 +44,9 @@ export function ContractParagraph({
             : {},
         ]}
       >
+        {variant === "closing"
+          ? CLOSING_PARAGRAPH_FIRST_LINE_INDENT
+          : null}
         {parts.map((part, index) => {
           const partStyles = [];
 
@@ -53,11 +59,22 @@ export function ContractParagraph({
             );
           }
 
-          return (
-            <Text key={`${part.variable ?? "text"}-${index}`} style={partStyles}>
-              {part.text}
+          const segments =
+            language === "th"
+              ? segmentThaiTextForLineBreaks(part.text)
+              : [{ text: part.text, breakBefore: false }];
+
+          return segments.map((segment, segmentIndex) => (
+            <Text
+              key={`${part.variable ?? "text"}-${index}-${segmentIndex}`}
+              style={partStyles}
+            >
+              {segment.breakBefore ? (
+                <Text style={styles.thaiBreakOpportunity}> </Text>
+              ) : null}
+              {segment.text}
             </Text>
-          );
+          ));
         })}
       </Text>
     </View>

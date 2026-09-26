@@ -4,7 +4,7 @@ import { styles } from "./styles";
 import type { ContractHeaderProps } from "./types";
 
 export function ContractHeader({ company, logoDataUri }: ContractHeaderProps) {
-  const logoSource = logoDataUri?.trim() || null; 
+  const logoSource = logoDataUri?.trim() || null;
 
   return (
     <View fixed style={styles.header}>

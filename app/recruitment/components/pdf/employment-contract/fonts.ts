@@ -159,6 +159,37 @@ function segmentThaiWord(word: string): string[] {
   return segments.length > 0 ? segments : [word];
 }
 
+export type ThaiTextLineSegment = {
+  text: string;
+  breakBefore: boolean;
+};
+
+/**
+ * Exposes Thai word boundaries without modifying the visible text. The
+ * renderer inserts a zero-width styled ASCII space at each boundary, giving
+ * React PDF a normal (non-hyphenated) line-break opportunity.
+ */
+export function segmentThaiTextForLineBreaks(
+  value: string,
+): ThaiTextLineSegment[] {
+  const chunks = value.split(/(\s+)/u).filter(Boolean);
+  const result: ThaiTextLineSegment[] = [];
+
+  for (const chunk of chunks) {
+    if (/^\s+$/u.test(chunk) || !THAI_CHARACTER_PATTERN.test(chunk)) {
+      result.push({ text: chunk, breakBefore: false });
+      continue;
+    }
+
+    const segments = segmentThaiWord(chunk);
+    segments.forEach((segment, index) => {
+      result.push({ text: segment, breakBefore: index > 0 });
+    });
+  }
+
+  return result;
+}
+
 export function registerEmploymentContractFonts(): void {
   if (fontsRegistered) return;
 
@@ -186,9 +217,9 @@ export function registerEmploymentContractFonts(): void {
     ],
   });
 
-  // React PDF splits input on spaces before calculating line breaks. Thai text
-  // commonly has long runs without spaces, so expose locale-aware boundaries
-  // while keeping grammatical particles and punctuation with adjacent words.
-  Font.registerHyphenationCallback(segmentThaiWord);
+  // Thai break opportunities are rendered explicitly by ContractParagraph.
+  // Disabling automatic hyphenation prevents React PDF from drawing a hyphen
+  // when a Thai segment is moved to the next line.
+  Font.registerHyphenationCallback((word) => [word]);
   fontsRegistered = true;
 }

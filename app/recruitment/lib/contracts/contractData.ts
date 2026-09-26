@@ -454,8 +454,8 @@ export async function getEmploymentContractData(
       firstNameTH: employee.first_name_th,
       lastNameTH: employee.last_name_th,
       prefixEN: title?.title_name_en ?? null,
-      firstNameEN: employee.first_name_th,
-      lastNameEN: employee.last_name_th,
+      firstNameEN: employee.first_name_en,
+      lastNameEN: employee.last_name_en,
       addressTH: joinNonEmpty([
         application.current_address_no,
         application.village_no,

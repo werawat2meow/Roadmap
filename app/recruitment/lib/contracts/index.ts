@@ -13,6 +13,7 @@ export {
   formatContractDateEN,
   formatContractDateTH,
   formatContractMoney,
+  formatContractMoneyEN,
   numberToThaiBahtText,
   parseContractDate,
   toContractNumber,

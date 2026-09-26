@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     // 1. หาเจ้าของใบสมัคร
     const { data: applicant, error: applicantError } = await supabaseAdmin
       .from("recruit_job_applications")
-      .select("first_name, last_name")
+      .select("first_name, last_name , identity_no")
       .eq("id", id)
       .single();
 
@@ -26,6 +26,7 @@ export async function GET(request, { params }) {
         id,
         first_name,
         last_name,
+        identity_no,
         created_at,
         updated_at,
         status,
@@ -37,6 +38,7 @@ export async function GET(request, { params }) {
       `)
       .eq("first_name", applicant.first_name)
       .eq("last_name", applicant.last_name)
+      .eq("identity_no", applicant.identity_no)
       .order("created_at", { ascending: false });      
 
     if (historyError) {

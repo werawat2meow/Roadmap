@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest,
         phone_number,
         other_position,
         expected_salary,
+        driver_license,
         self_presentation_url,
         status,
         positions( id, position_name)
@@ -48,6 +49,7 @@ export async function GET(_req: NextRequest,
         phoneNumber: data.phone_number,
         otherPosition: data.other_position,
         expectedSalary: data.expected_salary,
+        driverLicense: data.driver_license,
       }
     }
     

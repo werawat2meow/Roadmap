@@ -20,6 +20,61 @@ async function apiGet(url) {
   return res.json();
 }
 
+export function JobOpeningHeader({ isEditMode }) {
+  const [isHelpOpen, setIsHelpOpen] = useState(true);
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {isEditMode ? "แก้ไขการเปิดรับสมัครงาน" : "บันทึกการเปิดรับสมัครงาน"}
+        </h1>
+        <button
+          type="button"
+          onClick={() => setIsHelpOpen(!isHelpOpen)}
+          aria-label="แสดงคำแนะนำการเพิ่มตำแหน่งงาน"
+          aria-expanded={isHelpOpen}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-amber-200 bg-gradient-to-br from-yellow-300 to-orange-500 text-sm font-bold text-white shadow-sm transition hover:scale-105 hover:shadow-md "
+        >
+          ?
+        </button>
+      </div>
+
+      <p className="mt-1 text-sm text-slate-500">
+        {isEditMode
+          ? "แก้ไขจำนวน วันที่ ความด่วน หรือสถานะของรายการเปิดรับที่มีอยู่"
+          : "เลือกตำแหน่งที่ต้องการเปิดรับ ระบุจำนวนที่ต้องการต่อบริษัท และช่วงเวลาเปิดรับสมัคร"}
+      </p>
+
+      {isHelpOpen && (
+        <div
+          role="alert"
+          className="mt-4 flex items-start justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm"
+        >
+          <p className="leading-6">
+            หากไม่พบ<strong>ตำแหน่งงาน</strong>ที่ท่านต้องการ ท่านต้องเพิ่มข้อมูลที่เมนู Job Description
+            {" >>>> "}
+            <Link
+              href="/recruitment/setting/job_description"
+              className="inline-block animate-pulse font-bold text-orange-600 underline decoration-2 underline-offset-2 hover:text-orange-700"
+            >
+              ไปที่หน้า Job Description
+            </Link>
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsHelpOpen(false)}
+            aria-label="ปิดคำแนะนำ"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg font-semibold text-amber-700 transition hover:bg-amber-200 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============================================================
 // Component
 // ============================================================

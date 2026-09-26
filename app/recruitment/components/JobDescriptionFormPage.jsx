@@ -181,6 +181,7 @@ export default function JobDescriptionForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isHelpOpen, setIsHelpOpen] = useState(true);
 
   const emptyForm = useMemo(() => createEmptyForm(languages), [languages]);
   const [form, setForm] = useState(() => emptyForm); 
@@ -598,10 +599,44 @@ export default function JobDescriptionForm({
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {mode === "edit" ? "แก้ไขข้อมูลรายละเอียดงาน" : "บันทึกข้อมูลรายละเอียดงาน"}
-          </h1>
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {mode === "edit" ? "แก้ไขข้อมูลรายละเอียดงาน" : "บันทึกข้อมูลรายละเอียดงาน"}
+            </h1>
+            {mode === "create" && (
+              <button
+                type="button"
+                onClick={() => setIsHelpOpen(!isHelpOpen)}
+                aria-label="แสดงคำแนะนำการเลือกตำแหน่งงาน"
+                aria-expanded={isHelpOpen}
+                title="คำแนะนำ"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-amber-200 bg-gradient-to-br from-yellow-300 to-orange-500 text-sm font-bold text-white shadow-sm transition hover:scale-105 hover:shadow-md"
+              >
+                ?
+              </button>
+            )}
+          </div>
+
+          {mode === "create" && isHelpOpen && (
+            <div
+              role="alert"
+              className="mt-4 flex items-start justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm"
+            >
+              <p className="leading-6">
+                หากท่านเลือก ตำแหน่งงานที่มีอยู่แล้ว เมื่อเลือก หน่วยงาน แล้ว ไม่มี ตำแหน่งให้เลือก
+                แสดงว่าหน่วยงานนั้นไม่ได้มีการตั้งค่า ตำแหน่งไว้ ให้ไปตั้งค่าข้อมูลพื้นฐานก่อน
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsHelpOpen(false)}
+                aria-label="ปิดคำแนะนำ"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg font-semibold text-amber-700 transition hover:bg-amber-200 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">

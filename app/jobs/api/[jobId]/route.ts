@@ -25,7 +25,7 @@ export async function GET(
         department_id,
         division_id,
         unit_id,
-        branches ( id, branch_name ),
+        branches ( id, branch_name, branch_image_url ),
         positions ( id, position_name )
         `
         )
@@ -136,6 +136,7 @@ export async function GET(
         type_name: jobDesc?.type_name ?? null,
         workplace: jobDesc?.workplace ?? null,
         companyName: (jobOpen as any)?.branches?.branch_name ?? null,
+        companyLogo: (jobOpen as any)?.branches?.branch_image_url ?? null,
         positionTitle: (jobOpen as any).positions?.position_name,
         description: (jobDesc as any)?.description ?? null,
         requirements,

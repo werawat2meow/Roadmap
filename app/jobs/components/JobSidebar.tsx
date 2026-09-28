@@ -3,11 +3,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { uiText } from "@/app/jobs/components/translations";
 import { readFilters, updateFilter } from "@/app/jobs/lib/filters";
+import { getUIText } from "@/app/jobs/lib/ui";
 import { useBranches } from "@/app/jobs/contexts/BranchContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function JobSidebar() {
-  const { branches, loading } = useBranches();
+  const { branches } = useBranches();
+  const { locale } = useLanguage();
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [urgentFilter, setUrgentFilter] = useState(false);
 
@@ -48,11 +52,15 @@ export default function JobSidebar() {
   );
 
   return (
-    <aside >
-      <div className="hidden w-80 shrink-0 rounded-2xl border border-gray-200 bg-[#123a63] p-4 shadow-sm md:block">
+    <aside className="hidden w-80 shrink-0 self-start md:sticky md:top-20 md:block">
+      <div className="max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-gray-200 bg-[#123a63] p-4 shadow-sm">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-white">สาขางาน</h3>
-          <p className="text-sm text-gray-50">เลือกสาขาเพื่อกรองตำแหน่งงาน</p>
+          <h3 className="text-lg font-semibold text-white">
+            {getUIText(uiText.branchesTitle, locale)}
+          </h3>
+          <p className="text-sm text-gray-50">
+            {getUIText(uiText.branchesDescription, locale)}
+          </p>
         </div>
         <div className="space-y-2">
           <button
@@ -64,7 +72,7 @@ export default function JobSidebar() {
               : "bg-gray-50 text-gray-700 hover:bg-gray-100"
             }`}
           >
-            <span>ทั้งหมด</span>
+            <span>{getUIText(uiText.allJobs, locale)}</span>
             <span className="text-xs text-gray-500">{totalJobCount}</span>
           </button>
 
@@ -80,7 +88,7 @@ export default function JobSidebar() {
               : "bg-gray-50 text-gray-700 hover:bg-gray-100"
             }`}
           >
-            <span>🔥 งานด่วน</span>
+            <span>🔥 {getUIText(uiText.urgentJobs, locale)}</span>
             <span className="ml-3 shrink-0 text-xs">({totalUrgentCount })</span>
           </button>
 

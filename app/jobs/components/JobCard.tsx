@@ -1,6 +1,6 @@
 "use client";
 
-import { Job } from "@/app/jobs/types/job";
+import type { Job } from "@/app/jobs/types/job";
 import { useRouter } from "next/navigation";
 import { getText } from "@/app/jobs/lib/i18n";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -13,9 +13,37 @@ export default function JobCard({ job }: Props) {
   const router = useRouter();
   const { locale } = useLanguage();
 
-  const salary = job.salary_note
-    ? job.salary_note
-    : `${job.salary_min?.toLocaleString()} – ${job.salary_max?.toLocaleString()}`;
+  const numberLocale = locale.toUpperCase() === "TH" ? "th-TH" : "en-US";
+  const salaryNote = job.salary_note?.trim();
+  const hasSalaryMin =
+    typeof job.salary_min === "number" && Number.isFinite(job.salary_min);
+  const hasSalaryMax =
+    typeof job.salary_max === "number" && Number.isFinite(job.salary_max);
+  const formattedSalaryMin = hasSalaryMin
+    ? job.salary_min.toLocaleString(numberLocale)
+    : "";
+  const formattedSalaryMax = hasSalaryMax
+    ? job.salary_max.toLocaleString(numberLocale)
+    : "";
+
+  let salary = getUIText(uiText.salaryNegotiable, locale);
+
+  if (salaryNote) {
+    salary = salaryNote;
+  } else if (hasSalaryMin && hasSalaryMax) {
+    salary = `${formattedSalaryMin} – ${formattedSalaryMax}`;
+  } else if (hasSalaryMin) {
+    salary = `${getUIText(uiText.salaryFrom, locale)} ${formattedSalaryMin}`;
+  } else if (hasSalaryMax) {
+    salary = `${getUIText(uiText.salaryUpTo, locale)} ${formattedSalaryMax}`;
+  }
+
+  const jobTitle =
+    job.position_name?.trim() ||
+    (typeof job.job_name === "string"
+      ? job.job_name
+      : getText(job.job_name, locale));
+  const remark = getText(job.remark, locale);
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(20,23,31,0.08)] ring-1 ring-[#D9D2C0] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-16px_rgba(20,23,31,0.22)]">
@@ -33,14 +61,14 @@ export default function JobCard({ job }: Props) {
       <div className="px-6 pt-6 pb-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="font-serif text-xl font-semibold leading-snug tracking-tight text-[#14171F]">
-            {String(job.position_name?.trim() || job.job_name)}
+            {jobTitle}
           </h2>
           {job.urgent && (
             <span className="urgent-badge relative mt-0.5 inline-flex shrink-0 items-center gap-1 overflow-hidden rounded-full bg-[#7A1B1F] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
               <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12.75 2.25c.4 3.2-.6 5.1-2.1 6.7-1.5 1.6-3.15 3-3.15 5.55a4.5 4.5 0 009 0c0-1.28-.4-2.2-.94-3.08.72.1 1.5.6 2.1 1.53.86 1.33 1.24 2.6 1.24 3.55a6.75 6.75 0 01-13.5 0c0-4.34 2.6-6.2 4.53-8.32 1.4-1.55 2.34-2.98 2.82-5.93z" />
               </svg>
-              ด่วน
+              {getUIText(uiText.urgentJobs, locale)}
             </span>
           )}
         </div>
@@ -60,7 +88,7 @@ export default function JobCard({ job }: Props) {
               onClick={() => router.push(`/jobs/similar/${job.department_id}`)}
               className="cursor-pointer rounded-full border border-[#D9D2C0] bg-[#F5F3EE] px-3 py-1 text-xs font-medium text-[#5B5E66] transition-colors hover:border-[#8C6F2E]/60 hover:bg-white hover:text-[#8C6F2E]"
             >
-              ตำแหน่งอื่นในสายงานนี้ →
+              {getUIText(uiText.relatedPositions, locale)} →
             </button>
           )}
         </div>
@@ -87,20 +115,20 @@ export default function JobCard({ job }: Props) {
         />
         <InfoItem
           label={getUIText(uiText.openings, locale)}
-          value={String(job.opening_count)}
+          value={String(job.opening_count ?? 0)}
           icon={
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-1a4 4 0 00-3-3.87M9 20H4v-1a4 4 0 013-3.87m5-4.13a4 4 0 100-8 4 4 0 000 8zm6 0a4 4 0 100-8" />
           }
         />
       </div>
 
-      {job.remark?.[locale] && (
+      {remark && (
         <div className="mx-6 mb-5 rounded-lg border-l-2 border-[#8C6F2E] bg-[#8C6F2E]/[0.06] py-3 pl-4 pr-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8C6F2E]">
             {getUIText(uiText.shortDetail, locale)}
           </p>
           <p className="mt-1 text-sm leading-relaxed text-[#22242B]">
-            {job.remark[locale]}
+            {remark}
           </p>
         </div>
       )}
@@ -168,7 +196,7 @@ export default function JobCard({ job }: Props) {
             className="button_click_me"
             type="button"
             onClick={() => router.push(`/jobs/${job.id}`)}
-          >ดูรายละเอียด
+          >{getUIText(uiText.viewDetails, locale)}
             <div className="parrot"></div>
             <div className="parrot"></div>
             <div className="parrot"></div>

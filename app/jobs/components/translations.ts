@@ -65,6 +65,16 @@ export const uiText = {
     TH: "ตำแหน่งเปิดรับ",
   },
 
+  openingUnit: {
+    EN: "position(s)",
+    TH: "ตำแหน่ง",
+  },
+
+  loadJobError: {
+    EN: "Unable to load this position.",
+    TH: "ไม่สามารถโหลดข้อมูลตำแหน่งงานได้",
+  },
+
   languageLabel: {
     EN: "Language",
     TH: "ภาษา",
@@ -752,6 +762,21 @@ export const uiText = {
   bottomCtaDescription: {
     TH: "สมัครงานกับเราและเริ่มต้นโอกาสใหม่ของคุณ",
     EN: "Apply now and start your next opportunity with us.",
+  },
+
+  bottomCtaPositionPrefix: {
+    EN: "Apply for",
+    TH: "สมัครตำแหน่ง",
+  },
+
+  bottomCtaTime: {
+    EN: "It only takes a few minutes.",
+    TH: "ใช้เวลาเพียงไม่กี่นาที",
+  },
+
+  applyThisPosition: {
+    EN: "Apply for this position",
+    TH: "สมัครงานตำแหน่งนี้",
   },
 
 

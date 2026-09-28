@@ -100,7 +100,7 @@ export default function LanguageHeader() {
 
   return (
     <header className="border-b border-gray-200 bg-[#123a63] sticky top-0 z-50 backdrop-blur-md shadow-sm">
-      <div className="mx-auto flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl lg:px-6">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
         {/* บรรทัดที่ 1 บน Mobile: โลโก้/ปุ่ม เมนู */}
         <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-3">

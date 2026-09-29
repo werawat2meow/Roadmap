@@ -19,6 +19,7 @@ import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import NominateEmployeeModal from "./components/NominateEmployeeModal";
 import CycleNotificationBanner from "@/app/roadmap/components/CycleNotificationBanner";
 import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 type SettingsCategory = {
   id: string;
@@ -157,6 +158,7 @@ export default function EvaluateMgrPage() {
     String(new Date().getFullYear()),
   );
   const [compareRecords, setCompareRecords] = useState<EvaluatemgrRecord[]>([]);
+  useRoadmapPageLog("Evaluate MGR");
 
   const fetchPendingEvaluations = useCallback(async () => {
     if (!reviewerId) return;

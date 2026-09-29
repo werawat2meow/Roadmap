@@ -4,9 +4,11 @@ import { useState } from "react";
 import EvaluationTabs from "@/app/roadmap/evaluate/components/EvaluationTabs";
 import SummarySidebar from "@/app/roadmap/evaluate/components/SummarySidebar";
 import EvaluationForm from "@/app/roadmap/evaluate/components/EvaluationForm";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 export default function EvaluatePage() {
   const [activeTab, setActiveTab] = useState<'Probation'|'Performance'|'Promote'|'Progression'>('Probation');
+  useRoadmapPageLog("Evaluate HR");
 
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen relative">

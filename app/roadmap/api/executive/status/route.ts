@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 
 export async function POST(req: Request) {
   try {
@@ -76,6 +77,31 @@ export async function POST(req: Request) {
       .eq("id", evaluationId);
 
     if (error) throw error;
+
+    await writeRoadmapAuditLog({
+      userId: auth.user.id,
+      page: "Management",
+      action:
+        action === "approve"
+          ? "management_approve"
+          : action === "reject"
+            ? "management_reject"
+            : "management_return",
+      targetType: "rm_evaluation",
+      targetId: evaluationId,
+      description:
+        action === "approve"
+          ? "อนุมัติผลการประเมิน"
+          : action === "reject"
+            ? "ไม่อนุมัติผลการประเมิน"
+            : "ตีกลับผลการประเมิน",
+      metadata: {
+        action,
+        rejectionNote,
+        approvalNote,
+        salaryEffectiveMonth,
+      },
+    });
 
     if (action === "approve") {
       const { data: evaluation, error: evalFetchError } = await supabaseAdmin

@@ -10,6 +10,7 @@ import EmployeeNotice from "./components/Employeenotice";
 import { Send } from "lucide-react";
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 type ProbationAlert = {
   employeeId: string;
@@ -70,6 +71,7 @@ export default function EmployeePage() {
   >([]);
   const [showNominatedBanner, setShowNominatedBanner] = useState<boolean>(true);
   const [isNominationPickerOpen, setIsNominationPickerOpen] = useState(false);
+  useRoadmapPageLog("Employee");
 
   useEffect(() => {
     async function checkNominatedList() {

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return "";
@@ -131,9 +133,7 @@ export async function GET(req: Request) {
     .lte("created_at", evaluation.created_at);
 
   const evaluationRound =
-    Array.isArray(roundRows) && roundRows.length > 0
-      ? roundRows.length
-      : 1;
+    Array.isArray(roundRows) && roundRows.length > 0 ? roundRows.length : 1;
 
   if (roundError) {
     console.error("Failed to count evaluation round", roundError);
@@ -336,5 +336,18 @@ export async function GET(req: Request) {
     evaluationRound,
     submittedMonth: formatMonthYear(evaluation.created_at),
   };
+  const auth = await getAuthenticatedUser();
+
+  await writeRoadmapAuditLog({
+    userId: auth?.user?.id ?? null,
+    page: "Reports",
+    action: "report_preview",
+    targetType: "rm_evaluation",
+    targetId: evaluationId,
+    description: "เปิดดู Preview รายงานประเมิน",
+    metadata: {
+      evaluationId,
+    },
+  });
   return NextResponse.json({ success: true, data: payload });
 }

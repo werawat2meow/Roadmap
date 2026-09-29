@@ -9,6 +9,7 @@ import AccessPermissionsPanel from "./components/AccessPermissionsPanel";
 import { swalConfirm, swalError, swalSuccess } from "../../components/Swal";
 import SettingsTour from "./components/SettingsTour";
 import CycleSettingsPanel from "./components/CycleSettingsPanel";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 type Item = {
   id: string;
@@ -82,6 +83,7 @@ const sortCategories = (items: Category[]) =>
   });
 
 export default function SettingsPage() {
+  useRoadmapPageLog("Settings");
   const [tab, setTab] = useState<string>(() => {
     if (typeof window === "undefined") return "ทั้งหมด";
     return localStorage.getItem("roadmapSettingsTab") || "ทั้งหมด";

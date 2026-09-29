@@ -6,6 +6,7 @@ import ReportsTabs from "./components/ReportsTabs";
 import ReportPanel from "./components/ReportPanel";
 import { HelpCircle } from "lucide-react";
 import ReportNotice from "./components/ReportNotice";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 const tabs = [
   { id: "probation", label: "Probation" },
@@ -19,7 +20,7 @@ export default function ReportsPage() {
   const [quarter, setQuarter] = useState("Level 2");
   const [scope, setScope] = useState("ทุกแผนก");
   const [showGuide, setShowGuide] = useState(false);
-
+  useRoadmapPageLog("Reports");
   useEffect(() => {
     const isDismissed = localStorage.getItem("hide_reports_guide");
     if (!isDismissed) {
@@ -60,7 +61,6 @@ export default function ReportsPage() {
 
       <ReportNotice isOpen={showGuide} onClose={closeGuide} />
 
-      
       <ReportsHeader
         quarter={quarter}
         scope={scope}

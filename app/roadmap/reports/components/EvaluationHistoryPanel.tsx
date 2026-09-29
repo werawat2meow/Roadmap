@@ -244,6 +244,20 @@ export default function EvaluationHistoryPanel({
   }, [rows, searchTerm, filters]);
 
   const handleExportExcel = async () => {
+    fetch("/roadmap/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        page: "Reports",
+        action: "report_export_excel",
+        description: "Export Excel รายงาน Roadmap",
+        metadata: {
+          evaluationType,
+          filterMonth,
+          filterYear,
+        },
+      }),
+    }).catch(console.error);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Roadmap Report");
 

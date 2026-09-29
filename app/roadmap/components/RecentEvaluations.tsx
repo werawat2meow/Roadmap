@@ -54,7 +54,7 @@ export default function RecentEvaluations({
 
   const [preparerName, setPreparerName] = useState("คุณธีรวุฒิ เทพจินดา");
   const [preparerRank, setPreparerRank] = useState("Group Director");
-  const [approverName, setApproverName] = useState("คุณชนินท์ทัต ปวัณทบุตร");
+  const [approverName, setApproverName] = useState("คุณชนินท์ทัศ ปจันทบุตร");
   const [approverRank, setApproverRank] = useState("President");
   const [isEditOpen, setIsEditOpen] = useState(false); // เปิด-ปิดแผงแก้ไข
 

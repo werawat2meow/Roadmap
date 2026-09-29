@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { createNotification } from "@/lib/notifications/createNotification";
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import { getRoadmapCycleSettings } from "@/lib/roadmap/cycleSettingsServer";
+import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 
 const isUuid = (value: string) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -289,6 +290,40 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+
+  await writeRoadmapAuditLog({
+    userId: body.evaluatorId ?? null,
+    employeeId: body.employeeId ?? null,
+    page:
+      body.status === "Nominated"
+        ? "Evaluate MGR"
+        : body.status === "Submitted"
+          ? "Evaluate MGR"
+          : "Evaluate HR",
+    action:
+      body.status === "Nominated"
+        ? "evaluation_nominate"
+        : body.status === "Submitted"
+          ? "evaluation_submit"
+          : body.status === "Draft"
+            ? "evaluation_save_draft"
+            : "evaluation_save",
+    targetType: "rm_evaluation",
+    targetId: evalData.id,
+    description:
+      body.status === "Nominated"
+        ? "เสนอชื่อพนักงานเข้าแผนประเมิน"
+        : body.status === "Submitted"
+          ? "ส่งคะแนนประเมิน"
+          : "บันทึกข้อมูลการประเมิน",
+    metadata: {
+      status: body.status,
+      evaluationType: body.evaluationType,
+      evaluationTypeId,
+      totalScore: body.totalScore,
+      maxScore: body.maxScore,
+    },
+  });
 
   if (isNomination) {
     try {

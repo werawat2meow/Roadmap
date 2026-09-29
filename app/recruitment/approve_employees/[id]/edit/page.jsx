@@ -28,6 +28,13 @@ import AntIcon from '@/components/AntIcon';
 
 const { Title, Text } = Typography;
 
+const POSITION_LEVEL_DEFAULTS = {
+  P7: { oc: 5000, phone_allowance: 0 },
+  P8: { oc: 6000, phone_allowance: 2000 },
+  P9: { oc: 8000, phone_allowance: 3000 },
+  P10: { oc: 10000, phone_allowance: 3000 },
+};
+
 export default function Page({ params }) {
   const router = useRouter();
 
@@ -444,6 +451,26 @@ export default function Page({ params }) {
           ...prev,
           position_levels,
       }));
+  }
+
+  function handlePositionLevelChange(value) {
+    const selectedLevel = master.position_levels.find(
+      (item) => item.id === value
+    );
+    const configuredDefaults =
+      POSITION_LEVEL_DEFAULTS[String(selectedLevel?.level_code)] || {};
+    const selectedDefaults = selectedLevel?.defaults || {};
+
+    setForm((prev) => ({
+      ...prev,
+      position_level_id: value ?? null,
+      oc: Number(selectedDefaults.oc ?? configuredDefaults.oc ?? 0),
+      phone_allowance: Number(
+        selectedDefaults.phone_allowance ??
+        configuredDefaults.phone_allowance ??
+        0
+      ),
+    }));
   }
 
   const totalSalary =
@@ -882,9 +909,7 @@ export default function Page({ params }) {
                     style={{ width: "100%", marginTop: 6 }}
                     placeholder="เลือก Position Level"
                     value={form.position_level_id}
-                    onChange={(value) =>
-                      updateForm("position_level_id", value)
-                    }
+                    onChange={handlePositionLevelChange}
                     disabled={!form.position_id}
                     allowClear
                     showSearch

@@ -1,12 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams, notFound } from "next/navigation";
+import { useParams, useSearchParams, notFound, useRouter } from "next/navigation";
 import { Spin, Result , Button } from "antd";
 import CandidateProfile from "@/app/recruitment/components/CandidateProfile";
-
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ApplicantDetailPage() {
+
+  const { user, loadingUser } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loadingUser) return;
+
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [user, loadingUser, router]);
+
+  if (!user) return null;
+
   const params = useParams();
     const searchParams = useSearchParams();
     const token = searchParams.get("token");

@@ -15,6 +15,7 @@ export async function PUT(request) {
       position_id,
       postpone_date,
       interviewer_id,
+      source_branch_id,
     } = await request.json();
 
     const userId = await getUserIdFromRequest();
@@ -59,10 +60,24 @@ export async function PUT(request) {
     const hasActiveInterviewRecord =
       currentApplication.status === 4 || currentApplication.status === 6;
 
+    const requiresSourceBranch =
+      currentApplication.status === 9 && status === 4;
+
+    if (requiresSourceBranch && !source_branch_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "กรุณาเลือกสังกัดที่ต้องการเรียกสัมภาษณ์ใหม่",
+        },
+        { status: 400 }
+      );
+    }
+
     const data_update = {
       status: status === 4 ? 5:status,
       status_reason: remark ?? null,
       updated_at: new Date().toISOString(),
+      ...(requiresSourceBranch && { source_branch_id }),
     };
 
     if (status === 18) {

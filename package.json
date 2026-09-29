@@ -18,6 +18,7 @@
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "@prisma/client": "^4.16.2",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "^2.102.0",
     "antd": "^6.3.5",
     "bcryptjs": "^3.0.3",

@@ -28,6 +28,7 @@ const APPLICATION_STATUS = [
   { value: 1, label: "รอพิจารณา" },
   { value: 2, label: "HRD ส่งต่อ HRM" },
   { value: 3, label: "ผ่านการคัดเลือกเข้าสัมภาษณ์" },
+  { value: 9, label: "ต้นสังกัดปล่อยให้ใช้ข้อมูลร่วมกัน" },
   { value: 4, label: "นัดสัมภาษณ์" },
   { value: 99, label: "backlist" },
   { value: 0, label: "ยกเลิก" },
@@ -70,6 +71,11 @@ export default function Page({ params }) {
   const [positionId, setPositionId] = useState(undefined);
   const [loadingPositions, setLoadingPositions] = useState(false);
 
+  const [branches, setBranches] = useState([]);
+  const [sourceBranchId, setSourceBranchId] = useState(undefined);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [sourceBranchError, setSourceBranchError] = useState("");
+
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -97,6 +103,8 @@ export default function Page({ params }) {
   const [statusReasonError, setStatusReasonError] = useState("");
 
   const requiresInterviewDetails = status === STATUS_CONFIRMED_INTERVIEW;
+  const requiresSourceBranch =
+    data?.application?.status === 9 && status === STATUS_CONFIRMED_INTERVIEW;
   const requiresPostponeDate = status === STATUS_POSTPONED_INTERVIEW;
   const requiresReason = STATUS_REQUIRES_REASON.includes(status);
 
@@ -171,6 +179,30 @@ export default function Page({ params }) {
     fetchPositions();
   }, []);
 
+  async function fetchBranches() {
+    try {
+      setLoadingBranches(true);
+
+      const res = await fetch("/recruitment/api/create_candidate/branches", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Load branches failed");
+      }
+
+      setBranches(Array.isArray(result) ? result : result.data ?? []);
+    } catch (err) {
+      console.error("fetchBranches error:", err);
+      setBranches([]);
+      message.error(err?.message || "ไม่สามารถโหลดข้อมูลสังกัดได้");
+    } finally {
+      setLoadingBranches(false);
+    }
+  }
+
   async function fetchCandidateDetail() {
     try {
       setLoading(true);
@@ -185,7 +217,7 @@ export default function Page({ params }) {
 
       if (!res.ok) {
         throw new Error(result.message || "Load candidate detail failed");
-      }
+      }    
 
       setData(result ?? null);
     } catch (err) {
@@ -263,6 +295,13 @@ export default function Page({ params }) {
 
   const handleStatusChange = (val) => {
     setStatus(val);
+    if (
+      data?.application?.status === 9 &&
+      val === STATUS_CONFIRMED_INTERVIEW &&
+      branches.length === 0
+    ) {
+      fetchBranches();
+    }
     if (val !== STATUS_CONFIRMED_INTERVIEW) {
       setInterviewErrors({});
     }
@@ -271,6 +310,10 @@ export default function Page({ params }) {
     }
     if (!STATUS_REQUIRES_REASON.includes(val)) {
       setStatusReasonError("");
+    }
+    if (val !== STATUS_CONFIRMED_INTERVIEW) {
+      setSourceBranchId(undefined);
+      setSourceBranchError("");
     }
   };
 
@@ -326,6 +369,11 @@ export default function Page({ params }) {
       return;
     }
 
+    if (requiresSourceBranch && !sourceBranchId) {
+      setSourceBranchError("กรุณาเลือกสังกัดที่ต้องการเรียกสัมภาษณ์ใหม่");
+      return;
+    }
+
     // ถ้า status === 18 ต้องเลือกตำแหน่งก่อน
     if (status === 18 && !positionId) {
       setErrorMessage("กรุณาเลือกตำแหน่ง");
@@ -351,6 +399,9 @@ export default function Page({ params }) {
         }),
         ...(requiresInterviewDetails && {
           interviewer_id: selectedInterviewer,
+        }),
+        ...(requiresSourceBranch && {
+          source_branch_id: sourceBranchId,
         }),
       };
 
@@ -443,6 +494,38 @@ export default function Page({ params }) {
 
               {requiresInterviewDetails && (
                 <div className="flex-wrap gap-6 p-4 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] grid grid-cols-1 md:grid-cols-1">
+                  {requiresSourceBranch && (
+                    <div>
+                      <div>
+                        <Text strong>สังกัดที่ต้องการเรียกสัมภาษณ์ใหม่</Text>
+                      </div>
+                      <Select
+                        showSearch
+                        allowClear
+                        placeholder="กรุณาเลือกสังกัด"
+                        value={sourceBranchId}
+                        loading={loadingBranches}
+                        status={sourceBranchError ? "error" : ""}
+                        style={{ width: "100%", marginTop: 4 }}
+                        optionFilterProp="label"
+                        onChange={(value) => {
+                          setSourceBranchId(value);
+                          setSourceBranchError("");
+                        }}
+                        options={branches.map((branch) => ({
+                          value: branch.id,
+                          label: branch.branch_name,
+                        }))}
+                      />
+                      {sourceBranchError && (
+                        <div>
+                          <Text type="danger" style={{ fontSize: 12 }}>
+                            {sourceBranchError}
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* วันเวลานัดสัมภาษณ์ */}
                   <div>
                     <div>

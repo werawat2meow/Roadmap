@@ -129,7 +129,22 @@ export default function RegisterPage() {
         workExperience: undefined,
         computerSkills: undefined,
         languageSkills: undefined,
-        documents: mapApiDocuments(documents_data),
+        documents: mapApiDocuments(
+          documents_data?.filter(
+            (document: any) => !document.file_path?.includes("/driverLicense/")
+          )
+        ),
+        driverLicenseDocuments: documents_data
+          ?.filter((document: any) => document.file_path?.includes("/driverLicense/"))
+          .map((document: any) => ({
+            id: document.id,
+            type:
+              document.document_type === "otherdriverLicense"
+                ? "other"
+                : document.document_type,
+            fileName: document.file_name,
+            filePath: document.file_path,
+          })),
         agreement: undefined,
       });
 
@@ -174,6 +189,14 @@ export default function RegisterPage() {
               document.file,
               document.file.name
             );
+          }
+        });
+
+      payload.driverLicenseDocuments
+        .filter((document) => document.file instanceof File)
+        .forEach((document) => {
+          if (document.file) {
+            formData.append(document.id, document.file, document.file.name);
           }
         });
 

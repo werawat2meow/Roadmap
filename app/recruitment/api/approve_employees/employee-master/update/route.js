@@ -3,18 +3,18 @@
 //  createEmployee, createUserAccount, rollbackEmployeeCreation,
 //  writeActivityLog, updateRecruitJobInterviewStatus,
 //  calculateProbationEndDate, getBangkokDate, cleanText,
-//  EMPLOYEE_CODE_RPC)
+//  EMPLOYEE_CODE_RPC, generateContractNumber)
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
+import { generateContractNumber } from "@/app/recruitment/lib/contracts";
 import { cleanText } from "@/lib/employee/employeePayload";
 import { writeActivityLog } from "@/lib/activityLogger";
 
 const EMPLOYEE_CODE_RPC = "reserve_employee_code";
-
 function getBangkokDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
@@ -382,6 +382,17 @@ async function processStageOneApproval({ application, body }) {
     throw new AppError("ไม่สามารถดึงข้อมูล payrol ได้");
   }
 
+  const { data: empstatus, error: empstatusError } = await supabaseAdmin
+    .from("employee_statuses")
+    .select("id")
+    .eq("status_code", "PROBATION")
+    .single();
+
+  if (empstatusError || !empstatus?.id) {
+    console.error("GET PROBATION EMPLOYEE STATUS ERROR:", empstatusError);
+    throw new AppError("ไม่พบสถานะพนักงานรหัส PROBATION");
+  }
+
   const probationDays = 119;
   const probationEndDate = calculateProbationEndDate(body.start_date, probationDays);
 
@@ -407,10 +418,9 @@ async function processStageOneApproval({ application, body }) {
     phone_allowance: body.phone_allowance,
     employment_type: body.employment_type,
     employment_type_id: body.employment_type_id,
-    employee_status_id: "21e6539f-159c-4ea8-a63a-817c97563785",
+    employee_status_id: empstatus.id,
     probation_days: probationDays,
     probation_end_date: probationEndDate,
-    probation_status: "probation",
     company_id: company.company_id,
     branch_group_id: company.group_id,
     payroll_company_id: payrollCompany.id,
@@ -581,6 +591,12 @@ async function processFinalConfirmation({ application, body, userId }) {
 
     createdUserAccount = await createUserAccount({ employee: createdEmployee, roleId: body.role_id, isActive: true });
 
+    // ----------------------------------------------------------
+    // Generate Contract Number
+    // ทำเฉพาะตอนยืนยันเป็น status = 15
+    // ----------------------------------------------------------
+    const contractNumber = await generateContractNumber(application);
+
     await updateRecruitJobInterviewStatus({ applicationId: application.id, status: STATUS.CONFIRMED });
 
     const { error: updateAppError } = await supabaseAdmin
@@ -613,6 +629,7 @@ async function processFinalConfirmation({ application, body, userId }) {
         position_family_id: body.position_family_id,
         emp_id: createdEmployee.id,
         emp_code: createdEmployee.employee_code,
+        contract_number: contractNumber,
         hire_date: body.start_date,
         start_date: body.start_date,
         probation_end_date: probationEndDate,

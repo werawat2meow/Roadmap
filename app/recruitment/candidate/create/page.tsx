@@ -51,6 +51,8 @@ import {
   WorkExperienceSectionProps,
   DocumentsSectionProps,
   AddressValue,
+  DriverLicenseDocument,
+  DriverLicenseType,
 } from "@/app/jobs/types/types";
 
 import {
@@ -145,6 +147,10 @@ export default function RegisterPage() {
 
   const [documents, setDocuments] = useState<ApplicationDocument[]>(createDefaultDocuments());
 
+  const [driverLicenseDocuments, setDriverLicenseDocuments] = useState<
+    DriverLicenseDocument[]
+  >([]);
+
 
   /* ---------------------------------------------------------------------- */
   /*                             Submit Handler                             */
@@ -152,8 +158,105 @@ export default function RegisterPage() {
   /* ---------------------------------------------------------------------- */
   /*                             Submit Handler                             */
   /* ---------------------------------------------------------------------- */
+  const scrollToValidationField = (field: string) => {
+    const target = document.querySelector<HTMLElement>(
+      `[data-field="${field}"], [name="${field}"]`
+    );
+
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.focus?.();
+  };
+
+  const validateRequiredFields = () => {
+    const isBlank = (value: unknown) =>
+      value == null || (typeof value === "string" && value.trim() === "");
+    const requiredMessage = (label: string) =>
+      locale === "TH" ? `กรุณากรอก${label}` : `Please enter ${label}`;
+    const selectMessage = (label: string) =>
+      locale === "TH" ? `กรุณาเลือก${label}` : `Please select ${label}`;
+
+    const requiredFields: Array<{
+      field: string;
+      invalid: boolean;
+      message: string;
+    }> = [
+      {
+        field: "positionId",
+        invalid: isBlank(positionId),
+        message: selectMessage(getUIText(uiText.position, locale) ?? "ตำแหน่ง"),
+      },
+      {
+        field: "expectedSalary",
+        invalid: isBlank(personal.expectedSalary),
+        message: requiredMessage(getUIText(uiText.expectedSalary, locale)),
+      },
+      ...(showBranchSelect
+        ? [{
+            field: "sourceBranchId",
+            invalid: isBlank(sourceBranchId),
+            message: selectMessage("สังกัด"),
+          }]
+        : []),
+      { field: "title", invalid: isBlank(personal.title), message: selectMessage(getUIText(uiText.title, locale)) },
+      { field: "firstName", invalid: isBlank(personal.firstName), message: requiredMessage(getUIText(uiText.firstName, locale)) },
+      { field: "lastName", invalid: isBlank(personal.lastName), message: requiredMessage(getUIText(uiText.lastName, locale)) },
+      { field: "dateOfBirth", invalid: isBlank(personal.dateOfBirth), message: selectMessage(getUIText(uiText.dateOfBirth, locale)) },
+      { field: "gender", invalid: isBlank(personal.gender), message: selectMessage(getUIText(uiText.gender, locale)) },
+      { field: "nationality", invalid: isBlank(personal.nationality), message: selectMessage(getUIText(uiText.nationality, locale)) },
+      { field: "addressNo", invalid: isBlank(personal.addressNo), message: requiredMessage(getUIText(uiText.addressNo, locale)) },
+      { field: "provinceId", invalid: isBlank(personal.provinceId), message: selectMessage(getUIText(uiText.province, locale)) },
+      { field: "districtId", invalid: isBlank(personal.districtId), message: selectMessage(getUIText(uiText.district, locale)) },
+      { field: "subDistrictId", invalid: isBlank(personal.subDistrictId), message: selectMessage(getUIText(uiText.subDistrict, locale)) },
+      { field: "postalCode", invalid: isBlank(personal.postalCode), message: requiredMessage(getUIText(uiText.postalCode, locale)) },
+      { field: "email", invalid: isBlank(personal.email), message: requiredMessage(getUIText(uiText.email, locale)) },
+      { field: "phoneNumber", invalid: isBlank(personal.phoneNumber), message: requiredMessage(getUIText(uiText.phoneNumber, locale)) },
+      { field: "residenceType", invalid: isBlank(personal.residenceType), message: selectMessage(getUIText(uiText.residenceType, locale)) },
+      { field: "maritalStatus", invalid: isBlank(personal.maritalStatus), message: selectMessage(getUIText(uiText.maritalStatus, locale)) },
+      {
+        field: "driverLicense",
+        invalid: !personal.driverLicense.car && !personal.driverLicense.motorcycle && !personal.driverLicense.other,
+        message: selectMessage(getUIText(uiText.driverLicense, locale)),
+      },
+      { field: "emergencyContactName", invalid: isBlank(personal.emergencyContact.name), message: requiredMessage(getUIText(uiText.emergencyContactName, locale)) },
+      { field: "emergencyPhone", invalid: isBlank(personal.emergencyContact.phone), message: requiredMessage(getUIText(uiText.emergencyPhone, locale)) },
+      { field: "emergencyRelationship", invalid: isBlank(personal.emergencyContact.relationship), message: requiredMessage(getUIText(uiText.emergencyRelationship, locale)) },
+      { field: "criminalRecord", invalid: personal.criminalRecord == null, message: selectMessage(getUIText(uiText.criminalRecord, locale)) },
+      { field: "dishonestyRecord", invalid: personal.dishonestyRecord == null, message: selectMessage(getUIText(uiText.dishonestyRecord, locale)) },
+      ...documents
+        .filter((doc) => doc.type === "other")
+        .map((doc) => ({
+          field: `document-title-${doc.id}`,
+          invalid: isBlank(doc.title),
+          message: requiredMessage(locale === "TH" ? "ชื่อเอกสาร" : "document name"),
+        })),
+    ];
+
+    const firstInvalidField = requiredFields.find((field) => field.invalid);
+    if (firstInvalidField) {
+      message.error(firstInvalidField.message);
+      scrollToValidationField(firstInvalidField.field);
+      return false;
+    }
+
+    const invalidFormat = [
+      { field: "email", invalid: !validateEmail(personal.email), message: getUIText(uiText.invalidEmail, locale) },
+      { field: "phoneNumber", invalid: !validatePhone(personal.phoneNumber), message: getUIText(uiText.invalidPhone, locale) },
+      { field: "emergencyPhone", invalid: !validatePhone(personal.emergencyContact.phone), message: getUIText(uiText.invalidPhone, locale) },
+    ].find((field) => field.invalid);
+
+    if (invalidFormat) {
+      message.error(invalidFormat.message);
+      scrollToValidationField(invalidFormat.field);
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
     try {
+      if (!validateRequiredFields()) return;
+
       // 1. ตรวจสอบ Validation ของ Ant Design Form ทั้งหมดในหน้าก่อน
       // หากมี field ไหนไม่ผ่าน Antd จะ throw error และ auto focus ไปยัง field นั้นให้อัตโนมัติ
       await form.validateFields();
@@ -195,6 +298,9 @@ export default function RegisterPage() {
         computerSkills,
         languageSkills,
         documents: documents.map(({ file, ...rest }: any) => rest),
+        driverLicenseDocuments: driverLicenseDocuments.map(
+          ({ file, ...rest }) => rest
+        ),
         agreement: {
           certify: true,
           pdpa: true,
@@ -205,6 +311,15 @@ export default function RegisterPage() {
       documents.forEach((doc: any) => {
         if (doc?.file instanceof File) {
           formData.append(doc.id, doc.file, doc.file.name);
+        }
+      });
+      driverLicenseDocuments.forEach((document) => {
+        if (document.file instanceof File) {
+          formData.append(
+            document.id,
+            document.file,
+            document.file.name
+          );
         }
       });
       formData.append("payload", JSON.stringify(payload));
@@ -534,6 +649,8 @@ export default function RegisterPage() {
                 onPositionChange={handlePositionChange}
                 value={personal}
                 onChange={setPersonal}
+                driverLicenseDocuments={driverLicenseDocuments}
+                onDriverLicenseDocumentsChange={setDriverLicenseDocuments}
                 showBranchSelect={showBranchSelect}
                 sourceBranchId={sourceBranchId}
                 branches={branches}
@@ -541,7 +658,7 @@ export default function RegisterPage() {
                 loadingBranches={loadingBranches}
                 loadingJobOpenings={loadingJobOpenings}
                 onSourceBranchChange={handleSourceBranchChange}
-                allowIdTypeSelection
+                // allowIdTypeSelection
               />
       
               {/* ---------------------------------------------------------------------- */}
@@ -663,6 +780,7 @@ interface MaritalStatusOption {
 
 interface NationalityOption {
   id: number | string;
+  nationality_code: string;
   nationality_name_th: string;
   nationality_name_en: string;
   status?: string;
@@ -689,6 +807,8 @@ interface RegisterPersonalInformationProps {
   onPositionChange: (value: string | number | undefined) => void;
   value: PersonalInformationData;
   onChange: (value: PersonalInformationData) => void;
+  driverLicenseDocuments: DriverLicenseDocument[];
+  onDriverLicenseDocumentsChange: (value: DriverLicenseDocument[]) => void;
   // ------------------------------------------------------------------
   // ค่าที่เกี่ยวกับสังกัด / รอบเปิดรับสมัคร ต้องส่งลงมาจาก RegisterPage
   // เพราะเดิม component นี้อ้างถึงตัวแปรเหล่านี้ตรงๆ ทั้งที่ไม่ได้อยู่ใน
@@ -707,7 +827,7 @@ interface RegisterPersonalInformationProps {
   // PersonalInformation ถูกเรียกใช้หลายหน้า หน้าอื่นที่ไม่ได้ส่ง prop
   // นี้มาจะยังทำงานแบบเดิม (ผูกกับ language)
   // ------------------------------------------------------------------
-  allowIdTypeSelection?: boolean;
+  // allowIdTypeSelection?: boolean;
 }
 
 function PersonalInformation({
@@ -717,6 +837,8 @@ function PersonalInformation({
   onPositionChange,
   value,
   onChange,
+  driverLicenseDocuments,
+  onDriverLicenseDocumentsChange,
   showBranchSelect,
   sourceBranchId,
   branches,
@@ -724,7 +846,7 @@ function PersonalInformation({
   loadingBranches,
   loadingJobOpenings,
   onSourceBranchChange,
-  allowIdTypeSelection = false,
+  // allowIdTypeSelection = false,
 }: RegisterPersonalInformationProps) {
     
     const [locale, setLocale] = useState("TH");
@@ -1040,7 +1162,7 @@ function PersonalInformation({
           throw new Error(`Failed to fetch nationalities: ${res.status}`);
         }
 
-        const json = await res.json();
+        const json = await res.json();        
 
         const list: NationalityOption[] = Array.isArray(json?.data)
           ? json.data
@@ -1058,6 +1180,7 @@ function PersonalInformation({
 
         if (isMounted) {
           setNationalityOptions(sorted);
+
         }
       } catch (err) {
         console.error("Error fetching nationalities:", err);
@@ -1077,6 +1200,30 @@ function PersonalInformation({
       isMounted = false;
     };
   }, []);
+
+  const selectedNationality = nationalityOptions.find(
+    (item) => String(item.id) === String(value.nationality)
+  );
+  const isThaiNationality =
+    selectedNationality?.nationality_code?.toUpperCase() === "TH";
+
+  const handleNationalityChange = (
+    nationalityId: string | number | undefined
+  ) => {
+    onChange({
+      ...value,
+      nationality: nationalityId == null ? "" : String(nationalityId),
+      idCardNo: "",
+    });
+
+    form.setFieldValue("idCardNo", "");
+    form.setFields([
+      {
+        name: "idCardNo",
+        errors: [],
+      },
+    ]);
+  };
 
   /* ---------------------------------------------------------------------- */
   /*                         Fetch Religion Options                         */
@@ -1240,6 +1387,65 @@ function PersonalInformation({
     });
   };
 
+  const updateDriverLicenseSelection = (
+    type: DriverLicenseType,
+    checked: boolean
+  ) => {
+    updateDriverLicense(type, checked);
+
+    if (!checked) {
+      onDriverLicenseDocumentsChange(
+        driverLicenseDocuments.filter((document) => document.type !== type)
+      );
+    }
+  };
+
+  const beforeDriverLicenseUpload =
+    (type: DriverLicenseType): UploadProps["beforeUpload"] =>
+    (file) => {
+      const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
+
+      if (!allowedTypes.includes(file.type)) {
+        message.error(
+          language === "TH"
+            ? "รองรับเฉพาะไฟล์ PNG, JPG, JPEG และ PDF"
+            : "Only PNG, JPG, JPEG and PDF files are supported."
+        );
+        return Upload.LIST_IGNORE;
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        message.error(
+          language === "TH"
+            ? "ขนาดไฟล์ต้องไม่เกิน 2 MB"
+            : "File size must not exceed 2 MB."
+        );
+        return Upload.LIST_IGNORE;
+      }
+
+      const nextDocument: DriverLicenseDocument = {
+        id: `driverLicense-${type}`,
+        type,
+        file,
+        fileName: file.name,
+      };
+      const hasExistingDocument = driverLicenseDocuments.some(
+        (document) => document.type === type
+      );
+
+      onDriverLicenseDocumentsChange(
+        hasExistingDocument
+          ? driverLicenseDocuments.map((document) =>
+              document.type === type
+                ? { ...document, ...nextDocument }
+                : document
+            )
+          : [...driverLicenseDocuments, nextDocument]
+      );
+
+      return false;
+    };
+
   const updateEmergencyContact = (
     key: keyof typeof value.emergencyContact,
     fieldValue: any
@@ -1261,20 +1467,20 @@ function PersonalInformation({
   // เก็บค่าไว้ใน value.idDocumentType (ฝัง field เพิ่มแบบยืดหยุ่น เพราะ
   // type PersonalInformationData เดิมออกแบบมาสำหรับ flow ที่ผูกกับภาษา)
   // ถ้าไม่ได้เปิดใช้งาน จะ fallback ไปใช้ logic เดิม (ตาม language)
-  const idDocumentType: "thai_id" | "passport" = allowIdTypeSelection
-    ? ((value as any).idDocumentType as "thai_id" | "passport" | undefined) ??
-      (language === "TH" ? "thai_id" : "passport")
-    : (language === "TH" ? "thai_id" : "passport");
+  // const idDocumentType: "thai_id" | "passport" = allowIdTypeSelection
+  //   ? ((value as any).idDocumentType as "thai_id" | "passport" | undefined) ??
+  //     (language === "TH" ? "thai_id" : "passport")
+  //   : (language === "TH" ? "thai_id" : "passport");
 
-  const handleIdDocumentTypeChange = (type: "thai_id" | "passport") => {
-    onChange({
-      ...(value as any),
-      idDocumentType: type,
-      // เคลียร์เลขที่กรอกไว้เดิม เพราะรูปแบบ/การตรวจสอบไม่ตรงกันระหว่าง
-      // เลขบัตรประชาชนกับพาสปอร์ต
-      idCardNo: "",
-    } as PersonalInformationData);
-  };
+  // const handleIdDocumentTypeChange = (type: "thai_id" | "passport") => {
+  //   onChange({
+  //     ...(value as any),
+  //     idDocumentType: type,
+  //     // เคลียร์เลขที่กรอกไว้เดิม เพราะรูปแบบ/การตรวจสอบไม่ตรงกันระหว่าง
+  //     // เลขบัตรประชาชนกับพาสปอร์ต
+  //     idCardNo: "",
+  //   } as PersonalInformationData);
+  // };
 
   /* ---------------------------------------------------------------------- */
   /*                            Event Handlers                              */
@@ -1371,6 +1577,7 @@ function PersonalInformation({
             {/* -------------------------------------------------------------- */}
             <Col xs={24} md={12}>
               <Form.Item
+                name="position"
                 label={getUIText(uiText.position, locale) ?? "Position"}
                 data-field="positionId"
                 required
@@ -1400,7 +1607,7 @@ function PersonalInformation({
             {/* Expected Salary                                                */}
             {/* -------------------------------------------------------------- */}
             <Col xs={24} md={12}>
-              <Form.Item label={getUIText(uiText.expectedSalary, locale)} required >
+              <Form.Item data-field="expectedSalary" label={getUIText(uiText.expectedSalary, locale)} required >
                 <InputNumber
                   required
                   name="expectedSalary"
@@ -1428,6 +1635,7 @@ function PersonalInformation({
             {showBranchSelect && (
               <Col xs={24} md={12}>
                 <Form.Item
+                  name="sourceBranchId"
                   label="สังกัด"
                   required
                   validateStatus={
@@ -1490,6 +1698,7 @@ function PersonalInformation({
             {/* Title (คำนำหน้า) */}
             <Col xs={24} md={6}>
                 <Form.Item
+                    data-field="title"
                     label={
                         uiText.title
                             ? getUIText(uiText.title, locale)
@@ -1608,7 +1817,7 @@ function PersonalInformation({
 
             {/* Gender */}
             <Col xs={24} md={12}>
-              <Form.Item label={getUIText(uiText.gender, locale)} required >
+              <Form.Item data-field="gender" label={getUIText(uiText.gender, locale)} required >
                 {genderLoading ? (
                     <Spin size="small" />
                 ) : genderError ? (
@@ -1702,7 +1911,7 @@ function PersonalInformation({
 
             {/* Nationality */}
             <Col xs={24} md={6}>
-              <Form.Item label={getUIText(uiText.nationality, locale)} required>
+              <Form.Item name="nationality" label={getUIText(uiText.nationality, locale)} required>
                 <Select
                   showSearch
                   allowClear
@@ -1710,26 +1919,24 @@ function PersonalInformation({
                   disabled={nationalityLoading || nationalityError}
                   placeholder={
                     nationalityError
-                    ? (language === "TH"
-                      ? "ไม่สามารถโหลดข้อมูลสัญชาติได้"
-                      : "Failed to load nationalities")
-                    : (language === "TH"
+                      ? language === "TH"
+                        ? "ไม่สามารถโหลดข้อมูลสัญชาติได้"
+                        : "Failed to load nationalities"
+                      : language === "TH"
                       ? "เลือกสัญชาติ"
-                      : "Select nationality")
+                      : "Select nationality"
                   }
                   style={{ width: "100%" }}
                   value={value.nationality || undefined}
-                  onChange={(v) => updateField("nationality", v)}
+                  onChange={handleNationalityChange}
                   optionFilterProp="label"
-                  options={(Array.isArray(nationalityOptions) ? nationalityOptions : []).map(
-                    (option) => ({
-                      value: option.id,
-                      label:
-                          locale === "TH"
-                          ? option.nationality_name_th
-                          : option.nationality_name_en,
-                    })
-                  )}
+                  options={nationalityOptions.map((option) => ({
+                    value: option.id,
+                    label:
+                      locale === "TH"
+                        ? option.nationality_name_th
+                        : option.nationality_name_en,
+                  }))}
                 />
               </Form.Item>
             </Col>
@@ -1768,85 +1975,97 @@ function PersonalInformation({
               </Form.Item>
             </Col>
 
-            {/* ID / Passport */}
-            <Col xs={24}>
-              {allowIdTypeSelection && (
+            {/* ID Card / Passport */}
+            {selectedNationality && (
+              <Col xs={24}>
                 <Form.Item
+                  name="idCardNo"
                   label={
-                    language === "TH"
-                      ? "ประเภทเอกสารประจำตัว"
-                      : "ID Document Type"
-                  }
-                  required
-                  style={{ marginBottom: 8 }}
-                >
-                  <Radio.Group
-                    value={idDocumentType}
-                    onChange={(e) =>
-                      handleIdDocumentTypeChange(e.target.value)
-                    }
-                  >
-                    <Radio value="thai_id">
-                      {language === "TH"
+                    isThaiNationality
+                      ? language === "TH"
                         ? "เลขบัตรประชาชน"
-                        : "Thai Citizen ID"}
-                    </Radio>
-                    <Radio value="passport">
-                      {language === "TH" ? "พาสปอร์ต" : "Passport"}
-                    </Radio>
-                  </Radio.Group>
-                </Form.Item>
-              )}
-
-              <Form.Item
-                name="idCardNo"
-                label={
-                  allowIdTypeSelection
-                    ? idDocumentType === "thai_id"
-                      ? (language === "TH" ? "เลขบัตรประชาชน" : "Thai Citizen ID")
-                      : (language === "TH" ? "เลขพาสปอร์ต" : "Passport Number")
-                    : getUIText(uiText.idCardNo, locale)
-                }
-                required
-                validateTrigger="onChange"
-                rules={[
+                        : "Thai Citizen ID"
+                      : language === "TH"
+                      ? "เลขพาสปอร์ต"
+                      : "Passport Number"
+                  }
+                  required={isThaiNationality}
+                  validateTrigger="onChange"
+                  rules={[
                     {
-                    validator(_, value) {
-                        if (!value) {
-                            return Promise.resolve();
-                        }
-                        if (idDocumentType === "thai_id") {
-                          if (!/^\d{13}$/.test(value)) {
-                            return Promise.reject(
-                            new Error("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
-                            );
-                          }
-                          if (!validateThaiCitizenId(value)) {
-                            return Promise.reject(
-                            new Error(getUIText(uiText.invalidThaiId, locale))
-                            );
-                          }
+                      required: isThaiNationality,
+                      message:
+                        language === "TH"
+                          ? "กรุณากรอกเลขบัตรประชาชน"
+                          : "Please enter Thai Citizen ID",
+                    },
+                    {
+                      validator(_, fieldValue) {
+                        if (!fieldValue) {
+                          // Passport ไม่บังคับกรอก
                           return Promise.resolve();
                         }
-                        // Passport
-                        if (!validatePassport(value)) {
-                          return Promise.reject(  new Error("Invalid passport number") );
+
+                        if (isThaiNationality) {
+                          if (!/^\d{13}$/.test(fieldValue)) {
+                            return Promise.reject(
+                              new Error(
+                                language === "TH"
+                                  ? "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก"
+                                  : "Thai Citizen ID must contain 13 digits"
+                              )
+                            );
+                          }
+
+                          if (!validateThaiCitizenId(fieldValue)) {
+                            return Promise.reject(
+                              new Error(getUIText(uiText.invalidThaiId, locale))
+                            );
+                          }
+
+                          return Promise.resolve();
                         }
-                      return Promise.resolve();
+
+                        // Passport: ถ้ากรอก ค่อย validate
+                        if (!validatePassport(fieldValue)) {
+                          return Promise.reject(
+                            new Error(
+                              language === "TH"
+                                ? "เลขพาสปอร์ตไม่ถูกต้อง"
+                                : "Invalid passport number"
+                            )
+                          );
+                        }
+
+                        return Promise.resolve();
+                      },
                     },
-                    },
-                ]}
-              >
-                <Input
-                  value={value.idCardNo}
-                  onChange={(e) => {
-                    updateField("idCardNo", e.target.value);
-                    form.setFieldValue("idCardNo", e.target.value);
-                  }}
-                  maxLength={idDocumentType === "thai_id" ? 13 : 20}
-                />
-              </Form.Item>
-            </Col>
+                  ]}
+                >
+                  <Input
+                    value={value.idCardNo}
+                    placeholder={
+                      isThaiNationality
+                        ? language === "TH"
+                          ? "กรอกเลขบัตรประชาชน 13 หลัก"
+                          : "Enter 13-digit Thai Citizen ID"
+                        : language === "TH"
+                        ? "กรอกเลขพาสปอร์ต (ถ้ามี)"
+                        : "Enter passport number (optional)"
+                    }
+                    onChange={(e) => {
+                      const inputValue = isThaiNationality
+                        ? e.target.value.replace(/\D/g, "")
+                        : e.target.value.toUpperCase();
+
+                      updateField("idCardNo", inputValue);
+                      form.setFieldValue("idCardNo", inputValue);
+                    }}
+                    maxLength={isThaiNationality ? 13 : 20}
+                  />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         </Card>
 
@@ -2113,7 +2332,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.car}
                       onChange={(e) =>
-                      updateDriverLicense("car", e.target.checked)
+                      updateDriverLicenseSelection("car", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseCar, locale)}
@@ -2123,7 +2342,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.motorcycle}
                       onChange={(e) =>
-                      updateDriverLicense("motorcycle", e.target.checked)
+                      updateDriverLicenseSelection("motorcycle", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseMotorcycle, locale)}
@@ -2133,7 +2352,7 @@ function PersonalInformation({
                     <Checkbox
                       checked={value.driverLicense.other}
                       onChange={(e) =>
-                      updateDriverLicense("other", e.target.checked)
+                      updateDriverLicenseSelection("other", e.target.checked)
                       }
                     >
                       {getUIText(uiText.driverLicenseOther, locale)}
@@ -2165,6 +2384,88 @@ function PersonalInformation({
                   />
                 </Form.Item>
               </Col>
+            )}
+
+            {(value.driverLicense.car ||
+              value.driverLicense.motorcycle ||
+              value.driverLicense.other) && (
+              <Col xs={24}>
+                <Alert
+                  title={
+                    language === "TH"
+                      ? "ไฟล์เอกสารใบขับขี่ต้องมีขนาดไม่เกิน 2 MB ต่อไฟล์"
+                      : "Each driver's license document must not exceed 2 MB."
+                  }
+                  type="warning"
+                  showIcon
+                />
+              </Col>
+            )}
+
+            {(
+              [
+                {
+                  type: "car" as const,
+                  selected: value.driverLicense.car,
+                  label: getUIText(uiText.driverLicenseCar, locale),
+                },
+                {
+                  type: "motorcycle" as const,
+                  selected: value.driverLicense.motorcycle,
+                  label: getUIText(uiText.driverLicenseMotorcycle, locale),
+                },
+                {
+                  type: "other" as const,
+                  selected: value.driverLicense.other,
+                  label:
+                    value.driverLicense.otherText ||
+                    getUIText(uiText.driverLicenseOther, locale),
+                },
+              ]
+                .filter((license) => license.selected)
+                .map((license) => {
+                  const document = driverLicenseDocuments.find(
+                    (item) => item.type === license.type
+                  );
+
+                  return (
+                    <Col xs={24} md={8} key={license.type}>
+                      <Form.Item
+                        label={
+                          language === "TH"
+                            ? `แนบเอกสารใบขับขี่: ${license.label}`
+                            : `Attach license document: ${license.label}`
+                        }
+                      >
+                        <Upload
+                          accept=".png,.jpg,.jpeg,.pdf"
+                          maxCount={1}
+                          beforeUpload={beforeDriverLicenseUpload(license.type)}
+                          showUploadList={false}
+                        >
+                          <Button icon={<AntIcon name="UploadOutlined" />}>
+                            {document?.fileName
+                              ? language === "TH"
+                                ? "เปลี่ยนไฟล์"
+                                : "Replace file"
+                              : language === "TH"
+                              ? "เลือกไฟล์"
+                              : "Choose file"}
+                          </Button>
+                        </Upload>
+
+                        {document?.fileName && (
+                          <Text
+                            type="success"
+                            style={{ display: "block", marginTop: 8 }}
+                          >
+                            {document.fileName}
+                          </Text>
+                        )}
+                      </Form.Item>
+                    </Col>
+                  );
+                })
             )}
           </Row>
         </Card>
@@ -2282,6 +2583,7 @@ function PersonalInformation({
 
             <Col xs={24}>
               <Form.Item
+                  data-field="criminalRecord"
                   label={getUIText(uiText.criminalRecord, locale)}
                   required
               >
@@ -2304,6 +2606,7 @@ function PersonalInformation({
 
             <Col xs={24}>
               <Form.Item
+                  data-field="dishonestyRecord"
                   label={getUIText(uiText.dishonestyRecord, locale)}
                   required
               >
@@ -2469,6 +2772,7 @@ function AddressSelector({
       {/* Province */}
       <Col xs={24} md={6}>
         <Form.Item
+          data-field="provinceId"
           label={getUIText(uiText.province, locale)}
           required
         >
@@ -2498,6 +2802,7 @@ function AddressSelector({
       {/* District */}
       <Col xs={24} md={6}>
         <Form.Item
+          data-field="districtId"
           label={getUIText(uiText.district, locale)}
           required
         >
@@ -2528,6 +2833,7 @@ function AddressSelector({
       {/* Sub District */}
       <Col xs={24} md={6}>
         <Form.Item
+          data-field="subDistrictId"
           label={getUIText(uiText.subDistrict, locale)}
           required
         >
@@ -2558,6 +2864,7 @@ function AddressSelector({
       {/* Postal Code */}
       <Col xs={24} md={6}>
         <Form.Item
+          data-field="postalCode"
           label={getUIText(uiText.postalCode, locale)}
           required
         >
@@ -3497,6 +3804,7 @@ function DocumentsSection({
               {doc.type === "other" && (
                 <Col span={24}>
                   <Form.Item
+                    data-field={`document-title-${doc.id}`}
                     label={
                       language === "TH"
                         ? "ชื่อเอกสาร"

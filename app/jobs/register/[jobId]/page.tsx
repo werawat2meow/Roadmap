@@ -167,6 +167,14 @@ export default function RegisterPage() {
           }
         });
 
+      payload.driverLicenseDocuments
+        .filter((document) => document.file instanceof File)
+        .forEach((document) => {
+          if (document.file) {
+            formData.append(document.id, document.file, document.file.name);
+          }
+        });
+
       const response = await fetch(
         "/jobs/api/application",
         {

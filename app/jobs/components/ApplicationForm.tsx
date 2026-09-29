@@ -19,6 +19,7 @@ import {
   Agreement,
   ApplicationDocument,
   ComputerSkill,
+  DriverLicenseDocument,
   EducationHistory,
   JobApplicationPayload,
   LanguageSkill,
@@ -95,6 +96,17 @@ export default function ApplicationForm({
       mergeDocuments(initialData?.documents)
     );
 
+  const [driverLicenseDocuments, setDriverLicenseDocuments] =
+    useState<DriverLicenseDocument[]>(
+      (initialData?.driverLicenseDocuments ?? []).map((document) => ({
+        id: document.id ?? `driverLicense-${document.type}`,
+        type: document.type!,
+        file: null,
+        fileName: document.fileName,
+        filePath: document.filePath,
+      }))
+    );
+
   const [agreement, setAgreement] =
     useState<Agreement>(
       mergeAgreement(initialData?.agreement)
@@ -136,6 +148,7 @@ export default function ApplicationForm({
       computerSkills,
       languageSkills,
       documents,
+      driverLicenseDocuments,
       agreement,
     };
 
@@ -205,6 +218,8 @@ export default function ApplicationForm({
             position={position}
             value={personal}
             onChange={setPersonal}
+            driverLicenseDocuments={driverLicenseDocuments}
+            onDriverLicenseDocumentsChange={setDriverLicenseDocuments}
         />
 
         <EducationSection

@@ -12,6 +12,7 @@ import {
   Modal,
   Space,
   Typography,
+  message,
 } from 'antd';
 import AntIcon from '@/components/AntIcon';
 
@@ -42,6 +43,7 @@ export default function RecruitJobOpenTable() {
   const [page, setPage] = useState(1);
 
   const [busyId, setBusyId] = useState(null);
+  const [copyingId, setCopyingId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [branchFilter, setBranchFilter] = useState();
@@ -152,6 +154,37 @@ export default function RecruitJobOpenTable() {
     setUnitOptions(data.units ?? []);
     
 }
+
+  async function copyShareUrl(row) {
+    setCopyingId(row.id);
+    try {
+      const response = await fetch('/recruitment/api/job-share-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_open_id: row.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || result.error || 'ไม่สามารถสร้างลิงก์ได้');
+      const url = result.data.url;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(url);
+        message.success('คัดลอก URL แล้ว');
+      } catch {
+        Modal.info({
+          title: 'คัดลอกลิงก์ด้วยตนเอง',
+          content: <div><p>เลือกข้อความด้านล่างแล้วคัดลอกเพื่อนำไปแชร์</p>
+            <Input.TextArea readOnly value={url} autoSize onFocus={(event) => event.target.select()} aria-label="Share URL" />
+          </div>,
+          okText: 'ปิด',
+        });
+      }
+    } catch (error) {
+      message.error(error.message || 'ไม่สามารถสร้างลิงก์ได้');
+    } finally {
+      setCopyingId(null);
+    }
+  }
 
   function showDeleteConfirm(row) {
     confirm({
@@ -322,9 +355,16 @@ export default function RecruitJobOpenTable() {
     {
       title: 'Action',
       key: 'action',
-      width: 130,
+      width: 250,
       render: (_, row) => (
         <Space size="small">
+          {canView && (
+            <Button size="small" loading={copyingId === row.id}
+              disabled={!row.status || (copyingId !== null && copyingId !== row.id)}
+              onClick={() => copyShareUrl(row)}>
+              Copy URL
+            </Button>
+          )}
           { canEdit && (
             <Link href={`/recruitment/setting/job_openings/${row.id}/edit`}>
               <Button type="primary" size="small">

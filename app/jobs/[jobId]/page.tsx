@@ -8,6 +8,7 @@ import { uiText } from "@/app/jobs/components/translations";
 import { getText } from "@/app/jobs/lib/i18n";
 import { getUIText } from "@/app/jobs/lib/ui";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { applicationUrl } from "@/app/jobs/lib/shareRef";
 
 type MultiLang = Record<string, string>;
 
@@ -92,7 +93,7 @@ export default function JobDetailPage() {
   const positionTitle = job.positionTitle ?? "-";
   const companyInitial = job.companyName?.trim().charAt(0).toUpperCase() ?? "J";
   const openingValue = `${openingCount} ${getUIText(uiText.openingUnit, locale)}`;
-  const goToApplication = () => router.push(`/jobs/register/${job.id}`);
+  const goToApplication = () => router.push(applicationUrl(job.id, window.location.search));
 
   return (
     <div className="min-h-screen bg-[#f6f8fb]">

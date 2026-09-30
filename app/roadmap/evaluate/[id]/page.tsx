@@ -16,6 +16,7 @@ import EvaluationForm, {
 import EvaluationHistoryModal from "@/app/roadmap/evaluate/components/EvaluationHistoryModal";
 import EmployeeEvaluationCompareModal from "@/app/roadmap/evaluate/components/EmployeeEvaluationCompareModal";
 import { Employee } from "@/app/roadmap/types";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 type SettingsCategory = {
   id: string;
@@ -90,6 +91,7 @@ export default function EvaluateEmployeePage() {
   const [dontShowToday, setDontShowToday] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveNotification, setSaveNotification] = useState<string | null>(null);
+  useRoadmapPageLog("Evaluate HR Form");
 
   const [formData, setFormData] = useState<EvaluationFormData>({
     companyRows: [

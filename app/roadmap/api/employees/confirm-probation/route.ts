@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 
 export async function POST(req: Request) {
   try {
@@ -10,6 +12,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, error: "Missing employeeId or evaluationId" },
         { status: 400 },
+      );
+    }
+    const auth = await getAuthenticatedUser();
+
+    if (!auth?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
@@ -100,6 +110,17 @@ export async function POST(req: Request) {
       .eq("id", employeeId);
 
     if (updateError) throw updateError;
+    await writeRoadmapAuditLog({
+      userId: auth.user.id,
+      page: "Reports",
+      action: "confirm_probation_passed",
+      targetType: "employee",
+      targetId: employeeId,
+      description: "อัปเดตพนักงานทดลองงานเป็นพนักงานประจำ",
+      metadata: {
+        evaluationId,
+      },
+    });
 
     return NextResponse.json({
       success: true,

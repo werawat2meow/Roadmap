@@ -7,6 +7,7 @@ import ExecutiveEmployeeCard from "./components/ExecutiveEmployeeCard";
 import ExecutiveSlideOver from "./components/ExecutiveSlideOver";
 import ExecutiveNotice from "./components/ExecutiveNotice";
 import { HelpCircle } from "lucide-react";
+import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 // กำหนด Type ให้ตรงกับที่ API ส่งมา
 type Employee = {
@@ -45,6 +46,7 @@ export default function ExecutivePage() {
     "reject" | "return" | null
   >(null);
   const [showGuide, setShowGuide] = useState(false);
+  useRoadmapPageLog("Executive");
 
   // --- ส่วนการดึงข้อมูลจาก API ---
   useEffect(() => {

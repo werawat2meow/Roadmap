@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 
 const DEFAULT_SETTINGS = {
   nomination_alert_start_day: 26,
@@ -108,6 +110,21 @@ export async function PUT(req: Request) {
       .single();
 
     if (error) throw error;
+
+    const auth = await getAuthenticatedUser();
+
+    await writeRoadmapAuditLog({
+      userId: auth?.user?.id ?? null,
+      page: "Settings",
+      action: "settings_cycle_update",
+      targetType: "rm_cycle_settings",
+      targetId: data?.id ?? null,
+      description: "แก้ไขตั้งค่ารอบ Roadmap",
+      metadata: {
+        before: null,
+        after: data,
+      },
+    });
 
     return NextResponse.json({
       success: true,

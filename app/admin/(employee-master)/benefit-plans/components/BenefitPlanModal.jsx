@@ -12,22 +12,13 @@ import {
   Switch,
 } from "antd";
 
-const {
-  TextArea,
-} = Input;
+const { TextArea,} = Input;
 
-function buildCategoryOptions(
-  categories
-) {
-  return (
-    categories || []
-  ).map(
+function buildCategoryOptions(categories) {
+  return ( categories || [] ).map(
     (item) => ({
-      value:
-        item.id,
-
-      label:
-        `${item.category_code} - ${item.category_name}`,
+      value: item.id,
+      label: `${item.category_code} - ${item.category_name}`,
     })
   );
 }
@@ -45,71 +36,38 @@ export default function BenefitPlanModal({
   onCancel,
   onSubmit,
 }) {
-  const disabled =
-    viewMode ||
-    saving;
+  const disabled = viewMode || saving;
 
   return (
     <Modal
-      open={
-        open
-      }
-      width={
-        860
-      }
-      title={
-        viewMode
-          ? "รายละเอียดแผนสวัสดิการ"
-          : editing
-            ? "แก้ไขแผนสวัสดิการ"
-            : "เพิ่มแผนสวัสดิการ"
-      }
+      open={open}
+      width={860}
+      title={ viewMode ? "รายละเอียดแผนสวัสดิการ" : editing ? "แก้ไขแผนสวัสดิการ" : "เพิ่มแผนสวัสดิการ" }
+      forceRender
       destroyOnHidden
       mask={{ closable: !saving }}
-      onCancel={
-        onCancel
-      }
+      onCancel={onCancel}
       onOk={
         viewMode
           ? onCancel
           : () =>
               form.submit()
       }
-      okText={
-        viewMode
-          ? "ปิด"
-          : "บันทึก"
-      }
-      cancelButtonProps={{
-        style:
-          viewMode
-            ? {
-                display:
-                  "none",
-              }
-            : undefined,
-      }}
-      confirmLoading={
-        saving
-      }
+      okText={viewMode? "ปิด": "บันทึก"}
+      cancelButtonProps={{style:viewMode? {display:"none",}: undefined,}}
+      confirmLoading={saving}
     >
       <Form
-        form={
-          form
-        }
+        form={form}
         layout="vertical"
-        disabled={
-          disabled
-        }
-        onFinish={
-          onSubmit
-        }
+        disabled={disabled}
+        onFinish={onSubmit}
       >
         <Alert
           className="mb-4"
           showIcon
           type="info"
-          message="Plan Master เก็บว่าองค์กรมีสวัสดิการอะไร"
+          title="Plan Master เก็บว่าองค์กรมีสวัสดิการอะไร"
           description="จำนวนเงิน วงเงิน เงื่อนไขบริษัท โครงสร้างองค์กร ประเภทการจ้าง ระดับตำแหน่ง อายุงาน และช่วงทดลองงาน ให้กำหนดใน Benefit Policy Rules ไม่ Hardcode ในหน้าแผน"
         />
 

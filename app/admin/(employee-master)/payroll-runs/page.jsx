@@ -1044,7 +1044,7 @@ export default function PayrollRunsPage() {
         header={
           <>
             <MasterPageHeader
-              title="ประมวลผลเงินเดือน"
+              title="ประมวลผลเงินเดือนของพนักงาน"
               subtitle="Payroll Runs Management"
               loading={
                 loading

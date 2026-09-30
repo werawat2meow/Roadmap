@@ -7,15 +7,18 @@ import {
   Button,
   Card,
   Col,
+  Collapse,
   Empty,
   Input,
   Row,
+  Segmented,
   Space,
   Tag,
   Typography,
 } from "antd";
 import {
   ApartmentOutlined,
+  AppstoreOutlined,
   ArrowRightOutlined,
   AuditOutlined,
   BankOutlined,
@@ -24,8 +27,6 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DollarOutlined,
-  DownOutlined,
-  UpOutlined,
   FileTextOutlined,
   IdcardOutlined,
   ImportOutlined,
@@ -34,6 +35,7 @@ import {
   SearchOutlined,
   SettingOutlined,
   SolutionOutlined,
+  StarOutlined,
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
@@ -77,17 +79,17 @@ const ICONS = {
 const SETUP_LEVEL_META = {
   required: {
     key: "required",
-    title: "จำเป็นก่อนเพิ่มพนักงานใหม่",
+    title: "จำเป็นก่อนเพิ่มพนักงาน",
     description:
-      "ควรตั้งค่ากลุ่มนี้ให้ครบก่อนเริ่มเพิ่มพนักงาน เพื่อให้ข้อมูลองค์กร ตำแหน่ง Payroll และรหัสพนักงานพร้อมใช้งาน",
+      "ข้อมูล Master หลักที่ควรพร้อมก่อนเริ่มสร้างข้อมูลพนักงานใหม่",
     tag: "จำเป็น",
     color: "volcano",
   },
   conditional: {
     key: "conditional",
-    title: "ตั้งค่าตามเงื่อนไขการใช้งาน",
+    title: "ตั้งค่าตามเงื่อนไข",
     description:
-      "ตั้งค่าเมื่อองค์กรหรือพนักงานมีการใช้งาน เช่น ภาษี/ประกันสังคม ธนาคาร Cost Structure หรือบัญชีผู้ใช้",
+      "ตั้งค่าเมื่อองค์กรหรือพนักงานมีการใช้งานในส่วนนั้น",
     tag: "ตามเงื่อนไข",
     color: "gold",
   },
@@ -95,7 +97,7 @@ const SETUP_LEVEL_META = {
     key: "additional",
     title: "การตั้งค่าเพิ่มเติม",
     description:
-      "ไม่ใช่ข้อมูลหลักที่ต้องตั้งให้ครบก่อนเพิ่มพนักงาน สามารถกลับมาตั้งค่าเพิ่มเติมเมื่อเริ่มใช้งานโมดูลนั้น",
+      "Master และการตั้งค่าเสริมที่สามารถกลับมาจัดการภายหลังได้",
     tag: "เพิ่มเติม",
     color: "blue",
   },
@@ -160,7 +162,7 @@ function filterBySearch(items, keyword) {
 export default function DashboardWorkHub({ user }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [setupGuideOpen, setSetupGuideOpen] = useState(false);
+  const [workspace, setWorkspace] = useState("my-work");
 
   const roleCode = normalizeRoleCode(user);
   const roleName = getRoleDisplayName(user);
@@ -220,25 +222,6 @@ export default function DashboardWorkHub({ user }) {
       .filter((section) => section.groups.length > 0);
   }, [setupGroups]);
 
-  const requiredSetupSection = useMemo(
-    () => setupSections.find((section) => section.key === "required") || null,
-    [setupSections]
-  );
-
-  const secondarySetupSections = useMemo(
-    () => setupSections.filter((section) => section.key !== "required"),
-    [setupSections]
-  );
-
-  const requiredSetupItemCount = useMemo(() => {
-    if (!requiredSetupSection) return 0;
-
-    return requiredSetupSection.groups.reduce(
-      (total, group) => total + group.items.length,
-      0
-    );
-  }, [requiredSetupSection]);
-
   const searchableActions = useMemo(() => {
     const actionItems = Object.values(DASHBOARD_ACTIONS)
       .filter((item) => canOpen(user, item));
@@ -267,53 +250,138 @@ export default function DashboardWorkHub({ user }) {
     [searchableActions, search]
   );
 
+  const setupItemCount = useMemo(
+    () => setupGroups.reduce((total, group) => total + group.items.length, 0),
+    [setupGroups]
+  );
+
   const go = (href) => {
     if (!href) return;
     router.push(href);
   };
 
+  const setupCollapseItems = setupSections.map((section) => ({
+    key: section.key,
+    label: (
+      <div className="flex flex-wrap items-center gap-2 py-1">
+        <Tag color={section.color} style={{ marginInlineEnd: 0 }}>
+          {section.tag}
+        </Tag>
+        <span className="font-semibold text-slate-800">
+          {section.title}
+        </span>
+        <span className="text-xs text-slate-400">
+          {section.groups.length} หมวด
+        </span>
+      </div>
+    ),
+    children: (
+      <div>
+        <div className="mb-4 text-sm text-slate-500">
+          {section.description}
+        </div>
+
+        <Row gutter={[14, 14]}>
+          {section.groups.map((group) => (
+            <Col xs={24} lg={12} xxl={8} key={group.key}>
+              <div className="h-full rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg text-slate-700">
+                    {ICONS[group.icon] || <SettingOutlined />}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-slate-900">
+                      {group.order}. {group.title}
+                    </div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">
+                      {group.subtitle}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => go(item.href)}
+                      className="group flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                    >
+                      <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700">
+                        {item.label}
+                      </span>
+                      <ArrowRightOutlined className="shrink-0 text-slate-300 group-hover:text-blue-600" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+      </div>
+    ),
+  }));
+
   return (
-    <div className="flex flex-col gap-10 py-6">
+    <div className="space-y-5 py-1">
       <Card
         data-dashboard-tour="workspace"
-        className="rounded-2xl border-blue-100 shadow-sm"
+        className="overflow-hidden rounded-2xl border-slate-200 shadow-sm transition-all hover:shadow-md"
       >
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between ">
-          <div>
-            <Space size={8} wrap>
-              <Tag color="blue">HR WORKSPACE</Tag>
-              <Tag>{roleCode || "ROLE"}</Tag>
-            </Space>
-
-            <Title level={4} className="!mb-1 !mt-2 !text-slate-900">
-              งานของคุณ และทางลัดไปยังส่วนที่ต้องจัดการ
-            </Title>
-
-            <Text className="text-slate-500">
-              งานหลักจัดลำดับตาม Role <strong>{roleName}</strong> และทุกหมวดด้านล่าง
-              แสดงตาม Permission — สามารถใช้งาน Dashboard แทน Sidebar ได้
+        {/* ส่วนหัวข้อและคำอธิบาย */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <SearchOutlined className="text-base" />
+              </span>
+              <Title level={4} className="!mb-0 !mt-0 !text-slate-900">
+                ค้นหาเมนูและฟังก์ชัน
+              </Title>
+            </div>
+            <Text className="text-sm text-slate-500">
+              พิมพ์ชื่อเมนูเพื่อเข้าใช้งานระบบได้อย่างรวดเร็ว
             </Text>
           </div>
 
-          <div
-            data-dashboard-tour="search"
-            className="w-full xl:w-[430px]"
-          >
-            <Input
-              allowClear
-              size="large"
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="ค้นหา เช่น พนักงาน, ภาษี, Payroll, Role..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+          {/* ส่วนแสดง Role หรือสถิติต่างๆ (สามารถเปิดใช้งานได้) */}
+          {/* <Space size={[8, 8]} wrap>
+            <Tag color="blue" className="px-3 py-1 rounded-full">{roleName}</Tag>
+            <Tag className="px-3 py-1 rounded-full">{dailyActionCount} งาน</Tag>
+            <Tag className="px-3 py-1 rounded-full">{setupItemCount} รายการตั้งค่า</Tag>
+          </Space> */}
+        </div>
+
+        {/* ช่องสำหรับค้นหา */}
+        <div
+          data-dashboard-tour="search"
+          className="mt-5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50"
+        >
+          <Input
+            allowClear
+            size="large"
+            prefix={<SearchOutlined className="mr-2 text-slate-400 text-lg" />}
+            placeholder="ค้นหาเมนูหรือฟังก์ชัน เช่น พนักงาน, Payroll, ภาษี, Role..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="!border-0 !bg-transparent !shadow-none [&>input]:!text-base"
+          />
         </div>
       </Card>
 
       {cleanText(search) ? (
         <Card
-          title={`ผลการค้นหา (${searchResults.length})`}
+          title={
+            <div>
+              <div className="font-semibold text-slate-900">
+                ผลการค้นหา
+              </div>
+              <div className="text-xs font-normal text-slate-500">
+                พบ {searchResults.length} รายการที่คุณมีสิทธิ์ใช้งาน
+              </div>
+            </div>
+          }
           className="rounded-2xl border-slate-200 shadow-sm"
         >
           {searchResults.length ? (
@@ -323,18 +391,22 @@ export default function DashboardWorkHub({ user }) {
                   <button
                     type="button"
                     onClick={() => go(item.href)}
-                    className="flex min-h-[92px] w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/40"
+                    className="group flex min-h-[96px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-sm"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-lg text-blue-600">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-lg text-blue-600">
                       {ICONS[item.icon] || <ArrowRightOutlined />}
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-slate-800">{item.label}</div>
-                      <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+                      <div className="font-semibold text-slate-800">
+                        {item.label}
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
                         {item.description || "เปิดหน้าจัดการ"}
                       </div>
                     </div>
-                    <ArrowRightOutlined className="text-slate-300" />
+
+                    <ArrowRightOutlined className="text-slate-300 group-hover:text-blue-600" />
                   </button>
                 </Col>
               ))}
@@ -348,421 +420,214 @@ export default function DashboardWorkHub({ user }) {
         </Card>
       ) : (
         <>
-          <Card
-            data-dashboard-tour="primary-work "
-            title={
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-lg text-white shadow-sm">
-                  <CheckCircleOutlined />
-                </div>
-                <div>
-                  <div className="text-base font-bold text-slate-900">งานหลักของคุณ</div>
-                  <div className="text-xs font-normal text-slate-500">
-                    เริ่มงานจากส่วนนี้ก่อน — ระบบจัดลำดับตาม Role และ Permission ของคุณ
-                  </div>
-                </div>
-              </div>
-            }
-            extra={
-              <Space size={8} wrap>
-                <Tag color="blue">{roleName}</Tag>
-                <Tag color="gold">เริ่มจากตรงนี้</Tag>
-              </Space>
-            }
-            className="overflow-hidden rounded-2xl border-2 border-blue-200 shadow-md"
-          >
-            <div className="mb-5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4 text-white shadow-sm ">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-blue-100">งานที่ควรเห็นและใช้บ่อยที่สุด</div>
-                  <div className="mt-1 text-lg font-bold">
-                    คุณมีงานหลัก {primaryDailyActions.length} รายการที่พร้อมใช้งาน
-                  </div>
-                  <div className="mt-1 text-xs leading-5 text-blue-100">
-                    รายการด้านล่างผ่านการกรองแล้ว กดที่การ์ดเพื่อเริ่มทำงานได้ทันที
-                  </div>
-                </div>
-                <div className="rounded-xl bg-white/15 px-4 py-2 text-center backdrop-blur-sm">
-                  <div className="text-2xl font-bold">{primaryDailyActions.length}</div>
-                  <div className="text-xs text-blue-100">งานหลักของคุณ</div>
-                </div>
-              </div>
-            </div>
-
-            {primaryDailyActions.length ? (
-              <Row gutter={[18, 18]}>
-                {primaryDailyActions.map((item, index) => (
-                  <Col xs={24} sm={12} xl={6} key={item.key}>
-                    <button
-                      type="button"
-                      onClick={() => go(item.href)}
-                      className="group relative flex min-h-[158px] w-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/70 p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-400 hover:shadow-lg"
-                    >
-                      <div className="absolute right-3 top-3 rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                        งานหลัก #{index + 1}
-                      </div>
-
-                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-sm">
-                        {ICONS[item.icon] || <ArrowRightOutlined />}
-                      </div>
-
-                      <div className="pr-20 text-[15px] font-bold text-slate-900">{item.label}</div>
-                      <div className="mt-1 flex-1 text-xs leading-5 text-slate-500">
-                        {item.description}
-                      </div>
-
-                      <div className="mt-4 flex items-center justify-between border-t border-blue-100 pt-3">
-                        <span className="text-xs font-semibold text-blue-600">ควรใช้เป็นประจำ</span>
-                        <span className="flex items-center gap-1 text-xs font-semibold text-blue-600">
-                          เริ่มงาน <ArrowRightOutlined />
-                        </span>
-                      </div>
-                    </button>
-                  </Col>
-                ))}
-              </Row>
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Role นี้ยังไม่มีงานหลักที่ตรงกับ Permission ปัจจุบัน"
-              />
-            )}
-          </Card>
-
-          <Card
-            data-dashboard-tour="daily-work"
-            title={
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-lg text-white shadow-sm">
-                  <SolutionOutlined />
-                </div>
-                <div>
-                  <div className="text-base font-bold text-slate-900">งานที่ใช้เป็นประจำทั้งหมด</div>
-                  <div className="text-xs font-normal text-slate-500">
-                    เมนูงานปฏิบัติการทั้งหมดที่บัญชีนี้มี
-                  </div>
-                </div>
-              </div>
-            }
-            extra={
-              <Space size={8} wrap>
-                <Tag color="green">{dailyGroups.length} หมวด</Tag>
-                <Tag color="cyan">{dailyActionCount} งานที่เข้าได้</Tag>
-              </Space>
-            }
-            className="overflow-hidden rounded-2xl border-2 border-emerald-200 shadow-md"
-          >
-            <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-              <div className="flex items-start gap-3">
-                <CheckCircleOutlined className="mt-0.5 text-xl text-emerald-600" />
-                <div>
-                  <div className="font-bold text-emerald-900">ถ้าหางานไม่เจอจาก “งานหลักของคุณ” ให้ดูส่วนนี้</div>
-                  <div className="mt-1 text-sm leading-6 text-emerald-800">
-                    รวมงานประจำ งานตามรอบ และงานตามเหตุการณ์ทั้งหมดที่  เช่น การครองตำแหน่งองค์กร ค่าตอบแทน ภาษี ประกันสังคม Recruitment Payroll และงาน HR อื่น ๆ
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {dailyGroups.length ? (
-              <Row gutter={[18, 18]}>
-                {dailyGroups.map((group) => (
-                  <Col xs={24} lg={12} xxl={8} key={group.key}>
-                    <Card
-                      size="small"
-                      className="h-full overflow-hidden rounded-2xl border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-md"
-                    >
-                      <div className="-mx-3 -mt-3 mb-3 border-b border-emerald-100 bg-emerald-50/70 px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-emerald-600 shadow-sm">
-                            {ICONS[group.icon] || <ArrowRightOutlined />}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="font-bold text-slate-900">{group.title}</div>
-                              <Tag color="green">{group.items.length} งาน</Tag>
-                            </div>
-                            <div className="mt-0.5 text-xs leading-5 text-slate-500">
-                              {group.subtitle}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {group.items.map((item) => (
-                          <button
-                            key={item.href}
-                            type="button"
-                            onClick={() => go(item.href)}
-                            className="group flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
-                          >
-                            <span className="text-sm font-medium text-slate-700 group-hover:text-emerald-800">
-                              {item.label}
-                            </span>
-                            <ArrowRightOutlined className="shrink-0 text-slate-300 group-hover:text-emerald-600" />
-                          </button>
-                        ))}
-                      </div>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="User นี้ยังไม่มี Permission สำหรับงานปฏิบัติการ"
-              />
-            )}
-          </Card>
-
-          <Card
-            data-dashboard-tour="setup-guide"
-            title={
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600 shadow-sm">
-                  <SafetyCertificateOutlined />
-                </div>
-                <div>
-                  <div className="text-[22px] font-bold text-slate-900">
-                    ตั้งค่าพื้นฐาน HRMS
-                  </div>
-                  <div className="mt-0.5 text-xs font-normal text-slate-500">
-                    Setup ที่ใช้เตรียมระบบ HRMS 
-                  </div>
-                </div>
-              </div>
-            }
-            extra={
-              <Space size={8} wrap>
-                <Tag
-                  color="blue"
-                  style={{
-                    fontSize: "17px",
-                    padding: "6px 14px",
-                    lineHeight: "24px",
-                    fontWeight: 700,
-                  }}
-                >
-                  ส่วนสำคัญก่อนเพิ่มพนักงาน
-                </Tag>
-
-                <Button
-                  onClick={() => setSetupGuideOpen((current) => !current)}
-                  icon={setupGuideOpen ? <UpOutlined /> : <DownOutlined />}
-                  style={{
-                    height: 46,
-                    fontSize: "17px",
-                    padding: "0 24px",
-                  }}
-                >
-                  {setupGuideOpen ? "ปิด" : "เปิด"}
-                </Button>
-              </Space>
-            }
-            className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm"
-          >
-            <DashboardSetupJourney
-              user={user}
-              compact={!setupGuideOpen}
+          <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Segmented
+              block
+              size="large"
+              value={workspace}
+              onChange={setWorkspace}
+              options={[
+                {
+                  label: "งานของฉัน",
+                  value: "my-work",
+                  icon: <StarOutlined />,
+                },
+                {
+                  label: "งานทั้งหมด",
+                  value: "operations",
+                  icon: <AppstoreOutlined />,
+                },
+                {
+                  label: "ตั้งค่าระบบ",
+                  value: "setup",
+                  icon: <SettingOutlined />,
+                },
+              ]}
             />
+          </Card>
 
-            {setupGuideOpen ? (
-              setupGroups.length ? (
-                <div className="mt-5 flex flex-col gap-8">
-                {requiredSetupSection ? (
-                  <div className="overflow-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-slate-50 shadow-sm">
-                    <div className="border-b border-blue-100 bg-white px-5 py-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600">
-                            <SafetyCertificateOutlined />
-                          </div>
-
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-lg font-bold text-slate-900">
-                                จำเป็นก่อนเพิ่มพนักงานใหม่
-                              </span>
-                              <Tag
-                                color="blue"
-                                style={{
-                                  marginInlineEnd: 0,
-                                  fontWeight: 700,
-                                }}
-                              >
-                                จำเป็น
-                              </Tag>
-                            </div>
-
-                            <div className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
-                              กลุ่มนี้เป็นข้อมูลพื้นฐานที่ควรตั้งค่าให้พร้อมก่อนสร้างพนักงาน
-                              เพื่อให้ข้อมูลสังกัด ตำแหน่ง Payroll และรหัสพนักงานพร้อมใช้งาน
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
-                          <div className="text-2xl font-bold text-slate-900">
-                            {requiredSetupSection.groups.length}
-                          </div>
-                          <div className="text-xs leading-5 text-slate-600">
-                            หมวดจำเป็น
-                            <br />
-                            {requiredSetupItemCount} รายการ
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 md:p-5">
-                      <Alert
-                        showIcon
-                        type="info"
-                        title="แนะนำให้ตั้งค่าส่วนนี้ให้พร้อมก่อนเพิ่มพนักงาน"
-                        description="รายการด้านล่างคือข้อมูลตั้งต้นที่มักจำเป็นในระบบ HRMS เช่น ข้อมูลอ้างอิง โครงสร้างองค์กร Job Architecture Payroll และ Employee Master"
-                        className="mb-5 rounded-xl"
-                      />
-
-                      <Row gutter={[18, 18]}>
-                        {requiredSetupSection.groups.map((group) => (
-                          <Col xs={24} lg={12} xxl={8} key={group.key}>
-                            <Card
-                              size="small"
-                              className="h-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-                            >
-                              <div className="-mx-3 -mt-3 mb-4 border-b border-blue-100 bg-blue-50/70 px-4 py-3">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white text-lg text-blue-600 shadow-sm">
-                                    {ICONS[group.icon] || <SettingOutlined />}
-                                  </div>
-
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <div className="font-bold text-slate-900">
-                                        {group.order}. {group.title}
-                                      </div>
-                                      <Tag
-                                        color="blue"
-                                        style={{
-                                          marginInlineEnd: 0,
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        จำเป็น
-                                      </Tag>
-                                    </div>
-
-                                    <div className="mt-1 text-xs leading-5 text-slate-600">
-                                      {group.subtitle}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                {group.items.map((item) => (
-                                  <Button
-                                    key={item.href}
-                                    block
-                                    onClick={() => go(item.href)}
-                                    className="!flex !h-auto min-h-10 !items-center !justify-between !whitespace-normal !rounded-lg !border-blue-200 !px-3 !py-2 text-left hover:!border-blue-400 hover:!text-blue-600"
-                                  >
-                                    <span>{item.label}</span>
-                                    <ArrowRightOutlined />
-                                  </Button>
-                                ))}
-                              </div>
-                            </Card>
-                          </Col>
-                        ))}
-                      </Row>
-                    </div>
+          {workspace === "my-work" ? (
+            <Card
+              data-dashboard-tour="primary-work"
+              title={
+                <div>
+                  <div className="font-bold text-slate-900">
+                    งานของฉัน
                   </div>
-                ) : (
-                  <Alert
-                    showIcon
-                    type="warning"
-                    message="ยังไม่พบรายการตั้งค่าที่ถูกกำหนดเป็น “จำเป็น”"
-                    description="ตรวจสอบค่า employeeSetupLevel ใน dashboardWorkHubConfig ว่ากลุ่มที่ต้องทำก่อนเพิ่มพนักงานถูกกำหนดเป็น required แล้ว"
-                    className="rounded-xl"
-                  />
-                )}
-
-                {secondarySetupSections.map((section) => (
-                  <div key={section.key}>
-                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <Space size={8} wrap>
-                          <Tag color={section.color}>{section.tag}</Tag>
-                          <span className="text-base font-semibold text-slate-900">
-                            {section.title}
-                          </span>
-                        </Space>
-                        <div className="mt-1 text-sm text-slate-500">
-                          {section.description}
-                        </div>
-                      </div>
-                    </div>
-
-                    <Row gutter={[18, 18]}>
-                      {section.groups.map((group) => (
-                        <Col xs={24} lg={12} xxl={8} key={group.key}>
-                          <Card
-                            size="small"
-                            className="h-full rounded-2xl border-slate-200 bg-slate-50/60 shadow-sm transition hover:border-slate-300 hover:shadow-md"
-                          >
-                            <div className="mb-3 flex items-start gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-blue-600 shadow-sm">
-                                {ICONS[group.icon] || <SettingOutlined />}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <div className="font-semibold text-slate-900">
-                                    {group.order}. {group.title}
-                                  </div>
-                                  <Tag
-                                    color={section.color}
-                                    style={{ marginInlineEnd: 0 }}
-                                  >
-                                    {section.tag}
-                                  </Tag>
-                                </div>
-
-                                <div className="mt-0.5 text-xs text-slate-500">
-                                  {group.subtitle}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {group.items.map((item) => (
-                                <Button
-                                  key={item.href}
-                                  size="small"
-                                  onClick={() => go(item.href)}
-                                >
-                                  {item.label}
-                                </Button>
-                              ))}
-                            </div>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
+                  <div className="text-xs font-normal text-slate-500">
+                    ทางลัดงานที่เหมาะกับ Role นี้มากที่สุด
                   </div>
-                ))}
                 </div>
+              }
+              extra={<Tag color="blue">{primaryDailyActions.length} รายการ</Tag>}
+              className="rounded-2xl border-slate-200 shadow-sm"
+            >
+              {primaryDailyActions.length ? (
+                <Row gutter={[16, 16]}>
+                  {primaryDailyActions.map((item, index) => (
+                    <Col xs={24} sm={12} xl={6} key={item.key}>
+                      <button
+                        type="button"
+                        onClick={() => go(item.href)}
+                        className="group flex min-h-[150px] w-full flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-lg text-white shadow-sm">
+                            {ICONS[item.icon] || <ArrowRightOutlined />}
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                            #{index + 1}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 font-bold text-slate-900">
+                          {item.label}
+                        </div>
+                        <div className="mt-1 flex-1 text-xs leading-5 text-slate-500">
+                          {item.description}
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-blue-600">
+                          เปิดงาน <ArrowRightOutlined />
+                        </div>
+                      </button>
+                    </Col>
+                  ))}
+                </Row>
               ) : (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="User นี้ไม่มี Permission สำหรับหน้าตั้งค่า"
+                  description="Role นี้ยังไม่มีงานหลักที่ตรงกับ Permission ปัจจุบัน"
                 />
-              )
-            ) : null}
-          </Card>
+              )}
+
+              {/* <Alert
+                className="mt-5 rounded-xl"
+                type="info"
+                showIcon
+                title="หาเมนูอื่นไม่เจอ?"
+                description="เลือกแท็บ “งานทั้งหมด” หรือใช้ช่องค้นหาด้านบน ระบบจะแสดงเฉพาะหน้าที่คุณมีสิทธิ์เข้าใช้งาน"
+              /> */}
+            </Card>
+          ) : null}
+
+          {workspace === "operations" ? (
+            <Card
+              data-dashboard-tour="daily-work"
+              title={
+                <div>
+                  <div className="font-bold text-slate-900">
+                    งานทั้งหมดที่ใช้งานได้
+                  </div>
+                  <div className="text-xs font-normal text-slate-500">
+                    จัดกลุ่มตามกระบวนงาน เพื่อให้หาเมนูได้เร็วขึ้น
+                  </div>
+                </div>
+              }
+              extra={
+                <Space size={8} wrap>
+                  <Tag>{dailyGroups.length} หมวด</Tag>
+                  <Tag color="cyan">{dailyActionCount} งาน</Tag>
+                </Space>
+              }
+              className="rounded-2xl border-slate-200 shadow-sm"
+            >
+              {dailyGroups.length ? (
+                <Row gutter={[16, 16]}>
+                  {dailyGroups.map((group) => (
+                    <Col xs={24} lg={12} xxl={8} key={group.key}>
+                      <div className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        <div className="border-b border-slate-100 bg-slate-50 px-4 py-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-slate-700 shadow-sm">
+                              {ICONS[group.icon] || <ArrowRightOutlined />}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="font-bold text-slate-900">
+                                  {group.title}
+                                </div>
+                                <Tag style={{ marginInlineEnd: 0 }}>
+                                  {group.items.length}
+                                </Tag>
+                              </div>
+                              <div className="mt-1 text-xs leading-5 text-slate-500">
+                                {group.subtitle}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 p-3">
+                          {group.items.map((item) => (
+                            <button
+                              key={item.href}
+                              type="button"
+                              onClick={() => go(item.href)}
+                              className="group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-blue-50"
+                            >
+                              <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700">
+                                {item.label}
+                              </span>
+                              <ArrowRightOutlined className="shrink-0 text-slate-300 group-hover:text-blue-600" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="User นี้ยังไม่มี Permission สำหรับงานปฏิบัติการ"
+                />
+              )}
+            </Card>
+          ) : null}
+
+          {workspace === "setup" ? (
+            <Card
+              data-dashboard-tour="setup-guide"
+              title={
+                <div>
+                  <div className="font-bold text-slate-900">
+                    ตั้งค่าระบบ HRMS
+                  </div>
+                  <div className="text-xs font-normal text-slate-500">
+                    ตรวจความพร้อมและเปิด Master Data ตามลำดับความสำคัญ
+                  </div>
+                </div>
+              }
+              extra={<Tag color="blue">{setupItemCount} รายการ</Tag>}
+              className="rounded-2xl border-slate-200 shadow-sm"
+            >
+              <DashboardSetupJourney
+                user={user}
+                compact={false}
+              />
+
+              <div className="mt-5">
+                {setupCollapseItems.length ? (
+                  <Collapse
+                    defaultActiveKey={
+                      setupCollapseItems.some((item) => item.key === "required")
+                        ? ["required"]
+                        : []
+                    }
+                    items={setupCollapseItems}
+                    className="!rounded-2xl !border-slate-200 !bg-white"
+                  />
+                ) : (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="User นี้ไม่มี Permission สำหรับหน้าตั้งค่า"
+                  />
+                )}
+              </div>
+            </Card>
+          ) : null}
         </>
       )}
     </div>

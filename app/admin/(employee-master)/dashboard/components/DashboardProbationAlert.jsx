@@ -42,8 +42,8 @@ export default function DashboardProbationAlert({
       data-dashboard-tour="probation-alert"
       className="overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 shadow-sm"
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
+      {/* <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"> */}
+        {/* <div className="flex min-w-0 items-start gap-4">
           <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-xl text-white shadow-sm">
             <BellOutlined />
             <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold text-white">
@@ -74,9 +74,9 @@ export default function DashboardProbationAlert({
               </span>
             </div>
           </div>
-        </div>
+        </div> */}
 
-        <Button
+        {/* <Button
           type="primary"
           onClick={() => router.push("/admin/employees")}
           icon={<ArrowRightOutlined />}
@@ -84,8 +84,8 @@ export default function DashboardProbationAlert({
           className="shrink-0"
         >
           ดูพนักงานทดลองงาน
-        </Button>
-      </div>
+        </Button> */}
+      {/* </div> */}
     </Card>
   );
 }

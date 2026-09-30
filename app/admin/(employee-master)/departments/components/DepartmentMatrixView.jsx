@@ -20,7 +20,6 @@ import {
 
 function BranchLogo({ branch, compact = false }) {
   const sizeClass = compact ? "h-10 w-10" : "h-14 w-14";
-
   return (
     <div className={`flex ${sizeClass} shrink-0 items-center justify-center bg-white/75 p-1.5`}>
       {branch?.branch_image_url ? (
@@ -382,10 +381,16 @@ function DesktopMatrix({
                                     >
                                       <div className="flex min-h-[92px] flex-col items-center justify-center px-2 py-3 text-center">
                                         <BranchLogo branch={branch} />
-                                        <div className="mt-2 max-w-[135px] truncate text-[10px] font-bold text-slate-800">
+                                        <div
+                                          data-matrix-branch-code
+                                          className="mt-2 w-full max-w-[135px] whitespace-normal break-words text-[10px] font-bold text-slate-800"
+                                        >
                                           {branch.branch_code || "-"}
                                         </div>
-                                        <div className="mt-0.5 max-w-[135px] truncate text-[9px] text-slate-600">
+                                        <div
+                                          data-matrix-branch-name
+                                          className="mt-0.5 w-full max-w-[135px] whitespace-normal break-words text-[9px] text-slate-600"
+                                        >
                                           {branch.branch_name || "-"}
                                         </div>
                                       </div>

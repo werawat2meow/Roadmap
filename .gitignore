@@ -52,3 +52,6 @@ app/globals_REMOTE_1201.css
 *_LOCAL_*.js
 *_REMOTE_*.js
 package-lock.json
+docs/recruitment-share-tracking-contract.md
+/tests
+tsconfig.share-tracking.json

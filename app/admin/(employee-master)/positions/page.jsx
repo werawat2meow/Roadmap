@@ -181,32 +181,34 @@ export default function PositionsPage() {
   }
 
   async function handleDelete(item) {
-    const result = await swalConfirm(
-      "ยืนยันการลบ",
-      `ต้องการลบ "${item.position_name}" ใช่หรือไม่ ?`
-    );
-
-    if (!result.isConfirmed) return;
-
+    const result = await swalConfirm("ยืนยันการลบ",`ต้องการลบ "${item.position_name}" ใช่หรือไม่ ?`);
+    const confirmed = typeof result === "boolean" ? result: Boolean(result?.isConfirmed);
+    if (!confirmed) {return;}
     try {
       setLoading(true);
 
-      const res = await fetch(
-        `/api/admin/positions/${item.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res =
+        await fetch(
+          `/api/admin/positions/${item.id}`,
+          {
+            method:
+              "DELETE",
+          }
+        );
 
-      const json = await res.json();
+      const json =
+        await res.json();
 
       if (!json.success) {
         throw new Error(
-          json.error || "Delete Error"
+          json.error ||
+            "Delete Error"
         );
       }
 
-      await swalSuccess("ลบตำแหน่งสำเร็จ");
+      await swalSuccess(
+        "ลบตำแหน่งสำเร็จ"
+      );
 
       await loadData();
     } catch (err) {

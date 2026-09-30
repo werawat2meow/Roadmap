@@ -1364,7 +1364,7 @@ export default function OrgPositionSlotsPage() {
       header={
         <>
           <MasterPageHeader
-            title="Position Slot"
+            title="Position Slot (กำหนดที่นั่งตำแหน่งของแต่ละแผนก)"
             subtitle="Organization Position Slot Master"
             loading={
               loading

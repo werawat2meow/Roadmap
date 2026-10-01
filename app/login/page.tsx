@@ -743,13 +743,6 @@ export default function LoginPage() {
                   </Checkbox>
                 </Form.Item>
 
-                <div className="mb-6 flex items-start gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-xs leading-5 text-slate-500">
-                  <CheckCircleFilled className="mt-0.5 text-emerald-500" />
-                  <span>
-                    ระบบจะตรวจสอบ Role, Permission และ Scope ก่อนนำคุณเข้าสู่ Portal ที่ได้รับอนุญาต
-                  </span>
-                </div>
-
                 <Form.Item className="!mb-0">
                   <Button
                     type="primary"

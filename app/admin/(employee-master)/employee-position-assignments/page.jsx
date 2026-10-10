@@ -1552,36 +1552,30 @@ export default function EmployeePositionAssignmentsPage() {
      Pagination
   ======================================================= */
 
-  const handlePageChange =
-    (
-      page,
-      pageSize
-    ) => {
-      setPagination(
-        (
-          prev
-        ) => ({
-          ...prev,
-          page,
-          pageSize,
-        })
-      );
-
-      loadAssignments({
-        nextFilters:
-          filters,
+  const handlePageChange =(page,pageSize) => {
+    setPagination(
+      (
+        prev
+      ) => ({
+        ...prev,
         page,
         pageSize,
-      });
-    };
+      })
+    );
+
+    loadAssignments({
+      nextFilters:
+        filters,
+      page,
+      pageSize,
+    });
+  };
 
   /* =======================================================
      Loading User
   ======================================================= */
 
-  if (
-    loadingUser
-  ) {
+  if (loadingUser) {
     return (
       <LoadingOrb />
     );
@@ -1591,9 +1585,7 @@ export default function EmployeePositionAssignmentsPage() {
      Permission Denied
   ======================================================= */
 
-  if (
-    !canView
-  ) {
+  if (!canView) {
     return (
       <div className="p-6">
         <Alert

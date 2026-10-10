@@ -29,7 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
 import EnterpriseKpiCard from "./components/EnterpriseKpiCard";
-import DashboardWorkHub from "./components/DashboardWorkHub";
+import EnterpriseOverview from "./components/EnterpriseOverview";
 import DashboardGuidedTour from "./components/DashboardGuidedTour";
 import DashboardNotificationBell from "./components/DashboardNotificationBell";
 import DashboardProbationAlert from "./components/DashboardProbationAlert";
@@ -160,9 +160,41 @@ export default function EmployeeMasterDashboardPage() {
 
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [tourOpenSignal, setTourOpenSignal] = useState(0);
+
+  // Hide only the visual scrollbar while this Dashboard page is mounted.
+  // Do not set overflow: hidden; wheel, touchpad and touch scrolling still work.
+  useEffect(() => {
+    const marker = "hrms-dashboard-hide-scrollbar";
+    const style = document.createElement("style");
+    style.setAttribute("data-hrms-dashboard-scrollbar", "true");
+    style.textContent = `
+      html.${marker},
+      html.${marker} body,
+      html.${marker} body * {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+      html.${marker}::-webkit-scrollbar,
+      html.${marker} body::-webkit-scrollbar,
+      html.${marker} body *::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    `;
+    document.documentElement.classList.add(marker);
+    document.head.appendChild(style);
+
+    return () => {
+      document.documentElement.classList.remove(marker);
+      style.remove();
+    };
+  }, []);
+
 
   useEffect(() => {
     if (loadingUser) return;
@@ -212,6 +244,7 @@ export default function EmployeeMasterDashboardPage() {
         ...EMPTY_DASHBOARD,
         ...(result?.data || {}),
       });
+      setHasLoaded(true);
     } catch (loadError) {
       console.error("LOAD_EMPLOYEE_MASTER_DASHBOARD_ERROR:", loadError);
       setError(loadError?.message || "ไม่สามารถโหลด Dashboard ได้");
@@ -339,71 +372,6 @@ export default function EmployeeMasterDashboardPage() {
           openSignal={tourOpenSignal}
         />
 
-        <Card
-          data-dashboard-tour="overview"
-          className="overflow-hidden rounded-2xl border-slate-200 shadow-sm"
-        >
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
-                HRMS Enterprise
-              </div>
-
-              <Title level={2} className="!mb-1 !mt-1 !text-slate-900">
-                ศูนย์งาน HR
-              </Title>
-
-              <Text className="text-slate-500">
-                สวัสดี {userName} — เริ่มงานประจำ ค้นหาเมนู และตรวจภาพรวมพนักงานจากหน้าเดียว
-              </Text>
-
-              <Space size={[8, 8]} wrap className="mt-3">
-                <Tag color="blue">{roleName}</Tag>
-                <Tag color={scopeInfo.color}>{scopeInfo.title}</Tag>
-              </Space>
-            </div>
-
-            <Space wrap size={10}>
-              <DashboardNotificationBell
-                dashboard={dashboard}
-                canViewEmployees={canViewEmployees}
-              />
-
-              <Button
-                icon={<CompassOutlined />}
-                onClick={() =>
-                  setTourOpenSignal((current) => current + 1)
-                }
-              >
-                วิธีใช้งาน
-              </Button>
-
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={loadDashboard}
-                loading={loading}
-              >
-                รีเฟรช
-              </Button>
-
-              {canExportDashboard && canViewEmployees ? (
-                <Button
-                  type="primary"
-                  icon={<CloudDownloadOutlined />}
-                  onClick={handleExport}
-                  loading={exporting}
-                >
-                  Export Excel
-                </Button>
-              ) : null}
-            </Space>
-          </div>
-
-          <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
-            อัปเดตล่าสุด: {formatThaiDateTime(dashboard.generated_at)}
-          </div>
-        </Card>
-
         {error ? (
           <Alert
             type="error"
@@ -415,12 +383,18 @@ export default function EmployeeMasterDashboardPage() {
           />
         ) : null}
         
-        <DashboardProbationAlert
-          dashboard={dashboard}
-          canViewEmployees={canViewEmployees}
-        />
 
-        <DashboardWorkHub user={user} />
+        {canViewEmployees ? (
+          <EnterpriseOverview 
+            dashboard={dashboard}
+            loading={loading}
+            initialLoading={loading && !hasLoaded}
+            onRefresh={loadDashboard}
+            canViewEmployees={canViewEmployees}
+          />
+        ) : (
+          <Alert type="info" showIcon message="ไม่มีสิทธิ์ดูข้อมูลพนักงาน" description="กรุณาติดต่อผู้ดูแลระบบหากต้องการเข้าถึงข้อมูลภาพรวมบุคลากร" />
+        )}
       </div>
     </div>
   );

@@ -381,8 +381,19 @@ export default function EmployeeBankAccountsPage() {
   };
 
   const handleTableChange = (pagination) => {
-    setPage(pagination.current || 1);
-    setPageSize(pagination.pageSize || DEFAULT_PAGE_SIZE);
+     const nextPageSize = pagination.pageSize || DEFAULT_PAGE_SIZE;
+
+    const nextPage =
+      pagination.current || 1;
+
+    if (nextPageSize !== pageSize) {
+      setRows([]);
+      setPage(1);
+      setPageSize(nextPageSize);
+      return;
+    }
+
+    setPage(nextPage);
   };
 
   const handleResetFilters = () => {

@@ -43,7 +43,17 @@ import {
   TagOutlined,
   TagsOutlined,
   FolderOutlined,
+  HistoryOutlined,
   FolderOpenOutlined,
+  FileSearchOutlined,
+  SecurityScanOutlined ,
+  UnorderedListOutlined,
+  UserAddOutlined,
+  BarChartOutlined,
+  TrophyOutlined,
+  AppstoreAddOutlined,
+  SwapOutlined,
+  ShareAltOutlined,
 } from "@ant-design/icons";
 
 export const iconMap = {
@@ -136,13 +146,27 @@ export const iconMap = {
   folder: FolderOutlined,
 
   folderOpen: FolderOpenOutlined,
+  history: HistoryOutlined,
+  fileSearch: FileSearchOutlined,
+  securityScan: SecurityScanOutlined,
+  unorderedList: UnorderedListOutlined,
+  userAdd: UserAddOutlined,
+  barChart: BarChartOutlined,
+  trophy: TrophyOutlined,
+  appstoreAdd: AppstoreAddOutlined,
+  swap: SwapOutlined,
+  shareAlt: ShareAltOutlined,
 };
 
+
+const normalizedMap = Object.fromEntries(
+  Object.entries(iconMap).map(([k, v]) => [k.toLowerCase(), v])
+);
 
 export function getPortalIcon(iconCode) {
   const key = String(iconCode || "").trim().toLowerCase();
   const Icon =
-    iconMap[key] ||
+    normalizedMap[key] ||
     AppstoreOutlined;
 
   return <Icon />;

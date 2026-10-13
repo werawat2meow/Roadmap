@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { notFound } from "next/navigation";
 import CandidateDetail from "@/app/recruitment/components/CandidateDetail";
+import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
 import { useRouter } from "next/navigation";
@@ -771,6 +772,16 @@ export default function Page({ params }) {
   // ============================
   return (
     <div>
+      <div className="px-6 pt-6 pb-3">
+        <RecruitmentBreadcrumb
+          items={[
+            { label: "อนุมัติพนักงาน", href: "/recruitment/approve_employees" },
+            {
+              label: `อัปเดตสถานะ${data?.application?.first_name ? `: ${data.application.first_name} ${data.application.last_name || ""}` : ""}`,
+            },
+          ]}
+        />
+      </div>
       <div>
         <CandidateDetail
           application={data?.application}

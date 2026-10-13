@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, notFound, useRouter } from "next/navigation";
 import { Spin, Result , Button } from "antd";
 import CandidateProfile from "@/app/recruitment/components/CandidateProfile";
+import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ApplicantDetailPage() {
@@ -85,7 +86,18 @@ export default function ApplicantDetailPage() {
     }
   
     return (
-      <div>
+      <div className="w-full p-4 sm:p-6">
+        <RecruitmentBreadcrumb
+          className="mb-5"
+          items={[
+            {
+              label: "ตารางสัมภาษณ์",
+              href: "/recruitment/schedule_interviews",
+            },
+            { label: "รายละเอียดผู้สมัคร" },
+          ]}
+        />
+
         <Button onClick={() => window.history.back()}>
           ย้อนกลับ
         </Button>

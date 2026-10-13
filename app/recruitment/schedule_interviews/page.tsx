@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo , useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   App,
@@ -19,6 +19,7 @@ import {
   UploadFile, 
   UploadProps,
   Input, // เพิ่ม
+  Tooltip,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
@@ -28,6 +29,8 @@ import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
 
 import CandidateExportImage from "@/app/recruitment/components/CandidateExportImage";
+import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
+import styles from "./page.module.css";
 
 const { Title, Text } = Typography;
 
@@ -105,7 +108,12 @@ function StatusTag({ value }: { value: number }) {
     label: value != null ? String(value) : "-",
     color: "default",
   };
-  return <Tag color={meta.color}>{meta.label}</Tag>;
+  return (
+    <Tag color={meta.color} className={styles.statusTag}>
+      <span className={styles.statusDot} />
+      {meta.label}
+    </Tag>
+  );
 }
 
 // Helper: get the most recent interview from a list (sorted by date desc)
@@ -175,6 +183,31 @@ export default function RecruitmentApplicationsPage() {
   const isAll = pageSize === "all";
   const numericPageSize = isAll ? undefined : pageSize;
   const from = isAll ? 0 : (page - 1) * (numericPageSize as number);
+
+  const activeFilterCount = [statusFilter, positionId, reviewerId, dateRange].filter(
+    Boolean
+  ).length;
+
+  const todayInterviewCount = useMemo(
+    () =>
+      rows.filter((record) => {
+        const latest = getLatestInterview(record.recruit_job_interviews);
+        return latest && dayjs(latest.interview_datetime).isSame(dayjs(), "day");
+      }).length,
+    [rows]
+  );
+
+  const confirmedCount = useMemo(
+    () => rows.filter((record) => record.status === 5).length,
+    [rows]
+  );
+
+  const resetFilters = () => {
+    setStatusFilter(undefined);
+    setPositionId(undefined);
+    setReviewerId(undefined);
+    setDateRange(null);
+  };
 
   const [exporting, setExporting] = useState(false);
   const [exportingImage, setExportingImage] = useState(false);
@@ -593,14 +626,14 @@ export default function RecruitmentApplicationsPage() {
     }
   };
 
-  const columns = useMemo<ColumnsType<Application>>(
-    () => [
+  const columns: ColumnsType<Application> = [
       {
         title: "No.",
         key: "no",
         width: 60,
+        align: "center",
         render: (_: unknown, __: Application, index: number) => (
-          <Text strong>{from + index + 1}</Text>
+          <span className={styles.rowNumber}>{from + index + 1}</span>
         ),
       },
       {
@@ -612,7 +645,9 @@ export default function RecruitmentApplicationsPage() {
             textAlign: "center",
           },
         }),
-        render: (value: string) => value || "-",
+        render: (value: string) => (
+          <span className={styles.positionPill}>{value || "-"}</span>
+        ),
       },
       {
         title: "Name",
@@ -622,8 +657,19 @@ export default function RecruitmentApplicationsPage() {
             textAlign: "center",
           },
         }),
-        render: (_: unknown, record: Application) =>
-          `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`,
+        render: (_: unknown, record: Application) => {
+          const fullName = `${record.titles?.title_name_th ?? ""} ${record.first_name} ${record.last_name}`.trim();
+          const initials = `${record.first_name?.[0] ?? ""}${record.last_name?.[0] ?? ""}`;
+
+          return (
+            <div className={styles.candidateCell}>
+              <span className={styles.avatar}>{initials || "?"}</span>
+              <div>
+                <div className={styles.candidateName}>{fullName}</div>
+              </div>
+            </div>
+          );
+        },
       },
       {
         title: "Interview Date",
@@ -632,8 +678,16 @@ export default function RecruitmentApplicationsPage() {
         width: 170,
         render: (interviews: RecruitJobInterview[]) => {
           const latest = getLatestInterview(interviews);
-          if (!latest) return "-";
-          return dayjs(latest.interview_datetime).format("DD/MM/YYYY HH:mm");
+          if (!latest) return <span className={styles.mutedValue}>ยังไม่ระบุ</span>;
+          return (
+            <div className={styles.dateCell}>
+              <AntIcon name="CalendarOutlined" />
+              <div>
+                <div>{dayjs(latest.interview_datetime).format("DD MMM YYYY")}</div>
+                <span>{dayjs(latest.interview_datetime).format("HH:mm")} น.</span>
+              </div>
+            </div>
+          );
         },
       },
       {
@@ -642,8 +696,9 @@ export default function RecruitmentApplicationsPage() {
         key: "interview_order",
         render: (interviews: RecruitJobInterview[]) => {
           const latest = getLatestInterview(interviews);
-          return latest?.interview_order ?? "0";
+          return <span className={styles.interviewOrder}>{latest?.interview_order ?? 0}</span>;
         },
+        align: "center",
       },
       {
         title: "Status",
@@ -660,68 +715,56 @@ export default function RecruitmentApplicationsPage() {
       {
         title: "Action",
         key: "action",
-        width: 300,
+        width: 190,
         onHeaderCell: () => ({
           style: {
             textAlign: "center",
           },
         }),
         render: (_: unknown, record: Application) => (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 8,
-            }}
-          >
+          <div className={styles.actions}>
             {canView && (
               <Link href={`/recruitment/schedule_interviews/${record.id}`}>
-                <Button type="primary" block>
-                  View
-                </Button>
+                <Tooltip title="ดูรายละเอียด">
+                  <Button className={styles.viewButton} icon={<AntIcon name="EyeOutlined" />} />
+                </Tooltip>
               </Link>
             )}
 
             {canEdit && (
-              <Button
-                type="primary"
-                ghost
-                block
-                onClick={() => openUpdateModal(record)}
-              >
-                อัพเดตข้อมูล
-              </Button>
+              <Tooltip title="อัปเดตข้อมูล">
+                <Button
+                  className={styles.editButton}
+                  icon={<AntIcon name="EditOutlined" />}
+                  onClick={() => openUpdateModal(record)}
+                />
+              </Tooltip>
             )}
 
             {canEdit && record.status === 5 && (
               <>
-                <Button
-                  type="primary"
-                  icon={<AntIcon name="UploadOutlined" />}
-                  block
-                  onClick={() => openPhotoModal(record)}
-                >
-                  อัปเดตรูปผู้สมัคร
-                </Button>
+                <Tooltip title="อัปเดตรูปผู้สมัคร">
+                  <Button
+                    className={styles.photoButton}
+                    icon={<AntIcon name="CameraOutlined" />}
+                    onClick={() => openPhotoModal(record)}
+                  />
+                </Tooltip>
 
-                <Button
-                  type="primary"
-                  block
-                  loading={exportingImagePresentation}
-                  onClick={() => handleExportImagePresentation(record.id)}
-                >
-                  Export รูป
-                </Button>
+                <Tooltip title="สร้างรูปนำเสนอ">
+                  <Button
+                    className={styles.imageButton}
+                    icon={<AntIcon name="PictureOutlined" />}
+                    loading={exportingImagePresentation}
+                    onClick={() => handleExportImagePresentation(record.id)}
+                  />
+                </Tooltip>
               </>
             )}
           </div>
         ),
       },
-    ],
-    // canEdit / canView are included so the Action column re-renders once
-    // permissions finish loading from usePageGuard
-    [from, canEdit, canView]
-  );
+    ];
 
   const loadInterviewers = async () => {
     setLoadingInterviewer(true);
@@ -835,58 +878,75 @@ export default function RecruitmentApplicationsPage() {
     },
   };
 
-  if (isChecking || loading) return <LoadingOrb />;
+  if (isChecking) return <LoadingOrb />;
   if (!canView) return null;
 
   return (
     <>
-      <div className="h-full w-full">
-        <div className="overflow-y-auto p-6 w-full">
-          <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">
-                Schedule Interviews
-              </h1>
-              <p className="mt-2 text-slate-500">รายการรอสัมภาษณ์</p>
-            </div>
-          </div>
-        </div>
-        <div className="p-4 md:p-6 w-full">
-          <div
-            style={{
-              borderRadius: 16,
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                borderBottom: "1px solid #e2e8f0",
-              }}
-            >
-              <div>
-                <Title level={4} style={{ margin: 0 }}>
-                  Applications
-                </Title>
+      <main className={styles.page}>
+        <div className={styles.content}>
+          <RecruitmentBreadcrumb
+            className={styles.breadcrumb}
+            items={[{ label: "ตารางสัมภาษณ์" }]}
+          />
+
+          <section className={styles.hero}>
+            <div className={styles.heroGlow} />
+            <div className={styles.heroContent}>
+              <div className={styles.heroIcon}>
+                <AntIcon name="CalendarOutlined" />
               </div>
-              <Space wrap>
+              <div>
+                <p className={styles.eyebrow}>RECRUITMENT WORKSPACE</p>
+                <h1>ตารางนัดสัมภาษณ์</h1>
+                <p>ติดตาม จัดการ และอัปเดตสถานะผู้สมัครได้ในที่เดียว</p>
+              </div>
+            </div>
+            <div className={styles.heroBadge}>
+              <span className={styles.liveDot} />
+              อัปเดตข้อมูลแบบเรียลไทม์
+            </div>
+          </section>
+
+          <section className={styles.summaryGrid}>
+            <div className={styles.summaryCard}>
+              <span className={`${styles.summaryIcon} ${styles.blueIcon}`}>
+                <AntIcon name="TeamOutlined" />
+              </span>
+              <div><strong>{count.toLocaleString()}</strong><span>ผู้สมัครทั้งหมด</span></div>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={`${styles.summaryIcon} ${styles.greenIcon}`}>
+                <AntIcon name="CheckCircleOutlined" />
+              </span>
+              <div><strong>{confirmedCount}</strong><span>ยืนยันแล้วในหน้านี้</span></div>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={`${styles.summaryIcon} ${styles.orangeIcon}`}>
+                <AntIcon name="ClockCircleOutlined" />
+              </span>
+              <div><strong>{todayInterviewCount}</strong><span>สัมภาษณ์วันนี้ในหน้านี้</span></div>
+            </div>
+          </section>
+
+          <section className={styles.tableCard}>
+            <div className={styles.cardHeader}>
+              <div>
+                <Title level={4} className={styles.cardTitle}>รายชื่อผู้สมัคร</Title>
+                <Text className={styles.cardSubtitle}>จัดการข้อมูลและสถานะการสัมภาษณ์</Text>
+              </div>
+              <Space wrap className={styles.exportActions}>
                 <Button
+                  className={styles.secondaryButton}
                   icon={<AntIcon name="FileExcelOutlined" />}
                   loading={exporting}
                   onClick={handleExportExcel}
                 >
-                  Export Excel
+                  Excel
                 </Button>
 
                 <Button
+                  className={styles.primaryButton}
                   icon={<AntIcon name="FileImageOutlined" />}
                   loading={exportingImage}
                   onClick={handleExportImage}
@@ -894,104 +954,54 @@ export default function RecruitmentApplicationsPage() {
                   Export Image
                 </Button>
 
-                <Space size="small">
-                  <Text style={{ fontSize: 13, color: "#475569" }}>
-                    แสดง
-                  </Text>
-                  <Select
-                    value={pageSize}
-                    onChange={(val) => setPageSize(val)}
-                    style={{ width: 130 }}
-                    options={pageSizeOptions}
-                  />
-                </Space>
               </Space>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                alignItems: "center",
-                padding: "12px 20px",
-                borderBottom: "1px solid #e2e8f0",
-                background: "#f8fafc",
-              }}
-            >
-              <Select
-                allowClear
-                placeholder="สถานะรายการ"
-                value={statusFilter}
-                onChange={(val) => setStatusFilter(val)}
-                style={{ width: 200 }}
-                options={STATUS_OPTIONS}
-                suffixIcon={ <AntIcon name="SearchOutlined" style={{ color: "#94a3b8" }} />}
-              />
-              <Select
-                allowClear
-                showSearch
-                placeholder="ตำแหน่งงาน (Position)"
-                value={positionId}
-                onChange={(val) => setPositionId(val)}
-                style={{ width: 240 }}
-                options={positionOptions}
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />
-              <Select
-                allowClear
-                showSearch
-                placeholder="ผู้สัมภาษณ์"
-                value={reviewerId}
-                loading={loadingReviewer}
-                onChange={(val) => setReviewerId(val)}
-                style={{ width: 240 }}
-                options={reviewerOptions}
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />    
-
-              <DatePicker
-                placeholder="วันที่เข้าสัมภาษณ์"
-                value={dateRange}
-                onChange={(val) => setDateRange(val)}
-                style={{ width: 280 }}
-              />
+            <div className={styles.filterPanel}>
+              <div className={styles.filterHeading}>
+                <div>
+                  <AntIcon name="FilterOutlined" />
+                  <span>ตัวกรอง</span>
+                  {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+                </div>
+                {activeFilterCount > 0 && (
+                  <Button type="link" onClick={resetFilters}>ล้างตัวกรอง</Button>
+                )}
+              </div>
+              <div className={styles.filters}>
+                <Select allowClear placeholder="สถานะรายการ" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+                <Select allowClear showSearch placeholder="ตำแหน่งงาน" value={positionId} onChange={setPositionId} options={positionOptions} filterOption={(input, option) => (option?.label ?? "").toLowerCase().includes(input.toLowerCase())} />
+                <Select allowClear showSearch placeholder="ผู้สัมภาษณ์" value={reviewerId} loading={loadingReviewer} onChange={setReviewerId} options={reviewerOptions} filterOption={(input, option) => (option?.label ?? "").toLowerCase().includes(input.toLowerCase())} />
+                <DatePicker placeholder="วันที่เข้าสัมภาษณ์" value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" />
+                <div className={styles.pageSizeControl}>
+                  <Text>แสดง</Text>
+                  <Select value={pageSize} onChange={setPageSize} options={pageSizeOptions} />
+                </div>
+              </div>
             </div>
 
-            <Table
-              rowKey="id"
-              columns={columns}
-              dataSource={rows}
-              loading={loading}
-              pagination={
-                isAll
-                  ? false
-                  : {
-                      current: page,
-                      pageSize: numericPageSize,
-                      total: count,
-                      onChange: (p) => setPage(p),
-                      showTotal: (total, [start, end]) =>
-                        `${start} - ${end} จาก ${total} รายการ`,
-                      showSizeChanger: false,
-                      style: { padding: "12px 20px" },
-                    }
-              }
-              scroll={{ x: "max-content" }}
-              locale={{ emptyText: "ไม่พบข้อมูล" }}
-              style={{ margin: 0 }}
-            />
-          </div>
+            <div className={styles.tableWrap}>
+              <Table
+                rowKey="id"
+                className={styles.table}
+                columns={columns}
+                dataSource={rows}
+                loading={loading}
+                pagination={isAll ? false : {
+                  current: page,
+                  pageSize: numericPageSize,
+                  total: count,
+                  onChange: setPage,
+                  showTotal: (total, [start, end]) => `${start} - ${end} จาก ${total} รายการ`,
+                  showSizeChanger: false,
+                }}
+                scroll={{ x: "max-content" }}
+                locale={{ emptyText: "ไม่พบข้อมูลตามตัวกรองที่เลือก" }}
+              />
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
 
       {/* ===== Modal เดียว: รวมอัพเดตลำดับสัมภาษณ์ + สถานะ ===== */}
       <Modal

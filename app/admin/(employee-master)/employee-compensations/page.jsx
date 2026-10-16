@@ -35,23 +35,13 @@ import dayjs from "dayjs";
 import useAuth from "@/hooks/useAuth";
 import { hasPermission } from "@/lib/permissions";
 import EmployeeCompensationSummaryCards from "./components/EmployeeCompensationSummaryCards";
-import EmployeeCompensationModal, {
-  compensationToForm,
-} from "./components/EmployeeCompensationModal";
+import EmployeeCompensationModal, {compensationToForm,} from "./components/EmployeeCompensationModal";
 import CompensationDetailDrawer from "./components/CompensationDetailDrawer";
-import CompensationAdjustmentModal, {
-  adjustmentToPayload,
-} from "./components/CompensationAdjustmentModal";
+import CompensationAdjustmentModal, {adjustmentToPayload,} from "./components/CompensationAdjustmentModal";
 import ApprovalLogDrawer from "./components/ApprovalLogDrawer";
-import {
-  employeeName,
-  formatDate,
-  formatMoney,
-  getAdjustmentTypeLabel,
-  normalizeApiRows,
-  readJsonResponse,
-  statusMeta,
-} from "./components/compensationUi";
+import {employeeName,formatDate,formatMoney,getAdjustmentTypeLabel,normalizeApiRows,readJsonResponse,statusMeta,} from "./components/compensationUi";
+import MasterTable from "@/app/admin/(employee-master)/components/master/MasterTable";
+
 
 const { Title, Text } = Typography;
 

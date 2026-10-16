@@ -14,6 +14,8 @@ import {
   writeActivityLog,
 } from "@/lib/activityLogger";
 
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
+
 const MODULE_CODE =
   "ems.tax_residency";
 
@@ -350,6 +352,10 @@ export async function PATCH(
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name:
           "tax_residency_statuses",
 
@@ -466,6 +472,10 @@ export async function DELETE(
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name:
           "tax_residency_statuses",
 

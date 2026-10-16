@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
@@ -806,6 +807,10 @@ export async function POST(req) {
     }
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name:
         "work_permit_types",
 

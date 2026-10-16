@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
 import {
@@ -227,6 +228,10 @@ export async function PATCH(req, { params }) {
     const result = attachMetrics(mapped, metricsMap);
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "unit_positions",
       action_type: "update",
       reference_table: "unit_positions",
@@ -315,6 +320,10 @@ export async function DELETE(req, { params }) {
     if (error) throw error;
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "unit_positions",
       action_type: "delete",
       reference_table: "unit_positions",

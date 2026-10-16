@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
 const USER_ACCOUNT_SELECT = `
@@ -807,16 +808,15 @@ export async function POST(req) {
       );
 
     await writeActivityLog({
-      module_name:
-        "user_accounts",
-      action_type:
-        "create",
-      reference_table:
-        "user_accounts",
-      reference_id:
-        mapped.id,
-      description:
-        `เพิ่มผู้ใช้งานระบบ ${mapped.username}`,
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
+      module_name: "user_accounts",
+      action_type: "create",
+      reference_table: "user_accounts",
+      reference_id: mapped.id,
+      description: `เพิ่มผู้ใช้งานระบบ ${mapped.username}`,
       new_data: {
         auth_user_id:
           mapped.auth_user_id,

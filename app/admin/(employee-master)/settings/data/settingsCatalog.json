@@ -558,32 +558,84 @@
       }
     ]
   },
+
   {
     "key": "setup-14",
+    "label": "ตั้งค่าการจ้างงานต่างชาติ",
+    "icon": "GlobalOutlined",
+    "description": "รูปแบบการจ้าง ประเภทวีซ่า ใบอนุญาตทำงาน และประเภทเอกสารแรงงานต่างชาติ",
+    "items": [
+      {
+        "key": "14-1",
+        "label": "รูปแบบการจ้างพนักงานต่างชาติ",
+        "href": "/admin/foreign-employment-schemes",
+        "icon": "ApartmentOutlined",
+        "permission": "ems.foreign_employment_schemes.view"
+      },
+      {
+        "key": "14-2",
+        "label": "ประเภทวีซ่า",
+        "href": "/admin/visa-types",
+        "icon": "IdcardOutlined",
+        "permission": "ems.visa_types.view"
+      },
+      {
+        "key": "14-3",
+        "label": "ประเภทใบอนุญาตทำงาน",
+        "href": "/admin/work-permit-types",
+        "icon": "FileProtectOutlined",
+        "permission": "ems.work_permit_types.view"
+      },
+      {
+        "key": "14-4",
+        "label": "ประเภทเอกสารพนักงานต่างชาติ",
+        "href": "/admin/foreign-worker-document-types",
+        "icon": "FileTextOutlined",
+        "permission": "ems.foreign_worker_document_types.view"
+      }
+    ]
+  },
+
+  {
+    "key": "setup-15",
     "label": "ตั้งค่าระบบทั่วไป",
     "icon": "ImportOutlined",
     "description": "ค่าระบบ ปีงบประมาณ และสกุลเงิน",
     "items": [
       {
-        "key": "14-1",
+        "key": "15-1",
         "label": "ตั้งค่าทั่วไป",
         "href": "/admin/system-settings",
         "icon": "AppstoreOutlined",
         "permission": "system.settings.view"
       },
       {
-        "key": "14-2",
+        "key": "15-2",
         "label": "ตั้งค่าปีงบประมาณ (Fiscal Year)",
         "href": "/admin/fiscal-years",
         "icon": "AppstoreOutlined",
         "permission": "system.fiscal_years.view"
       },
       {
-        "key": "14-3",
+        "key": "15-3",
         "label": "ตั้งค่าสกุลเงิน (Currency)",
         "href": "/admin/currencies",
         "icon": "AppstoreOutlined",
         "permission": "system.currencies.view"
+      },
+      {
+        "key": "15-4",
+        "label": "นำเข้าข้อมูล (Data Import)",
+        "href": "/admin/data-import",
+        "icon": "ImportOutlined",
+        "permission": "data.import.view"
+      },
+      {
+        "key": "15-5",
+        "label": "ส่งออกข้อมูล (Data Export)",
+        "href": "/admin/data-export",
+        "icon": "ExportOutlined",
+        "permission": "data.export.view"
       }
     ]
   }

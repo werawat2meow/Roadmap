@@ -8,6 +8,8 @@ import {
   loadUserAccountByUsername,
 } from "@/lib/auth/buildUserAccessContext";
 
+import { writeEnterpriseAudit } from "@/lib/audit/logger";
+
 const TOKEN_COOKIE_NAME = "employee_token";
 const TOKEN_EXPIRES_IN = "10h";
 const TOKEN_MAX_AGE = 60 * 60 * 10;
@@ -28,6 +30,7 @@ export async function POST(req) {
     const userAccount = await loadUserAccountByUsername(username);
 
     if (!userAccount || !userAccount.is_active) {
+      await writeEnterpriseAudit({ event_type: "LOGIN_FAILED", event_status: "FAILED", severity: "WARNING", module_name: "AUTH", system_code: "HRMS", description: "Invalid username or inactive account", actor: { username }, request: req, endpoint: "/api/auth/login", http_method: "POST", http_status: 401 });
       return NextResponse.json(
         { success: false, error: "Username หรือ Password ไม่ถูกต้อง" },
         { status: 401 }
@@ -40,6 +43,7 @@ export async function POST(req) {
     );
 
     if (!passwordMatched) {
+      await writeEnterpriseAudit({ event_type: "LOGIN_FAILED", event_status: "FAILED", severity: "WARNING", module_name: "AUTH", system_code: "HRMS", description: "Incorrect password", actor: { username }, request: req, endpoint: "/api/auth/login", http_method: "POST", http_status: 401 });
       return NextResponse.json(
         { success: false, error: "Username หรือ Password ไม่ถูกต้อง" },
         { status: 401 }
@@ -73,6 +77,7 @@ export async function POST(req) {
       maxAge: TOKEN_MAX_AGE,
     });
 
+    await writeEnterpriseAudit({ event_type: "LOGIN_SUCCESS", event_status: "SUCCESS", module_name: "AUTH", system_code: "HRMS", description: "User signed in", actor: { user_account_id: userAccount.id, employee_id: userAccount.employee_id, username: userAccount.username, role_code: user?.role_code ?? user?.role?.code ?? null }, request: req, endpoint: "/api/auth/login", http_method: "POST", http_status: 200 });
     return response;
   } catch (error) {
     console.error("LOGIN_ERROR:", error);

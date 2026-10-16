@@ -664,7 +664,7 @@ export default function DataImportPage() {
         header={
           <>
             <MasterPageHeader
-              title="นำเข้าข้อมูล"
+              title="นำเข้าข้อมูล *Gen เลขรหัสพนักงานใหม่  "
               subtitle="Data Import / Employee Migration"
               loading={
                 previewLoading ||

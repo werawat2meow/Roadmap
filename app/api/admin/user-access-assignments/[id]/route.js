@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 /* =========================================================
    Constants
@@ -1752,6 +1753,10 @@ export async function PATCH(
       );
 
     await safeWriteActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name:
         "user_access_assignments",
 
@@ -1916,6 +1921,10 @@ export async function DELETE(
     }
 
     await safeWriteActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name:
         "user_access_assignments",
 

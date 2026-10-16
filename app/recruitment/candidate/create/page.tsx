@@ -324,7 +324,7 @@ export default function RegisterPage() {
       });
       formData.append("payload", JSON.stringify(payload));
 
-      const response = await fetch("/jobs/api/application", {
+      const response = await fetch("/recruitment/api/bridge/application", {
         method: "POST",
         body: formData,
       });
@@ -953,7 +953,7 @@ function PersonalInformation({
           setTitleLoading(true);
           setTitleError(false);
 
-          const res = await fetch("/jobs/api/title_name");
+          const res = await fetch("/recruitment/api/bridge/title_name");
 
           if (!res.ok) {
           throw new Error(`Failed to fetch titles: ${res.status}`);
@@ -1015,7 +1015,7 @@ function PersonalInformation({
         setGenderLoading(true);
         setGenderError(false);
 
-        const res = await fetch("/jobs/api/gender");
+        const res = await fetch("/recruitment/api/bridge/gender");
 
         if (!res.ok) {
           throw new Error(`Failed to fetch genders: ${res.status}`);
@@ -1089,7 +1089,7 @@ function PersonalInformation({
 
         // NOTE: assumes an API route at app/jobs/api/marital-status/route.ts
         // that mirrors the gender route (Supabase, filtered to status = "active").
-        const res = await fetch("/jobs/api/marital-status");
+        const res = await fetch("/recruitment/api/bridge/marital-status");
 
         if (!res.ok) {
           throw new Error(`Failed to fetch marital statuses: ${res.status}`);
@@ -1156,7 +1156,7 @@ function PersonalInformation({
         // NOTE: assumes an API route at app/jobs/api/nationality/route.ts
         // that mirrors the gender route (Supabase, filtered to status =
         // "active", ordered by sort_order).
-        const res = await fetch("/jobs/api/nationality");
+        const res = await fetch("/recruitment/api/bridge/nationality");
 
         if (!res.ok) {
           throw new Error(`Failed to fetch nationalities: ${res.status}`);
@@ -1244,7 +1244,7 @@ function PersonalInformation({
         // NOTE: assumes an API route at app/jobs/api/religion/route.ts
         // that mirrors the gender route (Supabase, filtered to status =
         // "active", ordered by sort_order).
-        const res = await fetch("/jobs/api/religion");
+        const res = await fetch("/recruitment/api/bridge/religion");
 
         if (!res.ok) {
           throw new Error(`Failed to fetch religions: ${res.status}`);

@@ -1,8 +1,9 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const { application_id } =
       await request.json();
@@ -54,3 +55,4 @@ export async function POST(request) {
     );
   }
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/schedule_list", "action": "SHARE", "resource_type": "schedule_list", "idField": "application_id"});

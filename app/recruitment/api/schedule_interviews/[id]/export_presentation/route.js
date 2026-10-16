@@ -1,9 +1,10 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 // API
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function GET(request, { params }) {
+async function handleGET(request, { params }) {
   try {
     const { id } = await params;
 
@@ -314,3 +315,4 @@ export async function GET(request, { params }) {
     );
   }
 }
+export const GET = withActivity(handleGET, {"page_path": "/recruitment/schedule_interviews", "action": "EXPORT", "resource_type": "candidate", "idField": "application_id"});

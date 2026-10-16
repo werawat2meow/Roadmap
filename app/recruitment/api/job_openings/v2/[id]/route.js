@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 // ไฟล์ใหม่ — เพิ่มเพื่อรองรับการแก้ไข (edit) ในหน้าเดียวกับหน้าบันทึก
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
@@ -46,7 +47,7 @@ export async function GET(request, { params }) {
 
 // PUT /recruitment/api/job_openings/:id
 // ใช้แก้ไข record เดิม (จำนวนที่เปิดรับ, ช่วงวันที่, ด่วน/ไม่ด่วน, สถานะ)
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   try {
     const { id } = await params;
     const payload = await request.json();
@@ -108,3 +109,5 @@ export async function PUT(request, { params }) {
     );
   }
 }
+
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/job_openings", "action": "UPDATE", "resource_type": "job_openings", "idField": "id"});

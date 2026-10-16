@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 
 import {
@@ -58,7 +59,7 @@ async function readRequestBody(request: Request): Promise<ExportRequestBody | nu
   }
 }
 
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: ExportRouteContext,
 ) {
@@ -159,3 +160,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/approve_employees", "action": "EXPORT", "resource_type": "employment_contract", "idField": "id"});

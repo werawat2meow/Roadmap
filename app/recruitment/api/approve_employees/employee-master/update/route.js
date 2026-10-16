@@ -1,3 +1,4 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 // NOTE: keep the same imports as the original file
 // (getUserIdFromRequest, supabaseAdmin, NextResponse, AppError,
 //  createEmployee, createUserAccount, rollbackEmployeeCreation,
@@ -226,7 +227,8 @@ async function createUserAccount({ employee, roleId, isActive = true }) {
   // ----------------------------------------------------------
   if (error) {
     console.error("INSERT USER_ACCOUNTS ERROR:", error);
-    await supabaseAdmin.auth.admin.deleteUser(authUserId);
+    const { error: cleanupError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+    if (cleanupError) console.error("RECRUITMENT_AUTH_CLEANUP_FAILED", { code: cleanupError.code });
     throw error;
   }
 
@@ -243,18 +245,21 @@ async function createUserAccount({ employee, roleId, isActive = true }) {
 async function rollbackEmployeeCreation({ employee, userAccount }) {
   try {
     if (userAccount) {
-      await supabaseAdmin
+      const { error: accountCleanupError } = await supabaseAdmin
         .from("user_accounts")
         .delete()
         .eq("id", userAccount.id);
+      if (accountCleanupError) console.error("RECRUITMENT_ACCOUNT_CLEANUP_FAILED", { code: accountCleanupError.code });
 
       if (userAccount.auth_user_id) {
-        await supabaseAdmin.auth.admin.deleteUser(userAccount.auth_user_id);
+        const { error: authCleanupError } = await supabaseAdmin.auth.admin.deleteUser(userAccount.auth_user_id);
+        if (authCleanupError) console.error("RECRUITMENT_AUTH_CLEANUP_FAILED", { code: authCleanupError.code });
       }
     }
 
     if (employee) {
-      await supabaseAdmin.from("employees").delete().eq("id", employee.id);
+      const { error: employeeCleanupError } = await supabaseAdmin.from("employees").delete().eq("id", employee.id);
+      if (employeeCleanupError) console.error("RECRUITMENT_EMPLOYEE_CLEANUP_FAILED", { code: employeeCleanupError.code });
     }
   } catch (rollbackError) {
     // rollback fail ไม่ควรบดบัง error ตั้งต้น แต่ต้อง log ไว้เพื่อตรวจสอบ manual
@@ -344,14 +349,16 @@ function buildAdditionalCostRows(applicationId, additionalCompensation = [], add
 }
 
 async function syncAdditionalCosts(applicationId, rows) {
-  await supabaseAdmin
+  const { error: deleteCostError } = await supabaseAdmin
     .from("recruit_additional_cost")
     .delete()
     .eq("application_id", applicationId)
     .in("cost_type", ["additional", "compensation"]);
+  if (deleteCostError) throw deleteCostError;
 
   if (rows.length > 0) {
-    await supabaseAdmin.from("recruit_additional_cost").insert(rows);
+    const { error: insertCostError } = await supabaseAdmin.from("recruit_additional_cost").insert(rows);
+    if (insertCostError) throw insertCostError;
   }
 }
 
@@ -678,7 +685,7 @@ async function processFinalConfirmation({ application, body, userId }) {
 // Route handler
 // ============================================================
 
-export async function POST(request) {
+async function handlePOST(request) {
   const userId = await getUserIdFromRequest();
 
   try {
@@ -749,6 +756,7 @@ export async function POST(request) {
 
     // --- status 12: save details, move to pending confirmation (17) ---
     if (currentStatus === STATUS.STAGE_ONE) {
+      setActivityDetails({ action: "APPROVE" });
       const errRes = await processStageOneApproval({
         application,
         body,
@@ -789,6 +797,7 @@ export async function POST(request) {
         return badRequest("กรุณาเลือก Role");
       }
 
+      setActivityDetails({ action: "APPROVE" });
       const result = await processFinalConfirmation({ application, body, userId });
       // if (errRes) return errRes;
 
@@ -820,3 +829,5 @@ export async function POST(request) {
     );
   }
 }
+
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/approve_employees", "action": "UPDATE_STATUS", "resource_type": "candidate", "idField": "application_id", resolveAction: (response) => response.status === 201 ? "APPROVE" : "UPDATE_STATUS" });

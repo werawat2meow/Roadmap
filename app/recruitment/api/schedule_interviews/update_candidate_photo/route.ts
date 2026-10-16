@@ -1,8 +1,9 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { uploadFileToSpaces, deleteFileFromSpaces } from "@/lib/spaces";
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const formData = await req.formData();
 
@@ -200,3 +201,4 @@ export async function POST(req: Request) {
     );
   }
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/schedule_interviews", "action": "UPDATE", "resource_type": "candidate", "idField": "application_id"});

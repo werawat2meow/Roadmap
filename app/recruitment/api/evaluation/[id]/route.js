@@ -1,7 +1,8 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   const { id } = await params;
   const body = await request.json();
   const { evaluation, status } = body;
@@ -20,6 +21,7 @@ export async function PUT(request, { params }) {
 
   if (typeof status === "boolean") {
     payload.status = status;
+    if (typeof evaluation !== "string") setActivityDetails({ action: "UPDATE_STATUS" });
   }
 
   const { data, error } = await supabaseAdmin
@@ -39,7 +41,7 @@ export async function PUT(request, { params }) {
   return NextResponse.json({ data });
 }
 
-export async function DELETE(request, { params }) {
+async function handleDELETE(request, { params }) {
   const { id } = await params;
 
   const { error } = await supabaseAdmin
@@ -56,3 +58,5 @@ export async function DELETE(request, { params }) {
 
   return NextResponse.json({ success: true });
 }
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/evaluation", "action": "UPDATE", "resource_type": "evaluation", "idField": "id" });
+export const DELETE = withActivity(handleDELETE, {"page_path": "/recruitment/setting/evaluation", "action": "DELETE", "resource_type": "evaluation", "idField": "id"});

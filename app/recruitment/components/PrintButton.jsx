@@ -1,5 +1,6 @@
 "use client";
 
+import { sendBrowserActivity } from "../lib/activity/browser";
 import { Button } from "antd";
 import AntIcon from '@/components/AntIcon';
 
@@ -10,7 +11,8 @@ export default function PrintButton({
   orientation = "portrait",
   className = "",
 }) {
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    await sendBrowserActivity("PRINT_REQUESTED");
     document.documentElement.setAttribute(
       "data-print-orientation",
       orientation

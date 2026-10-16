@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function RecruitmentPage() {
     return (
       <div className="flex h-full">
@@ -13,6 +15,9 @@ export default function RecruitmentPage() {
               <p className="mt-2 text-slate-500">
                 หน้านี้เป็นหน้าเริ่มต้นของ Report Recruitment
               </p>
+              <Link href="/recruitment/report/activity_logs" className="mt-4 inline-block font-medium text-blue-700 hover:underline">
+                รายงานกิจกรรมการใช้งาน (Activity logs)
+              </Link>
             </div>
           </div>
         </div>

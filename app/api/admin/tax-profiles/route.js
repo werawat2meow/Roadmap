@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 /* =========================================================
  * GET
@@ -385,6 +386,10 @@ export async function POST(req) {
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name: "Tax Profiles",
         action_type: "CREATE",
 

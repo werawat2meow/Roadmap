@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
 export async function GET(req) {
@@ -241,6 +242,10 @@ export async function POST(req) {
     if (insertError) throw insertError;
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "units",
       action_type: "create",
       reference_table: "units",

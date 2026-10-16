@@ -375,10 +375,8 @@ export default function EmployeeTable({
 
         return (
           <Tag color="cyan">
-            {employmentType
-              .employment_type_name ||
-              employmentType
-                .employment_type_code ||
+            {employmentType.type_name ||
+              employmentType.type_code ||
               "-"}
           </Tag>
         );

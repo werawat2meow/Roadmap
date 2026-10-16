@@ -1,366 +1,647 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardEdit,
+  FileText,
+  Plus,
   Search,
-  ChevronDown,
-  X,
-  Paperclip,
-  Download,
-  Check,
-  RotateCcw,
-  User,
+  Trash2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import SignatureCanvas from "react-signature-canvas";
 
-// 1. Interface ข้อมูลคำขอลา
-interface LeaveRequest {
-  id: number;
+interface EmployeeOption {
+  id: string;
+  employeeCode: string;
   name: string;
-  avatar: string;
-  dept: string;
-  division: string;
-  level: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  reason: string;
+  department: string;
 }
 
-// 2. Mock Data ตามภาพ
-const mockRequests: LeaveRequest[] = [
-  {
-    id: 1,
-    name: "Anan Pongchai",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Anan",
-    dept: "Engineering",
-    division: "Software Dev",
-    level: "Junior Staff",
-    type: "ลาป่วย",
-    startDate: "2026-07-28",
-    endDate: "2026-07-28",
-    totalDays: 1,
-    reason: "มีไข้ ต้องพักผ่อน",
-  },
-  {
-    id: 2,
-    name: "Naree Suwan",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Naree",
-    dept: "Finance",
-    division: "Accounting",
-    level: "Mid Level",
-    type: "ลาพักร้อน",
-    startDate: "2026-08-03",
-    endDate: "2026-08-05",
-    totalDays: 3,
-    reason: "ไปเที่ยวต่างจังหวัดกับครอบครัว",
-  },
-  {
-    id: 3,
-    name: "Malee Traipoom",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Malee",
-    dept: "Marketing",
-    division: "Digital",
-    level: "Senior Staff",
-    type: "ลากิจ",
-    startDate: "2026-07-30",
-    endDate: "2026-07-31",
-    totalDays: 2,
-    reason: "ทำธุระที่ธนาคารและเขต",
-  },
+interface ApproverOption {
+  id: number;
+  employeeId: string;
+  employeeCode: string;
+  name: string;
+  email: string;
+}
+
+interface LeaveEntryFormItem {
+  id: string;
+  kind: string;
+  startDate: string;
+  endDate: string;
+  session: string;
+  requestedDays: number;
+  note: string;
+}
+
+interface LeaveEntry {
+  id: number;
+  employeeName: string;
+  employeeCode: string;
+  department: string;
+  kind: string;
+  startDate: string;
+  endDate: string;
+  session: string;
+  requestedDays: number;
+  reason: string;
+  status: string;
+  createdAt: string;
+}
+
+const leaveKinds = [
+  { value: "ANNUAL", label: "ลาพักร้อน" },
+  { value: "SICK", label: "ลาป่วย" },
+  { value: "BUSINESS", label: "ลากิจ" },
+  { value: "ANNUAL_HOLIDAY", label: "วันหยุดประจำปี" },
+  { value: "BIRTHDAY", label: "ลาวันเกิด" },
+  { value: "ORDAIN", label: "ลาบวช" },
+  { value: "MATERNITY", label: "ลาคลอด" },
+  { value: "UNPAID", label: "ลาไม่รับค่าจ้าง" },
 ];
 
-export default function ApprovalsPage() {
-  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(
-    null,
+const sessions = [
+  { value: "FULL", label: "เต็มวัน" },
+  { value: "AM", label: "ครึ่งเช้า" },
+  { value: "PM", label: "ครึ่งบ่าย" },
+];
+
+const createEmptyItem = (): LeaveEntryFormItem => ({
+  id: crypto.randomUUID(),
+  kind: "ANNUAL",
+  startDate: "",
+  endDate: "",
+  session: "FULL",
+  requestedDays: 1,
+  note: "",
+});
+
+export default function LeaveApprovalsPage() {
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [approvers, setApprovers] = useState<ApproverOption[]>([]);
+  const [entries, setEntries] = useState<LeaveEntry[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [approverId, setApproverId] = useState("");
+
+  const [items, setItems] = useState<LeaveEntryFormItem[]>([
+    createEmptyItem(),
+  ]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const selectedEmployee = employees.find((emp) => emp.id === employeeId);
+
+  const filteredEmployees = useMemo(() => {
+    const keyword = employeeSearch.toLowerCase();
+
+    return employees.filter(
+      (emp) =>
+        emp.name.toLowerCase().includes(keyword) ||
+        emp.employeeCode.toLowerCase().includes(keyword),
+    );
+  }, [employees, employeeSearch]);
+
+  const totalPages = Math.ceil(entries.length / itemsPerPage);
+
+  const currentEntries = entries.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
   );
 
-  // Ref สำหรับควบคุมกระดานเซ็น
-  const sigCanvas = useRef<SignatureCanvas | null>(null);
-  // function sign
-  const clearSignature = () => {
-    sigCanvas.current?.clear();
-  };
-  // function approvals
-  const handleApprove = () => {
-    if (sigCanvas.current?.isEmpty()) {
-      alert("กรุณาลงลายเซ็นก่อนอนุมัติ");
-      return;
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      const [employeeRes, entryRes] = await Promise.all([
+        fetch("/leave/api/approvals", { cache: "no-store" }),
+        fetch("/leave/api/hr-leave-entry", { cache: "no-store" }),
+      ]);
+
+      const employeeJson = await employeeRes.json();
+      const entryJson = await entryRes.json();
+
+      if (!employeeRes.ok || !employeeJson.success) {
+        throw new Error(employeeJson.error || "โหลดข้อมูลพนักงานไม่สำเร็จ");
+      }
+
+      if (!entryRes.ok || !entryJson.success) {
+        throw new Error(entryJson.error || "โหลดประวัติการลาไม่สำเร็จ");
+      }
+
+      setEmployees(
+        (employeeJson.data || []).map((emp: any) => ({
+          id: emp.id,
+          employeeCode: emp.employeeCode,
+          name: emp.name,
+          department: emp.dept,
+        })),
+      );
+
+      setEntries(entryJson.data || []);
+      setCurrentPage(1);
+    } catch (error: any) {
+      console.error("Load leave entry page failed:", error);
+      alert(error.message || "โหลดข้อมูลไม่สำเร็จ");
+    } finally {
+      setLoading(false);
     }
-    const signatureData = sigCanvas.current
-      ?.getTrimmedCanvas()
-      .toDataURL("image/png");
-    console.log("Signature Image Data:", signatureData);
-    // ส่ง signatureData ไปที่ API เพื่อบันทึก...
-    alert("อนุมัติเรียบร้อยแล้ว");
-    setSelectedRequest(null);
   };
+
+  const loadApprovers = async (selectedEmployeeId: string) => {
+    try {
+      setApprovers([]);
+      setApproverId("");
+
+      if (!selectedEmployeeId) return;
+
+      const res = await fetch(
+        `/leave/api/employees/${selectedEmployeeId}/approvers`,
+        { cache: "no-store" },
+      );
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "โหลดข้อมูลผู้อนุมัติไม่สำเร็จ");
+      }
+
+      const nextApprovers = json.data || [];
+
+      setApprovers(nextApprovers);
+
+      if (nextApprovers[0]?.id) {
+        setApproverId(String(nextApprovers[0].id));
+      }
+    } catch (error: any) {
+      console.error("Load approvers failed:", error);
+      alert(error.message || "โหลดข้อมูลผู้อนุมัติไม่สำเร็จ");
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function run() {
+      await loadData();
+      if (!mounted) return;
+    }
+
+    run();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const updateItem = (
+    id: string,
+    field: keyof LeaveEntryFormItem,
+    value: string | number,
+  ) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item,
+      ),
+    );
+  };
+
+  const addItem = () => {
+    setItems((prev) => [...prev, createEmptyItem()]);
+  };
+
+  const removeItem = (id: string) => {
+    setItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((item) => item.id !== id),
+    );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setSaving(true);
+
+      const res = await fetch("/leave/api/hr-leave-entry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          employeeId,
+          approverId: approverId ? Number(approverId) : null,
+          items: items.map(({ id, ...item }) => item),
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "บันทึกวันลาไม่สำเร็จ");
+      }
+
+      alert("บันทึกวันลาสำเร็จ");
+
+      setEmployeeId("");
+      setEmployeeSearch("");
+      setApproverId("");
+      setApprovers([]);
+      setItems([createEmptyItem()]);
+
+      await loadData();
+    } catch (error: any) {
+      console.error("Create leave entry failed:", error);
+      alert(error.message || "บันทึกวันลาไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <section className="relative w-full min-h-screen p-8">
-      {/* Header */}
-      <header className="mb-4">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-          Approvals
-        </h1>
-        <p className="text-slate-500 mt-1 text-sm font-medium">
-          พนักงานที่รออนุมัติการลา —{" "}
-          <span className="text-slate-400">
-            คลิกที่รายชื่อเพื่อดูรายละเอียด ลงลายเซ็น และอนุมัติ
-          </span>
-        </p>
-      </header>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-3">
-        <div className="relative flex-grow min-w-[200px]">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="ค้นหาพนักงาน..."
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 transition-all text-sm text-slate-900"
-          />
+    <section className="w-full p-8 space-y-6 min-h-screen bg-slate-50/30">
+      <div className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+        <div className="flex items-start gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <ClipboardEdit size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              บันทึกวันลา
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              ใช้สำหรับ HR บันทึกวันลาจากเอกสารกระดาษหรือบันทึกย้อนหลังแทนพนักงาน
+            </p>
+          </div>
         </div>
-        <FilterSelect label="แผนกทั้งหมด" />
-        <FilterSelect label="ฝ่ายทั้งหมด" />
-        <FilterSelect label="หน่วยทั้งหมด" />
-        <FilterSelect label="ระดับทั้งหมด" />
       </div>
 
-      {/* Table Section */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-50">
-          <h3 className="font-bold text-slate-700">
-            รออนุมัติ {mockRequests.length} รายการ
-          </h3>
-        </div>
+      <div className="grid grid-cols-1 2xl:grid-cols-[minmax(720px,1fr)_480px] gap-6">
+        <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100 space-y-6">
+          <div>
+            <h2 className="font-bold text-slate-900 flex items-center gap-2">
+              <Plus size={18} className="text-emerald-500" />
+              เพิ่มรายการลา
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              เลือกพนักงาน 1 คน แล้วเพิ่มรายการลาได้หลายรายการก่อนบันทึก
+            </p>
+          </div>
 
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
-              <th className="px-8 py-4">พนักงาน</th>
-              <th className="px-8 py-4">สังกัด/แผนก</th>
-              <th className="px-8 py-4">ระดับ</th>
-              <th className="px-8 py-4">ประเภทการลา</th>
-              <th className="px-8 py-4">วันที่</th>
-              <th className="px-8 py-4 text-right">วัน</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {mockRequests.map((req) => (
-              <tr
-                key={req.id}
-                onClick={() => setSelectedRequest(req)}
-                className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
-              >
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={req.avatar}
-                      alt=""
-                      className="w-10 h-10 rounded-full bg-slate-200"
-                    />
-                    <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                      {req.name}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-8 py-5 text-sm text-slate-500">
-                  {req.dept} / {req.division}
-                </td>
-                <td className="px-8 py-5">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase whitespace-nowrap">
-                    {req.level}
-                  </span>
-                </td>
-                <td className="px-8 py-5 text-sm text-slate-600 font-medium">
-                  {req.type}
-                </td>
-                <td className="px-8 py-5 text-sm text-slate-500 font-mono">
-                  {req.startDate} → {req.endDate}
-                </td>
-                <td className="px-8 py-5 text-right font-bold text-slate-700">
-                  {req.totalDays} วัน
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase">
+                ค้นหาพนักงาน
+              </label>
 
-      {/* Side Drawer (Detail Panel) */}
-
-      {/* ส่วนของ Side Drawer ที่ปรับปรุงให้สมูทแล้ว */}
-      <AnimatePresence>
-        {selectedRequest && (
-          <>
-            {/* 1. Backdrop (พื้นหลังมัว) - ค่อยๆ Fade in/out */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedRequest(null)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
-            />
-
-            {/* 2. Drawer Panel - ค่อยๆ Slide in จากขวา */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 overflow-y-auto"
-            >
-              {/* --- ไส้ในที่เป็นรายละเอียดการแจ้งลาทั้งหมดอยู่ตรงนี้ --- */}
-              <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-slate-100">
-                <h2 className="text-xl font-bold text-slate-800">
-                  รายละเอียดการแจ้งลา
-                </h2>
-                <button
-                  onClick={() => setSelectedRequest(null)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 cursor-pointer"
-                >
-                  <X size={24} />
-                </button>
+              <div className="relative">
+                <Search
+                  size={17}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  placeholder="ค้นหาชื่อหรือรหัสพนักงาน..."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm text-slate-700 outline-none focus:border-emerald-400 focus:bg-white"
+                />
               </div>
 
-              <div className="p-8 space-y-8">
-                {/* Employee Info */}
-                <div className="flex items-center gap-4">
-                  <img
-                    src={selectedRequest.avatar}
-                    alt=""
-                    className="w-16 h-16 rounded-full bg-slate-100"
-                  />
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">
-                      {selectedRequest.name}
-                    </h3>
-                    <p className="text-sm text-slate-500 font-medium">
-                      {selectedRequest.dept} · {selectedRequest.division}
+              <select
+                value={employeeId}
+                onChange={async (e) => {
+                  const nextEmployeeId = e.target.value;
+                  setEmployeeId(nextEmployeeId);
+                  await loadApprovers(nextEmployeeId);
+                }}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-400"
+              >
+                <option value="">เลือกพนักงาน</option>
+                {filteredEmployees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.employeeCode} - {emp.name}
+                  </option>
+                ))}
+              </select>
+
+              {selectedEmployee && (
+                <div className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">
+                  <p className="font-bold">{selectedEmployee.name}</p>
+                  <p className="text-xs">{selectedEmployee.department}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase">
+                ผู้อนุมัติ
+              </label>
+
+              <select
+                value={approverId}
+                onChange={(e) => setApproverId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-400"
+              >
+                <option value="">ไม่ระบุผู้อนุมัติ</option>
+                {approvers.map((approver) => (
+                  <option key={approver.id} value={approver.id}>
+                    {approver.employeeCode} - {approver.name}
+                  </option>
+                ))}
+              </select>
+
+              {employeeId && approvers.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  พนักงานคนนี้ยังไม่ได้ตั้งค่าผู้อนุมัติ ระบบจะบันทึกโดยไม่ระบุผู้อนุมัติ
+                </p>
+              )}
+
+              {approverId && (
+                <p className="text-xs text-slate-400">
+                  ระบบจะบันทึกผู้อนุมัตินี้ไว้กับทุกรายการลาในชุดนี้
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900">รายการลา</h3>
+
+              <button
+                type="button"
+                onClick={addItem}
+                className="rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-bold text-emerald-600 hover:bg-emerald-50"
+              >
+                + เพิ่มรายการลา
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="rounded-3xl border border-slate-100 bg-slate-50/40 p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-slate-700">
+                      รายการที่ {index + 1}
                     </p>
-                    <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mt-0.5">
-                      {selectedRequest.level}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Leave Grid Details */}
-                <div className="grid grid-cols-2 gap-y-6">
-                  <DetailItem
-                    label="ประเภทการลา"
-                    value={selectedRequest.type}
-                  />
-                  <DetailItem
-                    label="จำนวนวัน"
-                    value={`${selectedRequest.totalDays} วัน`}
-                  />
-                  <DetailItem
-                    label="วันที่เริ่ม"
-                    value={selectedRequest.startDate}
-                  />
-                  <DetailItem
-                    label="วันที่สิ้นสุด"
-                    value={selectedRequest.endDate}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase">
-                    เหตุผล
-                  </label>
-                  <p className="text-slate-700 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    {selectedRequest.reason}
-                  </p>
-                </div>
-
-                {/* Attachment */}
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase">
-                    ไฟล์แนบหลักฐานการลา
-                  </label>
-                  <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100 group cursor-pointer hover:bg-emerald-100 transition-colors">
-                    <div className="flex items-center gap-3 text-emerald-700 font-bold text-sm">
-                      <Paperclip size={18} />
-                      ดูไฟล์แนบ
-                    </div>
-                    <Download size={18} className="text-emerald-600" />
-                  </div>
-                </div>
-
-                {/* Signature Pad Placeholder */}
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    ลายเซ็นผู้อนุมัติ
-                  </label>
-
-                  <div className="relative group">
-                    {/* ตัวกระดานเซ็น */}
-                    <div className="w-full h-48 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 overflow-hidden">
-                      <SignatureCanvas
-                        ref={sigCanvas}
-                        penColor="#1e293b" // สีน้ำเงินเข้มเกือบดำ
-                        canvasProps={{
-                          className: "w-full h-full cursor-crosshair",
-                        }}
-                      />
-                    </div>
-
-                    {/* ปุ่มล้างลายเซ็น */}
                     <button
-                      onClick={clearSignature}
-                      className="absolute bottom-4 left-4 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-red-500 transition-colors cursor-pointer bg-white/80 px-2 py-1 rounded-lg"
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      disabled={items.length === 1}
+                      className="rounded-xl p-2 text-red-400 hover:bg-red-50 disabled:opacity-30"
                     >
-                      <RotateCcw size={12} /> ล้างลายเซ็น
+                      <Trash2 size={16} />
                     </button>
                   </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={() => setSelectedRequest(null)}
-                    className="flex-1 py-4 border border-red-200 text-red-500 font-bold rounded-2xl hover:bg-red-50 transition-all active:scale-95 cursor-pointer"
-                  >
-                    ไม่อนุมัติ
-                  </button>
-                  <button
-                    onClick={handleApprove}
-                    className="flex-[2] py-4 bg-[#2dd4bf] text-white font-bold rounded-2xl hover:bg-[#14b8a6] transition-all shadow-lg shadow-teal-100 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                  >
-                    <Check size={20} /> อนุมัติ
-                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <FormSelect
+                      label="ประเภทการลา"
+                      value={item.kind}
+                      onChange={(value) => updateItem(item.id, "kind", value)}
+                      options={leaveKinds}
+                    />
+
+                    <FormSelect
+                      label="ช่วงเวลา"
+                      value={item.session}
+                      onChange={(value) =>
+                        updateItem(item.id, "session", value)
+                      }
+                      options={sessions}
+                    />
+
+                    <FormInput
+                      label="จำนวนวันลา"
+                      type="number"
+                      value={String(item.requestedDays)}
+                      onChange={(value) =>
+                        updateItem(item.id, "requestedDays", Number(value || 0))
+                      }
+                    />
+
+                    <FormInput
+                      label="วันที่เริ่ม"
+                      type="date"
+                      value={item.startDate}
+                      onChange={(value) =>
+                        updateItem(item.id, "startDate", value)
+                      }
+                    />
+
+                    <FormInput
+                      label="วันที่สิ้นสุด"
+                      type="date"
+                      value={item.endDate}
+                      onChange={(value) => updateItem(item.id, "endDate", value)}
+                    />
+
+                    <div className="md:col-span-2 xl:col-span-1 space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase">
+                        หมายเหตุ
+                      </label>
+                      <input
+                        value={item.note}
+                        onChange={(e) =>
+                          updateItem(item.id, "note", e.target.value)
+                        }
+                        placeholder="เช่น ลาย้อนหลังจากเอกสารกระดาษ"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              ))}
+            </div>
+
+            <p className="text-xs text-amber-600">
+              ระบบจะบันทึกหมายเหตุขึ้นต้นด้วย [Paper] เพื่อแยกจากรายการที่พนักงานกดลาเอง
+            </p>
+          </div>
+
+          <button
+            disabled={saving}
+            onClick={handleSubmit}
+            className="w-full rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-600 disabled:opacity-50"
+          >
+            {saving ? "กำลังบันทึก..." : "บันทึกวันลาทั้งหมด"}
+          </button>
+        </div>
+
+        <div className="rounded-3xl bg-white shadow-sm border border-slate-100 overflow-hidden 2xl:max-w-[480px]">
+          <div className="flex items-center justify-between border-b border-slate-100 p-5">
+            <div>
+              <h2 className="font-bold text-slate-900">
+                รายการที่ HR บันทึกผ่านเมนูนี้
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                แสดงเฉพาะรายการ [Paper]
+              </p>
+            </div>
+            <FileText className="text-slate-300" size={22} />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
+                    พนักงาน
+                  </th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">
+                    ประเภท/วันที่
+                  </th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase text-center">
+                    วัน
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-50">
+                {loading ? (
+                  <tr>
+                    <td colSpan={3} className="py-20 text-center text-slate-400">
+                      กำลังโหลดข้อมูล...
+                    </td>
+                  </tr>
+                ) : entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-20 text-center text-slate-400">
+                      ยังไม่มีรายการ
+                    </td>
+                  </tr>
+                ) : (
+                  currentEntries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-slate-700">
+                          {entry.employeeName}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {entry.employeeCode}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-semibold text-slate-600">
+                          {leaveKinds.find((kind) => kind.value === entry.kind)
+                            ?.label || entry.kind}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {new Date(entry.startDate).toLocaleDateString(
+                            "th-TH",
+                          )}{" "}
+                          -{" "}
+                          {new Date(entry.endDate).toLocaleDateString("th-TH")}
+                        </div>
+                        <div
+                          className="text-xs text-slate-400 truncate max-w-[190px]"
+                          title={entry.reason}
+                        >
+                          {entry.reason}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-center font-bold text-cyan-600">
+                        {entry.requestedDays}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="px-5 py-4 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Page {currentPage} of {totalPages || 1}
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-600 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <button
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-600 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
 
-// Sub-components
-function FilterSelect({ label }: { label: string }) {
+function FormInput({
+  label,
+  type = "text",
+  value,
+  onChange,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
-    <button className="flex items-center justify-between gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-600 hover:border-blue-400 transition-all min-w-[140px]">
-      {label}
-      <ChevronDown size={16} className="text-slate-400" />
-    </button>
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-slate-400 uppercase">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-emerald-400 focus:bg-white"
+      />
+    </div>
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function FormSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-slate-400 uppercase">
         {label}
-      </p>
-      <p className="text-lg font-bold text-slate-800">{value}</p>
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-400"
+      >
+        {options.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

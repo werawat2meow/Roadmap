@@ -6,7 +6,7 @@ import { LayoutDashboard, ClipboardCheck, BarChart3, Settings, ChevronLeft, Arro
 
 const menuItems = [
   { name: 'Overview', href: '/leave', icon: LayoutDashboard },
-  { name: 'Approvals', href: '/leave/approvals', icon: ClipboardCheck },
+  { name: 'Leave Entry', href: '/leave/approvals', icon: ClipboardCheck },
   { name: 'Reports', href: '/leave/reports', icon: BarChart3 },
   { name: 'Eligibility', href: '/leave/eligibility', icon: UserCheck },
   { name: 'Settings', href: '/leave/settings', icon: Settings },

@@ -1,0 +1,590 @@
+[
+  {
+    "key": "setup-1",
+    "label": "ข้อมูลทั่วไป",
+    "icon": "GlobalOutlined",
+    "description": "Master พื้นฐานสำหรับข้อมูลส่วนบุคคล",
+    "items": [
+      {
+        "key": "1-1",
+        "label": "ประเทศ",
+        "href": "/admin/countries",
+        "icon": "GlobalOutlined",
+        "permission": "ems.countries.view"
+      },
+      {
+        "key": "1-2",
+        "label": "สัญชาติ",
+        "href": "/admin/nationalities",
+        "icon": "FlagOutlined",
+        "permission": "ems.nationalities.view"
+      },
+      {
+        "key": "1-3",
+        "label": "คำนำหน้า",
+        "href": "/admin/titles",
+        "icon": "IdcardOutlined",
+        "permission": "ems.titles.view"
+      },
+      {
+        "key": "1-4",
+        "label": "ศาสนา",
+        "href": "/admin/religions",
+        "icon": "BookOutlined",
+        "permission": "ems.religions.view"
+      },
+      {
+        "key": "1-5",
+        "label": "สถานภาพสมรส",
+        "href": "/admin/marital-statuses",
+        "icon": "HeartOutlined",
+        "permission": "ems.marital_statuses.view"
+      },
+      {
+        "key": "1-6",
+        "label": "เพศ",
+        "href": "/admin/genders",
+        "icon": "UserOutlined",
+        "permission": "ems.genders.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-2",
+    "label": "โครงสร้างองค์กร",
+    "icon": "ApartmentOutlined",
+    "description": "บริษัท กรุ๊ปสังกัด สังกัด แผนก ฝ่าย และหน่วยงาน",
+    "items": [
+      {
+        "key": "2-1",
+        "label": "บริษัท",
+        "href": "/admin/companies",
+        "icon": "BankOutlined",
+        "permission": "ems.companies.view"
+      },
+      {
+        "key": "2-2",
+        "label": "กรุ๊ปสังกัด",
+        "href": "/admin/branch-groups",
+        "icon": "ClusterOutlined",
+        "permission": "ems.branch_groups.view"
+      },
+      {
+        "key": "2-3",
+        "label": "สังกัด",
+        "href": "/admin/branches",
+        "icon": "ShopOutlined",
+        "permission": "ems.branches.view"
+      },
+      {
+        "key": "2-4",
+        "label": "แผนก",
+        "href": "/admin/departments",
+        "icon": "ApartmentOutlined",
+        "permission": "ems.departments.view"
+      },
+      {
+        "key": "2-5",
+        "label": "ฝ่าย",
+        "href": "/admin/divisions",
+        "icon": "PartitionOutlined",
+        "permission": "ems.divisions.view"
+      },
+      {
+        "key": "2-6",
+        "label": "หน่วยงาน",
+        "href": "/admin/units",
+        "icon": "TeamOutlined",
+        "permission": "ems.units.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-3",
+    "label": "Job Architecture",
+    "icon": "SolutionOutlined",
+    "description": "สายงาน ระดับ ตำแหน่ง Job และ Salary Band",
+    "items": [
+      {
+        "key": "3-1",
+        "label": "กลุ่มสายงาน",
+        "href": "/admin/position-families",
+        "icon": "ClusterOutlined",
+        "permission": "ems.position_families.view"
+      },
+      {
+        "key": "3-2",
+        "label": "ระดับตำแหน่งของกลุ่มสายงาน",
+        "href": "/admin/position-family-levels",
+        "icon": "OrderedListOutlined",
+        "permission": "ems.position_family_levels.view"
+      },
+      {
+        "key": "3-3",
+        "label": "Position Levels",
+        "href": "/admin/position-levels",
+        "icon": "OrderedListOutlined",
+        "permission": "ems.position_levels.view"
+      },
+      {
+        "key": "3-4",
+        "label": "กำหนดเรทเงินเดือน",
+        "href": "/admin/position-level-bands",
+        "icon": "DollarOutlined",
+        "permission": "ems.position_level_bands.view"
+      },
+      {
+        "key": "3-5",
+        "label": "บทบาทงาน / โครงสร้างธุรกิจ",
+        "href": "/admin/jobs",
+        "icon": "ProfileOutlined",
+        "permission": "ems.jobs.view"
+      },
+      {
+        "key": "3-6",
+        "label": "เพิ่มตำแหน่งงาน",
+        "href": "/admin/positions",
+        "icon": "SolutionOutlined",
+        "permission": "ems.positions.view"
+      },
+      {
+        "key": "3-7",
+        "label": "กำหนดจำนวนตำแหน่งงานของแต่ละแผนก",
+        "href": "/admin/unit-positions",
+        "icon": "PartitionOutlined",
+        "permission": "ems.unit_positions.view"
+      },
+      {
+        "key": "3-8",
+        "label": "เส้นทางอาชีพ",
+        "href": "/admin/career-paths",
+        "icon": "AppstoreOutlined",
+        "permission": "ems.career_paths.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-4",
+    "label": "ทักษะและสมรรถนะ",
+    "icon": "TeamOutlined",
+    "description": "Master ทักษะ สมรรถนะ และ Mapping ตามตำแหน่ง",
+    "items": [
+      {
+        "key": "4-1",
+        "label": "หมวดหมู่ทักษะ",
+        "href": "/admin/skill-categories",
+        "icon": "TagsOutlined",
+        "permission": "ems.skill_categories.view"
+      },
+      {
+        "key": "4-2",
+        "label": "ทักษะทั้งหมด",
+        "href": "/admin/skills",
+        "icon": "BulbOutlined",
+        "permission": "ems.skills.view"
+      },
+      {
+        "key": "4-3",
+        "label": "ระดับความเชี่ยวชาญทักษะ",
+        "href": "/admin/skill-levels",
+        "icon": "OrderedListOutlined",
+        "permission": "ems.skill_levels.view"
+      },
+      {
+        "key": "4-4",
+        "label": "ประเภทความสามารถ",
+        "href": "/admin/competency-types",
+        "icon": "TeamOutlined",
+        "permission": "ems.competency_types.view"
+      },
+      {
+        "key": "4-5",
+        "label": "Competencies",
+        "href": "/admin/competencies",
+        "icon": "TeamOutlined",
+        "permission": "ems.competencies.view"
+      },
+      {
+        "key": "4-6",
+        "label": "ระดับความสามารถ (1-5)",
+        "href": "/admin/competency-levels",
+        "icon": "TeamOutlined",
+        "permission": "ems.competency_levels.view"
+      },
+      {
+        "key": "4-7",
+        "label": "กำหนดทักษะตามตำแหน่ง",
+        "href": "/admin/position-skills",
+        "icon": "SolutionOutlined",
+        "permission": "ems.position_skills.view"
+      },
+      {
+        "key": "4-8",
+        "label": "กำหนดสมรรถนะตามตำแหน่ง",
+        "href": "/admin/position-competencies",
+        "icon": "ProfileOutlined",
+        "permission": "ems.position_competencies.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-5",
+    "label": "สวัสดิการ / ประกัน",
+    "icon": "CheckCircleOutlined",
+    "description": "ประเภท แผน และกฎเกณฑ์สวัสดิการ",
+    "items": [
+      {
+        "key": "5-1",
+        "label": "ประเภทสวัสดิการ",
+        "href": "/admin/benefit-types",
+        "icon": "CheckCircleOutlined",
+        "permission": "benefits.benefit_types.view"
+      },
+      {
+        "key": "5-2",
+        "label": "แผนสวัสดิการ",
+        "href": "/admin/benefit-plans",
+        "icon": "CheckCircleOutlined",
+        "permission": "benefits.benefit_plans.view"
+      },
+      {
+        "key": "5-3",
+        "label": "กฎเกณฑ์สวัสดิการ (Policy Rules)",
+        "href": "/admin/benefit-policy-rules",
+        "icon": "CheckCircleOutlined",
+        "permission": "benefits.policy_rules.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-6",
+    "label": "ตั้งค่าเงินเดือน",
+    "icon": "DollarOutlined",
+    "description": "รอบจ่าย บริษัทเงินเดือน รายการ สูตร และ Salary Structure",
+    "items": [
+      {
+        "key": "6-1",
+        "label": "รอบการจ่ายเงิน",
+        "href": "/admin/payroll-types",
+        "icon": "CalendarOutlined",
+        "permission": "ems.payroll_types.view"
+      },
+      {
+        "key": "6-2",
+        "label": "บริษัทเงินเดือน",
+        "href": "/admin/payroll-companies",
+        "icon": "BankOutlined",
+        "permission": "ems.payroll_companies.view"
+      },
+      {
+        "key": "6-3",
+        "label": "กลุ่มเงินเดือน",
+        "href": "/admin/payroll-groups",
+        "icon": "GroupOutlined",
+        "permission": "ems.payroll_groups.view"
+      },
+      {
+        "key": "6-4",
+        "label": "รายการเงินเดือน",
+        "href": "/admin/salary-components",
+        "icon": "AccountBookOutlined",
+        "permission": "ems.salary_components.view"
+      },
+      {
+        "key": "6-5",
+        "label": "ประเภทเงินได้",
+        "href": "/admin/earning-types",
+        "icon": "PlusCircleOutlined",
+        "permission": "ems.earning_types.view"
+      },
+      {
+        "key": "6-6",
+        "label": "ประเภทรายการหัก",
+        "href": "/admin/deduction-types",
+        "icon": "MinusCircleOutlined",
+        "permission": "ems.deduction_types.view"
+      },
+      {
+        "key": "6-7",
+        "label": "สูตรการคำนวณเงินเดือน",
+        "href": "/admin/payroll-formulas",
+        "icon": "AppstoreOutlined",
+        "permission": "ems.payroll_formulas.view"
+      },
+      {
+        "key": "6-8",
+        "label": "ตัวแปรสูตรคำนวณ",
+        "href": "/admin/formula-variables",
+        "icon": "AppstoreOutlined",
+        "permission": "ems.formula_variables.view"
+      },
+      {
+        "key": "6-9",
+        "label": "โครงสร้างเงินเดือน (Salary Structure)",
+        "href": "/admin/salary-structures",
+        "icon": "DollarOutlined",
+        "permission": "ems.salary_structures.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-7",
+    "label": "ตั้งค่าภาษีและประกันสังคม",
+    "icon": "SafetyCertificateOutlined",
+    "description": "อัตราภาษี ประกันสังคม และกองทุน",
+    "items": [
+      {
+        "key": "7-1",
+        "label": "โปรไฟล์ภาษี",
+        "href": "/admin/tax-profiles",
+        "icon": "FileProtectOutlined",
+        "permission": "ems.tax_profiles.view"
+      },
+      {
+        "key": "7-2",
+        "label": "อัตราภาษี",
+        "href": "/admin/tax-rates",
+        "icon": "PercentageOutlined",
+        "permission": "ems.tax_rates.view"
+      },
+      {
+        "key": "7-3",
+        "label": "ประกันสังคม",
+        "href": "/admin/social-security",
+        "icon": "SafetyCertificateOutlined",
+        "permission": "ems.social_security.view"
+      },
+      {
+        "key": "7-4",
+        "label": "กองทุนสำรองเลี้ยงชีพ",
+        "href": "/admin/provident-funds",
+        "icon": "AppstoreOutlined",
+        "permission": "ems.provident_funds.view"
+      },
+      {
+        "key": "7-5",
+        "label": "ค่าคงที่ภาษีและประกันสังคม",
+        "href": "/admin/statutory-settings",
+        "icon": "AppstoreOutlined",
+        "permission": "ems.statutory_settings.view"
+      },
+      {
+        "key": "7-6",
+        "label": "ทะเบียนภาษีและประกันสังคมบริษัท",
+        "href": "/admin/company-statutory-settings",
+        "icon": "BankOutlined",
+        "permission": "ems.company_statutory_settings.view"
+      },
+      {
+        "key": "7-7",
+        "label": "ประเภทผู้ประกันตน",
+        "href": "/admin/sso-categories",
+        "icon": "TeamOutlined",
+        "permission": "ems.sso_categories.view"
+      },
+      {
+        "key": "7-8",
+        "label": "สถานะผู้มีถิ่นที่อยู่ทางภาษี",
+        "href": "/admin/tax-residency-status",
+        "icon": "GlobalOutlined",
+        "permission": "ems.tax_residency.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-8",
+    "label": "ตั้งค่าประกัน",
+    "icon": "SettingOutlined",
+    "description": "ตั้งค่าประกันกลุ่มและประกันสุขภาพ",
+    "items": [
+      {
+        "key": "8-1",
+        "label": "ประกันกลุ่ม",
+        "href": "/admin/group-insurance",
+        "icon": "SettingOutlined",
+        "permission": "insurance.group_insurance.view"
+      },
+      {
+        "key": "8-2",
+        "label": "ประกันสุขภาพพนักงาน",
+        "href": "/admin/health-insurance",
+        "icon": "SettingOutlined",
+        "permission": "insurance.health_insurance.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-9",
+    "label": "ตั้งค่าธนาคาร",
+    "icon": "BankOutlined",
+    "description": "ธนาคารและวิธีการจ่ายเงิน",
+    "items": [
+      {
+        "key": "9-1",
+        "label": "ธนาคาร",
+        "href": "/admin/banks",
+        "icon": "BankOutlined",
+        "permission": "ems.banks.view"
+      },
+      {
+        "key": "9-2",
+        "label": "วิธีการจ่ายเงิน",
+        "href": "/admin/payment-methods",
+        "icon": "BankOutlined",
+        "permission": "ems.payment_methods.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-10",
+    "label": "โครงสร้างต้นทุน",
+    "icon": "DollarOutlined",
+    "description": "Business Unit, Cost Center, Profit Center และ GL Mapping",
+    "items": [
+      {
+        "key": "10-1",
+        "label": "Business Unit",
+        "href": "/admin/business-units",
+        "icon": "DollarOutlined",
+        "permission": "ems.business_units.view"
+      },
+      {
+        "key": "10-2",
+        "label": "Cost Center",
+        "href": "/admin/cost-centers",
+        "icon": "DollarOutlined",
+        "permission": "ems.cost_centers.view"
+      },
+      {
+        "key": "10-3",
+        "label": "Profit Center",
+        "href": "/admin/profit-centers",
+        "icon": "DollarOutlined",
+        "permission": "ems.profit_centers.view"
+      },
+      {
+        "key": "10-4",
+        "label": "GL Mapping",
+        "href": "/admin/gl-mappings",
+        "icon": "DollarOutlined",
+        "permission": "ems.gl_mappings.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-11",
+    "label": "ตั้งค่าพนักงาน",
+    "icon": "IdcardOutlined",
+    "description": "ประเภทการจ้าง สถานะ และการสร้างรหัสพนักงาน",
+    "items": [
+      {
+        "key": "11-1",
+        "label": "ประเภทการจ้าง",
+        "href": "/admin/employment-types",
+        "icon": "TagsOutlined",
+        "permission": "ems.employment_types.view"
+      },
+      {
+        "key": "11-2",
+        "label": "สถานะพนักงาน",
+        "href": "/admin/employee-statuses",
+        "icon": "CheckCircleOutlined",
+        "permission": "ems.employee_statuses.view"
+      },
+      {
+        "key": "11-3",
+        "label": "ตั้งค่ารหัสพนักงาน",
+        "href": "/admin/employee-code-settings",
+        "icon": "BarcodeOutlined",
+        "permission": "ems.employee_code_settings.view"
+      },
+      {
+        "key": "11-4",
+        "label": "เลขรันรหัสพนักงาน",
+        "href": "/admin/employee-running",
+        "icon": "FieldNumberOutlined",
+        "permission": "ems.employee_running.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-12",
+    "label": "ตั้งค่าเวลาและการลา",
+    "icon": "ClockCircleOutlined",
+    "description": "กะ กฎ OT ประเภทลา และปฏิทินวันหยุด",
+    "items": [
+      {
+        "key": "12-1",
+        "label": "กะการทำงาน",
+        "href": "/admin/work-shifts",
+        "icon": "ClockCircleOutlined",
+        "permission": "ems.work_shifts.view"
+      },
+      {
+        "key": "12-2",
+        "label": "คำนวณล่วงเวลา (OT)",
+        "href": "/admin/overtime-rules",
+        "icon": "ClockCircleOutlined",
+        "permission": "ems.overtime_rules.view"
+      },
+      {
+        "key": "12-3",
+        "label": "ประเภทวันลา",
+        "href": "/admin/leave-types",
+        "icon": "ClockCircleOutlined",
+        "permission": "ems.leave_types.view"
+      },
+      {
+        "key": "12-4",
+        "label": "ปฏิทินวันหยุด",
+        "href": "/admin/holiday-calendars",
+        "icon": "ClockCircleOutlined",
+        "permission": "ems.holiday_calendars.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-13",
+    "label": "ตั้งค่า Workflow",
+    "icon": "CheckCircleOutlined",
+    "description": "ตั้งค่า Workflow Builder",
+    "items": [
+      {
+        "key": "13-1",
+        "label": "Workflow Builder",
+        "href": "/admin/workflow-builder",
+        "icon": "CheckCircleOutlined",
+        "permission": "workflow.builder.view"
+      }
+    ]
+  },
+  {
+    "key": "setup-14",
+    "label": "ตั้งค่าระบบทั่วไป",
+    "icon": "ImportOutlined",
+    "description": "ค่าระบบ ปีงบประมาณ และสกุลเงิน",
+    "items": [
+      {
+        "key": "14-1",
+        "label": "ตั้งค่าทั่วไป",
+        "href": "/admin/system-settings",
+        "icon": "AppstoreOutlined",
+        "permission": "system.settings.view"
+      },
+      {
+        "key": "14-2",
+        "label": "ตั้งค่าปีงบประมาณ (Fiscal Year)",
+        "href": "/admin/fiscal-years",
+        "icon": "AppstoreOutlined",
+        "permission": "system.fiscal_years.view"
+      },
+      {
+        "key": "14-3",
+        "label": "ตั้งค่าสกุลเงิน (Currency)",
+        "href": "/admin/currencies",
+        "icon": "AppstoreOutlined",
+        "permission": "system.currencies.view"
+      }
+    ]
+  }
+]

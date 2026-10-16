@@ -52,14 +52,7 @@ export default function RecruitQuestionPage() {
     },
   ]);
 
-  // ==========================================
-  // โหลด Branches + Languages
-  // ==========================================
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       setLoading(true);
 
@@ -88,7 +81,15 @@ export default function RecruitQuestionPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // ==========================================
+  // โหลด Branches + Languages
+  // ==========================================
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadData, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   const handleBranchChange = async (branchesId) => {
     if (!branchesId) {
@@ -409,54 +410,41 @@ export default function RecruitQuestionPage() {
   if (!canView) return null;
 
   return (
-    <div className="w-full h-full">
-      <div className="overflow-y-auto p-6 w-full">
-        <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              Benefit From
-            </h1>
-
-            <p className="mt-2 text-slate-500">
-              หน้านี้เป็นหน้าจัดการ สวัดดิการส่วนกลางของแต่ละสังกัด
-            </p>
+    <div className="min-h-full w-full bg-slate-50/70">
+      <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-6">
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-950 via-emerald-800 to-teal-700 px-5 py-6 text-white shadow-lg shadow-emerald-950/10 sm:px-7 sm:py-7">
+          <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur-sm"><AntIcon name="GiftOutlined" style={{ fontSize: 20 }} /></div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Recruitment settings</p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">สวัสดิการพนักงาน</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/80">กำหนดรายการสวัสดิการส่วนกลางแยกตามสังกัดและภาษาที่ใช้งาน</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15"><AntIcon name="GlobalOutlined" /></span>
+              <div><p className="text-xs text-emerald-100/70">ภาษาที่รองรับ</p><p className="font-semibold">{languages.length} ภาษา</p></div>
+            </div>
           </div>
-          <div>
-          </div>
-        </div>
-      </div>
+        </section>
 
-      <div className="w-full">
-        <div
-          style={{
-            padding: 24,
-            maxWidth: 1400,
-            margin: "0 auto",
-          }}
-        >
+        <section>
           <Card
             variant="borderless"
+            className="overflow-hidden border border-slate-200/80 shadow-sm shadow-slate-200/60"
             style={{
-              borderRadius: 12,
+              borderRadius: 24,
             }}
           >
             {/* ======================================
                 Header
             ====================================== */}
-            <div>
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                }}
-              >
-                สวัสดิการกลางของสังกัด
-              </Title>
-
-              <Text type="secondary">
-                กำหนดรายการสวัสดิการกลาง
-                สำหรับแต่ละสังกัด
-              </Text>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><AntIcon name="SettingOutlined" /></span>
+              <div>
+                <Title level={3} style={{ margin: 0, color: "#0f172a" }}>ตั้งค่าสวัสดิการกลาง</Title>
+                <Text type="secondary">เลือกสังกัด แล้วกำหนดรายการสวัสดิการตามภาษาที่เปิดใช้งาน</Text>
+              </div>
             </div>
 
             <Divider />
@@ -469,7 +457,8 @@ export default function RecruitQuestionPage() {
               {/* ======================================
                   Branch
               ====================================== */}
-              <Row gutter={[24, 16]}>
+              <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 sm:p-5">
+              <Row gutter={[24, 16]} align="bottom">
                 <Col
                   xs={24}
                   sm={24}
@@ -477,7 +466,7 @@ export default function RecruitQuestionPage() {
                   lg={10}
                 >
                   <Form.Item
-                    label="สังกัด"
+                    label={<span className="font-semibold text-slate-700">สังกัด <span className="font-normal text-slate-400">(จำเป็น)</span></span>}
                     name="branches_id"
                     rules={[
                       {
@@ -499,21 +488,16 @@ export default function RecruitQuestionPage() {
                     />
                   </Form.Item>
                 </Col>
+                <Col xs={24} md={12} lg={14}>
+                  <div className="mb-6 flex items-start gap-2 text-sm leading-6 text-slate-500"><AntIcon name="InfoCircleOutlined" className="mt-1 text-emerald-600" /><span>เมื่อเลือกสังกัด ระบบจะแสดงข้อมูลเดิมอัตโนมัติ หรือเริ่มรายการใหม่หากยังไม่มีข้อมูล</span></div>
+                </Col>
               </Row>
+              </div>
 
               {/* ======================================
                   Benefits Header
               ====================================== */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    "space-between",
-                  alignItems: "center",
-                  marginTop: 8,
-                  marginBottom: 16,
-                }}
-              >
+              <div className="mb-4 mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <Title
                     level={5}
@@ -521,7 +505,7 @@ export default function RecruitQuestionPage() {
                       margin: 0,
                     }}
                   >
-                    รายการสวัสดิการ
+                    รายการสวัสดิการ <span className="ml-1 text-sm font-normal text-slate-400">({benefits.length} รายการ)</span>
                   </Title>
 
                   <Text type="secondary">
@@ -531,11 +515,12 @@ export default function RecruitQuestionPage() {
                 </div>
 
                 <Button
-                  type="dashed"
+                  type="primary"
                   icon={ <AntIcon name="PlusOutlined" /> }
                   onClick={
                     handleAddBenefit
                   }
+                  style={{ background: "#059669", borderRadius: 10, height: 40 }}
                 >
                   เพิ่มรายการ
                 </Button>
@@ -549,13 +534,17 @@ export default function RecruitQuestionPage() {
                   <Card
                     key={index}
                     size="small"
+                    className="group border-slate-200 transition hover:border-emerald-200 hover:shadow-sm"
                     style={{
                       marginBottom: 16,
-                      background:
-                        "#fafafa",
-                      borderRadius: 10,
+                      background: "#f8fafc",
+                      borderRadius: 16,
                     }}
                   >
+                    <div className="mb-3 flex items-center justify-between border-b border-slate-200/80 pb-3 md:hidden">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-xs font-bold text-emerald-700">{index + 1}</span>
+                      <span className="text-xs font-medium text-slate-400">รายการที่ {index + 1}</span>
+                    </div>
                     <Row
                       gutter={[
                         16, 8,
@@ -581,10 +570,8 @@ export default function RecruitQuestionPage() {
                             value={
                               benefit.sort_order
                             }
-                            style={{
-                              width:
-                                "100%",
-                            }}
+                            size="large"
+                            style={{ width: "100%" }}
                             onChange={(
                               value
                             ) =>
@@ -701,20 +688,15 @@ export default function RecruitQuestionPage() {
               {/* ======================================
                   Footer
               ====================================== */}
-              <Divider />
+              <Divider style={{ marginTop: 28 }} />
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    "flex-end",
-                  gap: 8,
-                }}
-              >
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   onClick={
                     handleReset
                   }
+                  size="large"
+                  style={{ borderRadius: 10 }}
                 >
                   ยกเลิก
                 </Button>
@@ -724,13 +706,15 @@ export default function RecruitQuestionPage() {
                   htmlType="submit"
                   icon={ <AntIcon name="SaveOutlined"/> }
                   loading={loading}
+                  size="large"
+                  style={{ background: "#059669", borderRadius: 10, minWidth: 140 }}
                 >
                   บันทึกข้อมูล
                 </Button>
               </div>
             </Form>
           </Card>
-        </div>
+        </section>
       </div>
     </div>
   );

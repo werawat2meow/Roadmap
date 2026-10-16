@@ -597,32 +597,11 @@ function getFriendlyDescription(
 ========================================================= */
 
 export default function AdminPage() {
-  const router =
-    useRouter();
-
-  const {
-    user,
-    loadingUser,
-  } =
-    useAuth();
-
-  const [
-    portalMenu,
-    setPortalMenu,
-  ] =
-    useState([]);
-
-  const [
-    loadingMenu,
-    setLoadingMenu,
-  ] =
-    useState(false);
-
-  const [
-    search,
-    setSearch,
-  ] =
-    useState("");
+  const router = useRouter();
+  const { user, loadingUser} = useAuth();
+  const [portalMenu,setPortalMenu] = useState([]);
+  const [loadingMenu,setLoadingMenu,] = useState(false);
+  const [search,setSearch,] = useState("");
 
   /* =======================================================
      Load Portal Menu
@@ -736,6 +715,36 @@ export default function AdminPage() {
     user,
     loadPortalMenu,
   ]);
+
+  useEffect(() => {
+    const style = document.createElement("style");
+
+    style.setAttribute(
+      "data-admin-home-scrollbar",
+      "true"
+    );
+
+    style.textContent = `
+      html,
+      body {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+
+    return () => {
+      style.remove();
+    };
+  }, []);
 
   /* =======================================================
      Searchable Menu

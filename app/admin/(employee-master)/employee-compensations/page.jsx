@@ -888,6 +888,7 @@ export default function EmployeeCompensationsPage() {
         mode={compModalMode}
         saving={compSaving}
         form={compForm}
+        initialEmployee={editingCompensation?.employee ||null}
         onCancel={() => setCompModalOpen(false)}
         onSubmit={submitCompensation}
       />

@@ -7,6 +7,7 @@ import {
 
 import {
   useRouter,
+  usePathname,
 } from "next/navigation";
 
 import {
@@ -34,10 +35,9 @@ import {
    Component
 ========================================================= */
 
-export default function AdminLayout({
-  children,
-}) {
+export default function AdminLayout({children,}) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const {
     user,
@@ -122,86 +122,126 @@ export default function AdminLayout({
     user,
   ]);
 
+  /* =========================================================
+    Hide Scrollbar — All Admin Pages
+
+    ซ่อน Scrollbar ทุกหน้าภายใน /admin
+    แต่ยังเลื่อนขึ้น-ลงได้ตามปกติ
+  ========================================================= */
+
+  useEffect(() => {
+    if (pathname !== "/admin" && !pathname?.startsWith("/admin/")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+
+    style.setAttribute(
+      "data-admin-hide-scrollbar",
+      "true"
+    );
+
+    style.textContent = `
+      html,
+      body {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+
+    return () => {
+      style.remove();
+    };
+  }, [pathname]);
+
   /* =======================================================
      Logout
   ======================================================= */
 
-  const handleLogout =
-    async () => {
-      if (loggingOut) {
-        return;
-      }
+  const handleLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
 
-      const confirmed =
-        await swalConfirm({
-          title: "ออกจากระบบ?",
-          text: "คุณต้องการออกจากระบบใช่หรือไม่",
-          confirmButtonText: "ออกจากระบบ",
-          cancelButtonText: "ยกเลิก",
-          icon: "warning",
-        });
+    const confirmed =
+      await swalConfirm({
+        title: "ออกจากระบบ?",
+        text: "คุณต้องการออกจากระบบใช่หรือไม่",
+        confirmButtonText: "ออกจากระบบ",
+        cancelButtonText: "ยกเลิก",
+        icon: "warning",
+      });
 
-      if (!confirmed) {
-        return;
-      }
+    if (!confirmed) {
+      return;
+    }
 
-      setLoggingOut(true);
+    setLoggingOut(true);
 
-      try {
-        const response =
-          await fetch(
-            "/api/auth/logout",
-            {
-              method: "POST",
-            }
+    try {
+      const response =
+        await fetch(
+          "/api/auth/logout",
+          {
+            method: "POST",
+          }
+        );
+
+      const payload =
+        await response
+          .json()
+          .catch(
+            () => null
           );
 
-        const payload =
-          await response
-            .json()
-            .catch(
-              () => null
-            );
-
-        if (!response.ok) {
-          throw new Error(
-            payload?.error ||
-              "ไม่สามารถออกจากระบบได้"
-          );
-        }
-
-        localStorage.removeItem(
-          "employee_user"
-        );
-
-        setUser?.(null);
-
-        await swalSuccess(
-          "ออกจากระบบสำเร็จ"
-        );
-
-        router.replace(
-          "/login"
-        );
-
-        router.refresh();
-      } catch (error) {
-        console.error(
-          "ADMIN_LOGOUT_ERROR:",
-          error
-        );
-
-        await swalError(
-          "ออกจากระบบไม่สำเร็จ",
-          error?.message ||
+      if (!response.ok) {
+        throw new Error(
+          payload?.error ||
             "ไม่สามารถออกจากระบบได้"
         );
-      } finally {
-        setLoggingOut(
-          false
-        );
       }
-    };
+
+      localStorage.removeItem(
+        "employee_user"
+      );
+
+      setUser?.(null);
+
+      await swalSuccess(
+        "ออกจากระบบสำเร็จ"
+      );
+
+      router.replace(
+        "/login"
+      );
+
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "ADMIN_LOGOUT_ERROR:",
+        error
+      );
+
+      await swalError(
+        "ออกจากระบบไม่สำเร็จ",
+        error?.message ||
+          "ไม่สามารถออกจากระบบได้"
+      );
+    } finally {
+      setLoggingOut(
+        false
+      );
+    }
+  };
 
   /* =======================================================
      Loading

@@ -7,40 +7,29 @@ import {
   Button,
   Card,
   Col,
-  Empty,
   Row,
   Skeleton,
   Space,
-  Table,
   Tag,
   Typography,
 } from "antd";
 import {
-  ApartmentOutlined,
-  BankOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloudDownloadOutlined,
   CompassOutlined,
-  DollarOutlined,
-  IdcardOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
-  SolutionOutlined,
   TeamOutlined,
   UserAddOutlined,
-  UserOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
-import EnterpriseDistributionList from "./components/EnterpriseDistributionList";
 import EnterpriseKpiCard from "./components/EnterpriseKpiCard";
-import EnterpriseMetricGrid from "./components/EnterpriseMetricGrid";
-import EnterpriseQualityRow from "./components/EnterpriseQualityRow";
-import DashboardWorkHub from "./components/DashboardWorkHub";
+import EnterpriseOverview from "./components/EnterpriseOverview";
 import DashboardGuidedTour from "./components/DashboardGuidedTour";
 import DashboardNotificationBell from "./components/DashboardNotificationBell";
 import DashboardProbationAlert from "./components/DashboardProbationAlert";
@@ -118,42 +107,47 @@ function formatThaiDateTime(value) {
   }
 }
 
-function formatThaiDate(value) {
-  if (!value) return "-";
-
-  try {
-    return new Date(value).toLocaleDateString("th-TH", {
-      dateStyle: "medium",
-    });
-  } catch {
-    return value;
-  }
-}
-
 function getScopeMessage(scopeMode) {
   if (scopeMode === "all") {
     return {
-      type: "success",
-      title: "All Scope",
-      description: "แสดงข้อมูลทั้งหมดที่ Permission ของผู้ใช้งานอนุญาต",
+      color: "success",
+      title: "ข้อมูลทั้งหมดตามสิทธิ์",
+      description: "แสดงข้อมูลทั้งหมดที่บัญชีนี้มีสิทธิ์เข้าถึง",
     };
   }
 
   if (scopeMode === "scoped") {
     return {
-      type: "info",
-      title: "Scoped Dashboard",
-      description:
-        "ตัวเลขทั้งหมดคำนวณจากพนักงานของตนเอง + พนักงานใน Scope งานของรหัสที่ Login อยู่",
+      color: "blue",
+      title: "ข้อมูลตามขอบเขตงาน",
+      description: "แสดงเฉพาะข้อมูลของคุณและข้อมูลที่อยู่ใน Scope งานที่ได้รับ",
     };
   }
 
   return {
-    type: "warning",
-    title: "Permission Mode",
-    description:
-      "ไม่ได้กำหนด Organization Scope สำหรับสิทธิ์นี้ ระบบจึงใช้ Permission ตามนโยบายเดิมของ Employee Master",
+    color: "gold",
+    title: "ข้อมูลตาม Permission",
+    description: "ระบบแสดงข้อมูลตามสิทธิ์ที่บัญชีนี้ได้รับ",
   };
+}
+
+function getRoleDisplayName(user) {
+  return (
+    user?.role_name ||
+    user?.role?.role_name ||
+    user?.role_code ||
+    user?.role?.role_code ||
+    "User"
+  );
+}
+
+function getUserDisplayName(user) {
+  return (
+    user?.full_name ||
+    user?.full_name_th ||
+    user?.username ||
+    "ผู้ใช้งาน"
+  );
 }
 
 export default function EmployeeMasterDashboardPage() {
@@ -166,9 +160,41 @@ export default function EmployeeMasterDashboardPage() {
 
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [tourOpenSignal, setTourOpenSignal] = useState(0);
+
+  // Hide only the visual scrollbar while this Dashboard page is mounted.
+  // Do not set overflow: hidden; wheel, touchpad and touch scrolling still work.
+  useEffect(() => {
+    const marker = "hrms-dashboard-hide-scrollbar";
+    const style = document.createElement("style");
+    style.setAttribute("data-hrms-dashboard-scrollbar", "true");
+    style.textContent = `
+      html.${marker},
+      html.${marker} body,
+      html.${marker} body * {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+      html.${marker}::-webkit-scrollbar,
+      html.${marker} body::-webkit-scrollbar,
+      html.${marker} body *::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    `;
+    document.documentElement.classList.add(marker);
+    document.head.appendChild(style);
+
+    return () => {
+      document.documentElement.classList.remove(marker);
+      style.remove();
+    };
+  }, []);
+
 
   useEffect(() => {
     if (loadingUser) return;
@@ -218,6 +244,7 @@ export default function EmployeeMasterDashboardPage() {
         ...EMPTY_DASHBOARD,
         ...(result?.data || {}),
       });
+      setHasLoaded(true);
     } catch (loadError) {
       console.error("LOAD_EMPLOYEE_MASTER_DASHBOARD_ERROR:", loadError);
       setError(loadError?.message || "ไม่สามารถโหลด Dashboard ได้");
@@ -277,28 +304,29 @@ export default function EmployeeMasterDashboardPage() {
   };
 
   const scopeInfo = getScopeMessage(dashboard.scope_mode);
-  const total = Number(dashboard?.kpi?.employees_total || 0);
+  const roleName = getRoleDisplayName(user);
+  const userName = getUserDisplayName(user);
 
   const kpiCards = useMemo(
     () => [
       {
         title: "พนักงานในขอบเขต",
         value: dashboard.kpi.employees_total,
-        note: "Self + Scope ตามรหัสที่ Login",
+        note: "จำนวนพนักงานที่คุณมีสิทธิ์ดู",
         icon: <TeamOutlined />,
         tag: "WORKFORCE",
       },
       {
         title: "กำลังทำงาน",
         value: dashboard.kpi.working,
-        note: "อ้างอิง employee_statuses.is_working",
+        note: "พนักงานที่มีสถานะกำลังทำงาน",
         icon: <CheckCircleOutlined />,
-        tag: "LIVE",
+        tag: "ACTIVE",
       },
       {
         title: "ทดลองงาน",
         value: dashboard.kpi.probation,
-        note: "พนักงานที่อยู่ในช่วงทดลองงาน",
+        note: "รายการที่ควรติดตามช่วงทดลองงาน",
         icon: <ClockCircleOutlined />,
         tag: "PROBATION",
       },
@@ -319,7 +347,7 @@ export default function EmployeeMasterDashboardPage() {
       {
         title: "มีบัญชีผู้ใช้งาน",
         value: dashboard.kpi.user_account_coverage,
-        note: "Active User Account Coverage",
+        note: "บัญชี Active ที่ผูกกับพนักงาน",
         icon: <SafetyCertificateOutlined />,
         tag: "ACCESS",
       },
@@ -327,125 +355,22 @@ export default function EmployeeMasterDashboardPage() {
     [dashboard]
   );
 
-  const organizationMetrics = [
-    { label: "บริษัท", value: dashboard.organization.companies, icon: <BankOutlined /> },
-    { label: "กรุ๊ปสังกัด", value: dashboard.organization.branch_groups, icon: <ApartmentOutlined /> },
-    { label: "สังกัด", value: dashboard.organization.branches, icon: <ApartmentOutlined /> },
-    { label: "แผนก", value: dashboard.organization.departments, icon: <ApartmentOutlined /> },
-    { label: "ฝ่าย", value: dashboard.organization.divisions, icon: <ApartmentOutlined /> },
-    { label: "หน่วยงาน", value: dashboard.organization.units, icon: <TeamOutlined /> },
-  ];
-
-  const recentColumns = [
-    {
-      title: "พนักงาน",
-      key: "employee",
-      render: (_, row) => (
-        <div>
-          <div className="font-medium text-slate-800">{row.full_name}</div>
-          <div className="text-xs text-slate-400">{row.employee_code || "-"}</div>
-        </div>
-      ),
-    },
-    {
-      title: "บริษัท / สังกัด",
-      key: "org",
-      render: (_, row) => (
-        <div>
-          <div>{row.company}</div>
-          <div className="text-xs text-slate-400">{row.branch}</div>
-        </div>
-      ),
-    },
-    {
-      title: "แผนก",
-      dataIndex: "department",
-      key: "department",
-    },
-    {
-      title: "ตำแหน่ง",
-      dataIndex: "position",
-      key: "position",
-    },
-    {
-      title: "เริ่มงาน",
-      dataIndex: "start_work_date",
-      key: "start_work_date",
-      width: 150,
-      render: formatThaiDate,
-    },
-  ];
-
   if (loadingUser) {
-    return <div className="p-6"><Skeleton active /></div>;
+    return (
+      <div className="p-6">
+        <Skeleton active />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
-      <div className="mx-auto max-w-[1800px] space-y-7">
+      <div className="mx-auto max-w-[1800px] space-y-5">
         <DashboardGuidedTour
           user={user}
           canViewEmployees={canViewEmployees}
           openSignal={tourOpenSignal}
         />
-
-        <Card
-          data-dashboard-tour="overview"
-          className="rounded-2xl border-slate-200 shadow-sm"
-        >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Employee Master / Enterprise Overview
-              </div>
-              <Title level={2} className="!mb-1 !text-slate-900">
-                HR Workspace Overview
-              </Title>
-              <Text className="text-slate-500">
-                จุดเริ่มต้นสำหรับงาน HR: งานประจำตาม Role, ทางลัดไปหน้าที่มีสิทธิ์ และภาพรวม Workforce
-              </Text>
-            </div>
-
-            <Space wrap size={10}>
-              <DashboardNotificationBell
-                dashboard={dashboard}
-                canViewEmployees={canViewEmployees}
-              />
-
-              <Button
-                icon={<CompassOutlined />}
-                onClick={() =>
-                  setTourOpenSignal((current) => current + 1)
-                }
-              >
-                แนะนำการใช้งาน
-              </Button>
-
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={loadDashboard}
-                loading={loading}
-              >
-                Refresh
-              </Button>
-
-              {canExportDashboard && canViewEmployees ? (
-                <Button
-                  type="primary"
-                  icon={<CloudDownloadOutlined />}
-                  onClick={handleExport}
-                  loading={exporting}
-                >
-                  Export Excel
-                </Button>
-              ) : null}
-            </Space>
-          </div>
-
-          <div className="mt-4 text-xs text-slate-400">
-            Last refresh: {formatThaiDateTime(dashboard.generated_at)}
-          </div>
-        </Card>
 
         {error ? (
           <Alert
@@ -457,211 +382,19 @@ export default function EmployeeMasterDashboardPage() {
             onClose={() => setError("")}
           />
         ) : null}
+        
 
-        <DashboardProbationAlert
-          dashboard={dashboard}
-          canViewEmployees={canViewEmployees}
-        />
-
-        <DashboardWorkHub user={user} />
-
-        {/* <div data-dashboard-tour="scope">
-          {canViewEmployees ? (
-            <Alert
-              type={scopeInfo.type}
-              showIcon
-              title={scopeInfo.title}
-              description={scopeInfo.description}
-            />
-          ) : (
-            <Alert
-              type="info"
-              showIcon
-              title="Dashboard Navigation Mode"
-              description="User นี้เข้า Dashboard เพื่อใช้งานทางลัดตาม Role และ Permission ได้ แต่ไม่มี ems.employees.view จึงไม่โหลดตัวเลข Workforce"
-            />
-          )}
-        </div> */}
-
-        {/* {!canViewEmployees ? null : loading ? (
-          <Card className="rounded-2xl border-slate-200">
-            <Skeleton active paragraph={{ rows: 10 }} />
-          </Card>
+        {canViewEmployees ? (
+          <EnterpriseOverview 
+            dashboard={dashboard}
+            loading={loading}
+            initialLoading={loading && !hasLoaded}
+            onRefresh={loadDashboard}
+            canViewEmployees={canViewEmployees}
+          />
         ) : (
-          <>
-            <div data-dashboard-tour="workforce-summary">
-              <Row gutter={[16, 16]}>
-                {kpiCards.map((item) => (
-                  <Col xs={24} sm={12} xl={8} xxl={4} key={item.title}>
-                    <EnterpriseKpiCard {...item} />
-                  </Col>
-                ))}
-              </Row>
-            </div>
-
-            <Row gutter={[16, 16]}>
-              <Col xs={24} xl={10}>
-                <Card
-                  title="Organization Footprint"
-                  extra={<Tag>{dashboard.scope_mode.toUpperCase()}</Tag>}
-                  className="h-full rounded-2xl border-slate-200 shadow-sm"
-                >
-                  <EnterpriseMetricGrid items={organizationMetrics} />
-
-                  <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-4">
-                    <div className="mb-3 font-medium text-slate-700">Scope Assignment ที่ Login นี้ได้รับ</div>
-                    <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-                      <div><span className="text-slate-400">Assignments:</span> {dashboard.scope_assignments.assignment_count}</div>
-                      <div><span className="text-slate-400">บริษัท:</span> {dashboard.scope_assignments.company}</div>
-                      <div><span className="text-slate-400">สังกัด:</span> {dashboard.scope_assignments.branch}</div>
-                      <div><span className="text-slate-400">แผนก:</span> {dashboard.scope_assignments.department}</div>
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-
-              <Col xs={24} xl={14}>
-                <Card
-                  title="Enterprise Data Readiness"
-                  className="h-full rounded-2xl border-slate-200 shadow-sm"
-                >
-                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <EnterpriseQualityRow
-                      label="Organization Mapping"
-                      {...dashboard.readiness.organization}
-                      note="Company + Branch + Department"
-                    />
-                    <EnterpriseQualityRow
-                      label="Job Architecture"
-                      {...dashboard.readiness.job_architecture}
-                      note="Position Family + Position Level + Position"
-                    />
-                    <EnterpriseQualityRow
-                      label="Cost Structure"
-                      {...dashboard.readiness.cost_structure}
-                      note="Business Unit + Cost Center + Profit Center"
-                    />
-                    <EnterpriseQualityRow
-                      label="Payroll Readiness"
-                      {...dashboard.readiness.payroll}
-                      note="Payroll Company + Type + Group"
-                    />
-                    <EnterpriseQualityRow
-                      label="Contact / Email"
-                      {...dashboard.readiness.contact}
-                      note="Work Email หรือ Email"
-                    />
-                    <EnterpriseQualityRow
-                      label="User Account Coverage"
-                      {...dashboard.readiness.user_account}
-                      note="Active account ที่ผูกกับ employee_id"
-                    />
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-
-            <Row gutter={[16, 16]}>
-              <Col xs={24} xl={8}>
-                <Card title="กำลังคนตามสังกัด" className="h-full rounded-2xl border-slate-200 shadow-sm">
-                  <EnterpriseDistributionList
-                    rows={dashboard.distributions.branches}
-                    total={total}
-                  />
-                </Card>
-              </Col>
-
-              <Col xs={24} xl={8}>
-                <Card title="กำลังคนตามแผนก" className="h-full rounded-2xl border-slate-200 shadow-sm">
-                  <EnterpriseDistributionList
-                    rows={dashboard.distributions.departments}
-                    total={total}
-                  />
-                </Card>
-              </Col>
-
-              <Col xs={24} xl={8}>
-                <Card title="ระดับตำแหน่ง" className="h-full rounded-2xl border-slate-200 shadow-sm">
-                  <EnterpriseDistributionList
-                    rows={dashboard.distributions.position_levels}
-                    total={total}
-                  />
-                </Card>
-              </Col>
-            </Row>
-
-            <Row gutter={[16, 16]}>
-              <Col xs={24} xl={12}>
-                <Card title="สถานะพนักงาน" className="h-full rounded-2xl border-slate-200 shadow-sm">
-                  {dashboard.distributions.statuses.length ? (
-                    <div className="flex flex-wrap gap-3">
-                      {dashboard.distributions.statuses.map((item) => (
-                        <div
-                          key={item.id}
-                          className="min-w-[170px] flex-1 rounded-xl border border-slate-100 bg-slate-50 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="font-medium text-slate-700">{item.label}</div>
-                              <div className="mt-1 text-2xl font-bold text-slate-900">
-                                {Number(item.count || 0).toLocaleString("th-TH")}
-                              </div>
-                            </div>
-                            <Tag>{item.status_code || "STATUS"}</Tag>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                  )}
-                </Card>
-              </Col>
-
-              <Col xs={24} xl={12}>
-                <Card title="รายการที่ต้องติดตาม" className="h-full rounded-2xl border-slate-200 shadow-sm">
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {[
-                      ["Organization ไม่ครบ", dashboard.attention.missing_organization, <ApartmentOutlined />],
-                      ["Job Architecture ไม่ครบ", dashboard.attention.missing_job_architecture, <SolutionOutlined />],
-                      ["Cost Structure ไม่ครบ", dashboard.attention.missing_cost_structure, <DollarOutlined />],
-                      ["Payroll ไม่ครบ", dashboard.attention.missing_payroll, <BankOutlined />],
-                      ["Email ไม่ครบ", dashboard.attention.missing_contact, <IdcardOutlined />],
-                      ["ยังไม่มี User Account", dashboard.attention.missing_user_account, <UserOutlined />],
-                    ].map(([label, value, icon]) => (
-                      <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                        <div className="mb-2 text-lg text-slate-500">{icon}</div>
-                        <div className="text-2xl font-bold text-slate-900">
-                          {Number(value || 0).toLocaleString("th-TH")}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-
-            <Card
-              title="พนักงานที่เริ่มงานล่าสุด"
-              extra={
-                canViewEmployees ? (
-                  <Button type="link" onClick={() => router.push("/admin/employees")}>ดู Employee List</Button>
-                ) : null
-              }
-              className="rounded-2xl border-slate-200 shadow-sm"
-            >
-              <Table
-                rowKey="id"
-                columns={recentColumns}
-                dataSource={dashboard.recent_starters}
-                pagination={false}
-                scroll={{ x: 900 }}
-                locale={{ emptyText: "ยังไม่มีข้อมูลพนักงาน" }}
-              />
-            </Card>
-          </>
-        )} */}
+          <Alert type="info" showIcon message="ไม่มีสิทธิ์ดูข้อมูลพนักงาน" description="กรุณาติดต่อผู้ดูแลระบบหากต้องการเข้าถึงข้อมูลภาพรวมบุคลากร" />
+        )}
       </div>
     </div>
   );

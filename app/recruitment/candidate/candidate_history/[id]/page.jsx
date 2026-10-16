@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
+import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
 
 import {
   Card,
@@ -171,10 +172,19 @@ export default function CandidateHistoryPage({ params }) {
   }
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Button onClick={() => window.history.back()}>
+    <div className="w-full p-4 sm:p-6">
+      <RecruitmentBreadcrumb
+        className="mb-5"
+        items={[
+          { label: "ผู้สมัครงาน", href: "/recruitment/candidate" },
+          { label: "ประวัติการสมัคร" },
+        ]}
+      />
+
+      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      {/* <Button onClick={() => window.history.back()}>
         ย้อนกลับ
-      </Button>
+      </Button> */}
       <Card>
         <Title level={4}>ประวัติการสมัคร</Title>
 
@@ -198,6 +208,7 @@ export default function CandidateHistoryPage({ params }) {
           loading={loading}
         />
       </Card>
-    </Space>
+      </Space>
+    </div>
   );
 }

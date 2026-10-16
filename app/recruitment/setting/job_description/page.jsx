@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Table, Tag, Button, Space, Select, Typography } from "antd";
 import DeleteModal from "@/app/recruitment/components/DeleteModal";
+import AntIcon from "@/components/AntIcon";
 
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
@@ -40,7 +41,6 @@ export default function JobDescriptionPage({ initialData }) {
   // ดึงข้อมูล job description ใหม่ทุกครั้งที่ page, pageSize หรือ positionId เปลี่ยน
   useEffect(() => {
     fetchData(page, pageSize, positionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, positionId]);
 
   async function fetchData(currentPage, currentPageSize, currentPositionId) {
@@ -146,20 +146,20 @@ export default function JobDescriptionPage({ initialData }) {
 
   const columns = [
     {
-      title: "No.",
+      title: "ลำดับ",
       width: 80,
       align: "center",
       render: (_, __, index) => (page - 1) * pageSize + index + 1,
     },
     {
-      title: "Company",
+      title: "บริษัท / สังกัด",
       dataIndex: "branches",
       key: "branches",
       render: (branches) =>
         branches?.length ? (
-          <Space wrap>
+          <Space wrap size={[6, 6]}>
             {branches.map((branch) => (
-              <Tag color="blue" key={branch.branch_id}>
+              <Tag color="cyan" key={branch.branch_id} style={{ borderRadius: 999, padding: "2px 10px", margin: 0 }}>
                 {branch.branch_name}
               </Tag>
             ))}
@@ -169,15 +169,13 @@ export default function JobDescriptionPage({ initialData }) {
         ),
     },
     {
-      title: "Position",
+      title: "ตำแหน่งงาน",
       key: "position",
       render: (_, row) =>
-        row.positions_name
-          ? `${row.positions_name}`
-          : "-",
+        row.positions_name ? <span className="font-semibold text-slate-800">{row.positions_name}</span> : "-",
     },
     {
-      title: "Updated at",
+      title: "อัปเดตล่าสุด",
       dataIndex: "updated_at",
       align: "center",
       width: 220,
@@ -185,7 +183,7 @@ export default function JobDescriptionPage({ initialData }) {
         value ? new Date(value).toLocaleString("th-TH") : "-",
     },
     {
-      title: "Action",
+      title: "จัดการ",
       key: "action",
       align: "center",
       width: 220,
@@ -193,11 +191,11 @@ export default function JobDescriptionPage({ initialData }) {
         <Space>
           { canEdit && (
             <Link href={`/recruitment/setting/job_description/${row.id}/edit`}>
-              <Button type="primary">แก้ไขข้อมูล</Button>
+              <Button type="primary" icon={<AntIcon name="EditOutlined" />} style={{ background: "#059669", borderRadius: 10 }}>แก้ไข</Button>
             </Link>
           )}
           { canDelete && (
-            <Button danger onClick={() => handleDelete(row)}> ลบ </Button>
+            <Button danger icon={<AntIcon name="DeleteOutlined" />} onClick={() => handleDelete(row)} style={{ borderRadius: 10 }}>ลบ</Button>
           )}
         </Space>
       ),
@@ -208,61 +206,46 @@ export default function JobDescriptionPage({ initialData }) {
   if (!canView) return null;
 
   return (
-    <div className="h-full w-full">
-      <div className="overflow-y-auto p-6 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 items-center rounded-3xl bg-white p-6 shadow-sm">
-          <div className="justify-self-center md:justify-self-start">
-            <h1 className="text-2xl font-bold text-slate-800"> Job Description </h1>
-            <p className="mt-2 text-slate-500"> หน้าจัดการ Job Description </p>
-          </div>
-          { canCreate && (
-            <div className="justify-self-center md:justify-self-end">
-              <button
-                type="button"
-                onClick={() => router.push("/recruitment/setting/job_description/create")}
-                className="rounded-lg px-4 py-2 text-white font-medium shadow-sm transition-colors cursor-pointer"
-                style={{ backgroundColor: "green" }}
-              >
-                <span>+</span>
-                <span>เพิ่มรายการ Job Description</span>
-              </button>
+    <div className="min-h-full w-full bg-slate-50/70">
+      <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-6">
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-950 via-emerald-800 to-teal-700 px-5 py-6 text-white shadow-lg shadow-emerald-950/10 sm:px-7 sm:py-7">
+          <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur-sm"><AntIcon name="FileTextOutlined" style={{ fontSize: 20 }} /></div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Recruitment settings</p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">รายละเอียดตำแหน่งงาน</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/80">จัดการ Job Description ของแต่ละตำแหน่ง เพื่อให้ข้อมูลการสรรหาครบถ้วนและเป็นมาตรฐาน</p>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 backdrop-blur-sm"><p className="text-xs text-emerald-100/70">รายการทั้งหมด</p><p className="mt-1 text-xl font-bold">{total}</p></div>
+              {canCreate && (
+                <button type="button" onClick={() => router.push("/recruitment/setting/job_description/create")} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-white/70">
+                  <AntIcon name="PlusOutlined" /> เพิ่ม Job Description
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
-      <div className="p-4 md:p-6 w-full">
-        <div
-          style={{
-            borderRadius: 16,
-            border: "1px solid #e2e8f0",
-            background: "#fff",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            overflow: "hidden",
-          }}
-        >
+        <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
+          <div className="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div><h2 className="font-semibold text-slate-800">รายการ Job Description</h2><p className="mt-1 text-sm text-slate-500">ค้นหาตามตำแหน่ง และจัดการรายละเอียดของแต่ละรายการ</p></div>
+            <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 sm:mt-0"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{total} รายการ</span>
+          </div>
           {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "16px 20px",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Space wrap>
-              <Space size="small">
-                <Text style={{ fontSize: 13, color: "#475569" }}>แสดง</Text>
+          <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 sm:px-6">
+            <Space wrap size={[16, 12]}>
+              <Space size="small" direction="vertical" align="start">
+                <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>จำนวนแถว</Text>
                 <Select
                   value={pageSize}
                   onChange={(val) => {
                     setPageSize(val);
                     setPage(1); // เปลี่ยน pageSize ให้กลับไปหน้าแรกเสมอ
                   }}
-                  style={{ width: 110 }}
+                  style={{ width: 130 }}
+                  size="large"
                   options={pageSizeOptions.map((n) => ({
                     value: n,
                     label: `${n} rows`,
@@ -270,16 +253,17 @@ export default function JobDescriptionPage({ initialData }) {
                 />
               </Space>
 
-              <Space size="small">
-                <Text style={{ fontSize: 13, color: "#475569" }}>
-                  Position
+              <Space size="small" direction="vertical" align="start">
+                <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+                  ตำแหน่งงาน
                 </Text>
 
                 <Select
                   allowClear
                   showSearch
                   placeholder="เลือกตำแหน่ง"
-                  style={{ width: 320 }}
+                  className="w-[260px] sm:w-[340px]"
+                  size="large"
                   value={positionId}
                   optionFilterProp="label"
                   onChange={(value) => {
@@ -300,6 +284,7 @@ export default function JobDescriptionPage({ initialData }) {
             columns={columns}
             dataSource={data}
             loading={loading}
+            className="[&_.ant-table-thead>tr>th]:bg-slate-50/80 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-4 [&_.ant-table-tbody>tr:hover>td]:bg-emerald-50/40"
             pagination={{
               current: page,
               pageSize: pageSize,
@@ -321,7 +306,7 @@ export default function JobDescriptionPage({ initialData }) {
             onConfirm={confirmDelete}
             loading={deleting}
           />
-        </div>
+        </section>
       </div>
     </div>
   );

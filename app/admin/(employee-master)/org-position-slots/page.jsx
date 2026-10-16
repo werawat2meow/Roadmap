@@ -198,8 +198,7 @@ function calculateSummary(
 ========================================================= */
 
 export default function OrgPositionSlotsPage() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
   /* =======================================================
      Permission + Scope
@@ -227,25 +226,10 @@ export default function OrgPositionSlotsPage() {
      State
   ======================================================= */
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    saving,
-    setSaving,
-  ] = useState(false);
-
-  const [
-    deletingId,
-    setDeletingId,
-  ] = useState("");
-
-  const [
-    rows,
-    setRows,
-  ] = useState([]);
+  const [loading,setLoading,] = useState(false);
+  const [saving,setSaving,] = useState(false);
+  const [deletingId,setDeletingId,] = useState("");
+  const [rows,setRows] = useState([]);
 
   const [
     summary,
@@ -1364,7 +1348,7 @@ export default function OrgPositionSlotsPage() {
       header={
         <>
           <MasterPageHeader
-            title="Position Slot"
+            title="Position Slot (กำหนดที่นั่งตำแหน่งของแต่ละแผนก)"
             subtitle="Organization Position Slot Master"
             loading={
               loading

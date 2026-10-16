@@ -22,6 +22,7 @@ export default function EmployeeCompensationModal({
   mode = "create",
   saving = false,
   form,
+  initialEmployee = null,
   onCancel,
   onSubmit,
 }) {
@@ -49,7 +50,10 @@ export default function EmployeeCompensationModal({
               name="employee_id"
               rules={[{ required: true, message: "กรุณาเลือกพนักงาน" }]}
             >
-              <LazyEmployeeSelect disabled={isEdit} />
+              <LazyEmployeeSelect 
+                disabled={isEdit}
+                initialEmployee={initialEmployee}
+              />
             </Form.Item>
           </Col>
 

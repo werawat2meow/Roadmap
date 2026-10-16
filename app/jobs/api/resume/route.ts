@@ -146,6 +146,9 @@ export async function POST(request: NextRequest) {
     const { data: application, error: applicationError } = await supabaseAdmin
       .from("recruit_job_applications")
       .insert({
+        // A resume deposit has no verified opening; never guess referral credit.
+        share_link_id: null,
+        referred_by_user_account_id: null,
         other_position: other_position || null,
         expected_salary: normalizedSalary,
         first_name,

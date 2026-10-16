@@ -21,6 +21,7 @@ import { getTranslation } from "@/app/jobs/components/translations";
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
 import type { JobApplicationPayload } from "@/app/jobs/types/types";
+import { sharePayload } from "@/app/jobs/lib/shareRef";
 
 const { Title, Text } = Typography;
 
@@ -147,8 +148,9 @@ export default function RegisterPage() {
       formData.append(
         "payload",
         JSON.stringify({
-          jobId,
           ...payload,
+          jobId,
+          ...sharePayload(window.location.search),
         })
       );
 

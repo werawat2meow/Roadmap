@@ -21,7 +21,7 @@ export const DAILY_WORK_GROUPS = [
     items: [
       {
         key: "/admin/org-position-slots",
-        label: "กำหนดตำแหน่งและจำนวนอัตรา",
+        label: "กำหนดที่นั่งตำแหน่งของแต่ละแผนก",
         description:
           "กำหนดตำแหน่งที่มีอยู่จริงในโครงสร้างองค์กรและจำนวนอัตราที่สามารถครองได้",
         href: "/admin/org-position-slots",
@@ -31,7 +31,7 @@ export const DAILY_WORK_GROUPS = [
 
       {
         key: "/admin/employee-position-assignments",
-        label: "จัดพนักงานลงตำแหน่ง",
+        label: "กำหนดพนักงานลงแต่ละตำแหน่ง",
         description:
           "กำหนดพนักงานเข้าครองกรอบอัตราตำแหน่งในโครงสร้างองค์กร",
         href: "/admin/employee-position-assignments",
@@ -183,7 +183,7 @@ export const DAILY_WORK_GROUPS = [
   {
     key: "daily-5",
     order: 5,
-    title: "เงินเดือนและค่าตอบแทน",
+    title: "เงินเดือนพนักงาน(ค่าตอบแทน)",
     subtitle:
       "ค่าตอบแทน งวดเงินเดือน และการประมวลผล",
     icon: "DollarOutlined",
@@ -1461,7 +1461,7 @@ export const SETUP_GUIDE_GROUPS = [
       },
       {
         label:
-          "ช่วงเงินเดือนตามระดับตำแหน่ง (Salary Band)",
+          "กำหนดเรทเงินเดือน",
         href:
           "/admin/position-level-bands",
         permission:
@@ -1474,13 +1474,13 @@ export const SETUP_GUIDE_GROUPS = [
         permission: "ems.jobs.view",
       },
       {
-        label: "ตำแหน่งงาน",
+        label: "เพิ่มตำแหน่งงาน",
         href: "/admin/positions",
         permission: "ems.positions.view",
       },
       {
         label:
-          "ตำแหน่งงานที่เปิดรับ",
+          "กำหนดจำนวนตำแหน่งงานของแต่ละแผนก",
         href: "/admin/unit-positions",
         permission:
           "ems.unit_positions.view",

@@ -300,7 +300,7 @@ export default function ResumeForm() {
           form={form}
           layout="vertical"
           autoComplete="off"
-          requiredMark={false}
+          requiredMark
           scrollToFirstError
         >
           <Row gutter={[24, 24]}>
@@ -426,7 +426,7 @@ export default function ResumeForm() {
                         },
                       ]}
                     >
-                      <Input placeholder={getUIText(uiText.firstName, locale)} />
+                      <Input placeholder={getUIText(uiText.firstName, locale)} required />
                     </Form.Item>
                   </Col>
 
@@ -443,7 +443,7 @@ export default function ResumeForm() {
                         },
                       ]}
                     >
-                      <Input placeholder={getUIText(uiText.lastName, locale)} />
+                      <Input placeholder={getUIText(uiText.lastName, locale)} required />
                     </Form.Item>
                   </Col>
 
@@ -476,10 +476,7 @@ export default function ResumeForm() {
                         },
                       ]}
                     >
-                      <Input
-                        type="email"
-                        placeholder="example@email.com"
-                      />
+                      <Input type="email" placeholder="example@email.com" required />
                     </Form.Item>
                   </Col>
 

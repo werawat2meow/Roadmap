@@ -100,7 +100,7 @@ export default function LanguageHeader() {
 
   return (
     <header className="border-b border-gray-200 bg-[#123a63] sticky top-0 z-50 backdrop-blur-md shadow-sm">
-      <div className="mx-auto flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl lg:px-6">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
         {/* บรรทัดที่ 1 บน Mobile: โลโก้/ปุ่ม เมนู */}
         <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-3">
@@ -108,17 +108,30 @@ export default function LanguageHeader() {
               type="button"
               onClick={() => setMenuOpen(true)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 text-gray-50 md:hidden"
-              aria-label="Open menu"
+              aria-label={getUIText(uiText.openMenu, locale)}
             >
-              ☰
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
 
             <div>
               <div className="text-base font-semibold text-gray-50">
-                <Link href="/jobs">Recruitment System</Link>
+                <Link href="/jobs">
+                  {getUIText(uiText.recruitmentSystem, locale)}
+                </Link>
               </div>
               {loading ? (
-                <div className="text-xs text-gray-500">Loading...</div>
+                <div className="text-xs text-gray-300">
+                  {getUIText(uiText.headerLoading, locale)}
+                </div>
               ) : null}
             </div>
           </div>
@@ -136,12 +149,15 @@ export default function LanguageHeader() {
           </div>
           <div>
             <select
+              aria-label={getUIText(uiText.languageLabel, locale)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-blue-200"
               value={locale}
               onChange={handleChange}
             >
               {languages.length === 0 ? (
-                <option value="">No language</option>
+                <option value="">
+                  {getUIText(uiText.noLanguage, locale)}
+                </option>
               ) : (
                 languages.map((lang) => (
                   <option key={lang.language_slug} value={lang.language_slug}>
@@ -159,22 +175,36 @@ export default function LanguageHeader() {
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
-            aria-label="Close menu"
+            aria-label={getUIText(uiText.closeMenu, locale)}
             onClick={() => setMenuOpen(false)}
           />
 
           <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] shadow-2xl bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
               <div>
-                <div className="text-base font-semibold text-gray-900">สาขางาน</div>
-                <div className="text-xs text-gray-500">เลือก branch เพื่อกรองงาน</div>
+                <div className="text-base font-semibold text-gray-900">
+                  {getUIText(uiText.branchesTitle, locale)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {getUIText(uiText.branchesDescription, locale)}
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="rounded-lg border border-gray-300 px-3 py-1 text-sm text-gray-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-700"
+                aria-label={getUIText(uiText.closeMenu, locale)}
               >
-                X
+                <svg
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
+                </svg>
               </button>
             </div>
 
@@ -190,7 +220,7 @@ export default function LanguageHeader() {
                       : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  <span>ทั้งหมด</span>
+                  <span>{getUIText(uiText.allJobs, locale)}</span>
                   <span className="text-xs text-gray-500">{totalJobCount}</span>
                 </button>
 
@@ -207,7 +237,7 @@ export default function LanguageHeader() {
                     : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  <span>🔥 งานด่วน</span>
+                  <span>🔥 {getUIText(uiText.urgentJobs, locale)}</span>
                   <span className="ml-3 shrink-0 text-xs">({totalUrgentCount })</span>
                 </button>
 

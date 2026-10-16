@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { emptyAttribution, isOpeningAvailable, loadOpening, resolveApplicationAttribution, shareCookieName } from "@/lib/recruitment/jobShare.mjs";
 import {
   uploadFileToSpaces,
   deleteFileFromSpaces,
@@ -269,7 +270,21 @@ export async function POST(request: NextRequest) {
     /*         1) Insert recruit_job_applications ก่อนอันดับแรก         */
     /* ------------------------------------------------------------ */
 
+    if (requestedJobId && !isOpeningAvailable(await loadOpening(supabaseAdmin, String(jobId)))) {
+      return NextResponse.json({ success: false, message: "The selected job opening is not available." }, { status: 400 });
+    }
+    // Only an explicitly selected and validated opening can receive referral credit.
+    // Do not attribute a job guessed by the legacy position/branch resolver.
+    const attribution = requestedJobId && jobId
+      ? await resolveApplicationAttribution(supabaseAdmin, {
+          jobId: String(jobId), payload,
+          cookie: request.cookies.get(shareCookieName(String(jobId)))?.value,
+          secret: process.env.JWT_SECRET,
+        })
+      : emptyAttribution();
+
     const applicationData = {
+      ...attribution,
       job_id: jobId,
       source_branch_id: sourceBranchId,
       position_id: positionId,
@@ -986,20 +1001,8 @@ export async function PUT(request: NextRequest) {
         }
       });
 
-      // ลบ application record ที่เพิ่ง insert ไป
-      const { error: deleteAppError } = await supabaseAdmin
-        .from("recruit_job_applications")
-        .delete()
-        .eq("id", applicationId);
-
-      if (deleteAppError) {
-        console.error(
-          "Failed to delete application record during rollback:",
-          deleteAppError
-        );
-      }
-
-      // โยน error เดิมต่อ ให้ catch ชั้นนอกสุดจัดการ response
+      // This is an existing application: never delete its original attribution
+      // when a later document/child write fails during an update.
       throw innerError;
     }
 

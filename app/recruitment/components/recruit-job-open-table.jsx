@@ -12,6 +12,7 @@ import {
   Modal,
   Space,
   Typography,
+  message,
 } from 'antd';
 import AntIcon from '@/components/AntIcon';
 
@@ -42,6 +43,7 @@ export default function RecruitJobOpenTable() {
   const [page, setPage] = useState(1);
 
   const [busyId, setBusyId] = useState(null);
+  const [copyingId, setCopyingId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [branchFilter, setBranchFilter] = useState();
@@ -72,7 +74,8 @@ export default function RecruitJobOpenTable() {
 
   // Reset to page 1 on search/pageSize change
   useEffect(() => {
-    setPage(1);
+    const timeoutId = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeoutId);
   }, [
     search,
     pageSize,
@@ -131,12 +134,10 @@ export default function RecruitJobOpenTable() {
     unitFilter,
     from,
     to,
+    page,
+    pageSize,
     reloadKey,
   ]);
-
-  useEffect(() => {
-    loadFilters();
-  }, []);
 
   async function loadFilters() {
     const response = await fetch(
@@ -152,6 +153,42 @@ export default function RecruitJobOpenTable() {
     setUnitOptions(data.units ?? []);
     
 }
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadFilters, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  async function copyShareUrl(row) {
+    setCopyingId(row.id);
+    try {
+      const response = await fetch('/recruitment/api/job-share-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_open_id: row.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || result.error || 'ไม่สามารถสร้างลิงก์ได้');
+      const url = result.data.url;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(url);
+        message.success('คัดลอก URL แล้ว');
+      } catch {
+        Modal.info({
+          title: 'คัดลอกลิงก์ด้วยตนเอง',
+          content: <div><p>เลือกข้อความด้านล่างแล้วคัดลอกเพื่อนำไปแชร์</p>
+            <Input.TextArea readOnly value={url} autoSize onFocus={(event) => event.target.select()} aria-label="Share URL" />
+          </div>,
+          okText: 'ปิด',
+        });
+      }
+    } catch (error) {
+      message.error(error.message || 'ไม่สามารถสร้างลิงก์ได้');
+    } finally {
+      setCopyingId(null);
+    }
+  }
 
   function showDeleteConfirm(row) {
     confirm({
@@ -234,101 +271,105 @@ export default function RecruitJobOpenTable() {
 
   const columns = [
     {
-      title: 'No.',
+      title: 'ลำดับ',
       key: 'no',
       width: 60,
-      render: (_, __, index) => (
-        <Text strong>{from + index + 1}</Text>
-      ),
+      align: 'center',
+      render: (_, __, index) => <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-600">{from + index + 1}</span>,
     },
     {
-      title: 'Company',
+      title: 'บริษัท / สังกัด',
       dataIndex: 'branch_name',
       key: 'branch_name',
-      render: (val) => val ?? '-',
+      render: (val) => val ? <Tag color="cyan" style={{ borderRadius: 999, margin: 0, padding: '2px 10px' }}>{val}</Tag> : '-',
     },
     {
-      title: 'Departments',
+      title: 'ฝ่าย',
       dataIndex: 'department_name',
       key: 'department_name',
       render: (val) => val ?? '-',
     },
     {
-      title: 'Divisions',
+      title: 'แผนก',
       dataIndex: 'division_name',
       key: 'division_name',
       render: (val) => val ?? '-',
     },
     {
-      title: 'Units',
+      title: 'หน่วยงาน',
       dataIndex: 'unit_name',
       key: 'unit_name',
       render: (val) => val ?? '-',
     },
     {
-      title: 'Positions',
+      title: 'ตำแหน่งงาน',
       key: 'position',
       render: (_, row) => (
-        <>
-          <Text strong>{row.position_name ?? '-'}</Text>
+        <div className="min-w-40">
+          <Text strong style={{ color: '#0f172a' }}>{row.position_name ?? '-'}</Text>
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>
             {row.position_level ?? '-'}
           </Text>
-        </>
+        </div>
       ),
     },
     {
-      title: 'Opening',
+      title: 'อัตรา',
       dataIndex: 'opening_count',
       key: 'opening_count',
       width: 90,
-      render: (val) => val ?? 0,
+      align: 'center',
+      render: (val) => <span className="inline-flex min-w-9 items-center justify-center rounded-lg bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{val ?? 0}</span>,
     },
     {
-      title: 'Start - End',
+      title: 'ช่วงรับสมัคร',
       key: 'date_range',
-      render: (_, row) => `${fmtDate(row.start_date)} - ${fmtDate(row.end_date)}`,
+      render: (_, row) => <div className="min-w-44 text-sm"><div className="flex items-center gap-1.5 text-slate-700"><AntIcon name="CalendarOutlined" className="text-slate-400" />{fmtDate(row.start_date)}</div><div className="ml-5 mt-1 text-xs text-slate-400">ถึง {fmtDate(row.end_date)}</div></div>,
     },
     {
-      title: 'Urgent',
+      title: 'ความเร่งด่วน',
       dataIndex: 'urgent',
       key: 'urgent',
       width: 90,
       render: (val) =>
         val ? (
-          <Tag color="red">ด่วน</Tag>
+          <Tag color="red" style={{ borderRadius: 999, margin: 0 }}>เร่งด่วน</Tag>
         ) : (
-          <Tag color="green">ไม่ด่วน</Tag>
+          <Tag style={{ borderRadius: 999, margin: 0, color: '#64748b', background: '#f1f5f9', borderColor: '#e2e8f0' }}>ปกติ</Tag>
         ),
     },
     {
-      title: 'Status',
+      title: 'สถานะ',
       dataIndex: 'status',
       key: 'status',
       width: 90,
+      align: 'center',
       render: (val, row) => (
         canEdit ? (
-          <Switch
-            checked={!!val}
-            disabled={busyId === row.id}
-            onChange={() => toggleStatus(row)}
-          />
+          <div className="flex min-w-24 items-center justify-center gap-2"><Switch checked={!!val} disabled={busyId === row.id} onChange={() => toggleStatus(row)} size="small" /><span className={`text-xs font-medium ${val ? 'text-emerald-700' : 'text-slate-400'}`}>{val ? 'เปิดรับ' : 'ปิดรับ'}</span></div>
         ) : (
-          '-'
+          <Tag color={val ? 'green' : 'default'} style={{ borderRadius: 999 }}>{val ? 'เปิดรับ' : 'ปิดรับ'}</Tag>
         )
       ),
     },
     {
-      title: 'Action',
+      title: 'จัดการ',
       key: 'action',
-      width: 130,
+      width: 250,
       render: (_, row) => (
-        <Space size="small">
+        <Space size="small" wrap>
+          {canView && (
+            <Button size="small" icon={<AntIcon name="LinkOutlined" />} loading={copyingId === row.id}
+              disabled={!row.status || (copyingId !== null && copyingId !== row.id)}
+              onClick={() => copyShareUrl(row)} style={{ borderRadius: 8 }}>
+              คัดลอกลิงก์
+            </Button>
+          )}
           { canEdit && (
             <Link href={`/recruitment/setting/job_openings/${row.id}/edit`}>
-              <Button type="primary" size="small">
-                อัปเดต
+              <Button type="primary" size="small" icon={<AntIcon name="EditOutlined" />} style={{ background: '#059669', borderRadius: 8 }}>
+                แก้ไข
               </Button>
             </Link>
           )}
@@ -338,6 +379,8 @@ export default function RecruitJobOpenTable() {
               size="small"
               loading={busyId === row.id}
               onClick={() => showDeleteConfirm(row)}
+              icon={<AntIcon name="DeleteOutlined" />}
+              style={{ borderRadius: 8 }}
             >
               ลบ
             </Button>
@@ -351,59 +394,45 @@ export default function RecruitJobOpenTable() {
   if (!canView) return null;
 
   return (
-    <div
-      style={{
-        borderRadius: 16,
-        border: '1px solid #e2e8f0',
-        background: '#fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 12,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 20px',
-          borderBottom: '1px solid #e2e8f0',
-        }}
-      >
-        <div>
-          <Title level={4} style={{ margin: 0 }}>
-            Recruit Job Open
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            รายการเปิดรับสมัครงาน
-          </Text>
+      <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><AntIcon name="UnorderedListOutlined" /></span>
+            <div>
+              <Title level={4} style={{ margin: 0, color: '#0f172a' }}>รายการรับสมัครงาน</Title>
+              <Text type="secondary" style={{ fontSize: 13 }}>ค้นหา กรอง และจัดการประกาศรับสมัครงานทั้งหมด</Text>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{count} รายการ</span>
+          </div>
         </div>
 
-        <Space wrap>
-          <Space size="small">
-            <Text style={{ fontSize: 13, color: '#475569' }}>แสดง</Text>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-4">
+          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500"><AntIcon name="FilterOutlined" className="text-emerald-600" />ตัวกรองข้อมูล</div>
+          <Space wrap size={[10, 10]}>
             <Select
               value={pageSize}
               onChange={(val) => setPageSize(val)}
-              style={{ width: 110 }}
+              style={{ width: 130 }}
+              size="large"
               options={pageSizeOptions.map((n) => ({
                 value: n,
-                label: `${n} rows`,
+                label: `${n} รายการ`,
               }))}
             />
-          </Space>
-          
-          <Space wrap>
+
             <Select
               allowClear
               showSearch
-              placeholder="Company"
+              placeholder="บริษัท / สังกัด"
               optionFilterProp="label"
               value={branchFilter}
               onChange={setBranchFilter}
-              style={{ width: 220 }}
+              className="w-full sm:w-[220px]"
+              size="large"
               options={branchOptions.map(item => ({
                 value: item.id,
                 label: item.branch_name,
@@ -413,11 +442,12 @@ export default function RecruitJobOpenTable() {
             <Select
               allowClear
               showSearch
-              placeholder="Department"
+              placeholder="ฝ่าย"
               optionFilterProp="label"
               value={departmentFilter}
               onChange={setDepartmentFilter}
-              style={{ width: 220 }}
+              className="w-full sm:w-[200px]"
+              size="large"
               options={departmentOptions.map(item => ({
                 value: item.id,
                 label: item.department_name,
@@ -427,11 +457,12 @@ export default function RecruitJobOpenTable() {
             <Select
               allowClear
               showSearch
-              placeholder="Division"
+              placeholder="แผนก"
               optionFilterProp="label"
               value={divisionFilter}
               onChange={setDivisionFilter}
-              style={{ width: 220 }}
+              className="w-full sm:w-[200px]"
+              size="large"
               options={divisionOptions.map(item => ({
                 value: item.id,
                 label: item.division_name,
@@ -441,11 +472,12 @@ export default function RecruitJobOpenTable() {
             <Select
               allowClear
               showSearch
-              placeholder="Unit"
+              placeholder="หน่วยงาน"
               optionFilterProp="label"
               value={unitFilter}
               onChange={setUnitFilter}
-              style={{ width: 220 }}
+              className="w-full sm:w-[200px]"
+              size="large"
               options={unitOptions.map(item => ({
                 value: item.id,
                 label: item.unit_name,
@@ -457,20 +489,13 @@ export default function RecruitJobOpenTable() {
               placeholder="ค้นหาตำแหน่งงาน"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              style={{ width: 320, borderRadius: 10 }}
+              className="w-full sm:w-[300px]"
+              size="large"
+              style={{ borderRadius: 12 }}
               allowClear
             />
-
           </Space>
-          {/* <Input
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            placeholder="ค้นหา branch / department / position ..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{ width: 320, borderRadius: 10 }}
-            allowClear
-          /> */}
-        </Space>
+        </div>
       </div>
 
       {/* Table */}
@@ -479,6 +504,7 @@ export default function RecruitJobOpenTable() {
         columns={columns}
         dataSource={rows}
         loading={loading}
+        className="[&_.ant-table-thead>tr>th]:bg-slate-50/80 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-4 [&_.ant-table-tbody>tr:hover>td]:bg-emerald-50/40"
         pagination={{
           current: page,
           pageSize,
@@ -487,7 +513,7 @@ export default function RecruitJobOpenTable() {
           showTotal: (total, [start, end]) =>
             `${start} - ${end} จาก ${total} รายการ`,
           showSizeChanger: false,
-          style: { padding: '12px 20px' },
+          style: { padding: '16px 20px' },
         }}
         scroll={{ x: 'max-content' }}
         locale={{

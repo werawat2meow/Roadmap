@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import CandidateDetail from "@/app/recruitment/components/CandidateDetail";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import usePageGuard from "@/hooks/usePageGuard";
+import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 
@@ -438,6 +439,19 @@ export default function Page({ params }) {
   // ============================
   return (
     <div style={{ background: "linear-gradient(180deg, #fbfaf7 0%, #ffffff 100%)" }}>
+      <div className="px-4 pt-5 sm:px-6 sm:pt-6 no-print">
+        <RecruitmentBreadcrumb
+          items={[
+            { label: "ผู้สมัครงาน", href: "/recruitment/candidate" },
+            {
+              label: "ประวัติการสมัคร",
+              href: `/recruitment/candidate/candidate_history/${id}`,
+            },
+            { label: "รายละเอียดผู้สมัคร" },
+          ]}
+        />
+      </div>
+
       <CandidateDetail
         application={data?.application}
         education={data?.education}

@@ -1,4 +1,233 @@
 export const uiText = {
+  jobsPageTitle: {
+    EN: "Find the perfect job for you.",
+    TH: "ค้นหางานที่ใช่สำหรับคุณ",
+  },
+
+  jobsPageDescription: {
+    EN: "Discover opportunities from leading companies.",
+    TH: "ค้นพบโอกาสร่วมงานกับบริษัทชั้นนำ",
+  },
+
+  jobSearchLabel: {
+    EN: "Search jobs",
+    TH: "ค้นหาตำแหน่งงาน",
+  },
+
+  jobSearchPlaceholder: {
+    EN: "Search by position or branch",
+    TH: "ค้นหาตำแหน่งงาน หรือชื่อสาขา",
+  },
+
+  jobSearchHelp: {
+    EN: "Search by position, branch, job level, or salary.",
+    TH: "ค้นหาได้จากชื่อตำแหน่ง สาขา ระดับงาน และเงินเดือน",
+  },
+
+  clearSearch: {
+    EN: "Clear search",
+    TH: "ล้างคำค้นหา",
+  },
+
+  loadingJobs: {
+    EN: "Loading jobs...",
+    TH: "กำลังโหลดตำแหน่งงาน...",
+  },
+
+  loadFailedStatus: {
+    EN: "Unable to load jobs",
+    TH: "โหลดข้อมูลไม่สำเร็จ",
+  },
+
+  jobsFoundPrefix: {
+    EN: "Found",
+    TH: "พบ",
+  },
+
+  jobsPositionUnit: {
+    EN: "positions",
+    TH: "ตำแหน่ง",
+  },
+
+  jobsInBranchPrefix: {
+    EN: "in branch",
+    TH: "ในสาขา",
+  },
+
+  branchFilterChip: {
+    EN: "Branch",
+    TH: "สาขา",
+  },
+
+  removeBranchFilter: {
+    EN: "Remove branch filter",
+    TH: "ลบตัวกรองสาขา",
+  },
+
+  urgentJobs: {
+    EN: "Urgent jobs",
+    TH: "งานด่วน",
+  },
+
+  removeUrgentFilter: {
+    EN: "Remove urgent jobs filter",
+    TH: "ลบตัวกรองงานด่วน",
+  },
+
+  keywordFilterChip: {
+    EN: "Search",
+    TH: "คำค้น",
+  },
+
+  removeSearchFilter: {
+    EN: "Remove search filter",
+    TH: "ลบคำค้นหา",
+  },
+
+  clearAllFilters: {
+    EN: "Clear all filters",
+    TH: "ล้างตัวกรองทั้งหมด",
+  },
+
+  sortLabel: {
+    EN: "Sort by",
+    TH: "เรียงตาม",
+  },
+
+  sortUrgent: {
+    EN: "Urgent first",
+    TH: "งานด่วน",
+  },
+
+  sortLatest: {
+    EN: "Latest postings",
+    TH: "ประกาศล่าสุด",
+  },
+
+  sortSalary: {
+    EN: "Highest salary",
+    TH: "เงินเดือนสูงสุด",
+  },
+
+  sortOpenings: {
+    EN: "Most openings",
+    TH: "จำนวนอัตรามากที่สุด",
+  },
+
+  jobsLoadError: {
+    EN: "Unable to load job listings.",
+    TH: "ไม่สามารถโหลดข้อมูลตำแหน่งงานได้",
+  },
+
+  jobsLoadErrorHelp: {
+    EN: "Please check your connection and try again.",
+    TH: "กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+  },
+
+  retry: {
+    EN: "Try again",
+    TH: "ลองใหม่",
+  },
+
+  emptyJobsTitle: {
+    EN: "No jobs found",
+    TH: "ไม่พบตำแหน่งงาน",
+  },
+
+  emptyKeywordPrefix: {
+    EN: "No results for",
+    TH: "ไม่พบผลลัพธ์สำหรับ",
+  },
+
+  emptyJobsHelp: {
+    EN: "Try another search term or select a different branch.",
+    TH: "ลองเปลี่ยนคำค้นหา หรือเลือกสาขาอื่น",
+  },
+
+  clearFilters: {
+    EN: "Clear filters",
+    TH: "ล้างตัวกรอง",
+  },
+
+  branchesTitle: {
+    EN: "Branches",
+    TH: "สาขางาน",
+  },
+
+  branchesDescription: {
+    EN: "Select a branch to filter job listings.",
+    TH: "เลือกสาขาเพื่อกรองตำแหน่งงาน",
+  },
+
+  allJobs: {
+    EN: "All jobs",
+    TH: "ทั้งหมด",
+  },
+
+  relatedPositions: {
+    EN: "Other positions in this field",
+    TH: "ตำแหน่งอื่นในสายงานนี้",
+  },
+
+  viewDetails: {
+    EN: "View details",
+    TH: "ดูรายละเอียด",
+  },
+
+  salaryNegotiable: {
+    EN: "Negotiable",
+    TH: "ตามตกลง",
+  },
+
+  salaryFrom: {
+    EN: "From",
+    TH: "เริ่มต้น",
+  },
+
+  salaryUpTo: {
+    EN: "Up to",
+    TH: "ไม่เกิน",
+  },
+
+  recruitmentSystem: {
+    EN: "Recruitment System",
+    TH: "ระบบรับสมัครงาน",
+  },
+
+  headerLoading: {
+    EN: "Loading...",
+    TH: "กำลังโหลด...",
+  },
+
+  openMenu: {
+    EN: "Open menu",
+    TH: "เปิดเมนู",
+  },
+
+  closeMenu: {
+    EN: "Close menu",
+    TH: "ปิดเมนู",
+  },
+
+  noLanguage: {
+    EN: "No language",
+    TH: "ไม่มีภาษา",
+  },
+
+  loadMore: {
+    EN: "Load more",
+    TH: "โหลดเพิ่มเติม",
+  },
+
+  showingJobsCount: {
+    EN: "Showing {shown} of {total} positions",
+    TH: "แสดง {shown} จาก {total} ตำแหน่ง",
+  },
+
+  allJobsShown: {
+    EN: "All positions are shown.",
+    TH: "แสดงครบทั้งหมดแล้ว",
+  },
   
   responsibilities: {
     EN: "Responsibilities",
@@ -63,6 +292,16 @@ export const uiText = {
   openings: {
     EN: "Open Positions",
     TH: "ตำแหน่งเปิดรับ",
+  },
+
+  openingUnit: {
+    EN: "position(s)",
+    TH: "ตำแหน่ง",
+  },
+
+  loadJobError: {
+    EN: "Unable to load this position.",
+    TH: "ไม่สามารถโหลดข้อมูลตำแหน่งงานได้",
   },
 
   languageLabel: {
@@ -752,6 +991,21 @@ export const uiText = {
   bottomCtaDescription: {
     TH: "สมัครงานกับเราและเริ่มต้นโอกาสใหม่ของคุณ",
     EN: "Apply now and start your next opportunity with us.",
+  },
+
+  bottomCtaPositionPrefix: {
+    EN: "Apply for",
+    TH: "สมัครตำแหน่ง",
+  },
+
+  bottomCtaTime: {
+    EN: "It only takes a few minutes.",
+    TH: "ใช้เวลาเพียงไม่กี่นาที",
+  },
+
+  applyThisPosition: {
+    EN: "Apply for this position",
+    TH: "สมัครงานตำแหน่งนี้",
   },
 
 

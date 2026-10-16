@@ -1,3 +1,4 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 // ไฟล์นี้เป็นไฟล์เดิมที่มีอยู่แล้ว — ไม่ต้องแก้ไข วางไว้เพื่ออ้างอิงเท่านั้น
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
@@ -31,7 +32,7 @@ async function getUserIdFromRequest() {
   }
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const payload = await request.json();
 
@@ -123,6 +124,7 @@ export async function POST(request) {
     let message;
 
     if (existing) {
+      setActivityDetails({ action: "UPDATE", resource_id: existing.id });
       // ============================
       // UPDATE
       // ============================
@@ -177,3 +179,4 @@ export async function POST(request) {
     );
   }
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/job_openings", "action": "CREATE", "resource_type": "job_openings", "idField": "id"});

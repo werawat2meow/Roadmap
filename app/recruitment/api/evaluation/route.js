@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -17,7 +18,7 @@ export async function GET() {
   return NextResponse.json({ data });
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   const body = await request.json();
   const { evaluation } = body;
   
@@ -49,3 +50,4 @@ export async function POST(request) {
 
   return NextResponse.json({ data });
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/evaluation", "action": "CREATE", "resource_type": "evaluation", "idField": "id"});

@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -144,7 +145,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const body = await request.json();
 
@@ -257,7 +258,7 @@ export async function POST(request) {
   }
 }
 
-export async function PUT(request) {
+async function handlePUT(request) {
   try {
     const body = await request.json();
 
@@ -389,3 +390,5 @@ export async function PUT(request) {
     );
   }
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/benefit", "action": "CREATE", "resource_type": "branch_benefits", "idField": "branches_id"});
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/benefit", "action": "UPDATE", "resource_type": "branch_benefits", "idField": "branches_id"});

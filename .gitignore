@@ -55,3 +55,4 @@ package-lock.json
 docs/recruitment-share-tracking-contract.md
 /tests
 tsconfig.share-tracking.json
+app/recruitment/lib/activity/README.md

@@ -1,8 +1,9 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const payload = await request.json();
 
@@ -67,6 +68,7 @@ export async function POST(request) {
       );
     }
 
+    setActivityDetails({ resource_id: data.id });
     return NextResponse.json({
       success: true,
       message: "บันทึกข้อมูลเรียบร้อย",
@@ -228,3 +230,4 @@ export async function GET(request) {
     );
   }
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/job_openings", "action": "CREATE", "resource_type": "job_openings", "idField": "id"});

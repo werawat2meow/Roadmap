@@ -1,3 +1,4 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -92,7 +93,7 @@ export async function GET(request) {
   });
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const body = await request.json();
 
@@ -150,6 +151,7 @@ export async function POST(request) {
     }
 
     const descriptionId = inserted.id;
+    setActivityDetails({ resource_id: descriptionId });
 
     const branchRows = (body.branch_id || []).map((branchId) => ({
       job_description_id: descriptionId,
@@ -217,3 +219,5 @@ export async function POST(request) {
     return NextResponse.json({ message: error.message }, { status: 400 });
   }
 }
+
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/job_description", "action": "CREATE", "resource_type": "job_description", "idField": "id"});

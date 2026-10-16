@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -38,7 +39,7 @@ export async function GET() {
   return NextResponse.json({ data, positions });
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const body = await request.json();
 
@@ -102,3 +103,5 @@ export async function POST(request) {
     );
   }
 }
+
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/contract_signatories", "action": "CREATE", "resource_type": "contract_signatories", "idField": "id"});

@@ -1,7 +1,9 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { ImageResponse } from "next/og";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export const runtime = "edge";
+// Activity logging and the existing session verifier require Node.js modules.
+export const runtime = "nodejs";
 
 // เลือกแถวสัมภาษณ์ที่มี interview_order สูงสุด
 function getLatestInterview(interviews?: any[]) {
@@ -35,7 +37,7 @@ function resolvePhotoUrl(app: any): string | null {
   return photoDoc?.file_url ?? null;
 }
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const positionId = searchParams.get("position_id");
@@ -296,3 +298,4 @@ export async function GET(req: Request) {
     }
   );
 }
+export const GET = withActivity(handleGET, {"page_path": "/recruitment/schedule_interviews", "action": "EXPORT", "resource_type": "candidate", "idField": "application_id"});

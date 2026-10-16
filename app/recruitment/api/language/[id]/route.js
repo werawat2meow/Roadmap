@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -18,7 +19,7 @@ export async function GET(_request, { params }) {
   return NextResponse.json({ data });
 }
 
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -61,7 +62,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+async function handlePATCH(request, { params }) {
     
   try {
     const { id } = await params;
@@ -99,7 +100,7 @@ export async function PATCH(request, { params }) {
   }
 }
 
-export async function DELETE(_request, { params }) {
+async function handleDELETE(_request, { params }) {
   const { id } = await params;
 
   const { error } = await supabaseAdmin
@@ -113,3 +114,6 @@ export async function DELETE(_request, { params }) {
 
   return NextResponse.json({ message: "Deleted" });
 }
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/language", "action": "UPDATE", "resource_type": "language", "idField": "id"});
+export const PATCH = withActivity(handlePATCH, {"page_path": "/recruitment/setting/language", "action": "UPDATE_STATUS", "resource_type": "language", "idField": "id"});
+export const DELETE = withActivity(handleDELETE, {"page_path": "/recruitment/setting/language", "action": "DELETE", "resource_type": "language", "idField": "id"});

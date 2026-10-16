@@ -54,7 +54,7 @@ function AdminTopBar({ children , setMobileOpen, mobileOpen}) {
     setLoggingOut(true);
 
     try {
-      const res = await fetch("/api/auth/logout", {
+      const res = await fetch("/recruitment/api/bridge/logout", {
         method: "POST",
       });
 

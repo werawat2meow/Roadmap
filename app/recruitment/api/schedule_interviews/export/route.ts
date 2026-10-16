@@ -1,8 +1,9 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const positionId = searchParams.get("position_id");
@@ -150,3 +151,4 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+export const GET = withActivity(handleGET, {"page_path": "/recruitment/schedule_interviews", "action": "EXPORT", "resource_type": "candidate", "idField": "application_id"});

@@ -1,8 +1,9 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserIdFromRequest } from "@/app/recruitment/lib/getUserId";
 
-export async function PUT(request) {
+async function handlePUT(request) {
   try {
     const {
       id,
@@ -233,3 +234,5 @@ export async function PUT(request) {
     );
   }
 }
+
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/candidate_detail", "action": "UPDATE_STATUS", "resource_type": "candidate", "idField": "id"});

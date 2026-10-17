@@ -39,8 +39,8 @@ const KPI_TYPES = [
   ['UPCOMING', 'รอเริ่มงาน'],
   ['STARTED', 'เริ่มงานวันแรก'],
   ['PROBATION', 'ทดลองงาน'],
-  ['EXITED', 'พ้นสภาพเป็นพนักงาน'],
   ['NOTICE', 'แจ้งลาออก'],
+  ['EXITED', 'พ้นสภาพเป็นพนักงาน'],
 ];
 
 function hasPermission(user, codes) {

@@ -17,15 +17,33 @@ function formatTime(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
 }
+
 function displayJson(value) {
   if (value == null) return "-";
   try { return JSON.stringify(value, null, 2); } catch { return "-"; }
 }
+
 async function getJson(response) {
   const body = await response.text();
   const result = body ? (() => { try { return JSON.parse(body); } catch { return {}; } })() : {};
   if (!response.ok) throw new Error(result?.error || `HTTP ${response.status}`);
   return result;
+}
+
+function formatIpAddress(value) {
+  if (!value) return "-";
+
+  const ip = String(value).trim();
+
+  if (ip.startsWith("::ffff:")) {
+    return ip.slice(7);
+  }
+
+  if (ip === "::1") {
+    return "Localhost";
+  }
+
+  return ip;
 }
 
 export default function ActivityLogsPage() {
@@ -151,7 +169,8 @@ export default function ActivityLogsPage() {
     { title: "Status", dataIndex: "event_status", width: 130, render: v => <Tag color={v === "SUCCESS" ? "green" : v === "DENIED" || v === "FAILED" ? "red" : "default"}>{v || "-"}</Tag> },
     { title: "Module", dataIndex: "module_name", key: "module_name", width: 170, render: value => <Text strong>{value || "-"}</Text> },
     { title: "Action", dataIndex: "action_type", key: "action_type", width: 140, render: value => <Tag color={value === "delete" ? "red" : value === "create" ? "green" : value === "update" ? "gold" : "default"}>{value || "-"}</Tag> },
-    { title: "รายละเอียด", dataIndex: "description", key: "description", ellipsis: true, render: value => value || "-" },
+    { title: "IP Address", dataIndex: "ip_address", key: "ip_address", width: 165, render: formatIpAddress,},
+    { title: "รายละเอียด", dataIndex: "description", key: "description",width: 400, ellipsis: true, render: value => value || "-" },
     { title: "ตารางอ้างอิง", dataIndex: "reference_table", key: "reference_table", width: 155, render: value => value || "-" },
     { title: "ตรวจสอบ", key: "details", width: 110, fixed: "right", render: (_, row) => <Button type="link" icon={<EyeOutlined />} onClick={() => setSelectedLog(row)}>ดูข้อมูล</Button> },
   ], []);
@@ -175,7 +194,21 @@ export default function ActivityLogsPage() {
             <Col xs={24} sm={12} md={4}><Select allowClear showSearch optionFilterProp="label" placeholder="ทุกสถานะ" options={statuses} value={statusFilter} onChange={v => { setStatusFilter(v); resetPage(); }} style={{ width: "100%" }} /></Col>
             <Col xs={24} md={6}><DatePicker.RangePicker value={dates} onChange={value => { setDates(value); resetPage(); }} style={{ width: "100%" }} format={DATE_FORMAT} /></Col>
           </Row>
-          {optionsError && <Alert showIcon type="warning" style={{ marginTop: 12 }} message={optionsError} />}
+          {optionsError && (
+            <Alert
+              showIcon
+              type="warning"
+              title={optionsError}
+            />
+          )}
+
+          {error && (
+            <Alert
+              showIcon
+              type="error"
+              title={error}
+            />
+          )}
         </Card>
         {error && <Alert showIcon type="error" message={error} />}
         <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 0 } }}>
@@ -192,7 +225,7 @@ export default function ActivityLogsPage() {
             { key: "system", label: "System", children: selectedLog.system_code || "-" },
             { key: "status", label: "Status", children: selectedLog.event_status || "-" },
             { key: "role", label: "Role", children: selectedLog.role_code || "-" },
-            { key: "ip", label: "IP", children: selectedLog.ip_address || "-" },
+            { key: "ip", label: "IP", children: formatIpAddress(selectedLog.ip_address), },
             { key: "request", label: "Request ID", children: selectedLog.request_id || "-" },
             { key: "ref", label: "Reference", children: `${selectedLog.reference_table || "-"} / ${selectedLog.reference_id || "-"}` },
             { key: "description", label: "รายละเอียด", children: selectedLog.description || "-" },

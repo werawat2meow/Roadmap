@@ -6,6 +6,8 @@ import dayjs from "dayjs";
 
 const { Text } = Typography;
 
+const EXIT_STATUS_CODES = ["RESIGNED", "RETIRED", "TERMINATED"];
+
 function formatDate(value) {
   if (!value) return "-";
   const date = dayjs(value);
@@ -58,7 +60,6 @@ export default function EmployeeMovementTable({
   canAuditView,
   bulk,
   printReport,
-  printAllExitFiltered,
   manageExit,
   exitView,
   setExitView,
@@ -77,10 +78,10 @@ export default function EmployeeMovementTable({
     .filter((row) => row.orientation_report_ready)
     .map((row) => row.id);
   const exitSelected = selectedRows.filter((row) =>
-    ["RESIGNED", "RETIRED", "TERMINATED"].includes(
-      String(row.status_code || "").toUpperCase()
-    )
+    EXIT_STATUS_CODES.includes(String(row.status_code || "").toUpperCase())
   );
+  // id ของแถวที่พ้นสภาพและถูกเลือก (ใช้กับปุ่มดู/จัดการรายงานพ้นสภาพ)
+  const selectedExitIds = exitSelected.map((row) => row.id);
   const sendable = exitSelected
     .filter((row) => row.exit_report_state === "PENDING")
     .map((row) => row.id);
@@ -93,8 +94,9 @@ export default function EmployeeMovementTable({
   );
   const isPreHire = selectedStatus?.status_code === "PRE_HIRE";
 
-  const allChecked = rows.length > 0 && selected.length === rows.length;
-  const indeterminate = selected.length > 0 && selected.length < rows.length;
+  const selectableRows = rows.filter(row => !row.recruitment_only);
+  const allChecked = selectableRows.length > 0 && selected.length === selectableRows.length;
+  const indeterminate = selected.length > 0 && selected.length < selectableRows.length;
 
   return (
     <Card
@@ -110,25 +112,6 @@ export default function EmployeeMovementTable({
       <div style={{ padding: 16, borderBottom: "1px solid #f0f0f0" }}>
         <Space size={[8, 8]} wrap style={{ marginBottom: 12 }}>
           <Text strong>เลือกแล้ว {selected.length} รายการ</Text>
-
-          {/* ใช้รายงานพ้นสภาพแบบเดียวกับปุ่มรายบุคคล; ไม่รวมคนที่ยังทำงาน */}
-          {canHrView && exitSelected.length > 0 && (
-            <Button
-              icon={<FileImageOutlined />}
-              disabled={busy}
-              onClick={() => printReport("exit", exitSelected.map((row) => row.id))}
-            >
-              รวมรายงานพ้นสภาพที่เลือก ({exitSelected.length})
-            </Button>
-          )}
-          {canHrView && isExitTab && total > 0 && (
-            <Button
-              disabled={busy}
-              onClick={printAllExitFiltered}
-            >
-              รวมรายงานพ้นสภาพทั้งหมดตามตัวกรอง ({total})
-            </Button>
-          )}
 
           {canHrView && isPreHire && (
             <Button
@@ -186,6 +169,12 @@ export default function EmployeeMovementTable({
               />
 
               <Button
+                disabled={!selectedExitIds.length}
+                onClick={() => printReport("exit", selectedExitIds)}
+              >
+                ดู / พิมพ์รายงานพ้นสภาพ ({selectedExitIds.length})
+              </Button>
+              <Button
                 disabled={!sendable.length || busy || !canManage}
                 loading={busy}
                 onClick={() => manageExit("MARK_SENT", sendable)}
@@ -200,6 +189,16 @@ export default function EmployeeMovementTable({
                 ปิดงานติดตาม ({closeable.length})
               </Button>
             </>
+          )}
+
+          {/* นอกแท็บพ้นสภาพ: ถ้าเลือกแถวที่พ้นสภาพปนมา ให้มีปุ่มเปิดรายงานพ้นสภาพ */}
+          {canHrView && !isExitTab && selectedExitIds.length > 0 && (
+            <Button
+              icon={<FileImageOutlined />}
+              onClick={() => printReport("exit", selectedExitIds)}
+            >
+              ดู / จัดการรายงานพ้นสภาพ ({selectedExitIds.length})
+            </Button>
           )}
         </Space>
       </div>
@@ -224,7 +223,7 @@ export default function EmployeeMovementTable({
                 checked={allChecked}
                 indeterminate={indeterminate}
                 onChange={(event) => {
-                  setSelected(event.target.checked ? rows.map((row) => row.id) : []);
+                  setSelected(event.target.checked ? rows.filter(row => !row.recruitment_only).map((row) => row.id) : []);
                 }}
               />
               <div>ข้อมูลผู้ใช้</div>
@@ -244,7 +243,7 @@ export default function EmployeeMovementTable({
             )}
 
             {rows.map((row) => {
-              const isExitStatus = ["RESIGNED", "RETIRED", "TERMINATED"].includes(
+              const isExitStatus = EXIT_STATUS_CODES.includes(
                 String(row.status_code || "").toUpperCase()
               );
               const file = fileTag(row, isExitStatus);

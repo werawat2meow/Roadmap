@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 
+import AdminActivityPageTracker from "./components/portal/AdminActivityPageTracker";
 import {
   useRouter,
   usePathname,
@@ -298,7 +299,11 @@ export default function AdminLayout({children,}) {
         Guided Tour
       =================================================== */}  
       <PortalGuidedTour />
-
+      
+      {/* ===================================================
+        Activity Log - Page View Tracking
+      =================================================== */}
+      <AdminActivityPageTracker />
       
       {/* ===================================================
           Sidebar

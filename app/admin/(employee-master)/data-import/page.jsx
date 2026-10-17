@@ -8,6 +8,8 @@ import {
 
 import {
   Card,
+  Button,
+  Space,
   Flex,
   Modal,
   Typography,
@@ -34,6 +36,7 @@ import EmployeeMigrationUploadPanel from "./components/EmployeeMigrationUploadPa
 import EmployeeMigrationSummaryCards from "./components/EmployeeMigrationSummaryCards";
 import EmployeeMigrationPreviewTable from "./components/EmployeeMigrationPreviewTable";
 import EmployeeImportHistoryTable from "./components/EmployeeImportHistoryTable";
+import EmployeeMigrationMappingModal from "./components/EmployeeMigrationMappingModal";
 
 const {
   Title,
@@ -112,6 +115,12 @@ export default function DataImportPage() {
     setFile,
   ] =
     useState(null);
+  const [draftJobId,setDraftJobId] = useState(null);
+  const [draftStatus,setDraftStatus] = useState("");
+  const [savingDraft,setSavingDraft] = useState(false);
+  const [mappingRow,setMappingRow] = useState(null);
+  const [masterOptions,setMasterOptions] = useState({});
+  const [masterRelations,setMasterRelations] = useState({});
 
   const [
     previewLoading,
@@ -328,6 +337,8 @@ export default function DataImportPage() {
   function handleFileChange(
     nextFile
   ) {
+    setDraftJobId(null);
+    setDraftStatus("");
     setFile(
       nextFile
     );
@@ -467,167 +478,51 @@ export default function DataImportPage() {
     }
   }
 
+  // Persist Excel source into Draft. This action NEVER creates an employee.
+  async function handleSaveDraft(){
+    const raw=getRawFile(file);
+    if(!raw||!previewReady){swalError("กรุณา Preview ไฟล์ก่อนบันทึก Draft");return;}
+    if(draftJobId){swalError("บันทึก Draft แล้ว สามารถแก้ Mapping ได้เลย");return;}
+    try{setSavingDraft(true);const form=new FormData();form.append("file",raw);
+      const res=await fetch("/api/admin/data-import/employees/draft",{method:"POST",body:form});
+      const json=await readJsonResponse(res);if(!res.ok||!json.success)throw new Error(json.error||"Save Draft failed");
+      setDraftJobId(json.job_id);setDraftStatus(json.job_status||"draft");setPreviewRows(json.rows);setSummary(json.summary);swalSuccess("บันทึก Draft แล้ว ยังไม่ได้สร้างพนักงานจริง");await loadHistory();
+    }catch(err){swalError(err.message||"บันทึก Draft ไม่สำเร็จ");}finally{setSavingDraft(false);}
+  }
+  async function handleOpenDraft(id){
+    try{const res=await fetch(`/api/admin/data-import/employees/draft/${id}`,{cache:"no-store"});const json=await readJsonResponse(res);
+      if(!res.ok||!json.success)throw new Error(json.error||"โหลด Draft ไม่สำเร็จ");
+      setDraftJobId(id);setDraftStatus(json.job.status);setFile(null);setPreviewRows(json.rows);
+      const valid=json.rows.filter(r=>r.valid).length;
+      setSummary({total:json.rows.length,valid,invalid:json.rows.length-valid,insert:json.rows.filter(r=>r.valid&&r.action==="insert").length,update:json.rows.filter(r=>r.valid&&r.action==="update").length});
+      setPreviewReady(true);swalSuccess("โหลด Draft สำเร็จ");
+    }catch(err){swalError(err.message||"โหลด Draft ไม่สำเร็จ");}
+  }
+  async function handleOpenMapping(row){
+    if(!draftJobId){swalError("กรุณาบันทึก Draft ก่อนแก้ Mapping");return;}
+    try{if(!Object.keys(masterOptions).length){const res=await fetch("/api/admin/data-import/employees/master-options");const json=await readJsonResponse(res);if(!res.ok||!json.success)throw new Error(json.error||"โหลด Master ไม่สำเร็จ");setMasterOptions(json.options||{});setMasterRelations(json.relations||{});}
+     setMappingRow(row);
+    }catch(e){swalError(e.message);}
+  }
+  async function handleSaveMapping(id,mapping){
+    const res=await fetch(`/api/admin/data-import/employees/draft/${draftJobId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({updates:[{id,mapping}]})});
+    const json=await readJsonResponse(res);if(!res.ok||!json.success)throw new Error(json.error||"บันทึก Mapping ไม่สำเร็จ");
+    setPreviewRows(json.rows);setSummary(json.summary);setDraftStatus(json.summary.invalid?"draft":"ready");setMappingRow(null);
+    swalSuccess("บันทึก Mapping แล้ว ยังไม่ได้ Import พนักงาน");await loadHistory();
+  }
+
   /* =========================================================
      Execute
   ========================================================= */
 
-  function handleImport() {
-    const rawFile =
-      getRawFile(
-        file
-      );
-
-    if (
-      !rawFile ||
-      !previewReady
-    ) {
-      swalError(
-        "กรุณาตรวจสอบไฟล์ก่อนนำเข้า"
-      );
-
-      return;
-    }
-
-    Modal.confirm({
-      title:
-        "ยืนยัน Employee Migration",
-
-      width:
-        620,
-
-      content: (
-        <Flex
-          vertical
-          gap={8}
-        >
-          <Text>
-            ระบบจะนำเข้าเฉพาะรายการที่ผ่าน Validation
-          </Text>
-
-          <Text strong>
-            INSERT ใหม่:{" "}
-            {summary.insert ||
-              0} คน
-          </Text>
-
-          <Text strong>
-            UPDATE เดิม:{" "}
-            {summary.update ||
-              0} คน
-          </Text>
-
-          <Text type="danger">
-            ข้ามรายการ Error:{" "}
-            {summary.invalid ||
-              0} คน
-          </Text>
-
-          <Text>
-            employee_code จะใช้รหัสเดิมจาก Excel และไม่ Generate ใหม่
-          </Text>
-        </Flex>
-      ),
-
-      okText:
-        "ยืนยันนำเข้า",
-
-      cancelText:
-        "ยกเลิก",
-
-      okButtonProps: {
-        type:
-          "primary",
-      },
-
-      async onOk() {
-        try {
-          setImporting(
-            true
-          );
-
-          const formData =
-            new FormData();
-
-          formData.append(
-            "file",
-            rawFile
-          );
-
-          const response =
-            await fetch(
-              "/api/admin/data-import/employees/execute",
-              {
-                method:
-                  "POST",
-
-                body:
-                  formData,
-              }
-            );
-
-          const json =
-            await readJsonResponse(
-              response
-            );
-
-          if (
-            !response.ok ||
-            !json.success
-          ) {
-            throw new Error(
-              json.error ||
-                "ไม่สามารถนำเข้าพนักงานได้"
-            );
-          }
-
-          swalSuccess(
-            json.message
-          );
-
-          setFile(
-            null
-          );
-
-          setPreviewRows(
-            []
-          );
-
-          setPreviewReady(
-            false
-          );
-
-          setSummary({
-            total: 0,
-            valid: 0,
-            invalid: 0,
-            insert: 0,
-            update: 0,
-          });
-
-          setHistoryPage(
-            1
-          );
-
-          await loadHistory();
-        } catch (error) {
-          console.error(
-            "EXECUTE_EMPLOYEE_MIGRATION_ERROR:",
-            error
-          );
-
-          swalError(
-            error.message ||
-              "ไม่สามารถนำเข้าพนักงานได้"
-          );
-
-          throw error;
-        } finally {
-          setImporting(
-            false
-          );
-        }
-      },
-    });
+  function handleImport(){
+    if(!draftJobId || !previewReady){swalError("กรุณาบันทึก Draft และตรวจ Mapping ก่อน");return;}
+    if(summary.invalid>0 || draftStatus!=="ready"){swalError("ยังมีข้อมูลไม่ผ่าน Validation กรุณาแก้ Mapping ให้ครบ");return;}
+    Modal.confirm({title:"ยืนยัน Import พนักงานจริง",content:`จะสร้างพนักงานจริง ${summary.insert} คน และอัปเดต ${summary.update} คน รหัสพนักงานใหม่จะออกจาก Running Number เดิม`,okText:"ยืนยัน Import จริง",cancelText:"กลับไปตรวจ",async onOk(){
+      try{setImporting(true);const res=await fetch(`/api/admin/data-import/employees/draft/${draftJobId}/confirm`,{method:"POST"});const json=await readJsonResponse(res);if(!res.ok||!json.success)throw new Error(json.error||"Import ไม่สำเร็จ");
+       swalSuccess(json.message);setDraftStatus("completed");setPreviewReady(false);setDraftJobId(null);setPreviewRows([]);setSummary({total:0,valid:0,invalid:0,insert:0,update:0});await loadHistory();
+      }catch(e){swalError(e.message);throw e;}finally{setImporting(false);}
+    }});
   }
 
   /* =========================================================
@@ -664,7 +559,7 @@ export default function DataImportPage() {
         header={
           <>
             <MasterPageHeader
-              title="นำเข้าข้อมูล *Gen เลขรหัสพนักงานใหม่  "
+              title="นำเข้าข้อมูลพนักงาน"
               subtitle="Data Import / Employee Migration"
               loading={
                 previewLoading ||
@@ -683,10 +578,40 @@ export default function DataImportPage() {
                 loadHistory();
               }}
             />
+            <Card
+              size="small"
+              style={{ marginTop: 12 }}
+            >
+              <Flex
+                justify="space-between"
+                align="center"
+                gap={16}
+                wrap="wrap"
+              >
+                <div>
+                  <Text strong>
+                    เปรียบเทียบรหัสพนักงานเก่า - ใหม่
+                  </Text>
 
-            <PageInfoAlert
-              description="สำหรับย้ายพนักงานจากระบบเก่าเข้าสู่ HRMS ใหม่ โดยรักษารหัสพนักงานเดิม ตรวจ Required Field ตาม Employee Form, Master Code, Organization Scope และ Preview INSERT/UPDATE ก่อน Import จริง"
-            />
+                  <div>
+                    <Text type="secondary">
+                      ตรวจสอบรหัสพนักงานจากระบบเดิม
+                      และรหัสพนักงานใหม่ที่ออกโดยระบบ HRMS
+                      หลังนำเข้าข้อมูล
+                    </Text>
+                  </div>
+                </div>
+
+                <Button
+                  type="primary"
+                  onClick={() =>
+                    router.push("/admin/employee-code-mappings")
+                  }
+                >
+                  ไปหน้าเทียบรหัสพนักงาน เก่า - ใหม่
+                </Button>
+              </Flex>
+            </Card>
           </>
         }
 
@@ -703,7 +628,7 @@ export default function DataImportPage() {
               canImport
             }
             previewReady={
-              previewReady
+              previewReady && draftStatus === "ready"
             }
             validRows={
               summary.valid ||
@@ -742,6 +667,7 @@ export default function DataImportPage() {
           >
             <Card
               title="ผลตรวจสอบ Employee Migration"
+              extra={<Space><Button onClick={handleSaveDraft} disabled={!previewReady||!!draftJobId||!canImport} loading={savingDraft}>บันทึก Draft</Button>{draftJobId&&<Text type="secondary">Draft: {draftJobId.slice(0,8)} · {draftStatus}</Text>}</Space>}
             >
               {!previewReady ? (
                 <Text type="secondary">
@@ -755,6 +681,7 @@ export default function DataImportPage() {
                   loading={
                     previewLoading
                   }
+                  onEdit={draftJobId && ["draft","ready"].includes(draftStatus) ? handleOpenMapping : undefined}
                 />
               )}
             </Card>
@@ -762,6 +689,8 @@ export default function DataImportPage() {
             <Card
               title="ประวัติการนำเข้าพนักงาน"
             >
+              
+              <Space wrap style={{marginBottom:12}}>{historyRows.filter(r=>["draft","ready"].includes(r.status)).map(r=><Button key={r.id} onClick={()=>handleOpenDraft(r.id)}>ทำ Mapping ต่อ: {r.file_name}</Button>)}</Space>
               <EmployeeImportHistoryTable
                 rows={
                   historyRows
@@ -796,6 +725,7 @@ export default function DataImportPage() {
           </Flex>
         }
       />
+      <EmployeeMigrationMappingModal open={!!mappingRow} row={mappingRow} options={masterOptions} relations={masterRelations} onCancel={()=>setMappingRow(null)} onSave={handleSaveMapping}/>
     </div>
   );
 }

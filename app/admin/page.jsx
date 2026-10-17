@@ -897,6 +897,27 @@ export default function AdminPage() {
       ]
     );
 
+
+
+    const filteredSystems = useMemo(() => {
+      const keyword = search.trim().toLowerCase();
+
+      if (!keyword) {
+        return systems;
+      }
+
+      return systems.filter((system) =>
+        [
+          system.title,
+          system.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword)
+      );
+    }, [systems, search]);
+
   /* =======================================================
      Render
   ======================================================= */
@@ -1040,29 +1061,16 @@ export default function AdminPage() {
               "
             >
               <AutoComplete
-                value={
-                  search
-                }
-                options={
-                  searchOptions
-                }
+                value={search}
+                options={searchOptions}
+                filterOption={false}
                 style={{
-                  width:
-                    "100%",
+                  width: "100%",
                 }}
-                onChange={
-                  setSearch
-                }
-                onSelect={(
-                  href
-                ) => {
-                  setSearch(
-                    ""
-                  );
-
-                  router.push(
-                    href
-                  );
+                onChange={setSearch}
+                onSelect={(href) => {
+                  setSearch("");
+                  router.push(href);
                 }}
               >
                 <Input
@@ -1073,19 +1081,11 @@ export default function AdminPage() {
                   }
                   placeholder="ค้นหาเมนู เช่น พนักงาน, เงินเดือน, ภาษี, ประกันสังคม..."
                   onPressEnter={() => {
-                    const href =
-                      searchOptions[
-                        0
-                      ]?.value;
+                    const href = searchOptions[0]?.value;
 
                     if (href) {
-                      setSearch(
-                        ""
-                      );
-
-                      router.push(
-                        href
-                      );
+                      setSearch("");
+                      router.push(href);
                     }
                   }}
                 />
@@ -1164,7 +1164,7 @@ export default function AdminPage() {
                   )
                 )}
               </div>
-            ) : systems.length >
+            ) : filteredSystems.length >
               0 ? (
               <div
                 className="
@@ -1175,7 +1175,7 @@ export default function AdminPage() {
                   xl:grid-cols-3
                 "
               >
-                {systems.map(
+                {filteredSystems.map(
                   (
                     system
                   ) => (

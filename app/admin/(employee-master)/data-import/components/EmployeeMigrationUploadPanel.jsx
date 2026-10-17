@@ -160,21 +160,6 @@ export default function EmployeeMigrationUploadPanel({
         gap={16}
       >
         <Alert
-          type="warning"
-          showIcon
-          title="Employee Migration — รักษารหัสพนักงานเดิม"
-          description={
-            <>
-              ใช้สำหรับย้ายพนักงานจากระบบเก่าเข้าระบบใหม่ โดยคอลัมน์{" "}
-              <strong>
-                employee_code
-              </strong>
-              {" "}คือรหัสพนักงานเดิม ระบบจะไม่ Generate รหัสใหม่ผ่าน Employee Code Setting
-            </>
-          }
-        />
-
-        <Alert
           type="info"
           showIcon
           icon={
@@ -267,7 +252,7 @@ export default function EmployeeMigrationUploadPanel({
           </p>
 
           <p className="ant-upload-hint">
-            ใช้ Template ที่ Generate จากระบบ และห้ามเปลี่ยนชื่อ Header
+            รองรับทั้ง Template ของ HRMS และ Excel ระบบเก่า 8 คอลัมน์ (สังกัด แผนก รหัส ชื่อ-สกุล ชื่อเล่น ตำแหน่ง ระดับ วันที่เริ่มงาน)
           </p>
         </Dragger>
 
@@ -311,7 +296,7 @@ export default function EmployeeMigrationUploadPanel({
               onImport
             }
           >
-            ยืนยันนำเข้ารายการที่ผ่าน ({validRows})
+            ยืนยัน Import พนักงานจริง ({validRows})
           </Button>
         </Flex>
 

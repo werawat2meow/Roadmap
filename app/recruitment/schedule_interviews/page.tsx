@@ -794,6 +794,11 @@ export default function RecruitmentApplicationsPage() {
   const saveApplicantPhoto = async () => {
     if (!photoApplication) return;
 
+    if(photoFile === null) {
+      Modal.error({ title: 'เกิดข้อผิดพลาด', content: "รูปภาพต้องมีขนาดไม่เกิน 2MB" });
+      return;
+    }
+
     if (!photoFile?.originFileObj) {
       Modal.error({ title: 'เกิดข้อผิดพลาด', content: "กรุณาเลือกรูปผู้สมัคร" });
       return;

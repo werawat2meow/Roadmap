@@ -285,7 +285,15 @@ function flattenMenus(
           trail,
 
           searchText:
-            trail
+            [
+              ...trail,
+              getDescription(item),
+              item?.menu_name,
+              item?.subtitle,
+              item?.menu_description,
+              item?.search_keywords,
+            ]
+              .filter(Boolean)
               .join(" ")
               .toLowerCase(),
         });
@@ -763,61 +771,32 @@ export default function AdminPage() {
       ]
     );
 
-  const searchOptions =
-    useMemo(
-      () => {
-        const keyword =
-          search
-            .trim()
-            .toLowerCase();
+  const matchingMenus = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return [];
+    // Each item was recursively collected from the authorized portal menu.
+    return searchableMenus.filter((item) => item.searchText.includes(keyword));
+  }, [searchableMenus, search]);
 
-        const rows =
-          keyword
-            ? searchableMenus.filter(
-                (item) =>
-                  item.searchText.includes(
-                    keyword
-                  )
-              )
-            : searchableMenus;
-
-        return rows
-          .slice(
-            0,
-            12
-          )
-          .map(
-            (item) => ({
-              value:
-                item.href,
-
-              label: (
-                <div className="flex min-w-0 items-center justify-between gap-3 py-1">
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-slate-800">
-                      {
-                        item.label
-                      }
-                    </div>
-
-                    <div className="truncate text-xs text-slate-400">
-                      {item.trail.join(
-                        " › "
-                      )}
-                    </div>
-                  </div>
-
-                  <ArrowRightOutlined className="shrink-0 text-blue-500" />
-                </div>
-              ),
-            })
-          );
-      },
-      [
-        searchableMenus,
-        search,
-      ]
-    );
+  const searchOptions = useMemo(
+    () => (search.trim() ? matchingMenus : searchableMenus)
+      .slice(0, 12)
+      .map((item) => ({
+        value: item.href,
+        label: (
+          <div className="flex min-w-0 items-center justify-between gap-3 py-1">
+            <div className="min-w-0">
+              <div className="truncate font-medium text-slate-800">{item.label}</div>
+              <div className="truncate text-xs text-slate-400">
+                {item.trail.join(" › ")}
+              </div>
+            </div>
+            <ArrowRightOutlined className="shrink-0 text-blue-500" />
+          </div>
+        ),
+      })),
+    [matchingMenus, searchableMenus, search]
+  );
 
   /* =======================================================
      Accessible Systems
@@ -899,24 +878,19 @@ export default function AdminPage() {
 
 
 
-    const filteredSystems = useMemo(() => {
-      const keyword = search.trim().toLowerCase();
+  const filteredSystems = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return systems;
 
-      if (!keyword) {
-        return systems;
-      }
-
-      return systems.filter((system) =>
-        [
-          system.title,
-          system.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(keyword)
+    return systems.filter((system) => {
+      const systemText = [system.title, system.description]
+        .filter(Boolean).join(" ").toLowerCase();
+      // A child menu match also keeps the containing system visible.
+      return systemText.includes(keyword) || matchingMenus.some((menu) =>
+        menu.trail[0] === system.title
       );
-    }, [systems, search]);
+    });
+  }, [systems, search, matchingMenus]);
 
   /* =======================================================
      Render
@@ -1091,6 +1065,36 @@ export default function AdminPage() {
                 />
               </AutoComplete>
             </div>
+            {search.trim() && (
+              <div className="mt-4 max-w-3xl rounded-xl border border-slate-200 bg-white p-3">
+                <div className="mb-2 text-sm font-semibold text-slate-700">
+                  ผลการค้นหาเมนู ({matchingMenus.length})
+                </div>
+                {matchingMenus.length ? (
+                  <div className="max-h-80 space-y-1 overflow-y-auto">
+                    {matchingMenus.slice(0, 30).map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => { setSearch(""); router.push(item.href); }}
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-medium text-slate-800">{item.label}</span>
+                          <span className="block truncate text-xs text-slate-500">{item.trail.join(" › ")}</span>
+                        </span>
+                        <ArrowRightOutlined className="ml-3 shrink-0 text-blue-500" />
+                      </button>
+                    ))}
+                    {matchingMenus.length > 30 && (
+                      <div className="px-3 py-2 text-xs text-slate-500">แสดง 30 รายการแรก กรุณาระบุคำค้นให้เฉพาะเจาะจงขึ้น</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="px-3 py-3 text-sm text-slate-500">ไม่พบเมนูที่ตรงกับคำค้น หรือบัญชีนี้ไม่มีสิทธิ์เข้าถึงเมนูนั้น</div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* =================================================

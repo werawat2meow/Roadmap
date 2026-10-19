@@ -60,6 +60,7 @@ export default function EmployeeMovementTable({
   canAuditView,
   bulk,
   printReport,
+  onOpenSeparation,
   manageExit,
   exitView,
   setExitView,
@@ -338,7 +339,7 @@ export default function EmployeeMovementTable({
                     <div>
                       <Button
                         icon={<FileImageOutlined />}
-                        onClick={() => printReport(isExitStatus ? "exit" : "cards", [row.id])}
+                        onClick={() => isExitStatus ? onOpenSeparation?.(row) : printReport("cards", [row.id])}
                         disabled={!canHrView || (!isExitStatus && !row.orientation_report_ready)}
                       >
                         ดู / จัดการ

@@ -22,6 +22,7 @@ import EmployeeMovementFilters from './components/EmployeeMovementFilters';
 import EmployeeMovementTable from './components/EmployeeMovementTable';
 import EmployeeStatusChangeModal from './components/EmployeeStatusChangeModal';
 import EmployeeMovementCheckDrawer from './components/EmployeeMovementCheckDrawer';
+import EmployeeSeparationModal from './components/EmployeeSeparationModal';
 
 const { Title, Text } = Typography;
 
@@ -135,6 +136,7 @@ export default function EmployeeMovementsPage() {
   const [exitView, setExitView] = useState('all');
   const [changeEmployee, setChangeEmployee] = useState(null);
   const [checkPanel, setCheckPanel] = useState(null);
+  const [separationEmployee, setSeparationEmployee] = useState(null);
   const [checkStats, setCheckStats] = useState({});
   const [now, setNow] = useState(new Date());
   const rosterRequestId = useRef(0);
@@ -879,6 +881,7 @@ export default function EmployeeMovementsPage() {
         canAuditView={canAuditView}
         bulk={bulk}
         printReport={printReport}
+        onOpenSeparation={(employee) => setSeparationEmployee(employee)}
         printAllExitFiltered={printAllExitFiltered}
         manageExit={manageExit}
         exitView={exitView}
@@ -886,6 +889,13 @@ export default function EmployeeMovementsPage() {
         isExitTab={isExitTab}
         onChangeStatus={setChangeEmployee}
         onManageChecklist={(employee, area) => setCheckPanel({ employee, area })}
+      />
+      <EmployeeSeparationModal
+        employee={separationEmployee}
+        open={Boolean(separationEmployee)}
+        onClose={() => setSeparationEmployee(null)}
+        getJson={getJson}
+        imageSrc={imageSrc}
       />
       <EmployeeMovementCheckDrawer
         employee={checkPanel?.employee}

@@ -164,7 +164,19 @@ export default function ActivityLogsPage() {
   };
   const columns = useMemo(() => [
     { title: "วันที่ / เวลา", dataIndex: "created_at", key: "created_at", width: 185, render: formatTime },
-    { title: "ผู้ใช้งาน", dataIndex: "username", width: 160, render: v => v || "-" },
+    {
+      title: "ผู้ใช้งาน",
+      key: "user",
+      width: 220,
+      render: (_, row) => (
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.4 }}>
+          <Text strong>{row.username || "-"}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {row.employee_full_name || "-"}
+          </Text>
+        </div>
+      ),
+    },
     { title: "System", dataIndex: "system_code", width: 130, render: v => v || "-" },
     { title: "Status", dataIndex: "event_status", width: 130, render: v => <Tag color={v === "SUCCESS" ? "green" : v === "DENIED" || v === "FAILED" ? "red" : "default"}>{v || "-"}</Tag> },
     { title: "Module", dataIndex: "module_name", key: "module_name", width: 170, render: value => <Text strong>{value || "-"}</Text> },
@@ -212,7 +224,7 @@ export default function ActivityLogsPage() {
         </Card>
         {error && <Alert showIcon type="error" message={error} />}
         <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 0 } }}>
-          <Table rowKey="id" columns={columns} dataSource={logs} loading={loading} scroll={{ x: 1420 }} locale={{ emptyText: <Empty description="ไม่พบข้อมูล Log" /> }} pagination={{ current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false, showTotal: count => `ทั้งหมด ${count.toLocaleString("th-TH")} รายการ`, onChange: setPage }} />
+          <Table rowKey="id" columns={columns} dataSource={logs} loading={loading} scroll={{ x: 1500 }} locale={{ emptyText: <Empty description="ไม่พบข้อมูล Log" /> }} pagination={{ current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false, showTotal: count => `ทั้งหมด ${count.toLocaleString("th-TH")} รายการ`, onChange: setPage }} />
         </Card>
       </Space>
       <Drawer title="รายละเอียด Activity Log" open={!!selectedLog} size={680} onClose={() => setSelectedLog(null)} destroyOnHidden>
@@ -222,6 +234,7 @@ export default function ActivityLogsPage() {
             { key: "module", label: "Module", children: selectedLog.module_name || "-" },
             { key: "action", label: "Action", children: selectedLog.action_type || "-" },
             { key: "user", label: "User", children: selectedLog.username || selectedLog.user_id || "-" },
+            { key: "name", label: "ชื่อ–นามสกุล", children: selectedLog.employee_full_name || "-" },
             { key: "system", label: "System", children: selectedLog.system_code || "-" },
             { key: "status", label: "Status", children: selectedLog.event_status || "-" },
             { key: "role", label: "Role", children: selectedLog.role_code || "-" },

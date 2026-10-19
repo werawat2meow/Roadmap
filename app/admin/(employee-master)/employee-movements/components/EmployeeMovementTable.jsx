@@ -3,6 +3,7 @@
 import { Button, Card, Checkbox, Empty, Pagination, Segmented, Space, Spin, Tag, Typography } from "antd";
 import { EditOutlined, FileImageOutlined, SettingOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useAuth } from "@/contexts/AuthContext";
 
 const { Text } = Typography;
 
@@ -31,7 +32,7 @@ function trackingTag(row, area) {
     return { text: `ทรัพย์สินคงค้าง (${pending})`, color: pending ? "magenta" : "green" };
   }
   return {
-    text: `ติดตามแล้ว (${stats.completed}/${stats.total})`,
+    text: `อยู่กลุ่มไลน์ (${stats.completed}/${stats.total})`,
     color: stats.completed === stats.total ? "green" : "orange",
   };
 }
@@ -68,6 +69,34 @@ export default function EmployeeMovementTable({
   onChangeStatus,
   onManageChecklist,
 }) {
+  // AUDITOR sees the Audit workspace only, even if HR permissions are assigned.
+  // Other roles continue to use the original permission flags.
+  const { user } = useAuth();
+  // Login payloads can expose the role under role_name instead of role_code.
+  // Check both code and name before showing HR-only columns.
+  const roleTokens = [
+    user?.role_code,
+    user?.role_name,
+    user?.roleCode,
+    user?.roleName,
+    user?.role?.role_code,
+    user?.role?.role_name,
+    user?.role?.code,
+    user?.role?.name,
+    user?.roles?.role_code,
+    user?.roles?.role_name,
+    user?.access?.role_code,
+    user?.access?.role_name,
+  ].filter(Boolean).map((value) => String(value).trim().toUpperCase());
+  const isAuditor = roleTokens.some((value) => value === "AUDITOR");
+  const showHrColumns = !isAuditor && Boolean(canHrView);
+  const showAuditColumn = Boolean(canAuditView);
+  const showAssetsColumn = !isAuditor && Boolean(canHrView);
+  const gridColumns = ["42px", "minmax(220px,2fr)", "0.7fr", "1fr", "1fr",
+    ...(showHrColumns ? ["1.2fr", "1.2fr"] : []),
+    ...(showAuditColumn ? ["1.2fr"] : []),
+    ...(showAssetsColumn ? ["1.2fr"] : []),
+  ].join(" ");
   const selectedRows = rows.filter((row) => selected.includes(row.id));
   const prepareSelected = selectedRows
     .filter((row) => row.orientation_can_prepare)
@@ -114,7 +143,7 @@ export default function EmployeeMovementTable({
         <Space size={[8, 8]} wrap style={{ marginBottom: 12 }}>
           <Text strong>เลือกแล้ว {selected.length} รายการ</Text>
 
-          {canHrView && isPreHire && (
+          {showHrColumns && isPreHire && (
             <Button
               disabled={!prepareSelected.length || busy || !canManage}
               loading={busy}
@@ -124,7 +153,7 @@ export default function EmployeeMovementTable({
             </Button>
           )}
 
-          {canHrView && !!completeSelected.length && (
+          {showHrColumns && !!completeSelected.length && (
             <Button
               disabled={busy || !canManage}
               loading={busy}
@@ -134,7 +163,7 @@ export default function EmployeeMovementTable({
             </Button>
           )}
 
-          {canHrView && !!reportSelected.length && !isExitTab && (
+          {showHrColumns && !!reportSelected.length && !isExitTab && (
             <>
               <Button onClick={() => printReport("cards", reportSelected)}>
                 ส่งออกรูปภาพพนักงาน
@@ -145,7 +174,7 @@ export default function EmployeeMovementTable({
             </>
           )}
 
-          {canHrView && isExitTab && (
+          {showHrColumns && isExitTab && (
             <>
               <Segmented
                 value={exitView}
@@ -193,7 +222,7 @@ export default function EmployeeMovementTable({
           )}
 
           {/* นอกแท็บพ้นสภาพ: ถ้าเลือกแถวที่พ้นสภาพปนมา ให้มีปุ่มเปิดรายงานพ้นสภาพ */}
-          {canHrView && !isExitTab && selectedExitIds.length > 0 && (
+          {showHrColumns && !isExitTab && selectedExitIds.length > 0 && (
             <Button
               icon={<FileImageOutlined />}
               onClick={() => printReport("exit", selectedExitIds)}
@@ -207,12 +236,11 @@ export default function EmployeeMovementTable({
       <Spin spinning={loading} description="กำลังโหลดข้อมูลพนักงาน..." size="large">
       <div style={{ padding: 16, minHeight: 180 }}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1160 }}>
+          <div style={{ minWidth: showHrColumns ? 1160 : 760 }}>
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "42px 2fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr",
+                gridTemplateColumns: gridColumns,
                 gap: 16,
                 padding: "10px 12px",
                 borderBottom: "2px solid #d9d9d9",
@@ -231,10 +259,10 @@ export default function EmployeeMovementTable({
               <div>ระดับ</div>
               <div>สังกัด</div>
               <div>เริ่มงานวันแรก</div>
-              <div>สถานะการทำงาน</div>
-              <div>ไฟล์ต่างๆ</div>
-              <div>Audit Management</div>
-              <div>Company Assets</div>
+              {showHrColumns && <div>สถานะการทำงาน</div>}
+              {showHrColumns && <div>ไฟล์ต่างๆ</div>}
+              {showAuditColumn && <div>Audit Management</div>}
+              {showAssetsColumn && <div>Company Assets</div>}
             </div>
 
             {!rows.length && !loading && (
@@ -256,8 +284,7 @@ export default function EmployeeMovementTable({
                   key={row.id}
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "42px 2fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr",
+                    gridTemplateColumns: gridColumns,
                     gap: 16,
                     padding: "14px 12px",
                     borderBottom: "1px solid #f0f0f0",
@@ -302,7 +329,7 @@ export default function EmployeeMovementTable({
                     {formatDate(row.hire_date)}
                   </div>
 
-                  <div>
+                  {showHrColumns && <div>
                     <Tag
                       color={safeTagColor(row.color)}
                       style={{
@@ -321,9 +348,9 @@ export default function EmployeeMovementTable({
                         </Button>
                       </div>
                     )}
-                  </div>
+                  </div>}
 
-                  <div>
+                  {showHrColumns && <div>
                     <Tag
                       color={file.color}
                       style={{
@@ -340,14 +367,14 @@ export default function EmployeeMovementTable({
                       <Button
                         icon={<FileImageOutlined />}
                         onClick={() => isExitStatus ? onOpenSeparation?.(row) : printReport("cards", [row.id])}
-                        disabled={!canHrView || (!isExitStatus && !row.orientation_report_ready)}
+                        disabled={!showHrColumns || (!isExitStatus && !row.orientation_report_ready)}
                       >
                         ดู / จัดการ
                       </Button>
                     </div>
-                  </div>
+                  </div>}
 
-                  <div>
+                  {showAuditColumn && <div>
                     <Tag
                       color={audit.color}
                       style={{
@@ -364,14 +391,14 @@ export default function EmployeeMovementTable({
                       <Button
                         icon={<SettingOutlined />}
                         onClick={() => onManageChecklist(row, "AUDIT")}
-                        disabled={!canAuditView && !canHrView}
+                        disabled={!showAuditColumn}
                       >
                         ดู / จัดการ
                       </Button>
                     </div>
-                  </div>
+                  </div>}
 
-                  <div>
+                  {showAssetsColumn && <div>
                     <Tag
                       color={assets.color}
                       style={{
@@ -388,12 +415,12 @@ export default function EmployeeMovementTable({
                       <Button
                         icon={<SettingOutlined />}
                         onClick={() => onManageChecklist(row, "ASSET")}
-                        disabled={!canHrView}
+                        disabled={!showAssetsColumn}
                       >
                         ดู / จัดการ
                       </Button>
                     </div>
-                  </div>
+                  </div>}
                 </div>
               );
             })}

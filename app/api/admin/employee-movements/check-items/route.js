@@ -1,10 +1,16 @@
 import { movementSharedViewGate, movementAreaEditGate } from "@/lib/employeeMovementAuditAccess";
 import { NextResponse } from "next/server";
+import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 import { db, gate, safeError, authorizedEmployee } from "@/lib/employeeMovements";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i;
 const validArea = x => ["AUDIT", "ASSET"].includes(x);
 const validState = x => ["PENDING", "COMPLETED"].includes(x);
+async function movementSharedViewGateForArea(req, area) {
+  if (area !== "ASSET") return true;
+  const access = await requireScopedAccess("ems.employee_movements", "view", {scopeType:"employee"});
+  return access.ok;
+}
 const reply = (error, status=400) => NextResponse.json({ success:false, error }, {status});
 
 export async function GET(req) {
@@ -15,9 +21,13 @@ export async function GET(req) {
     const employeeId = searchParams.get("employee_id");
     if (!employeeId || !UUID.test(employeeId)) return reply("employee_id ไม่ถูกต้อง");
     if (!await authorizedEmployee(access.guard, employeeId)) return reply("ไม่พบพนักงานในขอบเขตสิทธิ์",403);
-    const {data,error} = await db.from("employee_movement_check_items")
+    // Audit-only permission cannot read Company Assets through this shared API.
+    const hrView = await movementSharedViewGateForArea(req, "ASSET");
+    let query = db.from("employee_movement_check_items")
       .select("id,employee_id,area,item_name,state,notes,created_at,updated_at,completed_at")
-      .eq("employee_id",employeeId).order("created_at",{ascending:true});
+      .eq("employee_id",employeeId);
+    if (!hrView) query = query.eq("area", "AUDIT");
+    const {data,error} = await query.order("created_at",{ascending:true});
     if (error) throw error;
     return NextResponse.json({success:true,data:data||[]});
   } catch (error) { return safeError(error); }

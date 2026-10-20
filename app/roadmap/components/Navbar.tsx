@@ -46,32 +46,45 @@ export default function Navbar({
   const pathname = usePathname();
   const { user, loadingUser } = useAuth();
   const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+  const [serverIsSuperAdmin, setServerIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    const empId = user?.employee_id || user?.id;
-    if (!empId) return;
+    if (!user) return;
 
-    if (user?.role === "SUPER_ADMIN" || user?.role_code === "SUPER_ADMIN") {
-      return;
-    }
+    const controller = new AbortController();
 
     async function fetchPermissions() {
       try {
-        const res = await fetch("/roadmap/api/user-access");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          const myAccess = json.data.find(
-            (item: any) => item.employee_id === empId,
-          );
-          if (myAccess && Array.isArray(myAccess.menus)) {
-            setAllowedMenus(myAccess.menus);
-          }
+        const response = await fetch("/roadmap/api/user-access/me", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        const json = await response.json();
+
+        if (controller.signal.aborted) return;
+
+        if (!response.ok || !json.success) {
+          setAllowedMenus([]);
+          setServerIsSuperAdmin(false);
+          return;
         }
-      } catch (err) {
-        console.error(err);
+
+        setAllowedMenus(Array.isArray(json.data?.menus) ? json.data.menus : []);
+
+        setServerIsSuperAdmin(json.data?.isSuperAdmin === true);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Load Roadmap menu access failed:", error);
+          setAllowedMenus([]);
+          setServerIsSuperAdmin(false);
+        }
       }
     }
-    fetchPermissions();
+
+    void fetchPermissions();
+
+    return () => controller.abort();
   }, [user]);
 
   const getAvatarFallback = (name?: string | null) => {
@@ -85,8 +98,7 @@ export default function Navbar({
       .slice(0, 2);
   };
 
-  const isSuperAdmin =
-    user?.role === "SUPER_ADMIN" || user?.role_code === "SUPER_ADMIN";
+  const isSuperAdmin = serverIsSuperAdmin;
 
   return (
     <div

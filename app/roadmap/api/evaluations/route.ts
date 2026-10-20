@@ -16,7 +16,6 @@ export async function GET(req: Request) {
   const employeeId = url.searchParams.get("employeeId");
   const year = url.searchParams.get("year");
   const status = url.searchParams.get("status");
-  
 
   if (!employeeId && !status) {
     return NextResponse.json(
@@ -141,15 +140,27 @@ export async function POST(req: Request) {
   const status = body.status;
   const requestedTypeId = body.evaluationTypeId;
   const requestedTypeName = body.evaluationType;
-  const allowed = await requireRoadmapPermission(evaluatorId, "Evaluate HR");
+  try {
+    const allowed = await requireRoadmapPermission(evaluatorId, "Evaluate HR");
 
-  if (!allowed) {
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "คุณไม่มีสิทธิ์ใช้งานเมนูนี้",
+        },
+        { status: 403 },
+      );
+    }
+  } catch (error) {
+    console.error("Check Evaluate HR access failed:", error);
+
     return NextResponse.json(
       {
         success: false,
-        error: "คุณไม่มีสิทธิ์ใช้งานเมนูนี้",
+        error: "ไม่สามารถตรวจสอบสิทธิ์การประเมินได้",
       },
-      { status: 403 },
+      { status: 500 },
     );
   }
 

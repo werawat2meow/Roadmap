@@ -15,7 +15,7 @@ const showValue = (value) => value || "-";
 
 export default function ApprovedEmployeeReportPage() {
 
-  const { isChecking, canView } = usePageGuard({
+  const { isChecking, canView, canEdit } = usePageGuard({
     module: "recruitment.report.approve.emp",
     unauthorizedRedirect: "/recruitment",
   });
@@ -199,7 +199,23 @@ export default function ApprovedEmployeeReportPage() {
       fixed: "right",
       align: "center",
       render: (_, row) => (
-        <ExportEmploymentContractButton id={row.id} size="small" />
+        <Space orientation="vertical" size={4}>
+        <ExportEmploymentContractButton
+          id={row.id}
+          size="small"
+          onSaved={(signerId, signatureType) => setData(current => current.map(item => item.id === row.id ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType } : item))}
+          autoExport={Boolean(row.contract_number)}
+          signerId={row.contract_signer_id}
+          employerSignatureType={row.employer_signature_type}
+        />
+        {canEdit && <ExportEmploymentContractButton
+          id={row.id} size="small" type="default" saveOnly
+          buttonText="อัปเดตผู้ลงนาม"
+          signerId={row.contract_signer_id}
+          employerSignatureType={row.employer_signature_type}
+          onSaved={(signerId, signatureType) => setData(current => current.map(item => item.id === row.id ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType } : item))}
+        />}
+        </Space>
       ),
     },
   ];

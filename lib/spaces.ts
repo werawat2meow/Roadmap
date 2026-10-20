@@ -68,7 +68,13 @@ function buildPublicUrl(key: string): string {
 export async function uploadFileToSpaces(
   file: File,
   folder = "job-recruitment",
-  customFileName?: string
+  customFileName?: string,
+  options: {
+    // Omission preserves existing callers; null leaves the object's ACL unset.
+    acl?: "public-read" | "private" | null;
+    abortSignal?: AbortSignal;
+    metadata?: Record<string, string>;
+  } = {}
 ) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
@@ -91,8 +97,10 @@ export async function uploadFileToSpaces(
       Key: key,
       Body: buffer,
       ContentType: file.type || "application/octet-stream",
-      ACL: "public-read",
-    })
+      ...(options.acl === null ? {} : { ACL: options.acl ?? "public-read" }),
+      ...(options.metadata ? { Metadata: options.metadata } : {}),
+    }),
+    { abortSignal: options.abortSignal }
   );
 
   return {

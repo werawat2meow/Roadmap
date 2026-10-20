@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { approvalAccess } from "./approval";
 
 export async function GET(request) {
   try {
+    const guard = await approvalAccess();
+    if (!guard.ok) return guard.response;
     const { searchParams } = new URL(request.url);
 
     const type = searchParams.get("type");

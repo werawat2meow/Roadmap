@@ -53,7 +53,10 @@ export async function GET(request) {
           division_id,
           unit_id,
           user_approve,
-          hire_date
+          hire_date,
+          contract_number,
+          contract_signer_id,
+          employer_signature_type
         `,
         { count: "exact" }
       )
@@ -144,6 +147,9 @@ export async function GET(request) {
           ? [approver.first_name_th, approver.last_name_th].filter(Boolean).join(" ")
           : null,
         hire_date: row.hire_date,
+        contract_number: row.contract_number,
+        contract_signer_id: row.contract_signer_id,
+        employer_signature_type: row.employer_signature_type,
       };
     });
 

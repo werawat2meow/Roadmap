@@ -14,7 +14,7 @@ import type {
   EmploymentContractData,
 } from "./types";
 
-const APPROVED_APPLICATION_STATUS = 15;
+const CONTRACT_APPLICATION_STATUSES = [15, 17];
 
 type ContractApplicationRow = {
   id: string;
@@ -258,10 +258,10 @@ async function getApprovedApplication(contractId: string): Promise<ContractAppli
     throw new ContractDataError("NOT_FOUND", "ไม่พบข้อมูลใบสมัคร");
   }
 
-  if (application.status !== APPROVED_APPLICATION_STATUS) {
+  if (!CONTRACT_APPLICATION_STATUSES.includes(Number(application.status))) {
     throw new ContractDataError(
       "NOT_APPROVED",
-      "สามารถจัดทำสัญญาได้เฉพาะใบสมัครที่มีสถานะ 15 เท่านั้น"
+      "สามารถจัดทำสัญญาได้เฉพาะใบสมัครสถานะ 15 หรือ 17"
     );
   }
 
@@ -290,13 +290,8 @@ export async function getEmploymentContractData(
   requestUrl: string,
 ): Promise<EmploymentContractBaseData> {
   const application = await getApprovedApplication(contractId);
-  const employeeGeothaiAddressPromise = resolveGeothaiAddress(requestUrl, {
-    provinceId: application.province_id,
-    districtId: application.district_id,
-    subdistrictId: application.subdistrict_id,
-  });
 
-  if (!application.company_id || !application.emp_id) {
+  if (!application.company_id || (Number(application.status) === 15 && !application.emp_id)) {
     throw new ContractDataError(
       "INCOMPLETE_DATA",
       "ใบสมัครที่อนุมัติแล้วต้องมี company_id และ emp_id"
@@ -326,13 +321,13 @@ export async function getEmploymentContractData(
             .eq("id", application.branch_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
-      supabaseAdmin
+      application.emp_id ? supabaseAdmin
         .from("employees")
         .select(
           "id, title_id, first_name_th, last_name_th, first_name_en, last_name_en"
         )
         .eq("id", application.emp_id)
-        .maybeSingle(),
+        .maybeSingle() : Promise.resolve({ data: null, error: null }),
       application.position_id
         ? supabaseAdmin
             .from("positions")
@@ -378,14 +373,14 @@ export async function getEmploymentContractData(
   const department = departmentResult.data as DepartmentRow | null;
   const level = levelResult.data as PositionLevelRow | null;
 
-  if (!company || !employee) {
+  if (!company || (Number(application.status) === 15 && !employee)) {
     throw new ContractDataError(
       "INCOMPLETE_DATA",
       "ไม่พบข้อมูลบริษัทหรือพนักงานที่เชื่อมกับใบสมัคร"
     );
   }
 
-  const titleId = employee.title_id ?? application.title_id;
+  const titleId = employee?.title_id ?? application.title_id;
   const companyGeothaiAddressPromise = resolveGeothaiAddress(requestUrl, {
     provinceId: company.province_code,
     districtId: company.district_code,
@@ -399,7 +394,7 @@ export async function getEmploymentContractData(
           .eq("id", titleId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    employeeGeothaiAddressPromise,
+    resolveGeothaiAddress(requestUrl, { provinceId: application.province_id, districtId: application.district_id, subdistrictId: application.subdistrict_id }),
     companyGeothaiAddressPromise,
   ]);
 
@@ -410,9 +405,16 @@ export async function getEmploymentContractData(
   }
 
   const title = titleResult.data as TitleRow | null;
-  const startDate = application.start_date ?? application.hire_date;
+  const startDate = Number(application.status) === 17 ? application.start_date : application.start_date ?? application.hire_date;
   const salary = toContractNumber(application.base_salary);
   const positionAllowance = toContractNumber(application.position_allowance);
+  if (Number(application.status) === 17 && (!startDate || !formatContractDateTH(startDate) || !application.probation_end_date ||
+    !formatContractDateTH(application.probation_end_date) || !(application.probation_days > 0) ||
+    salary === null || salary < 0 || !(employee?.first_name_th || application.first_name)?.trim() ||
+    !(employee?.last_name_th || application.last_name)?.trim() || !company.company_name_th?.trim() ||
+    !company.address?.trim() || !application.current_address_no?.trim() || !position?.position_name || !department?.department_name)) {
+    throw new ContractDataError("INCOMPLETE_DATA", "กรุณาตรวจชื่อ ที่อยู่ บริษัท ตำแหน่ง ฝ่าย วันเริ่มงาน ระยะทดลองงาน และเงินเดือนให้ครบ");
+  }
 
   return {
     contract: {
@@ -449,13 +451,13 @@ export async function getEmploymentContractData(
       ]),
     },
     employee: {
-      id: employee.id,
+      id: employee?.id ?? null,
       prefixTH: title?.title_name_th ?? null,
-      firstNameTH: employee.first_name_th,
-      lastNameTH: employee.last_name_th,
+      firstNameTH: employee?.first_name_th || application.first_name || "",
+      lastNameTH: employee?.last_name_th || application.last_name || "",
       prefixEN: title?.title_name_en ?? null,
-      firstNameEN: employee.first_name_en,
-      lastNameEN: employee.last_name_en,
+      firstNameEN: employee?.first_name_en ?? null,
+      lastNameEN: employee?.last_name_en ?? null,
       addressTH: joinNonEmpty([
         application.current_address_no,
         application.village_no,

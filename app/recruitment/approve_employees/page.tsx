@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Table,
   Input,
+  DatePicker,
   Select,
   Button,
   Space,
@@ -14,11 +15,14 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import AntIcon from '@/components/AntIcon';
 import LoadingOrb from "@/app/components/LoadingOrb";
 import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
 import usePageGuard from "@/hooks/usePageGuard";
 import styles from './page.module.css';
+import BatchApproval from './BatchApproval';
+import ExportEmploymentContractButton from '@/app/recruitment/components/pdf/employment-contract/ExportEmploymentContractButton';
 
 const { Text, Title } = Typography;
 
@@ -29,6 +33,7 @@ const STATUS = {
   PENDING: 10,
   WAIT_HR: 12,
   WAIT_DELAY: 13,
+  NO_SHOW: 14,
   APPROVED: 15,
   PENDING_START_WORK: 17,
 } as const;
@@ -44,6 +49,7 @@ const STATUS_TEXT: Record<number, string> = {
   [STATUS.PENDING]: 'ผ่านการคัดเลือก',
   [STATUS.WAIT_HR]: 'นัดวันเริ่มทำงาน',
   [STATUS.WAIT_DELAY]: 'เลื่อนวันเริ่มทำงาน',
+  [STATUS.NO_SHOW]: 'ไม่มาเริ่มงาน',
   [STATUS.APPROVED]: 'อัพเดตเข้าฐานข้อมูลกลาง',
   [STATUS.PENDING_START_WORK]: 'รอเริ่มงาน',
 };
@@ -66,8 +72,9 @@ interface Applicant {
   first_name: string;
   last_name: string;
   position_name: string;
-  interview_round: number;
+  interview_round: number | null;
   interview_datetime: string | null;
+  start_date: string | null;
   status: number;
 }
 
@@ -75,6 +82,8 @@ interface Filters {
   keyword: string;
   status?: number;
   position_id?: string;
+  start_date_from?: string;
+  start_date_to?: string;
   page: number;
   pageSize: number;
 }
@@ -92,6 +101,8 @@ export default function WaitingApprovalPage() {
   const [data, setData] = useState<Applicant[]>([]);
   const [total, setTotal] = useState(0);
   const [keywordInput, setKeywordInput] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [selection, setSelection] = useState<{ filterKey: string; ids: string[] }>({ filterKey: '', ids: [] });
   const [filters, setFilters] = useState<Filters>({
     keyword: '',
     status: undefined,
@@ -104,12 +115,18 @@ export default function WaitingApprovalPage() {
     filters.keyword,
     filters.status,
     filters.position_id,
+    filters.start_date_from || filters.start_date_to,
   ].filter(Boolean).length;
+
+  const filterKey = JSON.stringify(filters);
+  const selectedApplicants = selection.filterKey === filterKey
+    ? data.filter(row => selection.ids.includes(row.application_id) && (row.status === STATUS.PENDING_START_WORK || row.status === STATUS.APPROVED))
+    : [];
 
   const actionableCount = useMemo(
     () =>
       data.filter((item) =>
-        ([STATUS.WAIT_HR, STATUS.WAIT_DELAY, STATUS.PENDING_START_WORK] as number[]).includes(item.status)
+        ([STATUS.WAIT_HR, STATUS.WAIT_DELAY, STATUS.NO_SHOW, STATUS.PENDING_START_WORK] as number[]).includes(item.status)
       ).length,
     [data]
   );
@@ -126,6 +143,8 @@ export default function WaitingApprovalPage() {
       keyword: '',
       status: undefined,
       position_id: undefined,
+      start_date_from: undefined,
+      start_date_to: undefined,
       page: 1,
     }));
   };
@@ -144,7 +163,7 @@ export default function WaitingApprovalPage() {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = async (signal: AbortSignal) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -153,10 +172,12 @@ export default function WaitingApprovalPage() {
       if (filters.keyword) params.append('keyword', filters.keyword);
       if (filters.status) params.append('status', String(filters.status));
       if (filters.position_id) params.append('position_id', filters.position_id);
+      if (filters.start_date_from) params.append('start_date_from', filters.start_date_from);
+      if (filters.start_date_to) params.append('start_date_to', filters.start_date_to);
 
       const res = await fetch(
         `/recruitment/api/approve_employees?${params.toString()}`,
-        { cache: 'no-store' }
+        { cache: 'no-store', signal }
       );
 
       if (!res.ok) {
@@ -165,6 +186,7 @@ export default function WaitingApprovalPage() {
       }
 
       const json = await res.json();
+      if (signal.aborted) return;
       if (json.success) {
         setData(json.data);
         setTotal(json.total);
@@ -172,10 +194,11 @@ export default function WaitingApprovalPage() {
         message.error(json.message || 'เกิดข้อผิดพลาด');
       }
     } catch (err) {
+      if (signal.aborted) return;
       console.error(err);
       message.error('เกิดข้อผิดพลาด');
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   };
 
@@ -222,6 +245,7 @@ export default function WaitingApprovalPage() {
       key: 'interview_round',
       width: 120,
       align: 'center',
+      render: (value: number | null) => value ?? '-',
     },
     {
       title: 'วันสัมภาษณ์',
@@ -242,6 +266,15 @@ export default function WaitingApprovalPage() {
           </div>
         );
       },
+    },
+    {
+      title: 'วันเริ่มงาน',
+      dataIndex: 'start_date',
+      key: 'start_date',
+      width: 150,
+      render: (value: string | null) => value
+        ? dayjs(value).format('DD/MM/YYYY')
+        : <span className={styles.mutedValue}>-</span>,
     },
     {
       title: 'สถานะ',
@@ -271,7 +304,7 @@ export default function WaitingApprovalPage() {
             />
           </Tooltip>
 
-          {([STATUS.WAIT_HR, STATUS.WAIT_DELAY, STATUS.PENDING_START_WORK] as number[]).includes(row.status) && (
+          {([STATUS.WAIT_HR, STATUS.WAIT_DELAY, STATUS.NO_SHOW, STATUS.PENDING_START_WORK] as number[]).includes(row.status) && (
             <Tooltip title="อัปเดตสถานะ">
               <Button
                 aria-label="อัปเดตสถานะ"
@@ -292,7 +325,9 @@ export default function WaitingApprovalPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [filters]);
 
   useEffect(() => {
@@ -358,10 +393,21 @@ export default function WaitingApprovalPage() {
               <Title level={4} className={styles.cardTitle}>รายการผู้สมัครรออนุมัติ</Title>
               <Text className={styles.cardSubtitle}>ค้นหา ตรวจสอบ และอัปเดตข้อมูลการเริ่มงาน</Text>
             </div>
+            <Space wrap>
+              <ExportEmploymentContractButton id={selectedApplicants[0]?.application_id ?? ""}
+                ids={selectedApplicants.map(row => row.application_id)}
+                disabled={batchBusy || !selectedApplicants.length}
+                buttonText={`Export สัญญา (${selectedApplicants.length})`} />
+              <BatchApproval selected={selectedApplicants.filter(row => row.status === STATUS.PENDING_START_WORK)} onBusyChange={setBatchBusy}
+                onComplete={() => {
+                  setSelection({ filterKey: '', ids: [] });
+                  setFilters(previous => ({ ...previous }));
+                }} />
             <div className={styles.resultBadge}>
               <AntIcon name="TeamOutlined" />
               {total.toLocaleString()} รายการ
             </div>
+            </Space>
           </div>
 
           <div className={styles.filterPanel}>
@@ -456,6 +502,22 @@ export default function WaitingApprovalPage() {
                     .includes(input.toLowerCase())
                 }
               />
+              <DatePicker.RangePicker
+                aria-label="ช่วงวันเริ่มงาน"
+                placeholder={['วันเริ่มงาน ตั้งแต่', 'ถึงวันที่']}
+                format="DD/MM/YYYY"
+                allowEmpty={[true, true]}
+                value={[
+                  filters.start_date_from ? dayjs(filters.start_date_from) : null,
+                  filters.start_date_to ? dayjs(filters.start_date_to) : null,
+                ]}
+                onChange={(dates) => setFilters((prev) => ({
+                  ...prev,
+                  start_date_from: dates?.[0]?.format('YYYY-MM-DD'),
+                  start_date_to: dates?.[1]?.format('YYYY-MM-DD'),
+                  page: 1,
+                }))}
+              />
               <div className={styles.pageSizeControl}>
                 <Text>แสดง</Text>
                 <Select
@@ -473,10 +535,22 @@ export default function WaitingApprovalPage() {
           <Table
             className={styles.table}
             rowKey="application_id"
+            rowSelection={{
+              selectedRowKeys: selectedApplicants.map(row => row.application_id),
+              onChange: (keys) => {
+                if (keys.length > 20) message.warning('เลือกได้ครั้งละไม่เกิน 20 คน');
+                setSelection({ filterKey, ids: keys.slice(0, 20).map(String) });
+              },
+              getCheckboxProps: (row) => ({
+                disabled: batchBusy || (row.status !== STATUS.PENDING_START_WORK && row.status !== STATUS.APPROVED) ||
+                  (selectedApplicants.length >= 20 && !selectedApplicants.some(item => item.application_id === row.application_id)),
+                'aria-label': `เลือก ${row.first_name} ${row.last_name}`,
+              }),
+            }}
             loading={loading}
             columns={columns}
             dataSource={data}
-            scroll={{ x: 1040 }}
+            scroll={{ x: 1190 }}
             locale={{ emptyText: 'ไม่พบผู้สมัครที่ตรงกับตัวกรอง' }}
             pagination={{
               current: filters.page,

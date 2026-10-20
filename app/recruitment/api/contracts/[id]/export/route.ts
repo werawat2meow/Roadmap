@@ -1,18 +1,7 @@
+import { exportContractPdf, pdfDownload } from "@/app/recruitment/lib/contracts/exportContract";
 import { withActivity } from "@/app/recruitment/lib/activity/server";
-import { renderToBuffer } from "@react-pdf/renderer";
-
-import {
-  EmploymentContractDocument,
-  fetchImageAsDataUri,
-} from "@/app/recruitment/components/pdf/employment-contract/EmploymentContractDocument";
 import { isEmployerSignatureType } from "@/app/recruitment/components/pdf/employment-contract/types";
 import {
-  buildEmploymentContractData,
-  ensureContractNumberForApplication,
-  getContractSigners,
-} from "@/app/recruitment/lib/contracts";
-import {
-  authorizeContractAccess,
   contractDataErrorResponse,
   contractErrorResponse,
   isValidContractIdentifier,
@@ -29,25 +18,6 @@ type ExportRequestBody = {
   signerId?: unknown;
   employerSignatureType?: unknown;
 };
-
-function sanitizeFilenamePart(value: string | null | undefined): string {
-  return (value ?? "")
-    .normalize("NFKC")
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[.-]+|[.-]+$/g, "")
-    .slice(0, 80);
-}
-
-function createDownloadFilename(
-  employeeName: string,
-  contractNo: string | null,
-): string {
-  const safeEmployeeName = sanitizeFilenamePart(employeeName) || "employee";
-  const safeContractNo = sanitizeFilenamePart(contractNo) || "draft";
-  return `employment-contract-${safeEmployeeName}-${safeContractNo}.pdf`;
-}
 
 async function readRequestBody(request: Request): Promise<ExportRequestBody | null> {
   try {
@@ -99,55 +69,9 @@ async function handlePOST(
   }
 
   try {
-    const authorization = await authorizeContractAccess(id);
-    if (!authorization.ok) return authorization.response;
-
-    // The client supplies only the ID. All signer data is loaded again here.
-    const allowedSigners = await getContractSigners(id);
-    const signer = allowedSigners.find((item) => item.id === body.signerId);
-
-    if (!signer) {
-      return contractErrorResponse(
-        "INVALID_SIGNER",
-        "ผู้ลงนามที่เลือกไม่มีสิทธิ์ลงนามในสัญญานี้",
-        403,
-      );
-    }
-
-    await ensureContractNumberForApplication(id);
-    const contractData = await buildEmploymentContractData(
-      id,
-      signer,
-      request.url,
-    );
-    const logoDataUri = await fetchImageAsDataUri(contractData.company.logo);
-    const document = EmploymentContractDocument({
-      data: contractData,
-      logoDataUri,
-      employerSignatureType: body.employerSignatureType,
-    });
-    const pdfBuffer = await renderToBuffer(document);
-
-    const employeeName = [
-      contractData.employee.firstNameTH,
-      contractData.employee.lastNameTH,
-    ]
-      .filter(Boolean)
-      .join(" ");
-    const filename = createDownloadFilename(
-      employeeName,
-      contractData.contract.contractNo,
-    );
-
-    return new Response(new Uint8Array(pdfBuffer), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition":
-          `attachment; filename="employment-contract.pdf"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-        "Cache-Control": "no-store",
-      },
-    });
+    const result = await exportContractPdf(id, body.signerId, body.employerSignatureType, request.url);
+    if (result.error) return result.error;
+    return pdfDownload(result.buffer, result.filename);
   } catch (error) {
     console.error("EXPORT_EMPLOYMENT_CONTRACT_ERROR", {
       contractId: id,

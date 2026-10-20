@@ -1596,6 +1596,7 @@ export default function Page({ params }) {
               <Col xs={24} md={12} lg={8}>
                 <Text strong>วันที่เริ่มทำงาน</Text>
                 <DatePicker
+                  disabled={applicationStatus === 17 && actionChoice === 15}
                   style={{
                     width: "100%",
                     marginTop: 6,
@@ -1648,6 +1649,7 @@ export default function Page({ params }) {
 
                   {actionChoice === 15 && (
                     <div style={{ marginTop: 16, maxWidth: 320 }}>
+                      <p>อนุมัติด้วยวันเริ่มงาน ตำแหน่ง และค่าจ้างที่บันทึกในใบสมัคร หากต้องการเปลี่ยนวันให้เลือกเลื่อนวันเริ่มงาน</p>
                       <Text strong> Role </Text>
                       <Select
                         style={{

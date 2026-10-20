@@ -4,7 +4,7 @@ import { isIP } from "node:net";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
-import { allowedPage, actions, safeId } from "./policy";
+import { allowedPage, actions, safeId, isActivityExcluded } from "./policy";
 
 const activityContext = new AsyncLocalStorage();
 
@@ -33,6 +33,9 @@ export function eventRowId(userId, eventId) {
 }
 
 export async function writeActivity(request, user, event) {
+  // Exclude this report's page views and exports, including events from older clients.
+  // Keep the route wrapper's authentication and original response behavior.
+  if (isActivityExcluded(event.page_path)) return true;
   try {
     if (!user?.id || !allowedPage(event.page_path) || !actions.includes(event.action)) {
       throw new Error("INVALID_ACTIVITY");

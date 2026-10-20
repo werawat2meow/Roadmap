@@ -390,7 +390,7 @@ export async function PATCH(req, { params }) {
     try {
       await writeActivityLog({
         moduleName: "deduction_types",
-        actionType: "UPDATE",
+        actionType: "update",
         referenceTable: TABLE_NAME,
         referenceId: id,
         description: `แก้ไขประเภทรายการหัก ${data.deduction_code} - ${data.deduction_name}`,
@@ -457,7 +457,7 @@ export async function DELETE(req, { params }) {
     try {
       await writeActivityLog({
         moduleName: "deduction_types",
-        actionType: "DELETE",
+        actionType: "delete",
         referenceTable: TABLE_NAME,
         referenceId: id,
         description: `ลบประเภทรายการหัก ${current.deduction_code} - ${current.deduction_name}`,

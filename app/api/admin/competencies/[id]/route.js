@@ -140,7 +140,7 @@ export async function PATCH(
     await writeActivityLog({
       req,
       module: "Competencies",
-      action: "UPDATE",
+      action: "update",
       description: `แก้ไข Competency ${data.competency_code} - ${data.competency_name}`,
     });
 
@@ -224,7 +224,7 @@ export async function DELETE(
     await writeActivityLog({
       req,
       module: "Competencies",
-      action: "DELETE",
+      action: "delete",
       description: `ลบ Competency ${oldItem.competency_code} - ${oldItem.competency_name}`,
     });
 

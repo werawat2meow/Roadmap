@@ -106,7 +106,7 @@ export async function PATCH(req, { params }) {
      * ========================== */
 
     await writeActivityLog({
-      action: "UPDATE",
+      action: "update",
       module: "Competency Types",
       description: `แก้ไข Competency Type : ${data.type_code} - ${data.type_name}`,
       table_name: "competency_types",
@@ -185,7 +185,7 @@ export async function DELETE(req, { params }) {
      * ========================== */
 
     await writeActivityLog({
-      action: "DELETE",
+      action: "delete",
       module: "Competency Types",
       description: `ลบ Competency Type : ${oldData.type_code} - ${oldData.type_name}`,
       table_name: "competency_types",

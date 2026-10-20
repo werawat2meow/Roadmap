@@ -1956,7 +1956,7 @@ export async function DELETE(req,{ params }) {
           system_code: "HRMS",
           event_status: "SUCCESS",
           moduleName: "employees",
-          actionType: "DELETE",
+          actionType: "delete",
           referenceTable: "employees",
           referenceId: id,
           description:

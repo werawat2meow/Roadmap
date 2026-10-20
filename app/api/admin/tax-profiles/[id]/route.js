@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 /* =========================================================
  * GET BY ID
@@ -238,6 +239,10 @@ export async function PATCH(req, { params }) {
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name: "Tax Profiles",
         action_type: "UPDATE",
         reference_table: "tax_profiles",
@@ -345,6 +350,10 @@ export async function DELETE(req, { params }) {
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name: "Tax Profiles",
         action_type: "DELETE",
         reference_table: "tax_profiles",

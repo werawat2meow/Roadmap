@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Modal, Button } from "antd";
+import { sendBrowserActivity } from "../lib/activity/browser";
 import { toPng } from "html-to-image";
 import dayjs from "dayjs";
 
@@ -96,6 +97,7 @@ const CandidateExportImage = forwardRef(function CandidateExportImage(
     const element = exportRef.current;
     if (!element) return;
 
+    await sendBrowserActivity("EXPORT_REQUESTED");
     await document.fonts.ready;
     await waitForImages(element);
 

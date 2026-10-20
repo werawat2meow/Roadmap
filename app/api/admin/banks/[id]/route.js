@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 /* ==========================================
    GET : Bank Detail
@@ -288,6 +289,10 @@ export async function PATCH(req, { params }) {
     if (error) throw error;
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "Banks",
       action_type: "UPDATE",
       reference_table: "banks",
@@ -370,6 +375,10 @@ export async function DELETE(req, { params }) {
     }
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "Banks",
       action_type: "DELETE",
       reference_table: "banks",

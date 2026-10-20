@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
@@ -210,6 +211,10 @@ export async function PATCH(req, { params }) {
     }
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "user_accounts",
       action_type: "reset_password",
       reference_table: "user_accounts",

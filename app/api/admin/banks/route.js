@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 export async function GET(req) {
   try {
@@ -233,6 +234,10 @@ export async function POST(req){
   if(error)throw error;
 
   await writeActivityLog({
+    actor: getVerifiedAuditActor(req),
+    request: req,
+    system_code: "HRMS",
+    event_status: "SUCCESS",
     module_name:"Banks",
     action_type:"CREATE",
     reference_table:"banks",

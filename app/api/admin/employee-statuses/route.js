@@ -74,6 +74,7 @@ export async function POST(req) {
     const status_name = body?.status_name?.trim();
     const color = body?.color || "green";
     const status = body?.status || "active";
+    const sort_order = body?.sort_order == null ? 0 : Number(body.sort_order);
 
     if (!status_code || !status_name) {
       return NextResponse.json(
@@ -81,6 +82,13 @@ export async function POST(req) {
           success: false,
           error: "กรุณากรอกรหัสสถานะและชื่อสถานะพนักงาน",
         },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isSafeInteger(sort_order) || sort_order < 0) {
+      return NextResponse.json(
+        { success: false, error: "ลำดับการแสดงผลต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป" },
         { status: 400 }
       );
     }
@@ -109,6 +117,7 @@ export async function POST(req) {
           status_name,
           color,
           status,
+          sort_order,
         },
       ])
       .select(`

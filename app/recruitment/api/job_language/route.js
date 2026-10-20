@@ -1,3 +1,4 @@
+import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -49,7 +50,7 @@ export async function GET() {
   });
 }
 
-export async function POST(request) {
+async function handlePOST(request) {
   const body = await request.json();
   
   const position_id = body.position_id;
@@ -71,6 +72,7 @@ export async function POST(request) {
   }
 
   if (existing.data?.id) {
+    setActivityDetails({ action: "UPDATE", resource_id: existing.data.id });
     const updated = await supabaseAdmin
       .from("recruit_job_mix_language")
       .update({ job_to_language , updated_at })
@@ -97,3 +99,4 @@ export async function POST(request) {
 
   return NextResponse.json({ message: "created", data: inserted.data }, { status: 201 });
 }
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/job_language", "action": "CREATE", "resource_type": "job_language", "idField": "position_id", resolveAction: (response) => response.status === 201 ? "CREATE" : "UPDATE" });

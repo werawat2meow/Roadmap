@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
   });
 }
 
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   const { id } = await params;
 
   const body = await request.json();
@@ -48,7 +49,7 @@ export async function PUT(request, { params }) {
   });
 }
 
-export async function DELETE(request, { params }) {
+async function handleDELETE(request, { params }) {
   const { id } = await params;
 
   const { error } = await supabaseAdmin
@@ -71,3 +72,5 @@ export async function DELETE(request, { params }) {
     success: true,
   });
 }
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/job_openings", "action": "UPDATE", "resource_type": "job_openings", "idField": "id"});
+export const DELETE = withActivity(handleDELETE, {"page_path": "/recruitment/setting/job_openings", "action": "DELETE", "resource_type": "job_openings", "idField": "id"});

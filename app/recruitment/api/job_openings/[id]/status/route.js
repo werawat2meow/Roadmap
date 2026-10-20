@@ -1,7 +1,8 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function PATCH(request, { params }) {
+async function handlePATCH(request, { params }) {
   const { id } = await params;
   const body = await request.json();
 
@@ -27,3 +28,4 @@ export async function PATCH(request, { params }) {
     success: true,
   });
 }
+export const PATCH = withActivity(handlePATCH, {"page_path": "/recruitment/setting/job_openings", "action": "UPDATE_STATUS", "resource_type": "job_openings", "idField": "id"});

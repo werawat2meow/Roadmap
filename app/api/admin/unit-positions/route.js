@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
-
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import {
   UNIT_POSITION_SELECT,
   attachMetrics,
@@ -336,6 +336,10 @@ export async function POST(req) {
     const result = attachMetrics(mapped, metricsMap);
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "unit_positions",
       action_type: "create",
       reference_table: "unit_positions",

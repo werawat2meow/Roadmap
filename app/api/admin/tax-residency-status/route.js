@@ -14,8 +14,9 @@ import {
   writeActivityLog,
 } from "@/lib/activityLogger";
 
-const MODULE_CODE =
-  "ems.tax_residency";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
+
+const MODULE_CODE = "ems.tax_residency";
 
 const ALLOWED_STATUSES = [
   "active",
@@ -599,6 +600,10 @@ export async function POST(
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         module_name:
           "tax_residency_statuses",
 

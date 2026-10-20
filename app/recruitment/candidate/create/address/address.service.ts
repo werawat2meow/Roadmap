@@ -26,7 +26,7 @@ export interface SubDistrict {
     postal_code: number;
 }
 
-const API = "/jobs/api/geothai";
+const API = "/recruitment/api/bridge/geothai";
 
 async function request<T>(url: string): Promise<T> {
     const response = await fetch(url, {

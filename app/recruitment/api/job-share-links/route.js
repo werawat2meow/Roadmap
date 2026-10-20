@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { requireScopedAccess } from '@/lib/auth/requireScopedAccess';
@@ -6,7 +7,7 @@ import { getOrCreateShareLink, isOpeningAvailable, isUuid, loadOpening, publicSh
 export const runtime = 'nodejs';
 const failure = (status, code, message) => NextResponse.json({ success: false, code, message }, { status });
 
-export async function POST(request) {
+async function handlePOST(request) {
   try {
     const guard = await requireScopedAccess('recruitment.job.openings', 'view', { lineageScope: true });
     if (!guard.ok) return guard.response;
@@ -28,3 +29,5 @@ export async function POST(request) {
     return failure(500, 'SHARE_LINK_ERROR', 'ไม่สามารถสร้างลิงก์ได้ กรุณาติดต่อผู้ดูแลระบบ');
   }
 }
+
+export const POST = withActivity(handlePOST, {"page_path": "/recruitment/setting/job_openings", "action": "SHARE", "resource_type": "job-share-links", "idField": "job_open_id"});

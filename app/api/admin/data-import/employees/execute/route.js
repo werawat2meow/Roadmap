@@ -497,7 +497,7 @@ export async function POST(
             row.row_no,
 
           employee_code:
-            row.employee_code,
+            item.result.employee_code,
 
           external_employee_id:
             row.external_employee_id ||
@@ -675,7 +675,7 @@ export async function POST(
         jobId,
 
       preserve_employee_code:
-        true,
+        false,
 
       summary: {
         total:

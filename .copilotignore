@@ -17,3 +17,11 @@ app/executive/
 app/payroll/
 app/reports/
 app/settings/
+.env
+.env.*
+*.env
+*.pem
+*.key
+AGENTS.md
+CLAUDE.md
+HR Integration AI Gateway.md

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import RecruitmentActivityTracker from "./components/RecruitmentActivityTracker";
 import RecruitmentClientLayout from "@/app/recruitment/RecruitmentClientLayout";
 import "./recruitment.css"; 
 
@@ -10,6 +12,7 @@ export const metadata = {
 export default function RecruitmentLayout({ children }) {
   return (
     <RecruitmentClientLayout>
+      <Suspense fallback={null}><RecruitmentActivityTracker /></Suspense>
       <div className="p-4">
         {children}
       </div>

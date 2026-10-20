@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 const ALLOWED_STATUSES = [
   "active",
@@ -528,6 +529,10 @@ export async function PATCH(
     }
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name:
         "visa_types",
 
@@ -648,6 +653,10 @@ export async function DELETE(
     }
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name:
         "visa_types",
 

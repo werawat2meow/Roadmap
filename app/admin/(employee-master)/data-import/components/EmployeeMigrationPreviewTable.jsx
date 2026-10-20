@@ -2,6 +2,7 @@
 
 import {
   Alert,
+  Button,
   Table,
   Tag,
   Tooltip,
@@ -39,8 +40,10 @@ function formatMoney(
 export default function EmployeeMigrationPreviewTable({
   rows = [],
   loading = false,
+  onEdit,
 }) {
   const columns = [
+    {title:"Mapping",key:"mapping",width:110,fixed:"left",render:(_,row)=>onEdit?<Button size="small" onClick={()=>onEdit(row)}>แก้ไข</Button>:"-"},
     {
       title: "Row",
       dataIndex:

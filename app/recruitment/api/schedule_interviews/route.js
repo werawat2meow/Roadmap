@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getUserAccess } from "@/app/recruitment/lib/getUserId";
@@ -408,7 +409,7 @@ export async function GET(request) {
 /**
  * PUT /recruitment/api/schedule_interviews
  */
-export async function PUT(request) {
+async function handlePUT(request) {
   try {
     const { id, status } =
       await request.json();
@@ -459,3 +460,4 @@ export async function PUT(request) {
     );
   }
 }
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/schedule_interviews", "action": "UPDATE_STATUS", "resource_type": "candidate", "idField": "id"});

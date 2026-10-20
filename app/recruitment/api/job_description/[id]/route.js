@@ -1,3 +1,4 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 function toNumberOrNull(value) {
@@ -72,7 +73,7 @@ export async function GET(_request, { params }) {
   });
 }
 
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   try {
     const { id } = await params;
 
@@ -221,23 +222,23 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function DELETE(_request, { params }) {
+async function handleDELETE(_request, { params }) {
   const { id } = await params;
 
-  await supabaseAdmin
-    .from("recruit_job_description_requirements")
-    .delete()
-    .eq("job_description_id", id);
+  {
+    const { error: deleteError } = await supabaseAdmin.from("recruit_job_description_requirements").delete().eq("job_description_id", id);
+    if (deleteError) return NextResponse.json({ message: deleteError.message }, { status: 500 });
+  }
 
-  await supabaseAdmin
-    .from("recruit_job_description_responsibilities")
-    .delete()
-    .eq("job_description_id", id);
+  {
+    const { error: deleteError } = await supabaseAdmin.from("recruit_job_description_responsibilities").delete().eq("job_description_id", id);
+    if (deleteError) return NextResponse.json({ message: deleteError.message }, { status: 500 });
+  }
 
-  await supabaseAdmin
-    .from("recruit_job_description_benefits")
-    .delete()
-    .eq("job_description_id", id);
+  {
+    const { error: deleteError } = await supabaseAdmin.from("recruit_job_description_benefits").delete().eq("job_description_id", id);
+    if (deleteError) return NextResponse.json({ message: deleteError.message }, { status: 500 });
+  }
 
   const { error } = await supabaseAdmin
     .from("recruit_job_description")
@@ -250,3 +251,6 @@ export async function DELETE(_request, { params }) {
 
   return NextResponse.json({ message: "Deleted successfully" });
 }
+
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/job_description", "action": "UPDATE", "resource_type": "job_description", "idField": "id"});
+export const DELETE = withActivity(handleDELETE, {"page_path": "/recruitment/setting/job_description", "action": "DELETE", "resource_type": "job_description", "idField": "id"});

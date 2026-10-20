@@ -46,7 +46,7 @@ import {
   HistoryOutlined,
   FolderOpenOutlined,
   FileSearchOutlined,
-  SecurityScanOutlined ,
+  SecurityScanOutlined,
   UnorderedListOutlined,
   UserAddOutlined,
   BarChartOutlined,
@@ -54,6 +54,9 @@ import {
   AppstoreAddOutlined,
   SwapOutlined,
   ShareAltOutlined,
+  SyncOutlined,
+  WarningOutlined,
+  UserSwitchOutlined,
 } from "@ant-design/icons";
 
 export const iconMap = {
@@ -156,6 +159,9 @@ export const iconMap = {
   appstoreAdd: AppstoreAddOutlined,
   swap: SwapOutlined,
   shareAlt: ShareAltOutlined,
+  sync: SyncOutlined,
+  warning: WarningOutlined,
+  userSwitch: UserSwitchOutlined,
 };
 
 

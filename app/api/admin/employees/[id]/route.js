@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 
 import {
   normalizeEmployeePayload,
@@ -1440,6 +1441,10 @@ export async function PATCH(req,{ params }) {
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         moduleName:
           "employees",
 
@@ -1946,6 +1951,10 @@ export async function DELETE(req,{ params }) {
 
       try {
         await writeActivityLog({
+          actor: getVerifiedAuditActor(req),
+          request: req,
+          system_code: "HRMS",
+          event_status: "SUCCESS",
           moduleName: "employees",
           actionType: "DELETE",
           referenceTable: "employees",
@@ -2160,6 +2169,10 @@ export async function DELETE(req,{ params }) {
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         moduleName:"employees",
         actionType:"DELETE",
         referenceTable:"employees",

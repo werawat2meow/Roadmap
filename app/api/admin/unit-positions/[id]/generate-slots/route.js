@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 
 import {
@@ -193,6 +194,10 @@ export async function POST(req, { params }) {
     const remainingGap = Math.max(current.slot_gap - generateCount, 0);
 
     await writeActivityLog({
+      actor: getVerifiedAuditActor(req),
+      request: req,
+      system_code: "HRMS",
+      event_status: "SUCCESS",
       module_name: "unit_positions",
       action_type: "generate_slots",
       reference_table: "unit_positions",

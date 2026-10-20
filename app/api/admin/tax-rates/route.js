@@ -10,6 +10,8 @@ import {
   writeActivityLog,
 } from "@/lib/activityLogger";
 
+import { getVerifiedAuditActor } from "@/lib/audit/authActor";
+
 import {
   requireScopedAccess,
 } from "@/lib/auth/requireScopedAccess";
@@ -749,6 +751,10 @@ export async function POST(
 
     try {
       await writeActivityLog({
+        actor: getVerifiedAuditActor(req),
+        request: req,
+        system_code: "HRMS",
+        event_status: "SUCCESS",
         moduleName:
           "tax_rates",
 

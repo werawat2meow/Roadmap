@@ -1,7 +1,8 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export async function PUT(request) {
+async function handlePUT(request) {
   try {
     const { application_id, sort_order } = await request.json();
 
@@ -68,3 +69,4 @@ export async function PUT(request) {
     );
   }
 }
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/schedule_interviews", "action": "UPDATE", "resource_type": "candidate", "idField": "application_id"});

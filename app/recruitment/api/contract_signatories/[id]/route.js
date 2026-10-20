@@ -1,9 +1,10 @@
+import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 const table = "recruit_contract_signatories";
 
-export async function PUT(request, { params }) {
+async function handlePUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -65,7 +66,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+async function handlePATCH(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -103,3 +104,6 @@ export async function PATCH(request, { params }) {
     );
   }
 }
+
+export const PUT = withActivity(handlePUT, {"page_path": "/recruitment/setting/contract_signatories", "action": "UPDATE", "resource_type": "contract_signatories", "idField": "id"});
+export const PATCH = withActivity(handlePATCH, {"page_path": "/recruitment/setting/contract_signatories", "action": "UPDATE_STATUS", "resource_type": "contract_signatories", "idField": "id"});

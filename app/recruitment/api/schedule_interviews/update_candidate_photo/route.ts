@@ -97,9 +97,13 @@ async function handlePOST(req: Request) {
 
     const folder =`job-recruitment/${applicationId}/profile`;
 
-    const fileName =`profile_${applicationId}.${extension}`;
+    const baseFileName = `profile_${applicationId}`;
 
-    const filePath =`${folder}/${fileName}`;
+    // uploadFileToSpaces appends the extension from the input file name.
+    const uploadFile = new File([file], `${baseFileName}.${extension}`, {
+      type: file.type,
+      lastModified: file.lastModified,
+    });
 
     // =====================================================
     // ลบไฟล์เก่าทั้ง JPG และ PNG
@@ -133,9 +137,9 @@ async function handlePOST(req: Request) {
 
     const uploadResult =
       await uploadFileToSpaces(
-        file,
+        uploadFile,
         folder,
-        fileName
+        baseFileName
       );
 
     if (!uploadResult?.url) {

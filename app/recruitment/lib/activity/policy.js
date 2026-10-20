@@ -1,5 +1,9 @@
 // Explicit page allowlist. Update when adding Recruitment pages.
 export const pageTemplates = [
+  "/recruitment/orientation",
+  "/recruitment/orientation/manage",
+  "/recruitment/orientation/manage/[sessionId]",
+  "/recruitment/orientation/manage/upload",
   "/recruitment",
   "/recruitment/approve_employees",
   "/recruitment/approve_employees",
@@ -49,6 +53,9 @@ export const pageTemplates = [
 
 export const browserActions = ["PAGE_VIEW", "PRINT_REQUESTED", "EXPORT_REQUESTED"];
 export const actions = [...browserActions, "CREATE", "UPDATE", "DELETE", "UPDATE_STATUS", "APPROVE", "EXPORT", "SHARE", "LOGOUT"];
+export function isActivityExcluded(path) {
+  return typeof path === "string" && path.replace(/\/+$/, "") === "/recruitment/report/activity_logs";
+}
 export function safeId(value) {
   return (typeof value === "string" || typeof value === "number") && /^[a-zA-Z0-9_-]{1,80}$/.test(String(value)) ? String(value) : null;
 }

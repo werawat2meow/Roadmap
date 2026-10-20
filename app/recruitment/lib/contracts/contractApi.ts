@@ -50,10 +50,10 @@ export function isValidContractIdentifier(value: unknown): value is string {
   );
 }
 
-export async function authorizeContractAccess(contractId: string) {
+export async function authorizeContractAccess(contractId: string, action: "view" | "edit" = CONTRACT_PERMISSION_ACTION) {
   const guard = await requireScopedAccess(
     CONTRACT_PERMISSION_MODULE,
-    CONTRACT_PERMISSION_ACTION,
+    action,
     {
       scopeType: "employee",
       lineageScope: true,
@@ -130,7 +130,7 @@ export function contractDataErrorResponse(
     case "NOT_APPROVED":
       return contractErrorResponse(
         "CONTRACT_NOT_ELIGIBLE",
-        "สามารถส่งออกสัญญาได้เฉพาะใบสมัครสถานะ 15",
+        "สามารถส่งออกสัญญาได้เฉพาะใบสมัครสถานะ 15 หรือ 17",
         403,
       );
     case "SIGNER_NOT_ALLOWED":
@@ -142,13 +142,13 @@ export function contractDataErrorResponse(
     case "INCOMPLETE_DATA":
       return contractErrorResponse(
         "CONTRACT_DATA_INCOMPLETE",
-        "ข้อมูลสำหรับจัดทำสัญญายังไม่ครบถ้วน",
-        500,
+        error.message,
+        422,
       );
     case "DATABASE_ERROR":
       return contractErrorResponse(
         "DATABASE_ERROR",
-        "ไม่สามารถอ่านข้อมูลสำหรับจัดทำสัญญาได้",
+        error.message,
         500,
       );
     default:

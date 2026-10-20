@@ -64,6 +64,12 @@ export default function SidebarContent({
         icon: "BookOutlined",
       },
       {
+        label: "Orientation",
+        href: "/recruitment/orientation",
+        icon: "TeamOutlined",
+        permission: "recruitment.orientation.view",
+      },
+      {
         label: "Report",
         icon: "SnippetsOutlined",
         defaultOpen: false,

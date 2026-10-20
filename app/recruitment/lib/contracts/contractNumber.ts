@@ -1,153 +1,26 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { cleanText } from "@/lib/employee/employeePayload";
-
 import { ContractDataError } from "./errors";
 
-const CONTRACT_NUMBER_RPC = "get_next_contract_number";
+type ContractNumberApplication = { id: string; company_id: string | null; contract_number: string | null };
 
-type ContractNumberApplication = {
-  id: string;
-  company_id: string | null;
-  contract_number: string | null;
-};
-
-function readContractNumber(value: unknown): string {
-  return cleanText(
-    Array.isArray(value)
-      ? value[0]?.contract_number || value[0]
-      : value && typeof value === "object" && "contract_number" in value
-        ? value.contract_number
-        : value,
-  );
+// Approval and export must use the same database lock and persisted number.
+export async function generateContractNumber(application: ContractNumberApplication): Promise<string> {
+  return ensureContractNumberForApplication(application.id);
 }
 
-export async function generateContractNumber(
-  application: ContractNumberApplication,
-): Promise<string> {
-  const existingContractNumber = cleanText(application.contract_number);
-  if (existingContractNumber) return existingContractNumber;
-
-  if (!application.company_id) {
-    throw new ContractDataError(
-      "INCOMPLETE_DATA",
-      "ไม่พบ Company สำหรับออกเลขที่สัญญา",
-    );
-  }
-
-  const { data: company, error: companyError } = await supabaseAdmin
-    .from("companies")
-    .select("id, company_code")
-    .eq("id", application.company_id)
-    .maybeSingle();
-
-  if (companyError || !company) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ไม่สามารถดึงข้อมูลบริษัทสำหรับออกเลขที่สัญญาได้",
-      { cause: companyError },
-    );
-  }
-
-  const companyCode = cleanText(company.company_code);
-  if (!companyCode) {
-    throw new ContractDataError(
-      "INCOMPLETE_DATA",
-      "ไม่พบ Company Code สำหรับออกเลขที่สัญญา",
-    );
-  }
-
-  const { data: rawContractNumber, error: contractNumberError } =
-    await supabaseAdmin.rpc(CONTRACT_NUMBER_RPC, {
-      p_application_id: application.id,
-      p_company_id: application.company_id,
-      p_company_code: companyCode,
-    });
-
-  if (contractNumberError) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ไม่สามารถสร้างเลขที่สัญญาจ้างได้",
-      { cause: contractNumberError },
-    );
-  }
-
-  const contractNumber = readContractNumber(rawContractNumber);
-  if (!contractNumber) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ระบบสร้างเลขที่สัญญาจ้างไม่สำเร็จ",
-    );
-  }
-
-  return contractNumber;
-}
-
-export async function ensureContractNumberForApplication(
-  applicationId: string,
-): Promise<string> {
-  const { data, error } = await supabaseAdmin
-    .from("recruit_job_applications")
-    .select("id, company_id, contract_number")
-    .eq("id", applicationId)
-    .maybeSingle();
-
+export async function ensureContractNumberForApplication(applicationId: string): Promise<string> {
+  const { data, error } = await supabaseAdmin.rpc("recruit_ensure_contract_number", { p_application_id: applicationId });
   if (error) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ไม่สามารถตรวจสอบเลขที่สัญญาจ้างได้",
-      { cause: error },
-    );
+    if (["PGRST202", "42883"].includes(error.code)) {
+      throw new ContractDataError("DATABASE_ERROR", "กรุณาติดตั้ง SQL contract-number-transaction.sql ก่อนส่งออกหรืออนุมัติสัญญา", { cause: error });
+    }
+    if (error.message?.includes("CONTRACT_NOT_ELIGIBLE")) throw new ContractDataError("NOT_APPROVED", "สถานะใบสมัครเปลี่ยนแล้ว");
+    if (error.message?.includes("CONTRACT_NOT_FOUND")) throw new ContractDataError("NOT_FOUND", "ไม่พบใบสมัคร");
+    if (error.message?.includes("CONTRACT_COMPANY_INCOMPLETE")) throw new ContractDataError("INCOMPLETE_DATA", "ไม่พบ Company Code สำหรับออกเลขสัญญา");
+    throw new ContractDataError("DATABASE_ERROR", "ไม่สามารถออกเลขสัญญาได้", { cause: error });
   }
-
-  const application = data as ContractNumberApplication | null;
-  if (!application) {
-    throw new ContractDataError("NOT_FOUND", "ไม่พบข้อมูลใบสมัคร");
-  }
-
-  const existingContractNumber = cleanText(application.contract_number);
-  if (existingContractNumber) return existingContractNumber;
-
-  const generatedContractNumber = await generateContractNumber(application);
-  let updateQuery = supabaseAdmin
-    .from("recruit_job_applications")
-    .update({ contract_number: generatedContractNumber })
-    .eq("id", application.id);
-
-  updateQuery =
-    application.contract_number === null
-      ? updateQuery.is("contract_number", null)
-      : updateQuery.eq("contract_number", application.contract_number);
-
-  const { data: updatedApplication, error: updateError } = await updateQuery
-    .select("contract_number")
-    .maybeSingle();
-
-  if (updateError) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ไม่สามารถบันทึกเลขที่สัญญาจ้างได้",
-      { cause: updateError },
-    );
-  }
-
-  if (updatedApplication) return generatedContractNumber;
-
-  // Another export may have filled the number after the initial read. Keep the
-  // number that won the conditional update instead of overwriting it.
-  const { data: latestApplication, error: latestError } = await supabaseAdmin
-    .from("recruit_job_applications")
-    .select("contract_number")
-    .eq("id", application.id)
-    .maybeSingle();
-  const latestContractNumber = cleanText(latestApplication?.contract_number);
-
-  if (latestError || !latestContractNumber) {
-    throw new ContractDataError(
-      "DATABASE_ERROR",
-      "ไม่สามารถยืนยันเลขที่สัญญาจ้างได้",
-      { cause: latestError },
-    );
-  }
-
-  return latestContractNumber;
+  const number = cleanText(typeof data === "string" ? data : data?.contract_number);
+  if (!number) throw new ContractDataError("DATABASE_ERROR", "ไม่ได้รับเลขสัญญาจากระบบ");
+  return number;
 }

@@ -40,7 +40,7 @@ export interface EmploymentContractBaseData {
     addressEN: NullableText;
   };
   employee: {
-    id: string;
+    id: NullableText;
     prefixTH: NullableText;
     firstNameTH: string;
     lastNameTH: string;

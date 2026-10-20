@@ -1,6 +1,9 @@
 "use client";
 
+import { isActivityExcluded } from "./policy";
+
 export async function sendBrowserActivity(action, pagePath = window.location.pathname, eventId = crypto.randomUUID()) {
+  if (isActivityExcluded(pagePath)) return;
   const body = JSON.stringify({ action, page_path: pagePath, event_id: eventId });
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -19,6 +22,7 @@ export function createPageVisitTracker(send = sendBrowserActivity) {
   return (pathname, navigationKey, restored = false) => {
     if (!restored && previous === navigationKey) return;
     previous = navigationKey;
+    if (isActivityExcluded(pathname)) return;
     return send("PAGE_VIEW", pathname, crypto.randomUUID());
   };
 }

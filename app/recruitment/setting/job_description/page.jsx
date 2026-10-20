@@ -236,7 +236,7 @@ export default function JobDescriptionPage({ initialData }) {
           {/* Header */}
           <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 sm:px-6">
             <Space wrap size={[16, 12]}>
-              <Space size="small" direction="vertical" align="start">
+              <Space size="small" orientation="vertical" align="start">
                 <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>จำนวนแถว</Text>
                 <Select
                   value={pageSize}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import JSZip from "jszip";
 import {
   Alert,
   Button,
@@ -13,6 +14,7 @@ import {
 } from "antd";
 
 import type { ContractSigner } from "@/app/recruitment/lib/contracts";
+import { automaticContractExportValues } from "@/app/recruitment/lib/contracts/autoExport.mjs";
 import {
   DEFAULT_EMPLOYER_SIGNATURE_TYPE,
   EMPLOYER_SIGNATURE_TYPE_LABELS,
@@ -26,6 +28,12 @@ interface ContractSignerFormValues {
 
 interface SelectContractSignerModalProps {
   contractId: string;
+  contractIds?: string[];
+  autoExport?: boolean;
+  saveOnly?: boolean;
+  onSaved?: (signerId: string, signatureType: EmployerSignatureType) => void;
+  signerId?: string | null;
+  employerSignatureType?: EmployerSignatureType | null;
   open: boolean;
   onClose: () => void;
 }
@@ -38,6 +46,7 @@ interface SignerOption {
 
 interface ApiErrorBody {
   message?: string;
+  results?: { application_id: string; success: boolean; message?: string }[];
 }
 
 const employerSignatureTypeOptions = Object.entries(
@@ -69,7 +78,8 @@ async function getApiErrorMessage(
   try {
     const body: unknown = await response.json();
     if (isApiErrorBody(body) && typeof body.message === "string") {
-      return body.message;
+      const details = body.results?.filter(item => !item.success).map(item => `${item.application_id}: ${item.message || 'ไม่สำเร็จ'}`).join('\n');
+      return details ? `${body.message}\n${details}` : body.message;
     }
   } catch {
     // A non-JSON error response uses the safe fallback below.
@@ -146,6 +156,12 @@ async function loadContractSigners(
 
 export function SelectContractSignerModal({
   contractId,
+  contractIds,
+  autoExport = false,
+  saveOnly = false,
+  onSaved,
+  signerId,
+  employerSignatureType,
   open,
   onClose,
 }: SelectContractSignerModalProps) {
@@ -158,14 +174,40 @@ export function SelectContractSignerModal({
   const [selectedEmployerSignatureType, setSelectedEmployerSignatureType] =
     useState<EmployerSignatureType>(DEFAULT_EMPLOYER_SIGNATURE_TYPE);
   const [loadError, setLoadError] = useState<string>();
+  const [exportReport, setExportReport] = useState<string>();
+  const exportLock = useRef(false);
+  const automaticExportStarted = useRef(false);
+  const idsKey = JSON.stringify(contractIds?.length ? contractIds : [contractId]);
 
   useEffect(() => {
     if (!open) return undefined;
 
     const controller = new AbortController();
 
-    void loadContractSigners(contractId, controller.signal)
-      .then(setSigners)
+    // Load the first accessible application's choices. The server independently
+    // checks the selected signer for EVERY application during export.
+    const loadChoices = async () => {
+      const failures: string[] = [];
+      for (const id of JSON.parse(idsKey) as string[]) {
+        try { return await loadContractSigners(id, controller.signal); }
+        catch (error) {
+          if (controller.signal.aborted) throw error;
+          failures.push(`${id}: ${error instanceof Error ? error.message : 'โหลดผู้ลงนามไม่สำเร็จ'}`);
+        }
+      }
+      throw new Error(failures.join('\n'));
+    };
+    void loadChoices()
+      .then((choices) => {
+        if (controller.signal.aborted) return;
+        setSigners(choices);
+        const initial = automaticContractExportValues(choices, { signerId, employerSignatureType });
+        const selected = choices.some(choice => choice.id === signerId) ? signerId ?? undefined : undefined;
+        const signature = initial?.employerSignatureType ?? DEFAULT_EMPLOYER_SIGNATURE_TYPE;
+        form.setFieldsValue({ signerId: selected, employerSignatureType: signature });
+        setSelectedSignerId(selected);
+        setSelectedEmployerSignatureType(signature);
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         const errorMessage =
@@ -180,7 +222,7 @@ export function SelectContractSignerModal({
       });
 
     return () => controller.abort();
-  }, [contractId, open]);
+  }, [idsKey, open, signerId, employerSignatureType, form]);
 
   const signerOptions = useMemo<SignerOption[]>(
     () =>
@@ -208,22 +250,25 @@ export function SelectContractSignerModal({
     onClose();
   };
 
-  const handleConfirmExport = async () => {
+  const exportWithValues = useCallback(async (values: ContractSignerFormValues) => {
+    if (exportLock.current) return;
+    exportLock.current = true;
     let objectUrl: string | undefined;
 
     try {
-      const values = await form.validateFields();
       if (!values.signerId || !values.employerSignatureType) return;
 
       setExporting(true);
+      setExportReport(undefined);
       const response = await fetch(
-        `/recruitment/api/contracts/${encodeURIComponent(contractId)}/export`,
+        contractIds ? '/recruitment/api/contracts/export' : `/recruitment/api/contracts/${encodeURIComponent(contractId)}/export`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             signerId: values.signerId,
             employerSignatureType: values.employerSignatureType,
+            ...(contractIds ? { applicationIds: contractIds } : {}),
           }),
         },
       );
@@ -238,6 +283,16 @@ export function SelectContractSignerModal({
       }
 
       const blob = await response.blob();
+      let partialReport: string | undefined;
+      if (response.headers.get('Content-Type')?.includes('application/zip')) {
+        const archive = await JSZip.loadAsync(await blob.arrayBuffer());
+        const manifest = archive.file('export-results.json');
+        if (!manifest) throw new Error('ZIP ไม่มีรายงานผลการส่งออก กรุณาลองใหม่');
+        const report = JSON.parse(await manifest.async('string')) as { succeeded: number; failed: number; results: { application_id: string; success: boolean; message?: string }[] };
+        const pdfCount = Object.keys(archive.files).filter(name => name.endsWith('.pdf')).length;
+        if (pdfCount !== report.succeeded) throw new Error('จำนวน PDF ไม่ตรงกับรายงานผล กรุณาลองใหม่');
+        if (report.failed) partialReport = `สำเร็จ ${report.succeeded} คน / ไม่สำเร็จ ${report.failed} คน\n` + report.results.filter(item => !item.success).map(item => `${item.application_id}: ${item.message || 'ไม่สำเร็จ'}`).join('\n');
+      }
       objectUrl = window.URL.createObjectURL(blob);
       const filename = getDownloadFilename(
         response.headers.get("Content-Disposition"),
@@ -245,6 +300,13 @@ export function SelectContractSignerModal({
       );
       triggerBrowserDownload(objectUrl, filename);
 
+      if (partialReport) {
+        setExportReport(partialReport);
+        message.warning('ดาวน์โหลด ZIP แล้ว มีบางรายการไม่สำเร็จ โปรดตรวจรายงานด้านล่าง');
+        return;
+      }
+
+      onSaved?.(values.signerId, values.employerSignatureType);
       message.success("Export สัญญาจ้างสำเร็จ");
       form.resetFields();
       setSelectedSignerId(undefined);
@@ -253,16 +315,82 @@ export function SelectContractSignerModal({
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
 
-      message.error(
-        error instanceof Error
+      const failureMessage = error instanceof Error
           ? error.message
-          : "ไม่สามารถ Export สัญญาจ้างได้",
-      );
+          : "ไม่สามารถ Export สัญญาจ้างได้";
+      setExportReport(failureMessage);
+      message.error(failureMessage);
     } finally {
       if (objectUrl) window.URL.revokeObjectURL(objectUrl);
       setExporting(false);
+      exportLock.current = false;
+    }
+  }, [contractId, contractIds, form, onClose, onSaved]);
+
+  const handleSaveSigner = async () => {
+    if (exportLock.current) return;
+    exportLock.current = true;
+    try {
+      const values = await form.validateFields();
+      if (!values.signerId || !values.employerSignatureType) return;
+      setExporting(true);
+      setExportReport(undefined);
+      const response = await fetch(`/recruitment/api/contracts/${encodeURIComponent(contractId)}/signers`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+      });
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, "บันทึกผู้ลงนามไม่สำเร็จ"));
+      onSaved?.(values.signerId, values.employerSignatureType);
+      message.success("อัปเดตผู้ลงนามเรียบร้อยแล้ว");
+      onClose();
+    } catch (error) {
+      if (!isFormValidationError(error)) {
+        const text = error instanceof Error ? error.message : "บันทึกผู้ลงนามไม่สำเร็จ";
+        setExportReport(text);
+        message.error(text);
+      }
+    } finally {
+      setExporting(false);
+      exportLock.current = false;
     }
   };
+
+  const handleConfirmExport = async () => {
+    try {
+      await exportWithValues(await form.validateFields());
+    } catch (error: unknown) {
+      if (!isFormValidationError(error)) throw error;
+    }
+  };
+
+  useEffect(() => {
+    if (
+      saveOnly ||
+      !autoExport ||
+      !open ||
+      loadingSigners ||
+      loadError ||
+      automaticExportStarted.current
+    ) return;
+
+    const values = automaticContractExportValues(signers, {
+      signerId,
+      employerSignatureType,
+    }) as ContractSignerFormValues | null;
+    if (!values) return;
+
+    automaticExportStarted.current = true;
+    queueMicrotask(() => void exportWithValues(values));
+  }, [
+    autoExport,
+    saveOnly,
+    employerSignatureType,
+    exportWithValues,
+    loadError,
+    loadingSigners,
+    open,
+    signerId,
+    signers,
+  ]);
 
   const filterSignerOption: NonNullable<SelectProps["filterOption"]> = (
     input,
@@ -272,18 +400,20 @@ export function SelectContractSignerModal({
       .toLocaleLowerCase()
       .includes(input.trim().toLocaleLowerCase());
 
+  const automaticValues = automaticContractExportValues(signers, { signerId, employerSignatureType });
+  const manualSelection = saveOnly || !autoExport || (!loadingSigners && !automaticValues) || Boolean(exportReport);
   const noSigners = !loadingSigners && !loadError && signers.length === 0;
 
   return (
     <Modal
-      title="Export สัญญาจ้าง"
+      title={saveOnly ? "อัปเดตผู้ลงนาม" : !manualSelection ? "กำลัง Export สัญญาจ้าง" : `Export สัญญาจ้าง (${contractIds?.length || 1} คน)`}
       open={open}
       onCancel={handleCancel}
       closable={!exporting}
       mask={{ closable: !exporting }}
       keyboard={!exporting}
       destroyOnHidden
-      footer={[
+      footer={!manualSelection ? null : [
         <Button key="cancel" onClick={handleCancel} disabled={exporting}>
           ยกเลิก
         </Button>,
@@ -298,12 +428,13 @@ export function SelectContractSignerModal({
             !selectedSignerId ||
             !selectedEmployerSignatureType
           }
-          onClick={() => void handleConfirmExport()}
+          onClick={() => void (saveOnly ? handleSaveSigner() : handleConfirmExport())}
         >
-          ยืนยันการ Export
+          {saveOnly ? "บันทึกผู้ลงนาม" : "ยืนยันการ Export"}
         </Button>,
       ]}
     >
+      {exportReport ? <Alert type="warning" showIcon title={saveOnly ? "ผลการบันทึก" : "ผลการส่งออก"} description={<div style={{ whiteSpace: "pre-wrap" }}>{exportReport}</div>} /> : null}
       <Form<ContractSignerFormValues>
         form={form}
         layout="vertical"
@@ -317,7 +448,7 @@ export function SelectContractSignerModal({
           );
         }}
       >
-        <Form.Item
+        {manualSelection ? <><Form.Item
           label="ผู้ลงนาม"
           name="signerId"
           rules={[{ required: true, message: "กรุณาเลือกผู้ลงนาม" }]}
@@ -344,17 +475,23 @@ export function SelectContractSignerModal({
             placeholder="เลือกประเภทผู้ลงนาม"
             options={employerSignatureTypeOptions}
           />
-        </Form.Item>
+        </Form.Item></> : (
+          <Alert
+            type="info"
+            showIcon
+            title={loadingSigners ? "กำลังตรวจสอบผู้ลงนาม..." : "ระบบกำลัง Export โดยใช้ข้อมูลผู้ลงนามที่บันทึกไว้"}
+          />
+        )}
 
         {loadError ? (
-          <Alert type="error" showIcon message={loadError} />
+          <Alert type="error" showIcon title={loadError} />
         ) : null}
 
         {noSigners ? (
           <Alert
             type="warning"
             showIcon
-            message="ไม่พบผู้มีสิทธิ์ลงนามในสัญญาจ้าง"
+            title="ไม่พบผู้มีสิทธิ์ลงนามในสัญญาจ้าง"
           />
         ) : null}
       </Form>

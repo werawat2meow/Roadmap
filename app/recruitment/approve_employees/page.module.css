@@ -78,7 +78,8 @@
 .filterHeading > div { display: flex; align-items: center; gap: 8px; color: #34435a; font-size: 13px; font-weight: 650; }
 .filterHeading b { display: grid; place-items: center; min-width: 20px; height: 20px; padding-inline: 5px; border-radius: 99px; background: #123d67; color: #fff; font-size: 11px; }
 .filterHeading :global(.ant-btn) { height: auto; padding: 0; color: #55728f; font-size: 12px; }
-.filters { display: grid; grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr) auto; gap: 10px; }
+.filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.filters > :global(.ant-picker) { width: 100%; min-width: 0; min-height: 40px; border-color: #dfe7f0; border-radius: 10px; }
 .filters > :global(.ant-select), .filters > :global(.ant-input-affix-wrapper) { width: 100%; min-width: 0; }
 .filters :global(.ant-select-selector), .filters > :global(.ant-input-affix-wrapper) { border-color: #dfe7f0 !important; border-radius: 10px !important; box-shadow: none !important; }
 .filters > :global(.ant-select), .filters > :global(.ant-input-affix-wrapper) { min-height: 40px; }

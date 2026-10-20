@@ -272,7 +272,7 @@ export async function POST(req) {
     await writeActivityLog({
       req,
       module: "Competency Levels",
-      action: "CREATE",
+      action: "create",
       description: `เพิ่ม Competency Level ${data.level_code} - ${data.level_name}`,
     });
 

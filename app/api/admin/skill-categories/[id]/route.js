@@ -209,7 +209,7 @@ export async function PATCH(req, { params }) {
     try {
       await writeActivityLog({
         module: "skill_categories",
-        action: "UPDATE",
+        action: "update",
         description: `แก้ไขหมวดหมู่ทักษะ ${data.category_code} : ${data.category_name}`,
         reference_id: data.id,
         reference_code: data.category_code,
@@ -327,7 +327,7 @@ export async function DELETE(req, { params }) {
     try {
       await writeActivityLog({
         module: "skill_categories",
-        action: "DELETE",
+        action: "delete",
         description: `ลบหมวดหมู่ทักษะ ${oldData.category_code} : ${oldData.category_name}`,
         reference_id: oldData.id,
         reference_code: oldData.category_code,

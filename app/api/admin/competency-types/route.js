@@ -194,7 +194,7 @@ export async function POST(req) {
      * ========================== */
 
     await writeActivityLog({
-      action: "CREATE",
+      action: "create",
       module: "Competency Types",
       description: `เพิ่ม Competency Type : ${data.type_code} - ${data.type_name}`,
       table_name: "competency_types",

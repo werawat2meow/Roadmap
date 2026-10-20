@@ -128,7 +128,7 @@ export async function POST(req) {
 
     await logActivity({
       moduleName: "API_CLIENTS",
-      actionType: "CREATE",
+      actionType: "create",
       referenceTable: "api_clients",
       referenceId: data.id,
       description: `สร้าง API Client: ${data.client_name} (${data.client_code})`,

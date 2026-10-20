@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 // Invoke the existing server handlers exactly once, in the same request/session.
 // No HTTP origin is accepted from the caller and no credentials leave this server.
 const endpoints = new Map([
-  ["application", { method: "POST", path: "/jobs/api/application", handler: applicationPOST, activity: { action: "CREATE", resource_type: "candidate", page_path: "/recruitment/candidate/create" } }],
+  ["application", { method: "POST", path: "/jobs/api/application", handler: applicationPOST, activity: { action: "create", resource_type: "candidate", page_path: "/recruitment/candidate/create" } }],
   ["title_name", { method: "GET", path: "/jobs/api/title_name", handler: titleNames }],
   ["gender", { method: "GET", path: "/jobs/api/gender", handler: genders }],
   ["marital-status", { method: "GET", path: "/jobs/api/marital-status", handler: maritalStatuses }],

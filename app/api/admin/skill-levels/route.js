@@ -187,7 +187,7 @@ export async function POST(req) {
     try {
       await writeActivityLog({
         module: "skill_levels",
-        action: "CREATE",
+        action: "create",
         description: `สร้างระดับทักษะ ${data.level_code} : ${data.level_name}`,
         reference_id: data.id,
         reference_code: data.level_code,

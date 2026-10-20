@@ -470,7 +470,7 @@ export async function POST(req) {
     try {
       await writeActivityLog({
         moduleName: "earning_types",
-        actionType: "CREATE",
+        actionType: "create",
         referenceTable: TABLE_NAME,
         referenceId: data.id,
         description: `เพิ่มประเภทเงินได้ ${data.earning_code} - ${data.earning_name}`,

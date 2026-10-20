@@ -126,7 +126,7 @@ export async function POST(req) {
 
     await logActivity({
       moduleName: "API_TOKENS",
-      actionType: "CREATE",
+      actionType: "create",
       referenceTable: "api_tokens",
       referenceId: data.id,
       description: `สร้าง API Token: ${token_name} สำหรับ ${client.client_name} (${client.client_code})`,

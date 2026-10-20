@@ -217,7 +217,7 @@ export async function POST(req) {
     try {
       await writeActivityLog({
         module: "skill_categories",
-        action: "CREATE",
+        action: "create",
         description: `สร้างหมวดหมู่ทักษะ ${data.category_code} : ${data.category_name}`,
         reference_id: data.id,
         reference_code: data.category_code,

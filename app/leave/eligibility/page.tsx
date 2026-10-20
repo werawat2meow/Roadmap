@@ -9,6 +9,7 @@ interface LeaveBalance {
   used: number;
   base?: number;
   carryForward?: number;
+  expired?: number;
 }
 
 interface EmployeeEligibility {
@@ -21,12 +22,21 @@ interface EmployeeEligibility {
   division: string;
   unit: string;
   level: string;
+  annualEntitlement: {
+    eligible: boolean;
+    completedMonths: number;
+    completedYears: number;
+    completedMonthsInCycle: number;
+    fullCycleDays: number;
+    accruedDays: number;
+    grossDays: number;
+    cycleStart: string | null;
+  };
   leaves: {
     annual: LeaveBalance;
     sick: LeaveBalance;
     business: LeaveBalance;
     holiday: LeaveBalance;
-    vacation: LeaveBalance;
     birthday: LeaveBalance;
     ordain: LeaveBalance;
     maternity: LeaveBalance;
@@ -40,6 +50,12 @@ export default function EligibilityPage() {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [rightsYear, setRightsYear] = useState<number | null>(null);
+  const [carryAnnualInput, setCarryAnnualInput] = useState("");
+  const [carryHolidayInput, setCarryHolidayInput] = useState("");
+  const [savingCarry, setSavingCarry] = useState(false);
+  const [carryError, setCarryError] = useState("");
+  const [carrySuccess, setCarrySuccess] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDept, setFilterDept] = useState("All");
@@ -48,6 +64,101 @@ export default function EligibilityPage() {
   const [filterLevel, setFilterLevel] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  function openEmployee(emp: EmployeeEligibility) {
+    setSelectedEmp(emp);
+
+    setCarryAnnualInput(String(emp.leaves.annual.carryForward ?? 0));
+
+    setCarryHolidayInput(String(emp.leaves.holiday.carryForward ?? 0));
+
+    setCarryError("");
+    setCarrySuccess("");
+  }
+
+  async function saveCarryForward() {
+    if (!selectedEmp || rightsYear === null || savingCarry) return;
+
+    const annual = Number(carryAnnualInput);
+    const holiday = Number(carryHolidayInput);
+
+    if (
+      !carryAnnualInput.trim() ||
+      !carryHolidayInput.trim() ||
+      !Number.isFinite(annual) ||
+      !Number.isFinite(holiday) ||
+      annual < 0 ||
+      holiday < 0 ||
+      annual > 9999.5 ||
+      holiday > 9999.5 ||
+      !Number.isInteger(annual * 2) ||
+      !Number.isInteger(holiday * 2)
+    ) {
+      setCarryError("กรอกยอดยกมาไม่ติดลบ และเพิ่มครั้งละ 0.5 วัน");
+      setCarrySuccess("");
+      return;
+    }
+
+    const employee = selectedEmp;
+
+    setSavingCarry(true);
+    setCarryError("");
+    setCarrySuccess("");
+
+    try {
+      const response = await fetch("/leave/api/eligibility", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          employeeId: employee.id,
+          year: rightsYear,
+          carryForwardAnnual: annual,
+          carryForwardHoliday: holiday,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || "บันทึกยอดยกมาไม่สำเร็จ");
+      }
+
+      const reloadResponse = await fetch("/leave/api/eligibility", {
+        cache: "no-store",
+      });
+
+      const reloadJson = await reloadResponse.json();
+
+      if (!reloadResponse.ok || !reloadJson.success) {
+        throw new Error(
+          "บันทึกยอดยกมาแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณารีเฟรชหน้า",
+        );
+      }
+
+      const updatedEmployees: EmployeeEligibility[] = reloadJson.data || [];
+
+      setEmployees(updatedEmployees);
+      setRightsYear(reloadJson.year);
+
+      const updatedEmployee = updatedEmployees.find(
+        (item) => item.id === employee.id,
+      );
+
+      setSelectedEmp((current) =>
+        current?.id === employee.id ? (updatedEmployee ?? null) : current,
+      );
+
+      setCarrySuccess("บันทึกยอดยกมาเรียบร้อยแล้ว");
+    } catch (error: unknown) {
+      setCarryError(
+        error instanceof Error ? error.message : "บันทึกยอดยกมาไม่สำเร็จ",
+      );
+    } finally {
+      setSavingCarry(false);
+    }
+  }
 
   const getRemaining = (leave: LeaveBalance) => leave.total - leave.used;
 
@@ -61,7 +172,6 @@ export default function EligibilityPage() {
     leaves.sick,
     leaves.business,
     leaves.holiday,
-    leaves.vacation,
     leaves.birthday,
     leaves.ordain,
     leaves.maternity,
@@ -79,20 +189,16 @@ export default function EligibilityPage() {
       data: leaves.annual,
     },
     {
+      label: "วันหยุดประจำปี",
+      data: leaves.holiday,
+    },
+    {
       label: "ลาป่วย",
       data: leaves.sick,
     },
     {
       label: "ลากิจ",
       data: leaves.business,
-    },
-    {
-      label: "วันหยุดประจำปี",
-      data: leaves.holiday,
-    },
-    {
-      label: "ลาพักผ่อน",
-      data: leaves.vacation,
     },
     {
       label: "ลาวันเกิด",
@@ -129,6 +235,7 @@ export default function EligibilityPage() {
 
         if (mounted) {
           setEmployees(json.data || []);
+          setRightsYear(json.year);
         }
       } catch (error: any) {
         console.error("Load eligibility failed:", error);
@@ -291,7 +398,7 @@ export default function EligibilityPage() {
               currentItems.map((emp) => (
                 <tr
                   key={emp.id}
-                  onClick={() => setSelectedEmp(emp)}
+                  onClick={() => openEmployee(emp)}
                   className="hover:bg-slate-50/30 transition-colors group cursor-pointer"
                 >
                   <td className="px-8 py-5 flex items-center gap-3">
@@ -389,7 +496,7 @@ export default function EligibilityPage() {
               </div>
 
               {/* Body */}
-              <div className="p-8 flex-grow flex flex-col justify-between">
+              <div className="min-h-0 overflow-y-auto p-8 flex-grow flex flex-col justify-between gap-6">
                 <div className="space-y-6">
                   {/* Profile - กลับมาใช้ขนาดปกติให้ดูดี */}
                   <div className="flex items-center gap-5">
@@ -412,6 +519,118 @@ export default function EligibilityPage() {
                     </div>
                   </div>
 
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <h4 className="mb-3 text-sm font-bold text-slate-900">
+                      ยอดยกมาประจำปี{" "}
+                      {rightsYear === null ? "-" : rightsYear + 543}
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        ยอดยกมาพักร้อน (วัน)
+                        <input
+                          type="number"
+                          min="0"
+                          max="9999.5"
+                          step="0.5"
+                          value={carryAnnualInput}
+                          disabled={savingCarry}
+                          onChange={(event) => {
+                            setCarryAnnualInput(event.target.value);
+                            setCarrySuccess("");
+                          }}
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-cyan-500 disabled:opacity-60"
+                        />
+                      </label>
+
+                      <label className="block text-xs font-semibold text-slate-700">
+                        ยอดยกมาวันหยุดประจำปี (วัน)
+                        <input
+                          type="number"
+                          min="0"
+                          max="9999.5"
+                          step="0.5"
+                          value={carryHolidayInput}
+                          disabled={savingCarry}
+                          onChange={(event) => {
+                            setCarryHolidayInput(event.target.value);
+                            setCarrySuccess("");
+                          }}
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-cyan-500 disabled:opacity-60"
+                        />
+                      </label>
+                    </div>
+
+                    {carryError && (
+                      <p role="alert" className="mt-3 text-xs text-rose-600">
+                        {carryError}
+                      </p>
+                    )}
+
+                    {carrySuccess && (
+                      <p
+                        role="status"
+                        className="mt-3 text-xs text-emerald-700"
+                      >
+                        {carrySuccess}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={savingCarry || rightsYear === null}
+                      onClick={() => void saveCarryForward()}
+                      className="mt-4 w-full rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingCarry ? "กำลังบันทึก..." : "บันทึกยอดยกมา"}
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4">
+                    <h4 className="text-sm font-bold text-slate-900">
+                      สิทธิ์พักร้อนตามอายุงาน
+                    </h4>
+
+                    {!selectedEmp.annualEntitlement.eligible ? (
+                      <p className="mt-2 text-sm text-slate-700">
+                        ยังไม่เข้าเงื่อนไขรับสิทธิ์พักร้อน กรุณาตรวจวันเริ่มงาน
+                        อายุงานครบ 1 ปี และสิทธิ์ประจำปี
+                      </p>
+                    ) : (
+                      <div className="mt-2 space-y-1 text-sm text-slate-700">
+                        <p>
+                          สิทธิ์เต็มก้อนจากรอบที่ครบปี:{" "}
+                          <strong>
+                            {selectedEmp.annualEntitlement.fullCycleDays} วัน
+                          </strong>
+                        </p>
+
+                        <p>
+                          ทำงานครบในรอบใหม่:{" "}
+                          <strong>
+                            {
+                              selectedEmp.annualEntitlement
+                                .completedMonthsInCycle
+                            }{" "}
+                            เดือน
+                          </strong>
+                        </p>
+
+                        <p>
+                          สิทธิ์สะสมรอบใหม่:{" "}
+                          <strong>
+                            {selectedEmp.annualEntitlement.accruedDays} วัน
+                          </strong>
+                        </p>
+
+                        <p className="pt-1 font-semibold text-cyan-800">
+                          รวมก่อนหักประวัติการใช้และการหมดอายุ:{" "}
+                          {selectedEmp.annualEntitlement.grossDays} วัน
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 text-cyan-600 pt-2">
                     <Calendar size={18} />
                     <h4 className="font-bold uppercase tracking-wider text-xs">
@@ -429,6 +648,7 @@ export default function EligibilityPage() {
                         used={item.data.used}
                         base={item.data.base}
                         carryForward={item.data.carryForward}
+                        expired={item.data.expired}
                       />
                     ))}
                   </div>
@@ -473,12 +693,14 @@ function FinalLeaveCard({
   used,
   base,
   carryForward,
+  expired = 0,
 }: {
   label: string;
   total: number;
   used: number;
   base?: number;
   carryForward?: number;
+  expired?: number;
 }) {
   const remaining = total - used;
 
@@ -502,9 +724,14 @@ function FinalLeaveCard({
             ) : null} */}
 
             {carryForward != null && (
-              <span className="text-slate-400">
-                ยกมา: <span className="text-blue-500">{carryForward}</span>
+              <span className="text-slate-500">
+                ยกมาตั้งต้น:{" "}
+                <span className="text-blue-600">{carryForward}</span>
               </span>
+            )}
+
+            {expired > 0 && (
+              <span className="text-rose-600">หมดอายุแล้ว: {expired} วัน</span>
             )}
 
             <span className="text-slate-400">

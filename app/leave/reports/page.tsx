@@ -12,6 +12,25 @@ import {
   XCircle,
 } from "lucide-react";
 
+interface AttendanceItem {
+  date: string;
+  checkIn: string | null;
+  checkOut: string | null;
+}
+
+interface ExportEmployee {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  department: string;
+  division: string;
+  unit: string;
+  weeklyHoliday: string;
+  workStartTime: string;
+  workEndTime: string;
+  attendance: AttendanceItem[];
+}
+
 interface ReportRow {
   id: number;
   employeeId: string;
@@ -23,6 +42,7 @@ interface ReportRow {
   weeklyHoliday: string;
   workStartTime: string;
   workEndTime: string;
+  attendance: AttendanceItem[];
   kind: string;
   kindLabel: string;
   startDate: string;
@@ -246,6 +266,40 @@ function isWeeklyHoliday(date: Date, weeklyHoliday?: string) {
 
   return parseWeeklyHoliday(weeklyHoliday).includes(day);
 }
+function calculateLateMinutes(
+  checkIn?: string | null,
+  workStartTime?: string | null,
+) {
+  if (!checkIn || !workStartTime) return 0;
+
+  const [checkHour, checkMinute] = checkIn.slice(0, 5).split(":").map(Number);
+
+  const [startHour, startMinute] = workStartTime
+    .slice(0, 5)
+    .split(":")
+    .map(Number);
+
+  const actualMinutes = checkHour * 60 + checkMinute;
+  const expectedMinutes = startHour * 60 + startMinute;
+
+  return Math.max(0, actualMinutes - expectedMinutes);
+}
+
+function calculateEarlyLeaveMinutes(
+  checkOut?: string | null,
+  workEndTime?: string | null,
+) {
+  if (!checkOut || !workEndTime) return 0;
+
+  const [checkHour, checkMinute] = checkOut.slice(0, 5).split(":").map(Number);
+
+  const [endHour, endMinute] = workEndTime.slice(0, 5).split(":").map(Number);
+
+  const actualMinutes = checkHour * 60 + checkMinute;
+  const expectedMinutes = endHour * 60 + endMinute;
+
+  return Math.max(0, expectedMinutes - actualMinutes);
+}
 function isApprovedLeave(row: ReportRow) {
   const status = String(row.status || "")
     .trim()
@@ -283,6 +337,7 @@ export default function LeaveReportsPage() {
   });
 
   const [rows, setRows] = useState<ReportRow[]>([]);
+  const [exportEmployees, setExportEmployees] = useState<ExportEmployee[]>([]);
   const [leaveTypeSummary, setLeaveTypeSummary] = useState<SummaryItem[]>([]);
   const [departmentSummary, setDepartmentSummary] = useState<SummaryItem[]>([]);
 
@@ -348,6 +403,7 @@ export default function LeaveReportsPage() {
 
         setSummary(json.summary);
         setRows(json.data || []);
+        setExportEmployees(json.employees || []);
         setLeaveTypeSummary(json.leaveTypeSummary || []);
         setDepartmentSummary(json.departmentSummary || []);
 
@@ -400,8 +456,8 @@ export default function LeaveReportsPage() {
   const exportExcel = () => {
     const approvedRows = rows.filter(isApprovedLeave);
 
-    if (approvedRows.length === 0) {
-      alert("ไม่มีรายการลาที่อนุมัติแล้วสำหรับส่งออก");
+    if (exportEmployees.length === 0) {
+      alert("ไม่พบรายชื่อพนักงานสำหรับส่งออก");
       return;
     }
 
@@ -423,26 +479,32 @@ export default function LeaveReportsPage() {
         weeklyHoliday: string;
         workStartTime: string;
         workEndTime: string;
+        attendance: AttendanceItem[];
         leavesByDate: Record<string, ReportRow[]>;
         totalDays: number;
       }
     >();
 
-    approvedRows.forEach((row) => {
-      const key = row.employeeId || row.employeeCode;
-
-      const current = employeeMap.get(key) || {
-        employeeCode: row.employeeCode,
-        employeeName: row.employeeName,
-        department: row.department,
-        division: row.division,
-        unit: row.unit,
-        weeklyHoliday: row.weeklyHoliday,
-        workStartTime: row.workStartTime,
-        workEndTime: row.workEndTime,
+    exportEmployees.forEach((employee) => {
+      employeeMap.set(employee.employeeId, {
+        employeeCode: employee.employeeCode,
+        employeeName: employee.employeeName,
+        department: employee.department,
+        division: employee.division,
+        unit: employee.unit,
+        weeklyHoliday: employee.weeklyHoliday,
+        workStartTime: employee.workStartTime,
+        workEndTime: employee.workEndTime,
+        attendance: employee.attendance || [],
         leavesByDate: {},
         totalDays: 0,
-      };
+      });
+    });
+
+    approvedRows.forEach((row) => {
+      const current = employeeMap.get(row.employeeId);
+
+      if (!current) return;
 
       const startDate = parseDateOnly(row.startDate);
       const endDate = parseDateOnly(row.endDate);
@@ -454,6 +516,7 @@ export default function LeaveReportsPage() {
           const keyDate = getDateKey(currentDate);
 
           current.leavesByDate[keyDate] = current.leavesByDate[keyDate] || [];
+
           current.leavesByDate[keyDate].push(row);
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -461,8 +524,6 @@ export default function LeaveReportsPage() {
       }
 
       current.totalDays += Number(row.requestedDays || 0);
-
-      employeeMap.set(key, current);
     });
 
     const employees = Array.from(employeeMap.values());
@@ -501,21 +562,63 @@ export default function LeaveReportsPage() {
             const keyDate = getDateKey(date);
             const leaves = employee.leavesByDate[keyDate] || [];
 
+            const attendance = employee.attendance.find(
+              (item) => item.date === keyDate,
+            );
+
             if (isWeeklyHoliday(date, employee.weeklyHoliday)) {
-              return `<td class="day weekly-off" style="background-color:#7f1d1d;color:#ffffff;font-weight:700;text-align:center;">Off</td>`;
+              return `<td
+    style="background:#7f1d1d;color:#ffffff;font-weight:700;text-align:center;"
+  >Off</td>`;
             }
 
-            if (leaves.length === 0) {
-              return `<td class="day ok">✓</td>`;
+            if (leaves.length > 0) {
+              const firstLeave = leaves[0];
+
+              const color = leaveColorMap[firstLeave.kind] || "#e5e7eb";
+
+              const text = leaves
+                .map(
+                  (leave) => leaveShortLabelMap[leave.kind] || leave.kindLabel,
+                )
+                .join(", ");
+
+              return `<td
+    style="background:${color};text-align:center;"
+  >${htmlEscape(text)}</td>`;
             }
 
-            const firstLeave = leaves[0];
-            const color = leaveColorMap[firstLeave.kind] || "#e5e7eb";
-            const text = leaves
-              .map((leave) => leaveShortLabelMap[leave.kind] || leave.kindLabel)
-              .join(", ");
+            if (!attendance) {
+              return `<td
+    style="text-align:center;color:#6b7280;"
+  >-</td>`;
+            }
 
-            return `<td class="day leave" style="background:${color};">${htmlEscape(text)}</td>`;
+            const lateMinutes = calculateLateMinutes(
+              attendance.checkIn,
+              employee.workStartTime,
+            );
+
+            const earlyLeaveMinutes = calculateEarlyLeaveMinutes(
+              attendance.checkOut,
+              employee.workEndTime,
+            );
+
+            if (lateMinutes > 0) {
+              return `<td
+    style="background:#fed7aa;color:#9a3412;font-weight:700;text-align:center;"
+  >สาย ${lateMinutes} นาที</td>`;
+            }
+
+            if (earlyLeaveMinutes > 0) {
+              return `<td
+    style="background:#ddd6fe;color:#5b21b6;font-weight:700;text-align:center;"
+  >ออกก่อน ${earlyLeaveMinutes} นาที</td>`;
+            }
+
+            return `<td
+  style="background:#dcfce7;color:#166534;font-weight:700;text-align:center;"
+>✓</td>`;
           })
           .join("");
 

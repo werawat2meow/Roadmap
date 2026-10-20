@@ -4,6 +4,7 @@ import { createNotification } from "@/lib/notifications/createNotification";
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import { getRoadmapCycleSettings } from "@/lib/roadmap/cycleSettingsServer";
 import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
+import { requireRoadmapPermission } from "@/lib/roadmap/permissions";
 
 const isUuid = (value: string) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
   const employeeId = url.searchParams.get("employeeId");
   const year = url.searchParams.get("year");
   const status = url.searchParams.get("status");
+  
 
   if (!employeeId && !status) {
     return NextResponse.json(
@@ -139,6 +141,17 @@ export async function POST(req: Request) {
   const status = body.status;
   const requestedTypeId = body.evaluationTypeId;
   const requestedTypeName = body.evaluationType;
+  const allowed = await requireRoadmapPermission(evaluatorId, "Evaluate HR");
+
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "คุณไม่มีสิทธิ์ใช้งานเมนูนี้",
+      },
+      { status: 403 },
+    );
+  }
 
   if (
     !employeeId ||

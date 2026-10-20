@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { FileSearch } from "lucide-react";
 import {
   GanttChartSquare,
   LayoutDashboard,
@@ -27,6 +28,7 @@ const menuItems = [
   { name: "Reports", href: "/roadmap/reports", icon: BarChart3 },
   { name: "Send Account", href: "/roadmap/payroll", icon: Banknote },
   { name: "Settings", href: "/roadmap/settings", icon: Settings },
+  { name: "Audit Logs", href: "/roadmap/audit-logs", icon: FileSearch },
   { name: "Main Website", href: "/admin", icon: ArrowLeftSquare },
 ];
 
@@ -114,43 +116,46 @@ export default function Navbar({
 
       <nav className="grow px-3 pt-4">
         <ul>
-          {menuItems.map((item) => {
-            const isActive =
-              pathname === item.href || (pathname === "/" && item.href === "/");
+          {menuItems
+            .filter((item) => item.name !== "Audit Logs" || isSuperAdmin)
+            .map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (pathname === "/" && item.href === "/");
 
-            // ตรวจเช็กว่าเมนูนี้ได้รับสิทธิ์หรือไม่
-            const isMenuAllowed =
-              item.name === "Main Website" ||
-              isSuperAdmin ||
-              allowedMenus.includes(item.name);
+              // ตรวจเช็กว่าเมนูนี้ได้รับสิทธิ์หรือไม่
+              const isMenuAllowed =
+                item.name === "Main Website" ||
+                isSuperAdmin ||
+                allowedMenus.includes(item.name);
 
-            return (
-              <li key={item.name} onClick={onLinkClick} className="relative">
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-md z-10" />
-                )}
-                <Link href={item.href} title={isCollapsed ? item.name : ""}>
-                  <span
-                    className={`flex items-center py-3 my-1 rounded-lg transition-colors relative group
+              return (
+                <li key={item.name} onClick={onLinkClick} className="relative">
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-md z-10" />
+                  )}
+                  <Link href={item.href} title={isCollapsed ? item.name : ""}>
+                    <span
+                      className={`flex items-center py-3 my-1 rounded-lg transition-colors relative group
                       ${isCollapsed ? "justify-center px-3" : "pl-6 pr-3"} 
                       ${isActive ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-700 hover:text-white"}
                       ${!isMenuAllowed ? "opacity-50 hover:opacity-80" : ""} 🛠️ เมนูไหนไม่มีสิทธิ์จะจางลงเล็กน้อย
                     `}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    {!isCollapsed && (
-                      <span className="ml-3 truncate grow">{item.name}</span>
-                    )}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!isCollapsed && (
+                        <span className="ml-3 truncate grow">{item.name}</span>
+                      )}
 
-                    {/* 🔒 แสดงไอคอนแม่กุญแจเล็กๆ ด้านหลังเมนูที่ไม่มีสิทธิ์เข้าถึง (เฉพาะตอนไม่ย่อจอ) */}
-                    {!isMenuAllowed && !isCollapsed && (
-                      <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0 ml-1" />
-                    )}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+                      {/* 🔒 แสดงไอคอนแม่กุญแจเล็กๆ ด้านหลังเมนูที่ไม่มีสิทธิ์เข้าถึง (เฉพาะตอนไม่ย่อจอ) */}
+                      {!isMenuAllowed && !isCollapsed && (
+                        <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0 ml-1" />
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
       </nav>
 

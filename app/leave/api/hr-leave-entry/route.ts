@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { findLeaveBlackoutConflict } from "@/lib/leave-blackout";
 
 function toNumber(value: unknown) {
   const num = Number(value);
@@ -10,7 +11,8 @@ export async function GET() {
   try {
     const { data: requests, error: requestError } = await supabaseAdmin
       .from("leave_requests")
-      .select(`
+      .select(
+        `
         id,
         employeeId,
         approverId,
@@ -22,7 +24,8 @@ export async function GET() {
         requestedDays,
         status,
         createdAt
-      `)
+      `,
+      )
       .ilike("reason", "[Paper]%")
       .order("createdAt", { ascending: false })
       .limit(200);
@@ -31,22 +34,22 @@ export async function GET() {
 
     const employeeIds = Array.from(
       new Set(
-        (requests || [])
-          .map((item: any) => item.employeeId)
-          .filter(Boolean),
+        (requests || []).map((item: any) => item.employeeId).filter(Boolean),
       ),
     );
 
     const { data: employees, error: employeeError } = await supabaseAdmin
       .from("employees")
-      .select(`
+      .select(
+        `
         id,
         employee_code,
         first_name_th,
         last_name_th,
         department_id,
         departments(department_name)
-      `)
+      `,
+      )
       .in("id", employeeIds);
 
     if (employeeError) throw employeeError;
@@ -129,6 +132,27 @@ export async function POST(req: Request) {
         return NextResponse.json(
           { success: false, error: "จำนวนวันลาต้องมากกว่า 0" },
           { status: 400 },
+        );
+      }
+    }
+
+    for (const item of items) {
+      const conflict = await findLeaveBlackoutConflict({
+        employeeId,
+        kind: String(item.kind),
+        startDate: String(item.startDate),
+        endDate: String(item.endDate),
+      });
+
+      if (conflict) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              conflict.reason ||
+              `ช่วงวันที่ ${item.startDate} ถึง ${item.endDate} ไม่อนุญาตให้ลา`,
+          },
+          { status: 409 },
         );
       }
     }

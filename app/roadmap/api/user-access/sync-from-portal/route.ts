@@ -11,22 +11,38 @@ export async function POST() {
       .select("role_id, permissions(permission_code)");
 
     if (rpError) {
-      return NextResponse.json({ success: false, error: rpError.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: rpError.message },
+        { status: 500 },
+      );
     }
 
     const allowedRoleIds = new Set<string>(
       (rolePermsRaw || [])
-        .filter((r: any) => r.permissions?.permission_code === ROADMAP_PERMISSION)
-        .map((r: any) => r.role_id)
+        .filter(
+          (r: any) => r.permissions?.permission_code === ROADMAP_PERMISSION,
+        )
+        .map((r: any) => r.role_id),
     );
 
     if (allowedRoleIds.size === 0) {
       // ไม่มี role ใดให้สิทธิ์ roadmap -> ทำการลบ rm_user_access ทั้งหมดเพื่อความสะอาด (ถ้าต้องการเก็บไว้ เปลี่ยนเป็น skip)
-      const { error: delAllErr } = await supabaseAdmin.from("rm_user_access").delete().neq("id", ""); // delete all rows
+      const { error: delAllErr } = await supabaseAdmin
+        .from("rm_user_access")
+        .delete()
+        .neq("id", ""); // delete all rows
       if (delAllErr) {
-        return NextResponse.json({ success: false, error: delAllErr.message }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: delAllErr.message },
+          { status: 500 },
+        );
       }
-      return NextResponse.json({ success: true, synced: 0, inserted: 0, removed: "all" });
+      return NextResponse.json({
+        success: true,
+        synced: 0,
+        inserted: 0,
+        removed: "all",
+      });
     }
 
     // 2) ดึง users จาก user_accounts ที่มี role_id และ employee_id
@@ -36,7 +52,10 @@ export async function POST() {
       .not("employee_id", "is", null);
 
     if (uaErr) {
-      return NextResponse.json({ success: false, error: uaErr.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: uaErr.message },
+        { status: 500 },
+      );
     }
 
     // 3) ดึง user_role_assignments (multi-role) เพื่อรวม role เพิ่มเติม
@@ -45,7 +64,10 @@ export async function POST() {
       .select("user_account_id, role_id");
 
     if (uraErr) {
-      return NextResponse.json({ success: false, error: uraErr.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: uraErr.message },
+        { status: 500 },
+      );
     }
 
     // สร้าง map: user_account_id -> Set(role_id)
@@ -84,7 +106,10 @@ export async function POST() {
       .select("id, employee_id");
 
     if (existingErr) {
-      return NextResponse.json({ success: false, error: existingErr.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: existingErr.message },
+        { status: 500 },
+      );
     }
 
     const existingByEmployee = new Map<string, string>();
@@ -94,24 +119,40 @@ export async function POST() {
 
     // 5) Prepare inserts for employees not existing
     const inserts = employeeIds
-      .filter(eid => !existingByEmployee.has(eid))
-      .map(eid => ({ employee_id: eid, role: "ยังไม่กำหนด" }));
+      .filter((eid) => !existingByEmployee.has(eid))
+      .map((eid) => ({
+        employee_id: eid,
+        role: "ยังไม่กำหนด",
+      }));
 
     if (inserts.length > 0) {
-      const { error: insertErr } = await supabaseAdmin.from("rm_user_access").insert(inserts);
+      const { error: insertErr } = await supabaseAdmin
+        .from("rm_user_access")
+        .insert(inserts);
       if (insertErr) {
-        return NextResponse.json({ success: false, error: insertErr.message }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: insertErr.message },
+          { status: 500 },
+        );
       }
     }
 
     // 6) Remove rm_user_access entries for employees that no longer have permission
     const existingEmployeeIds = Array.from(existingByEmployee.keys());
-    const toRemove = existingEmployeeIds.filter(eid => !employeeIdsToSync.has(eid));
+    const toRemove = existingEmployeeIds.filter(
+      (eid) => !employeeIdsToSync.has(eid),
+    );
     let removedCount = 0;
     if (toRemove.length > 0) {
-      const { error: deleteErr } = await supabaseAdmin.from("rm_user_access").delete().in("employee_id", toRemove);
+      const { error: deleteErr } = await supabaseAdmin
+        .from("rm_user_access")
+        .delete()
+        .in("employee_id", toRemove);
       if (deleteErr) {
-        return NextResponse.json({ success: false, error: deleteErr.message }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: deleteErr.message },
+          { status: 500 },
+        );
       }
       removedCount = toRemove.length;
     }
@@ -123,6 +164,9 @@ export async function POST() {
       removed: removedCount,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message || "sync failed" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message || "sync failed" },
+      { status: 500 },
+    );
   }
 }

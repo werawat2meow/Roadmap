@@ -65,6 +65,7 @@ export async function GET(req: Request) {
     const kind = searchParams.get("kind") || "";
     const status = searchParams.get("status") || "";
     const source = searchParams.get("source") || "";
+    const employeeKeyword = keyword;
 
     let requestQuery = supabaseAdmin
       .from("leave_requests")
@@ -113,6 +114,41 @@ export async function GET(req: Request) {
 
     if (requestError) throw requestError;
 
+    let employeeQuery = supabaseAdmin
+      .from("employees")
+      .select(
+        `
+    id,
+    employee_code,
+    first_name_th,
+    last_name_th,
+    department_id,
+    division_id,
+    unit_id,
+    departments(department_name),
+    divisions(division_name),
+    units(unit_name)
+  `,
+      )
+      .eq("is_deleted", false);
+
+    if (employeeKeyword) {
+      employeeQuery = employeeQuery.or(
+        `employee_code.ilike.%${employeeKeyword}%,first_name_th.ilike.%${employeeKeyword}%,last_name_th.ilike.%${employeeKeyword}%`,
+      );
+    }
+
+    const { data: allEmployees, error: allEmployeesError } =
+      await employeeQuery;
+
+    if (allEmployeesError) {
+      throw allEmployeesError;
+    }
+
+    const allEmployeeIds = (allEmployees || [])
+      .map((employee: any) => employee.id)
+      .filter(Boolean);
+
     const employeeIds = Array.from(
       new Set(
         (requests || []).map((item: any) => item.employeeId).filter(Boolean),
@@ -125,12 +161,13 @@ export async function GET(req: Request) {
       ),
     );
 
-    const [employeesRes, approversRes, configsRes] = await Promise.all([
-      employeeIds.length > 0
-        ? supabaseAdmin
-            .from("employees")
-            .select(
-              `
+    const [employeesRes, approversRes, configsRes, attendanceRes] =
+      await Promise.all([
+        employeeIds.length > 0
+          ? supabaseAdmin
+              .from("employees")
+              .select(
+                `
           id,
           employee_code,
           first_name_th,
@@ -142,35 +179,55 @@ export async function GET(req: Request) {
           divisions(division_name),
           units(unit_name)
         `,
-            )
-            .in("id", employeeIds)
-        : Promise.resolve({ data: [], error: null }),
+              )
+              .in("id", employeeIds)
+          : Promise.resolve({ data: [], error: null }),
 
-      approverIds.length > 0
-        ? supabaseAdmin
-            .from("leave_approvers")
-            .select(
-              `
+        approverIds.length > 0
+          ? supabaseAdmin
+              .from("leave_approvers")
+              .select(
+                `
           id,
           firstNameTh,
           lastNameTh,
           empNo
         `,
-            )
-            .in("id", approverIds)
-        : Promise.resolve({ data: [], error: null }),
+              )
+              .in("id", approverIds)
+          : Promise.resolve({ data: [], error: null }),
 
-      employeeIds.length > 0
-        ? supabaseAdmin
-            .from("leave_employee_configs")
-            .select("employeeId, weeklyHoliday, work_start_time, work_end_time")
-            .in("employeeId", employeeIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+        allEmployeeIds.length > 0
+          ? supabaseAdmin
+              .from("leave_employee_configs")
+              .select(
+                "employeeId, weeklyHoliday, work_start_time, work_end_time",
+              )
+              .in("employeeId", allEmployeeIds)
+          : Promise.resolve({ data: [], error: null }),
+
+        allEmployeeIds.length > 0
+          ? supabaseAdmin
+              .from("leave_attendance_records")
+              .select(
+                `
+        employee_id,
+        employee_code,
+        work_date,
+        check_in,
+        check_out
+      `,
+              )
+              .in("employee_id", allEmployeeIds)
+              .gte("work_date", from)
+              .lte("work_date", to)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
     if (employeesRes.error) throw employeesRes.error;
     if (approversRes.error) throw approversRes.error;
     if (configsRes.error) throw configsRes.error;
+    if (attendanceRes.error) throw attendanceRes.error;
 
     const employeeById = new Map(
       (employeesRes.data || []).map((emp: any) => [emp.id, emp]),
@@ -182,6 +239,66 @@ export async function GET(req: Request) {
     const configByEmployeeId = new Map(
       (configsRes.data || []).map((config: any) => [config.employeeId, config]),
     );
+
+    const attendanceByEmployeeId = new Map<
+      string,
+      Array<{
+        date: string;
+        checkIn: string | null;
+        checkOut: string | null;
+      }>
+    >();
+
+    for (const attendance of attendanceRes.data || []) {
+      const current = attendanceByEmployeeId.get(attendance.employee_id) || [];
+
+      current.push({
+        date: String(attendance.work_date).slice(0, 10),
+        checkIn: attendance.check_in,
+        checkOut: attendance.check_out,
+      });
+
+      attendanceByEmployeeId.set(attendance.employee_id, current);
+    }
+
+    const employeeRows = (allEmployees || [])
+      .filter((employee: any) => {
+        const employeeDepartment = employee.departments?.department_name || "-";
+
+        const employeeDivision = employee.divisions?.division_name || "-";
+
+        const employeeUnit = employee.units?.unit_name || "-";
+
+        if (department && employeeDepartment !== department) {
+          return false;
+        }
+
+        if (division && employeeDivision !== division) {
+          return false;
+        }
+
+        if (unit && employeeUnit !== unit) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((employee: any) => {
+        const config = configByEmployeeId.get(employee.id) || {};
+
+        return {
+          employeeId: employee.id,
+          employeeCode: employee.employee_code || "",
+          employeeName: getEmployeeName(employee),
+          department: employee.departments?.department_name || "-",
+          division: employee.divisions?.division_name || "-",
+          unit: employee.units?.unit_name || "-",
+          weeklyHoliday: config.weeklyHoliday || "",
+          workStartTime: config.work_start_time || "",
+          workEndTime: config.work_end_time || "",
+          attendance: attendanceByEmployeeId.get(employee.id) || [],
+        };
+      });
 
     let rows = (requests || []).map((item: any) => {
       const emp = employeeById.get(item.employeeId);
@@ -312,6 +429,7 @@ export async function GET(req: Request) {
         units: uniqueOptions(rows, "unit"),
       },
       data: rows,
+      employees: employeeRows,
     });
   } catch (error: any) {
     console.error("Load leave reports failed:", error);

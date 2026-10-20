@@ -537,7 +537,13 @@ export default function SettingsPage() {
                     menus: access?.menus ?? [],
                   } as User;
                 })
-                .filter((user: User) => Boolean(user.accessId))
+                .filter((user: User) => {
+                  // แสดงเฉพาะคนที่ Portal อนุญาตเข้า Roadmap
+                  // หรือมีข้อมูลสิทธิ์ Roadmap อยู่แล้ว
+                  const access = accessMap.get(user.id);
+
+                  return Boolean(access?.id || access?.portalRoadmapAllowed);
+                })
             : [];
 
         setUsers(mappedUsers);

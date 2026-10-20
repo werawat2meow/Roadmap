@@ -11,6 +11,7 @@ import {
   ArrowLeftSquare,
   UserCheck,
   Fingerprint,
+  CalendarDays,
 } from "lucide-react";
 
 const menuItems = [
@@ -19,6 +20,7 @@ const menuItems = [
   { name: "Reports", href: "/leave/reports", icon: BarChart3 },
   { name: "Eligibility", href: "/leave/eligibility", icon: UserCheck },
   { name: "Attendance", href: "/leave/attendance", icon: Fingerprint },
+  { name: "Schedule tasks", href: "/leave/schedules", icon: CalendarDays },
   { name: "Settings", href: "/leave/settings", icon: Settings },
   { name: "Main Website", href: "/admin", icon: ArrowLeftSquare },
 ];

@@ -40,7 +40,7 @@ export async function orientationData(db, guard, { applicationId, employeeId } =
     return applicationId ? query.eq("id", applicationId) : employeeId ? query.eq("emp_id", employeeId) : query;
   });
   const employees = await readByIds(db, "employees",
-    "id,company_id,employee_code,first_name_th,last_name_th,first_name_en,last_name_en,nickname_th,nickname_en,nick_name,branch_id,department_id,division_id,unit_id,position_id,position_level_id,start_work_date,hire_date",
+    "id,company_id,employee_code,first_name_th,last_name_th,first_name_en,last_name_en,nickname_th,nickname_en,nick_name,branch_id,branch_group_id,department_id,division_id,unit_id,position_id,position_level_id,start_work_date,hire_date",
     "id", applications.map((row) => row.emp_id));
   const employeeMap = index(employees);
   const allowedApplications = applications.filter((row) => canAccessApplication(guard, row, employeeMap.get(row.emp_id)));
@@ -60,16 +60,17 @@ export async function orientationData(db, guard, { applicationId, employeeId } =
   });
   const people = eligible.map(app => applicationPerson(app, employeeMap.get(app.emp_id)));
   const related = eligible.map((app) => participantMap.get(app.id)).filter(Boolean);
-  const [sessions, branches, departments, positions, levels, documents] = await Promise.all([
+  const [sessions, branches, groups, departments, positions, levels, documents] = await Promise.all([
     readByIds(db, "recruit_orientation_sessions", "id,session_code,session_name,orientation_date,start_time,end_time,location_id,location_name_snapshot,status", "id", related.map((row) => row.session_id)),
     readByIds(db, "branches", "id,branch_code,branch_name,branch_image_url", "id", [...people.map((row) => row.branch_id), ...related.map((row) => row.branch_id)]),
+    readByIds(db, "branch_groups", "id,group_name", "id", people.map((row) => row.branch_group_id)),
     readByIds(db, "departments", "id,department_name", "id", [...people.map((row) => row.department_id), ...related.map((row) => row.department_id)]),
     readByIds(db, "positions", "id,position_name", "id", [...people.map((row) => row.position_id), ...related.map((row) => row.position_id)]),
     readByIds(db, "position_levels", "id,level_code", "id", [...people.map((row) => row.position_level_id), ...related.map((row) => row.position_level_id)]),
     readByIds(db, "recruit_job_documents", "id,application_id,document_type,file_url,created_at", "application_id", eligible.map((row) => row.id), (q) => q.eq("document_type", "photo")),
   ]);
   const locations = await readByIds(db, "recruit_orientation_locations", "id,location_name,color_hex", "id", sessions.map((row) => row.location_id));
-  const [sessionMap, branchMap, departmentMap, positionMap, levelMap, locationMap] = [sessions, branches, departments, positions, levels, locations].map(index);
+  const [sessionMap, branchMap, groupMap, departmentMap, positionMap, levelMap, locationMap] = [sessions, branches, groups, departments, positions, levels, locations].map(index);
   const rows = eligible.map((app) => {
     const employee = employeeMap.get(app.emp_id) || {};
     const e = { ...employee, ...applicationPerson(app, employee) };
@@ -83,6 +84,7 @@ export async function orientationData(db, guard, { applicationId, employeeId } =
       nickname: e.nickname_th || app.nickname_th || e.nickname_en || app.nickname_en || e.nick_name || "",
       branch_id: p?.branch_id ?? e.branch_id, branch_code: p?.branch_code_snapshot ?? b?.branch_code ?? "",
       branch_name: p?.branch_name_snapshot ?? b?.branch_name ?? "", branch_logo_url: b?.branch_image_url || null,
+      group_name: groupMap.get(e.branch_group_id)?.group_name || "",
       department_id: p?.department_id ?? e.department_id,
       department_name: p?.department_name_snapshot ?? departmentMap.get(p?.department_id ?? e.department_id)?.department_name ?? "",
       position_name: p?.position_name_snapshot ?? positionMap.get(p?.position_id ?? e.position_id)?.position_name ?? "",

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   CalendarDays,
@@ -14,12 +9,14 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import ScheduleWorkspace from "./components/ScheduleWorkspace";
 
 import { getDefaultScheduleMonth } from "@/lib/leave-schedule-period";
 
-import ScheduleGrid, {
-  type ScheduleEmployee,
-  type ScheduleItem,
+import type {
+  ScheduleEmployee,
+  ScheduleItem,
+  ScheduleLeave,
 } from "./components/ScheduleGrid";
 
 type Metadata = {
@@ -78,6 +75,7 @@ type ScheduleResponse = {
 
   employees: ScheduleEmployee[];
   schedules: ScheduleItem[];
+  leaves: ScheduleLeave[];
 };
 
 type Filters = {
@@ -125,8 +123,8 @@ function thaiDate(value: string) {
 }
 
 export default function LeaveSchedulesPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState(
-    () => getDefaultScheduleMonth(),
+  const [selectedPeriod, setSelectedPeriod] = useState(() =>
+    getDefaultScheduleMonth(),
   );
 
   const [filters, setFilters] = useState<Filters>({
@@ -137,16 +135,15 @@ export default function LeaveSchedulesPage() {
     keyword: "",
   });
 
-  const [keywordInput, setKeywordInput] = useState("");
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showDefaults, setShowDefaults] = useState(true);
+  const [hasPending, setHasPending] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
-  const [metadata, setMetadata] =
-    useState<Metadata>(emptyMetadata);
+  const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
 
-  const [data, setData] =
-    useState<ScheduleResponse | null>(null);
+  const [data, setData] = useState<ScheduleResponse | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [metadataError, setMetadataError] = useState("");
@@ -157,20 +154,15 @@ export default function LeaveSchedulesPage() {
 
     async function loadMetadata() {
       try {
-        const response = await fetch(
-          "/leave/api/schedules/meta",
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch("/leave/api/schedules/meta", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
         const json = await response.json();
 
         if (!response.ok || !json.success) {
-          throw new Error(
-            json.error || "โหลดตัวกรองไม่สำเร็จ",
-          );
+          throw new Error(json.error || "โหลดตัวกรองไม่สำเร็จ");
         }
 
         if (!controller.signal.aborted) {
@@ -179,9 +171,7 @@ export default function LeaveSchedulesPage() {
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
           setMetadataError(
-            error instanceof Error
-              ? error.message
-              : "โหลดตัวกรองไม่สำเร็จ",
+            error instanceof Error ? error.message : "โหลดตัวกรองไม่สำเร็จ",
           );
         }
       }
@@ -208,20 +198,15 @@ export default function LeaveSchedulesPage() {
       }
 
       try {
-        const response = await fetch(
-          `/leave/api/schedules?${params}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch(`/leave/api/schedules?${params}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
         const json = await response.json();
 
         if (!response.ok || !json.success) {
-          throw new Error(
-            json.error || "โหลดตารางงานไม่สำเร็จ",
-          );
+          throw new Error(json.error || "โหลดตารางงานไม่สำเร็จ");
         }
 
         if (!controller.signal.aborted) {
@@ -231,9 +216,7 @@ export default function LeaveSchedulesPage() {
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
           setError(
-            error instanceof Error
-              ? error.message
-              : "โหลดตารางงานไม่สำเร็จ",
+            error instanceof Error ? error.message : "โหลดตารางงานไม่สำเร็จ",
           );
         }
       } finally {
@@ -246,17 +229,35 @@ export default function LeaveSchedulesPage() {
     void loadSchedules();
 
     return () => controller.abort();
-  }, [
-    selectedPeriod,
-    filters,
-    page,
-    refreshKey,
-  ]);
+  }, [selectedPeriod, filters, page, refreshKey]);
+
+  function handleScheduleSaved() {
+    setWorkspaceBusy(false);
+    setHasPending(false);
+    setSaveMessage("ดำเนินการเรียบร้อยแล้ว");
+    setError("");
+    setLoading(true);
+    setRefreshKey((value) => value + 1);
+  }
+
+  function canChangeView() {
+    if (workspaceBusy) return false;
+    if (!hasPending) return true;
+
+    const discard = window.confirm(
+      "มีตารางที่ยังไม่บันทึก ต้องการทิ้งการแก้ไขแล้วเปลี่ยนหน้าหรือไม่?",
+    );
+
+    if (discard) setHasPending(false);
+
+    return discard;
+  }
 
   function changeFilter(
     key: "branchId" | "departmentId" | "divisionId" | "unitId",
     value: string,
   ) {
+    if (!canChangeView()) return;
     setLoading(true);
     setError("");
     setPage(1);
@@ -284,6 +285,7 @@ export default function LeaveSchedulesPage() {
   }
 
   function changePeriod(year: number, month: number) {
+    if (!canChangeView()) return;
     setLoading(true);
     setError("");
     setPage(1);
@@ -291,44 +293,37 @@ export default function LeaveSchedulesPage() {
   }
 
   function changePage(nextPage: number) {
+    if (!canChangeView()) return;
     setLoading(true);
     setError("");
     setPage(nextPage);
   }
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  function changeSearch(value: string) {
+    if (!canChangeView()) return;
     setLoading(true);
     setError("");
     setPage(1);
 
     setFilters((previous) => ({
       ...previous,
-      keyword: keywordInput.trim(),
+      keyword: value,
     }));
   }
-
   const departments = useMemo(() => {
     if (!filters.branchId) return metadata.departments;
 
     const ids = new Set(
       metadata.branchDepartments
-        .filter(
-          (item) => item.branch_id === filters.branchId,
-        )
+        .filter((item) => item.branch_id === filters.branchId)
         .map((item) => item.department_id),
     );
 
-    return metadata.departments.filter(
-      (item) => ids.has(item.id),
-    );
+    return metadata.departments.filter((item) => ids.has(item.id));
   }, [metadata, filters.branchId]);
 
   const divisions = useMemo(() => {
-    const departmentIds = new Set(
-      departments.map((item) => item.id),
-    );
+    const departmentIds = new Set(departments.map((item) => item.id));
 
     return metadata.divisions.filter((item) =>
       filters.departmentId
@@ -338,9 +333,7 @@ export default function LeaveSchedulesPage() {
   }, [metadata.divisions, departments, filters.departmentId]);
 
   const units = useMemo(() => {
-    const divisionIds = new Set(
-      divisions.map((item) => item.id),
-    );
+    const divisionIds = new Set(divisions.map((item) => item.id));
 
     return metadata.units.filter((item) =>
       filters.divisionId
@@ -375,9 +368,7 @@ export default function LeaveSchedulesPage() {
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              ตารางงาน
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-900">ตารางงาน</h1>
 
             <p className="mt-1 text-sm text-slate-500">
               ตารางเวลาทำงานและวันหยุด รอบวันที่ 21–20
@@ -387,18 +378,36 @@ export default function LeaveSchedulesPage() {
 
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || workspaceBusy}
           onClick={() => {
+            if (!canChangeView()) return;
             setLoading(true);
             setError("");
             setRefreshKey((value) => value + 1);
           }}
-          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-900 shadow-md shadow-yellow-500/20 transition-all hover:from-amber-500 hover:to-yellow-600 hover:shadow-lg active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
           <RefreshCw size={16} />
           รีเฟรช
         </button>
       </header>
+
+      {saveMessage && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
+        >
+          <span>{saveMessage}</span>
+
+          <button
+            type="button"
+            onClick={() => setSaveMessage("")}
+            className="font-semibold"
+          >
+            ปิด
+          </button>
+        </div>
+      )}
 
       {(metadataError || error) && (
         <div
@@ -412,18 +421,13 @@ export default function LeaveSchedulesPage() {
 
       <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold text-slate-700">
-            รอบเดือน
-          </span>
+          <span className="text-sm font-semibold text-slate-700">รอบเดือน</span>
 
           <select
             aria-label="เดือนที่รอบสิ้นสุด"
             value={selectedPeriod.month}
             onChange={(event) =>
-              changePeriod(
-                selectedPeriod.year,
-                Number(event.target.value),
-              )
+              changePeriod(selectedPeriod.year, Number(event.target.value))
             }
             className={inputClass}
           >
@@ -438,10 +442,7 @@ export default function LeaveSchedulesPage() {
             aria-label="ปีของรอบ"
             value={selectedPeriod.year}
             onChange={(event) =>
-              changePeriod(
-                Number(event.target.value),
-                selectedPeriod.month,
-              )
+              changePeriod(Number(event.target.value), selectedPeriod.month)
             }
             className={inputClass}
           >
@@ -465,9 +466,7 @@ export default function LeaveSchedulesPage() {
           <select
             aria-label="สังกัด"
             value={filters.branchId}
-            onChange={(event) =>
-              changeFilter("branchId", event.target.value)
-            }
+            onChange={(event) => changeFilter("branchId", event.target.value)}
             className={inputClass}
           >
             <option value="">ทุกสังกัด</option>
@@ -497,9 +496,7 @@ export default function LeaveSchedulesPage() {
           <select
             aria-label="ฝ่าย"
             value={filters.divisionId}
-            onChange={(event) =>
-              changeFilter("divisionId", event.target.value)
-            }
+            onChange={(event) => changeFilter("divisionId", event.target.value)}
             className={inputClass}
           >
             <option value="">ทุกฝ่าย</option>
@@ -513,9 +510,7 @@ export default function LeaveSchedulesPage() {
           <select
             aria-label="หน่วย"
             value={filters.unitId}
-            onChange={(event) =>
-              changeFilter("unitId", event.target.value)
-            }
+            onChange={(event) => changeFilter("unitId", event.target.value)}
             className={inputClass}
           >
             <option value="">ทุกหน่วย</option>
@@ -527,36 +522,20 @@ export default function LeaveSchedulesPage() {
           </select>
         </div>
 
-        <form
-          onSubmit={submitSearch}
-          className="flex gap-2"
-        >
-          <input
-            value={keywordInput}
-            onChange={(event) =>
-              setKeywordInput(event.target.value)
-            }
-            placeholder="ค้นหารหัสหรือชื่อพนักงาน"
-            aria-label="ค้นหาพนักงาน"
-            className={`${inputClass} min-w-0 flex-1`}
-          />
-
-          <button
-            type="submit"
-            className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700"
-          >
-            <Search size={16} />
-            ค้นหา
-          </button>
-        </form>
+        <input
+          type="search"
+          value={filters.keyword}
+          onChange={(event) => changeSearch(event.target.value)}
+          placeholder="พิมพ์รหัสหรือชื่อพนักงานเพื่อค้นหา"
+          aria-label="ค้นหาพนักงาน"
+          className={`${inputClass} w-full`}
+        />
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-5">
           <div>
-            <h2 className="font-bold text-slate-900">
-              ตารางรายวัน
-            </h2>
+            <h2 className="font-bold text-slate-900">ตารางรายวัน</h2>
 
             <p className="mt-1 text-xs text-slate-500">
               {!loading && !error && data
@@ -564,24 +543,12 @@ export default function LeaveSchedulesPage() {
                 : "กำลังอ่านข้อมูล"}
             </p>
           </div>
-
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={showDefaults}
-              onChange={(event) =>
-                setShowDefaults(event.target.checked)
-              }
-              className="h-4 w-4 accent-emerald-600"
-            />
-            แสดงตัวอย่างจาก Settings
-          </label>
         </div>
 
         <div className="flex flex-wrap gap-4 border-b border-slate-100 px-5 py-3 text-xs text-slate-600">
-          <span>🟦 ตัวอย่าง Settings — ยังไม่บันทึก</span>
+          <span>🟧 ยังไม่บันทึก</span>
           <span>🟨 ร่าง</span>
-          <span>🟩 เผยแพร่แล้ว</span>
+          <span>🟩 บันทึกแล้ว</span>
           <span>OFF = หยุดตามตาราง</span>
           <span>(+1) = เลิกวันถัดไป</span>
         </div>
@@ -595,11 +562,17 @@ export default function LeaveSchedulesPage() {
             โหลดตารางไม่สำเร็จ กรุณากดรีเฟรช
           </div>
         ) : data ? (
-          <ScheduleGrid
+          <ScheduleWorkspace
+            key={`${selectedPeriod.year}-${selectedPeriod.month}-${page}-${refreshKey}`}
+            year={selectedPeriod.year}
+            month={selectedPeriod.month}
             dates={data.period.dates}
             employees={data.employees}
             schedules={data.schedules}
-            showDefaults={showDefaults}
+            filters={filters}
+            onReload={handleScheduleSaved}
+            onPendingChange={setHasPending}
+            onBusyChange={setWorkspaceBusy}
           />
         ) : null}
 
@@ -628,11 +601,7 @@ export default function LeaveSchedulesPage() {
             <button
               type="button"
               aria-label="หน้าถัดไป"
-              disabled={
-                loading ||
-                totalPages === 0 ||
-                page >= totalPages
-              }
+              disabled={loading || totalPages === 0 || page >= totalPages}
               onClick={() => changePage(page + 1)}
               className="rounded-lg border border-slate-200 p-2 text-slate-700 disabled:opacity-30"
             >
@@ -643,9 +612,9 @@ export default function LeaveSchedulesPage() {
       </section>
 
       <p className="text-xs leading-6 text-slate-500">
-        ตัวอย่างจาก Settings เป็นเพียงภาพตัวอย่างของค่าปกติ
-        ยังไม่ใช่ตารางที่บันทึกหรือเผยแพร่ และยังไม่ใช้คำนวณ Reports
-        หน้านี้ยังไม่มีการหักเวลาพักอัตโนมัติ
+        คลิกช่องเพื่อตั้งเวลาและวันหยุด แล้วกดบันทึกตาราง
+        การคัดลอกและใช้เวลาเดียวกันทุกคนครอบคลุมพนักงานตามตัวกรองทุกหน้า
+        ไม่มีการหักเวลาพักอัตโนมัติ
       </p>
     </div>
   );

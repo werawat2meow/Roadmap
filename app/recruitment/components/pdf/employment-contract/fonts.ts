@@ -10,6 +10,15 @@ const THAI_CLOSING_MARK_PATTERN = /^[ๆฯ,.;:!?%…\)\]\}”’»]+$/u;
 const THAI_OPENING_MARK_PATTERN = /[\(\[\{“‘«]$/u;
 const thaiWordSegmenter = new Intl.Segmenter("th", { granularity: "word" });
 
+/**
+ * React PDF can omit the final glyph when a Thai text run ends immediately
+ * after it. With the production hyphenation callback, the renderer consumes
+ * two trailing sentinel glyphs, leaving the actual final Thai glyph visible.
+ */
+export function preserveFinalThaiPdfGlyph(value: string): string {
+  return THAI_CHARACTER_PATTERN.test(value) ? `${value.trimEnd()}..` : value;
+}
+
 // These words should stay with the word that follows them. Leaving one at the
 // end of a line makes Thai legal text noticeably harder to read.
 const THAI_KEEP_WITH_NEXT = new Set([

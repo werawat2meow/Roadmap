@@ -8,6 +8,8 @@ import type {
 import {
   formatContractMoney,
   formatContractMoneyEN,
+  numberToEnglishBahtText,
+  numberToThaiBahtText,
 } from "../formatContractData";
 
 const text = (value: string, bold = false): ContractTextPart => ({
@@ -71,13 +73,18 @@ export const employment119DaysSections: ContractSection[] = [
     th: [
       text("นายจ้างตกลงจ้าง "),
       variable("employeeNameTH"),
+      variable("employeeNicknameTH"),
       text(" ให้ทำงานในตำแหน่ง "),
       variable("positionTH"),
       text(" ระดับ "),
       variable("level"),
       text(" แผนก "),
       variable("departmentTH"),
-      text(" ของบริษัท ตั้งแต่วันที่ "),
+      text(" ฝ่าย "),
+      variable("divisionTH"),
+      text(" ของบริษัท "),
+      variable("companyNameTH"),
+      text(" ตั้งแต่วันที่ "),
       variable("startDateTH"),
       text(" ถึง วันที่ "),
       variable("endDateTH"),
@@ -87,14 +94,19 @@ export const employment119DaysSections: ContractSection[] = [
     ],
     en: [
       text("The employer agrees to hire "),
-      variable("employeeNameTH"),
+      variable("employeeNameEN"),
+      variable("employeeNicknameEN"),
       text(" to work as "),
       variable("positionEN"),
       text(" at "),
       variable("level"),
       text(" level in the "),
       variable("departmentEN"),
-      text(" Department from "),
+      text(" Department, "),
+      variable("divisionEN"),
+      text(" Division of "),
+      variable("companyNameEN"),
+      text(" from "),
       variable("startDateEN"),
       text(" to "),
       variable("endDateEN"),
@@ -108,19 +120,37 @@ export const employment119DaysSections: ContractSection[] = [
     th: [
       text("ลูกจ้างจะได้รับค่าจ้างในอัตราเดือนละ "),
       variable("salary"),
+      text(" ("),
+      variable("salaryTextTH"),
+      text(")"),
       text(" ค่าตำแหน่ง "),
       variable("positionAllowance"),
+      text(" ("),
+      variable("positionAllowanceTextTH"),
+      text(")"),
       text(" รวมทั้งหมด "),
       variable("totalSalary"),
+      text(" ("),
+      variable("totalSalaryTextTH"),
+      text(")"),
       text(" (ก่อนหักภาษีเงินได้ และประกันสังคม)"),
     ],
     en: [
       text("The employee will be paid "),
       variable("salaryEN"),
+      text(" ("),
+      variable("salaryTextEN"),
+      text(")"),
       text(" per month, with a position allowance of "),
       variable("positionAllowanceEN"),
+      text(" ("),
+      variable("positionAllowanceTextEN"),
+      text(")"),
       text(", for a total of "),
       variable("totalSalaryEN"),
+      text(" ("),
+      variable("totalSalaryTextEN"),
+      text(")"),
       text(" (before income tax and social security deductions)."),
     ],
   },
@@ -287,6 +317,11 @@ function joinEnglishName(
     .join(" ");
 }
 
+function formatNickname(value: string | null | undefined): string {
+  const nickname = value?.trim();
+  return nickname ? ` (${nickname})` : "";
+}
+
 export function createEmploymentContractTemplateVariables(
   data: EmploymentContractData
 ): ContractTemplateVariables {
@@ -301,19 +336,33 @@ export function createEmploymentContractTemplateVariables(
       data.employee.firstNameEN,
       data.employee.lastNameEN
     ),
+    employeeNicknameTH: formatNickname(data.employee.nicknameTH),
+    employeeNicknameEN: formatNickname(data.employee.nicknameEN),
     positionTH: displayText(data.employee.positionTH),
     positionEN: displayText(data.employee.positionEN),
     level: displayText(data.employee.level),
     departmentTH: displayText(data.employee.departmentTH),
     departmentEN: displayText(data.employee.departmentEN),
+    divisionTH: displayText(data.employee.divisionTH),
+    divisionEN: displayText(data.employee.divisionEN),
     salary: formatContractMoney(data.employee.salary),
     salaryEN: formatContractMoneyEN(data.employee.salary),
+    salaryTextTH: numberToThaiBahtText(data.employee.salary),
+    salaryTextEN: numberToEnglishBahtText(data.employee.salary),
     positionAllowance: formatContractMoney(data.employee.positionAllowance),
     positionAllowanceEN: formatContractMoneyEN(
       data.employee.positionAllowance
     ),
+    positionAllowanceTextTH: numberToThaiBahtText(
+      data.employee.positionAllowance
+    ),
+    positionAllowanceTextEN: numberToEnglishBahtText(
+      data.employee.positionAllowance
+    ),
     totalSalary: formatContractMoney(data.employee.totalSalary),
     totalSalaryEN: formatContractMoneyEN(data.employee.totalSalary),
+    totalSalaryTextTH: numberToThaiBahtText(data.employee.totalSalary),
+    totalSalaryTextEN: numberToEnglishBahtText(data.employee.totalSalary),
     startDateTH: displayText(data.contract.startDateTH),
     startDateEN: displayText(data.contract.startDateEN),
     endDateTH: displayText(data.contract.endDateTH),
@@ -327,6 +376,8 @@ export function createEmploymentContractTemplateVariables(
     contractDateEN: displayText(data.contract.contractDateEN),
     companyNameTH: data.company.nameTH,
     companyNameEN: displayText(data.company.nameEN),
+    companyAddressTH: displayText(data.company.addressTH),
+    companyAddressEN: displayText(data.company.addressEN),
     employerNameTH: data.employer.nameTH,
     employerNameEN: displayText(data.employer.nameEN),
     employerPositionTH: displayText(data.employer.positionTH),

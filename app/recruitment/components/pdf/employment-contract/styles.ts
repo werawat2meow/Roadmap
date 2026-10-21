@@ -202,6 +202,11 @@ export const styles = StyleSheet.create({
     fontSize: 8.8,
     lineHeight: 1.18,
   },
+  signatureRole: {
+    fontSize: 8.3,
+    lineHeight: 1.18,
+    textAlign: "center",
+  },
   signatureName: {
     fontSize: 8.6,
     lineHeight: 1.18,

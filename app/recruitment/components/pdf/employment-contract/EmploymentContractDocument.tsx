@@ -1,6 +1,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 
 import {
+  createEmployerIntroductionParts,
   createEmploymentContractTemplateVariables,
   employment119DaysSections,
   resolveContractSections,
@@ -65,25 +66,7 @@ export function EmploymentContractDocument({
     employment119DaysSections,
     variables,
   );
-
-  const employerIntroductionTH: ContractTextPart[] = [
-    staticPart("ระหว่าง "),
-    dynamicPart(variables.companyNameTH),
-    staticPart(" โดยมี "),
-    dynamicPart(variables.employerNameTH),
-    staticPart(" ตำแหน่ง "),
-    dynamicPart(variables.employerPositionTH),
-    staticPart(" ซึ่งต่อไปในสัญญาฉบับนี้เรียกว่า “นายจ้าง” ฝ่ายหนึ่ง"),
-  ];
-  const employerIntroductionEN: ContractTextPart[] = [
-    staticPart("Between "),
-    dynamicPart(variables.companyNameEN),
-    staticPart(", represented by "),
-    dynamicPart(variables.employerNameTH),
-    staticPart(", position of "),
-    dynamicPart(variables.employerPositionTH),
-    staticPart(", hereinafter referred to as the “Employer”, of the one part."),
-  ];
+  const employerIntroduction = createEmployerIntroductionParts(variables);
   const employeeIntroductionTH: ContractTextPart[] = [
     staticPart("กับ "),
     dynamicPart(variables.employeeNameTH),
@@ -171,12 +154,12 @@ export function EmploymentContractDocument({
           <ContractParagraph
             language="th"
             highlightDynamicText={resolvedConfig.highlightDynamicText}
-            parts={employerIntroductionTH}
+            parts={employerIntroduction.th}
           />
           <ContractParagraph
             language="en"
             highlightDynamicText={resolvedConfig.highlightDynamicText}
-            parts={employerIntroductionEN}
+            parts={employerIntroduction.en}
           />
         </View>
 

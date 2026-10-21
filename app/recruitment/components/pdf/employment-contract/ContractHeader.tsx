@@ -1,5 +1,6 @@
 import { Image, Text, View } from "@react-pdf/renderer";
 
+import { preserveFinalThaiPdfGlyph } from "./fonts";
 import { styles } from "./styles";
 import type { ContractHeaderProps } from "./types";
 
@@ -18,7 +19,9 @@ export function ContractHeader({ company, logoDataUri }: ContractHeaderProps) {
         {company.nameEN ? (
           <Text style={styles.companyNameEN}>{company.nameEN}</Text>
         ) : null}
-        <Text style={styles.companyNameTH}>{company.nameTH}</Text>
+        <Text style={styles.companyNameTH}>
+          {preserveFinalThaiPdfGlyph(company.nameTH)}
+        </Text>
         {company.addressEN ? (
           <Text style={styles.companyAddress}>{company.addressEN}</Text>
         ) : null}

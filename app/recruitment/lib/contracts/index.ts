@@ -14,10 +14,13 @@ export {
   formatContractDateTH,
   formatContractMoney,
   formatContractMoneyEN,
+  numberToEnglishBahtText,
   numberToThaiBahtText,
   parseContractDate,
+  selectContractLevelCode,
   toContractNumber,
 } from "./formatContractData";
+export { createEmployerIntroductionParts } from "./contractPresentation";
 export {
   createEmploymentContractTemplateVariables,
   employment119DaysPageOneIntroduction,

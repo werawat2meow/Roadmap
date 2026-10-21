@@ -16,6 +16,50 @@ const THAI_DIGITS = [
 
 const THAI_PLACES = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน"] as const;
 
+const ENGLISH_ONES = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+] as const;
+
+const ENGLISH_TENS = [
+  "",
+  "",
+  "twenty",
+  "thirty",
+  "forty",
+  "fifty",
+  "sixty",
+  "seventy",
+  "eighty",
+  "ninety",
+] as const;
+
+const ENGLISH_SCALES = [
+  "",
+  "thousand",
+  "million",
+  "billion",
+  "trillion",
+] as const;
+
 export function toContractNumber(value: ContractNumericValue): number | null {
   if (value === null || value === undefined || value === "") return null;
 
@@ -24,6 +68,12 @@ export function toContractNumber(value: ContractNumericValue): number | null {
   const result = Number(normalized);
 
   return Number.isFinite(result) ? result : null;
+}
+
+export function selectContractLevelCode(
+  levelCode: string | null | undefined,
+): string | null {
+  return levelCode?.trim() || null;
 }
 
 function normalizeGregorianYear(year: number): number {
@@ -179,5 +229,61 @@ export function numberToThaiBahtText(value: ContractNumericValue): string {
   const satangText = satang === 0 ? "ถ้วน" : `${readThaiInteger(satang)}สตางค์`;
 
   return `${prefix}${bahtText}${satangText}`;
+}
+
+function readEnglishUnderThousand(value: number): string {
+  const parts: string[] = [];
+  const hundreds = Math.floor(value / 100);
+  const remainder = value % 100;
+
+  if (hundreds > 0) parts.push(`${ENGLISH_ONES[hundreds]} hundred`);
+
+  if (remainder >= 20) {
+    const tens = ENGLISH_TENS[Math.floor(remainder / 10)];
+    const ones = remainder % 10;
+    parts.push(ones > 0 ? `${tens}-${ENGLISH_ONES[ones]}` : tens);
+  } else if (remainder > 0) {
+    parts.push(ENGLISH_ONES[remainder]);
+  }
+
+  return parts.join(" ");
+}
+
+function readEnglishInteger(value: number): string {
+  if (value === 0) return ENGLISH_ONES[0];
+
+  const parts: string[] = [];
+  let remaining = value;
+  let scaleIndex = 0;
+
+  while (remaining > 0) {
+    const chunk = remaining % 1_000;
+    if (chunk > 0) {
+      const scale = ENGLISH_SCALES[scaleIndex];
+      const text = readEnglishUnderThousand(chunk);
+      parts.unshift(scale ? `${text} ${scale}` : text);
+    }
+    remaining = Math.floor(remaining / 1_000);
+    scaleIndex += 1;
+  }
+
+  return parts.join(" ");
+}
+
+export function numberToEnglishBahtText(value: ContractNumericValue): string {
+  const amount = toContractNumber(value);
+  if (amount === null) return "-";
+
+  const totalSatang = Math.round(Math.abs(amount) * 100);
+  if (!Number.isSafeInteger(totalSatang)) return "-";
+
+  const baht = Math.floor(totalSatang / 100);
+  const satang = totalSatang % 100;
+  const prefix = amount < 0 ? "minus " : "";
+  const bahtText = `${readEnglishInteger(baht)} baht`;
+  const satangText =
+    satang === 0 ? "only" : `and ${readEnglishInteger(satang)} satang`;
+
+  return `${prefix}${bahtText} ${satangText}`;
 }
 

@@ -29,6 +29,39 @@ export async function readByIds(db, table, columns, field, ids, transform = (q) 
   return rows;
 }
 
+export async function visiblePhotoMetadata(db, participants) {
+  const participantSessions = new Map(
+    participants.filter((participant) => participant?.id && participant?.session_id)
+      .map((participant) => [participant.id, participant.session_id]),
+  );
+  const links = await readByIds(
+    db,
+    "recruit_orientation_photo_participants",
+    "id,photo_id,participant_id",
+    "participant_id",
+    [...participantSessions.keys()],
+  );
+  const photos = await readByIds(
+    db,
+    "recruit_orientation_photos",
+    "id,session_id,photo_type,original_filename,sort_order",
+    "id",
+    links.map((link) => link.photo_id),
+  );
+  const linkedSessions = new Map();
+  for (const link of links) {
+    const sessionId = participantSessions.get(link.participant_id);
+    if (!sessionId) continue;
+    if (!linkedSessions.has(link.photo_id)) linkedSessions.set(link.photo_id, new Set());
+    linkedSessions.get(link.photo_id).add(sessionId);
+  }
+  return photos.flatMap((photo) => (
+    linkedSessions.get(photo.id)?.has(photo.session_id) && ["orientation", "site_visit", "handover"].includes(photo.photo_type)
+      ? [{ id: photo.id, session_id: photo.session_id, photo_type: photo.photo_type, original_filename: photo.original_filename || "", sort_order: photo.sort_order }]
+      : []
+  ));
+}
+
 const index = (rows) => new Map(rows.map((row) => [row.id, row]));
 const name = (first, last) => [first?.trim(), last?.trim()].filter(Boolean).join(" ");
 

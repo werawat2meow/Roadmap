@@ -1,12 +1,12 @@
 import { applicationPerson, canAccessApplication } from "./application.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { readAll } from "./readData.mjs";
-import { photoCountError } from "./photoUpload.mjs";
+import { photoCountError, photoReplaceSelectionError } from "./photoUpload.mjs";
 import { bangkokDate, completionIssues, PHOTO_TYPES, normalizedStatus } from "./domain.mjs";
 export { normalizedStatus } from "./domain.mjs";
 
 const prefix = "recruit_orientation_";
-export const mutationActions = ["location.create", "session.save", "assign", "attendance", "site_visit", "handover", "participant.close", "participant.reopen", "session.close", "session.reopen", "photo.add"];
+export const mutationActions = ["location.create", "session.save", "assign", "attendance", "site_visit", "handover", "participant.close", "participant.reopen", "session.close", "session.reopen", "photo.add", "photo.replace"];
 export class OrientationError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
@@ -61,6 +61,9 @@ export class WritePlan {
   }
   update(table, id, row) {
     this.operations.push({ table, kind: "update", id, row: { ...row, updated_at: this.now, updated_by: this.actor.id } });
+  }
+  delete(table, id) {
+    this.operations.push({ table, kind: "delete", id });
   }
 }
 
@@ -243,6 +246,96 @@ export async function buildMutation(db, guard, payload, { photoMetadata, now } =
       after = { status: "closed" };
     } else { requireValue(reason && normalizedStatus(s.status) === "closed", "เปิดรอบใหม่ต้องเป็นรอบที่ปิดแล้วและมีเหตุผล"); after = { status: "open" }; }
     plan.update(prefix + "sessions", s.id, after); result = { id: s.id };
+  } else if (action === "photo.replace") {
+    requireValue(photoMetadata, "ต้องใช้ช่องทางอัปโหลดรูป");
+    requireValue(PHOTO_TYPES.includes(payload.photo_type), "หมวดรูปไม่ถูกต้อง");
+    requireValue(Array.isArray(photoMetadata), "ข้อมูลชุดรูปไม่ถูกต้อง");
+    const slots = payload.photo_slots;
+    const selectionError = photoReplaceSelectionError(payload.photo_type, slots);
+    requireValue(!selectionError, selectionError);
+    requireValue(photoMetadata.length === slots.length && photoMetadata.every((metadata, index) => metadata?.slot === slots[index]), "ข้อมูลตำแหน่งรูปไม่ตรงกับไฟล์ที่อัปโหลด");
+
+    const ids = idList(payload.participant_ids, 1, 50);
+    const s = await session(payload.session_id); sessionId = s.id;
+    const links = [];
+    for (const id of ids) {
+      const { p } = await participant(id);
+      requireValue(p.session_id === s.id && normalizedStatus(p.attendance_status) === "attended", "รูปต้องผูกผู้เข้าร่วมจริงในรอบเดียวกัน");
+      let handoverId = null;
+      if (payload.photo_type === "site_visit") requireValue(normalizedStatus(p.site_visit_status) === "visited", "บันทึก Site Visit ก่อนผูกรูป");
+      if (payload.photo_type === "handover") {
+        const deliveries = await plan.read(prefix + "handovers", "participant_id", [p.id]);
+        requireValue(deliveries.length === 1 && bangkokDate(deliveries[0].handover_at) === s.orientation_date, "บันทึกส่งมอบในวันรอบก่อนผูกรูป");
+        handoverId = deliveries[0].id;
+      }
+      links.push({ participant_id: p.id, handover_id: handoverId });
+    }
+    participantId = null;
+
+    const takenAt = sameDay(payload.at, s);
+    const existing = (await plan.read(prefix + "photos", "session_id", [s.id])).filter((photo) => photo.photo_type === payload.photo_type);
+    const existingLinks = await plan.read(prefix + "photo_participants", "photo_id", existing.map((photo) => photo.id));
+    const orderedExisting = [...existing].sort((left, right) => (left.sort_order ?? Number.MAX_SAFE_INTEGER) - (right.sort_order ?? Number.MAX_SAFE_INTEGER) || left.id.localeCompare(right.id));
+    const exactFixedSlots = orderedExisting.length === 3 && orderedExisting.every((photo, index) => photo.sort_order === index);
+    const isFixedSection = payload.photo_type !== "handover";
+    const fullFixedReplacement = isFixedSection && !exactFixedSlots;
+    if (fullFixedReplacement) requireValue(slots.length === 3 && slots.every((slot, index) => slot === index), "ยังไม่มีรูปเดิมครบ 3 รูป กรุณาอัปโหลดให้ครบ 3 รูป");
+
+    const cleanupPathUrls = [];
+    const photoIds = [];
+    const validateMetadata = (metadata) => {
+      let url;
+      try { url = new URL(metadata.path_url); } catch { /* validated below */ }
+      requireValue(url?.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash, "path_url ต้องเป็น URL เต็มแบบ HTTPS ที่ไม่หมดอายุ");
+    };
+    const insertPhoto = (metadata, index) => {
+      validateMetadata(metadata);
+      const photo = plan.insert(prefix + "photos", { path_url: metadata.path_url, original_filename: metadata.original_filename, id: index === 0 ? requestId : randomUUID(), session_id: s.id, photo_type: payload.photo_type, taken_at: takenAt, sort_order: metadata.slot });
+      for (const link of links) plan.insert(prefix + "photo_participants", { ...link, photo_id: photo.id });
+      photoIds.push(photo.id);
+    };
+
+    if (fullFixedReplacement) {
+      for (const link of existingLinks) plan.delete(prefix + "photo_participants", link.id);
+      for (const photo of orderedExisting) {
+        plan.delete(prefix + "photos", photo.id);
+        cleanupPathUrls.push(photo.path_url);
+      }
+      photoMetadata.forEach(insertPhoto);
+    } else {
+      const existingBySlot = new Map();
+      const surplus = [];
+      for (const photo of orderedExisting) {
+        if (Number.isInteger(photo.sort_order) && !existingBySlot.has(photo.sort_order)) existingBySlot.set(photo.sort_order, photo);
+        else surplus.push(photo);
+      }
+      const replacedIds = new Set();
+      for (const metadata of photoMetadata) {
+        validateMetadata(metadata);
+        const photo = existingBySlot.get(metadata.slot);
+        if (photo) {
+          replacedIds.add(photo.id);
+          cleanupPathUrls.push(photo.path_url);
+          for (const link of existingLinks.filter((entry) => entry.photo_id === photo.id)) plan.delete(prefix + "photo_participants", link.id);
+          plan.update(prefix + "photos", photo.id, { path_url: metadata.path_url, original_filename: metadata.original_filename, taken_at: takenAt, sort_order: metadata.slot });
+          for (const link of links) plan.insert(prefix + "photo_participants", { ...link, photo_id: photo.id });
+          photoIds.push(photo.id);
+        } else insertPhoto(metadata, photoIds.length);
+      }
+      if (payload.photo_type === "handover") {
+        const retainedSlots = new Set(slots);
+        for (const photo of orderedExisting) {
+          if (replacedIds.has(photo.id)) continue;
+          if (!retainedSlots.has(photo.sort_order) || surplus.includes(photo)) {
+            for (const link of existingLinks.filter((entry) => entry.photo_id === photo.id)) plan.delete(prefix + "photo_participants", link.id);
+            plan.delete(prefix + "photos", photo.id);
+            cleanupPathUrls.push(photo.path_url);
+          }
+        }
+      }
+    }
+    after = { photo_ids: photoIds, participant_ids: ids, photo_type: payload.photo_type, photo_slots: slots };
+    result = { id: photoIds[0], photo_ids: photoIds, cleanup_path_urls: [...new Set(cleanupPathUrls.filter(Boolean))] };
   } else if (action === "photo.add") {
     requireValue(photoMetadata, "ต้องใช้ช่องทางอัปโหลดรูป");
     requireValue(PHOTO_TYPES.includes(payload.photo_type), "หมวดรูปไม่ถูกต้อง");

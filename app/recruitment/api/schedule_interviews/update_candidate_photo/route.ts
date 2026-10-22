@@ -2,13 +2,14 @@ import { withActivity } from "@/app/recruitment/lib/activity/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { uploadFileToSpaces, deleteFileFromSpaces } from "@/lib/spaces";
+import { candidatePhotoFilesError } from "@/app/recruitment/schedule_interviews/candidatePhoto.mjs";
 
 async function handlePOST(req: Request) {
   try {
     const formData = await req.formData();
 
     const applicationId = formData.get("application_id");
-    const file = formData.get("file");
+    const files = formData.getAll("file");
 
     if (!applicationId) {
       return NextResponse.json(
@@ -16,6 +17,15 @@ async function handlePOST(req: Request) {
         { status: 400 }
       );
     }
+
+    if (files.length !== 1) {
+      return NextResponse.json(
+        { error: "กรุณาอัปโหลดรูปผู้สมัครครั้งละ 1 รูป" },
+        { status: 400 }
+      );
+    }
+
+    const file = files[0];
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -28,29 +38,11 @@ async function handlePOST(req: Request) {
     // ตรวจสอบประเภทไฟล์
     // =====================================================
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-    ];
+    const fileError = candidatePhotoFilesError([file]);
 
-    if (!allowedTypes.includes(file.type)) {
+    if (fileError) {
       return NextResponse.json(
-        {
-          error: "รองรับเฉพาะ JPG และ PNG",
-        },
-        { status: 400 }
-      );
-    }
-
-    // =====================================================
-    // ตรวจสอบขนาดไฟล์
-    // =====================================================
-
-    if (file.size > 2 * 1024 * 1024) {
-      return NextResponse.json(
-        {
-          error: "รูปภาพต้องมีขนาดไม่เกิน 2MB",
-        },
+        { error: fileError },
         { status: 400 }
       );
     }

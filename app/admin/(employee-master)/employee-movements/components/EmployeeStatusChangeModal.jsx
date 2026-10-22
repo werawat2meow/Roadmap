@@ -567,7 +567,7 @@ export default function EmployeeStatusChangeModal({
                   <Timeline style={{ marginTop: 12 }} items={history.map(item => ({
                     content: <div key={item.id}>
                       <Typography.Text strong>{item.old_status_name} → {item.new_status_name}</Typography.Text>
-                      <div>{item.change_source === "SYSTEM" ? "ระบบอัตโนมัติ" : `HR (บัญชี: ${item.actor_user_account_id || "-"})`}</div>
+                      <div>{item.change_source === "SYSTEM" ? "ระบบอัตโนมัติ" : `HR: ${item.actor_display_name || item.actor_username || "ไม่พบชื่อผู้ดำเนินการ"}${item.actor_username && item.actor_display_name && item.actor_display_name !== item.actor_username ? ` (${item.actor_username})` : ""}`}</div>
                       <div>บันทึก: {new Date(item.changed_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</div>
                       <div>วันที่มีผล: {item.effective_date || "-"}</div>
                       <div>เหตุผล: {item.reason || "-"}</div>

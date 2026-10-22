@@ -329,8 +329,14 @@ export default function EmployeeMovementsPage() {
           KPI_TYPES.map(async ([type]) => {
             const params = new URLSearchParams(kpiQuery);
             params.set('event', type);
-            const result = await getJson(`/api/admin/employee-movements/roster?${params.toString()}`);
-            return [type, Number(result.pagination?.total || 0)];
+            try {
+              const result = await getJson(`/api/admin/employee-movements/roster?${params.toString()}`);
+              return [type, Number(result.pagination?.total || 0)];
+            } catch (error) {
+              // An unrelated KPI request must not reset every KPI to zero.
+              console.error(`EMPLOYEE_MOVEMENT_KPI_${type}_ERROR`, error);
+              return [type, null];
+            }
           })
         );
 

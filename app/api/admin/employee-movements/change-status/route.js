@@ -27,6 +27,7 @@ const TRANSITIONS = {
     "RESIGNED",
     "SUSPENDED",
     "TERMINATED",
+    "DISMISSED",
   ],
 
   ACTIVE: [
@@ -35,11 +36,12 @@ const TRANSITIONS = {
     "SUSPENDED",
     "RETIRED",
     "TERMINATED",
+    "DISMISSED",
   ],
 
-  NOTICE: ["RESIGNED", "ACTIVE"],
+  NOTICE: ["RESIGNED", "ACTIVE", "DISMISSED"],
 
-  SUSPENDED: ["ACTIVE", "TERMINATED"],
+  SUSPENDED: ["ACTIVE", "TERMINATED", "DISMISSED"],
 };
 
 /* =========================================================
@@ -320,6 +322,12 @@ export async function POST(req) {
     ----------------------------------------------------- */
 
     const direct =
+      next.status_code === "DISMISSED" &&
+      ["ACTIVE", "PROBATION", "NOTICE", "SUSPENDED"].includes(
+        current.status_code
+      );
+
+    const voluntaryDirectResignation =
       next.status_code === "RESIGNED" &&
       ["ACTIVE", "PROBATION"].includes(
         current.status_code
@@ -332,12 +340,11 @@ export async function POST(req) {
           "ABSENCE_OVER_3_DAYS",
           "OTHER",
         ].includes(exit_reason_code) ||
-        confirm_direct_exit !== true ||
-        last_working_day !== effective_date
+        confirm_direct_exit !== true
       )
     ) {
       return fail(
-        "พ้นสภาพโดยตรงต้องเลือกเหตุผล ยืนยันการตรวจสอบ และใช้วันพ้นสภาพเป็นวันนี้"
+        "พ้นสภาพจากความผิดร้ายแรงต้องเลือกเหตุผลและยืนยันการตรวจสอบ"
       );
     }
 
@@ -348,6 +355,7 @@ export async function POST(req) {
     if (
       next.status_code === "RESIGNED" &&
       !direct &&
+      !voluntaryDirectResignation &&
       (
         !employee.resignation_date ||
         employee.resignation_date >
@@ -369,7 +377,7 @@ export async function POST(req) {
     ----------------------------------------------------- */
 
     const { data, error } = await db.rpc(
-      "ems_change_employee_status_v3",
+      "ems_change_employee_status_v4",
       {
         p_employee_id: employee_id,
 
@@ -389,11 +397,11 @@ export async function POST(req) {
           access.actor.user_account_id,
 
         p_last_working_day:
-          ["NOTICE", "RESIGNED"].includes(
-            next.status_code
-          )
+          next.status_code === "NOTICE"
             ? last_working_day || null
-            : null,
+            : voluntaryDirectResignation
+              ? effective_date
+              : null,
 
         p_exit_reason_code:
           direct
@@ -422,7 +430,7 @@ export async function POST(req) {
             "ไม่พบระดับ P2–P10",
 
           EXIT_DATE_CONFLICT:
-            "วัน Last Day ไม่ตรงกับข้อมูลเดิม",
+            "พบวันทำงานสุดท้ายเดิมค้างอยู่ กรุณาอัปเดต SQL Function ตามไฟล์แนบ",
 
           DIRECT_EXIT_CONFIRM_REQUIRED:
             "ยังไม่ได้ยืนยันพ้นสภาพโดยตรง",

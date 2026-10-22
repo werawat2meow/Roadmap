@@ -41,7 +41,7 @@ const KPI_TYPES = [
   ['STARTED', 'เริ่มงานวันแรก'],
   ['PROBATION', 'ทดลองงาน'],
   ['NOTICE', 'แจ้งลาออก'],
-  ['EXITED', 'พ้นสภาพเป็นพนักงาน'],
+  ['LAST_WORKING_DAY', 'วันทำงานสุดท้าย'],
 ];
 
 function hasPermission(user, codes) {
@@ -798,7 +798,7 @@ export default function EmployeeMovementsPage() {
         </div>
 
         <Title level={2} style={{ margin: 0 }}>
-          <TeamOutlined /> Dashboard - การติดตามพนักงาน
+          <TeamOutlined /> Dashboard - การติดตามพนักงาน เข้า - ออก
         </Title>
 
         <div style={{ marginTop: 8 }}>

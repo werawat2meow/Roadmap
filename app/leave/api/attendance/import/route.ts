@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { requirePermission } from "@/lib/auth/requirePortalAccess";
 import { applyEmployeeScope } from "@/lib/auth/requireScopedAccess";
+import {
+  assessAttendanceRange,
+  type AttendanceAssessment,
+} from "@/lib/leave-attendance-assessment";
 
 interface ImportRow {
   sourceEmployeeCode: string;
@@ -12,6 +16,8 @@ interface ImportRow {
 type EmployeeMatch = {
   id: string;
   employee_code: string;
+  first_name_th: string | null;
+  last_name_th: string | null;
 };
 
 type LegacyCode = {
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
         readAll<EmployeeMatch>(
           supabaseAdmin
             .from("employees")
-            .select("id, employee_code")
+            .select("id, employee_code, first_name_th, last_name_th")
             .eq("is_deleted", false)
             .in("employee_code", codes)
             .order("id"),
@@ -134,7 +140,7 @@ export async function POST(request: Request) {
       const linkedEmployees = await readAll<EmployeeMatch>(
         supabaseAdmin
           .from("employees")
-          .select("id, employee_code")
+          .select("id, employee_code, first_name_th, last_name_th")
           .eq("is_deleted", false)
           .in("id", ids)
           .order("id"),
@@ -410,12 +416,64 @@ export async function POST(request: Request) {
 
     if (completeError) throw completeError;
 
+    let assessments: AttendanceAssessment[] = [];
+    let assessmentWarning: string | null = null;
+
+    if (matchedRows.length > 0) {
+      try {
+        const employeeIds = [
+          ...new Set(
+            matchedRows
+              .map((row) => row.employee_id)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        ];
+
+        const importedDates = [
+          ...new Set(matchedRows.map((row) => row.work_date)),
+        ].sort();
+
+        const allAssessments = await assessAttendanceRange(
+          employeeIds,
+          importedDates[0],
+          importedDates[importedDates.length - 1],
+        );
+
+        // คืนผลเฉพาะพนักงาน/วันที่ที่อยู่ในไฟล์ครั้งนี้
+        const importedKeys = new Set(
+          matchedRows.map((row) => `${row.employee_id}:${row.work_date}`),
+        );
+
+        assessments = allAssessments.filter((item) =>
+          importedKeys.has(`${item.employeeId}:${item.workDate}`),
+        );
+      } catch (error) {
+        // ข้อมูลสแกนบันทึกสำเร็จแล้ว
+        // หากตรวจตารางไม่สำเร็จ ห้ามแจ้งว่าการนำเข้าล้มเหลว
+        assessmentWarning =
+          error instanceof Error ? error.message : "ตรวจเทียบตารางงานไม่สำเร็จ";
+      }
+    }
+
     return NextResponse.json({
       success: true,
       totalRows: importRows.length,
       matchedRows: matchedRows.length,
       unmatchedRows: unmatchedCount,
       batchId: batch.id,
+      assessments: assessments.map((item) => {
+        const employee = employeesById.get(item.employeeId);
+
+        return {
+          ...item,
+          employeeCode: employee?.employee_code || "",
+          employeeName:
+            [employee?.first_name_th, employee?.last_name_th]
+              .filter(Boolean)
+              .join(" ") || "ไม่ระบุชื่อ",
+        };
+      }),
+      assessmentWarning,
 
       // ส่งเหตุผลของรายการที่จับคู่ไม่ได้กลับไปแสดงหน้าจอ
       issues: importRows

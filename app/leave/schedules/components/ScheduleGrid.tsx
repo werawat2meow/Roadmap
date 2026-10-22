@@ -48,11 +48,35 @@ export type ScheduleItem = {
   }[];
 };
 
+export type ScheduleLeave = {
+  id: string;
+  employeeId: string;
+  kind: string;
+  startDate: string;
+  endDate: string;
+  session: "FULL" | "AM" | "PM";
+  requestedDays: number;
+  status: "APPROVED" | "PENDING";
+};
+
+export type ScheduleCellSelection = {
+  employee: ScheduleEmployee;
+  date: string;
+  item: ScheduleItem | null;
+  defaultDayOff: boolean;
+};
+
 type Props = {
   dates: string[];
   employees: ScheduleEmployee[];
   schedules: ScheduleItem[];
-  showDefaults: boolean;
+  leaves: ScheduleLeave[];
+  onSelectCell: (selection: ScheduleCellSelection) => void;
+  selectedEmployeeIds?: string[];
+  selectedDates?: string[];
+  pendingKeys?: string[];
+  onToggleEmployee?: (employeeId: string) => void;
+  onToggleDate?: (date: string) => void;
 };
 
 function organizationName(value: OrganizationValue, field: string) {
@@ -65,32 +89,6 @@ function weekdayNumber(date: string) {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
-function isDefaultDayOff(date: string, weeklyHoliday: string) {
-  const names: Record<string, number> = {
-    อาทิตย์: 0,
-    จันทร์: 1,
-    อังคาร: 2,
-    พุธ: 3,
-    พฤหัสบดี: 4,
-    ศุกร์: 5,
-    เสาร์: 6,
-    sunday: 0,
-    monday: 1,
-    tuesday: 2,
-    wednesday: 3,
-    thursday: 4,
-    friday: 5,
-    saturday: 6,
-  };
-
-  const days = weeklyHoliday
-    .split(",")
-    .map((item) => item.trim().replace(/^วัน/, "").toLowerCase())
-    .filter(Boolean)
-    .map((item) => (/^[0-6]$/.test(item) ? Number(item) : names[item]));
-
-  return days.includes(weekdayNumber(date));
-}
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -127,32 +125,120 @@ function intervalText(interval: ScheduleItem["intervals"][number]) {
   );
 }
 
-function getDefaultCell(employee: ScheduleEmployee, date: string) {
-  if (isDefaultDayOff(date, employee.defaults.weeklyHoliday)) {
-    return {
-      text: "OFF",
-      isOff: true,
-    };
-  }
 
-  const start = employee.defaults.startTime;
-  const end = employee.defaults.endTime;
+const leaveKindLabels: Record<string, string> = {
+  ANNUAL: "ลาพักร้อน",
+  SICK: "ลาป่วย",
+  BUSINESS: "ลากิจ",
+  ANNUAL_HOLIDAY: "วันหยุดประจำปี",
+  BIRTHDAY: "ลาวันเกิด",
+  ORDAIN: "ลาบวช",
+  MATERNITY: "ลาคลอด",
+  UNPAID: "ลาไม่รับค่าจ้าง",
+};
 
-  if (!start || !end || start === end) {
+function formatDays(value: number) {
+  return value.toLocaleString("th-TH", {
+    maximumFractionDigits: 2,
+  });
+}
+
+// นับเฉพาะส่วนของใบลาที่อยู่ในรอบนี้
+// ครึ่งวัน: วันแรก 0.5 วัน วันที่เหลือวันละ 1 วัน
+function leaveDaysInPeriod(
+  leave: ScheduleLeave,
+  dates: string[],
+): number | null {
+  const start = dateKey(leave.startDate);
+  const end = dateKey(leave.endDate);
+
+  const startTime = Date.parse(`${start}T00:00:00Z`);
+  const endTime = Date.parse(`${end}T00:00:00Z`);
+
+  if (
+    !Number.isFinite(startTime) ||
+    !Number.isFinite(endTime) ||
+    endTime < startTime
+  ) {
     return null;
   }
 
-  return {
-    text: `${start}–${end}${end < start ? " (+1)" : ""}`,
-    isOff: false,
-  };
+  const calendarDays = Math.round((endTime - startTime) / 86_400_000) + 1;
+
+  const isHalfDay = leave.session === "AM" || leave.session === "PM";
+
+  const expectedDays = calendarDays - (isHalfDay ? 0.5 : 0);
+
+  // หากข้อมูลเก่าใช้วิธีนับต่างกัน อย่ากระจายยอดเองจนผิดรอบ
+  if (
+    !Number.isFinite(leave.requestedDays) ||
+    Math.abs(expectedDays - leave.requestedDays) > 0.001
+  ) {
+    return null;
+  }
+
+  return dates.reduce((total, date) => {
+    if (date < start || date > end) return total;
+
+    return total + (date === start && isHalfDay ? 0.5 : 1);
+  }, 0);
+}
+
+function EmployeePeriodSummary({
+  employee,
+  dates,
+  scheduleMap,
+}: {
+  employee: ScheduleEmployee;
+  dates: string[];
+  scheduleMap: Map<string, ScheduleItem>;
+}) {
+  let workDays = 0;
+  let offDays = 0;
+
+  for (const date of dates) {
+    const item = scheduleMap.get(`${employee.id}:${date}`);
+
+    // ใช้ข้อมูลเดียวกับที่แสดงในช่องตาราง
+    if (item) {
+      if (item.dayType === "OFF") {
+        offDays += 1;
+      } else {
+        workDays += 1;
+      }
+
+      continue;
+    }
+
+  }
+
+  return (
+    <td className="min-w-[220px] border-b border-l border-slate-200 bg-white px-4 py-3 align-middle text-xs text-slate-900">
+      <div className="space-y-2">
+        <div className="flex justify-between gap-4">
+          <span>ทำงานตามตาราง</span>
+          <strong>{workDays} วัน</strong>
+        </div>
+
+        <div className="flex justify-between gap-4">
+          <span>หยุดประจำสัปดาห์</span>
+          <strong>{offDays} วัน</strong>
+        </div>
+      </div>
+    </td>
+  );
 }
 
 export default function ScheduleGrid({
   dates,
   employees,
   schedules,
-  showDefaults,
+  onSelectCell,
+  selectedEmployeeIds = [],
+  selectedDates = [],
+  pendingKeys = [],
+  onToggleEmployee,
+  onToggleDate,
 }: Props) {
   const scheduleMap = new Map<string, ScheduleItem>();
 
@@ -194,6 +280,15 @@ export default function ScheduleGrid({
                   key={date}
                   className={`min-w-[116px] border-b border-r border-slate-200 px-2 py-3 text-center ${weekdayHeaderColors[day]}`}
                 >
+                  {onToggleDate && (
+                    <input
+                      type="checkbox"
+                      checked={selectedDates.includes(date)}
+                      onChange={() => onToggleDate(date)}
+                      aria-label={`เลือกวันที่ ${date}`}
+                      className="mb-1 h-4 w-4 accent-emerald-600"
+                    />
+                  )}
                   {/* ตัวย่อวัน */}
                   <div className="text-xs font-medium">{weekdays[day]}</div>
 
@@ -204,6 +299,12 @@ export default function ScheduleGrid({
                 </th>
               );
             })}
+            <th className="min-w-[220px] border-b border-l border-slate-200 bg-slate-800 px-4 py-3 text-left text-white">
+              <div className="font-bold">สรุปรอบเดือน</div>
+              <div className="mt-1 text-[10px] font-normal text-slate-200">
+                จำนวนวันตามตารางที่แสดง
+              </div>
+            </th>
           </tr>
         </thead>
 
@@ -211,7 +312,7 @@ export default function ScheduleGrid({
           {employees.length === 0 ? (
             <tr>
               <td
-                colSpan={dates.length + 1}
+                colSpan={dates.length + 2}
                 className="bg-white px-4 py-16 text-center text-slate-500"
               >
                 ไม่พบพนักงานตามตัวกรอง
@@ -221,6 +322,17 @@ export default function ScheduleGrid({
             employees.map((employee) => (
               <tr key={employee.id}>
                 <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-4 py-3">
+                  {onToggleEmployee && (
+                    <label className="mb-2 flex items-center gap-2 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={selectedEmployeeIds.includes(employee.id)}
+                        onChange={() => onToggleEmployee(employee.id)}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      เลือกคนนี้
+                    </label>
+                  )}
                   <p className="font-semibold text-slate-900">
                     {employee.name || "-"}
                   </p>
@@ -242,12 +354,45 @@ export default function ScheduleGrid({
                 {dates.map((date) => {
                   const item = scheduleMap.get(`${employee.id}:${date}`);
 
+                  const openEditor = () => {
+                    onSelectCell({
+                      employee,
+                      date,
+                      item: item || null,
+                      defaultDayOff: false,
+                    });
+                  };
+
+                  const cellInteraction = {
+                    onClick: openEditor,
+                    tabIndex: 0,
+                    "aria-label": `จัดตาราง ${
+                      employee.name || employee.employeeCode
+                    } วันที่ ${date}`,
+                    onKeyDown: (
+                      event: import("react").KeyboardEvent<HTMLTableCellElement>,
+                    ) => {
+                      if (
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        openEditor();
+                      }
+                    },
+                  };
+
                   if (item) {
                     return (
                       <td
                         key={date}
+                        {...cellInteraction}
                         title={item.note || item.shiftName || ""}
-                        className={`border-b border-r border-slate-200 px-2 py-3 text-center ${
+                        className={`border-b border-r border-slate-200 px-2 py-3 text-center cursor-pointer ${
+                          pendingKeys.includes(`${employee.id}:${date}`)
+                            ? "ring-2 ring-inset ring-orange-400"
+                            : ""
+                        } ${
                           item.dayType === "OFF"
                             ? "bg-slate-100"
                             : item.state === "DRAFT"
@@ -282,43 +427,31 @@ export default function ScheduleGrid({
                               : "text-emerald-700"
                           }`}
                         >
-                          {item.state === "DRAFT" ? "ร่าง" : "เผยแพร่"}
+                          {pendingKeys.includes(`${employee.id}:${date}`)
+                            ? "ยังไม่บันทึก"
+                            : item.state === "DRAFT"
+                              ? "ร่าง"
+                              : "บันทึกแล้ว"}
                         </p>
                       </td>
                     );
                   }
 
-                  const preview = showDefaults
-                    ? getDefaultCell(employee, date)
-                    : null;
-
                   return (
                     <td
                       key={date}
-                      className={`border-b border-r border-slate-200 px-2 py-3 text-center ${
-                        preview
-                          ? preview.isOff
-                            ? "bg-slate-50"
-                            : "bg-sky-50/60"
-                          : "bg-white"
-                      }`}
+                      {...cellInteraction}
+                      className="cursor-pointer border-b border-r border-slate-200 bg-white px-2 py-3 text-center hover:ring-2 hover:ring-inset hover:ring-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
                     >
-                      {preview ? (
-                        <>
-                          <p className="text-xs font-semibold text-slate-700">
-                            {preview.text}
-                          </p>
-
-                          <p className="mt-1 text-[10px] text-sky-700">
-                            ข้อมูลจาก Settings
-                          </p>
-                        </>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+                      <span className="text-slate-400">—</span>
                     </td>
                   );
                 })}
+                <EmployeePeriodSummary
+                  employee={employee}
+                  dates={dates}
+                  scheduleMap={scheduleMap}
+                />
               </tr>
             ))
           )}

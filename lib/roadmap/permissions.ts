@@ -1,11 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { requirePermission } from "@/lib/auth/requirePortalAccess";
 
-const DEFAULT_ROADMAP_MENUS = [
-  "Overview",
-  "Employee",
-  "Evaluate HR",
-];
+const DEFAULT_ROADMAP_MENUS = ["Overview", "Employee", "Evaluate HR"];
 
 const ALL_ROADMAP_MENUS = [
   ...DEFAULT_ROADMAP_MENUS,
@@ -51,23 +47,23 @@ export async function getCurrentRoadmapAccess() {
 
   const { data, error } = await supabaseAdmin
     .from("rm_user_access")
-    .select(`
-      id,
-      rm_user_menu_permissions (
-        menu_name,
-        is_allowed
-      )
-    `)
-    .eq("employee_id", employeeId)
-    .maybeSingle();
+    .select(
+      `
+    id,
+    rm_user_menu_permissions (
+      menu_name,
+      is_allowed
+    )
+  `,
+    )
+    .eq("employee_id", employeeId);
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const additionalMenus = (
-    data?.rm_user_menu_permissions || []
-  )
+  const additionalMenus = (data || [])
+    .flatMap((access) => access.rm_user_menu_permissions || [])
     .filter((permission) => permission.is_allowed === true)
     .map((permission) => permission.menu_name)
     .filter((menu) => menu !== "Audit Logs");
@@ -76,12 +72,7 @@ export async function getCurrentRoadmapAccess() {
     ok: true as const,
     employeeId,
     isSuperAdmin: false,
-    menus: Array.from(
-      new Set([
-        ...DEFAULT_ROADMAP_MENUS,
-        ...additionalMenus,
-      ]),
-    ),
+    menus: Array.from(new Set([...DEFAULT_ROADMAP_MENUS, ...additionalMenus])),
   };
 }
 

@@ -13,10 +13,7 @@ export const dynamic = "force-dynamic";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function readPositiveInteger(
-  value: string | null,
-  fallback: number,
-) {
+function readPositiveInteger(value: string | null, fallback: number) {
   if (value === null) return fallback;
 
   const parsed = Number(value);
@@ -39,13 +36,9 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams;
     const defaultMonth = getDefaultScheduleMonth();
 
-    const year = Number(
-      params.get("year") ?? defaultMonth.year,
-    );
+    const year = Number(params.get("year") ?? defaultMonth.year);
 
-    const month = Number(
-      params.get("month") ?? defaultMonth.month,
-    );
+    const month = Number(params.get("month") ?? defaultMonth.month);
 
     let period;
 
@@ -67,10 +60,7 @@ export async function GET(req: Request) {
     try {
       page = readPositiveInteger(params.get("page"), 1);
 
-      pageSize = Math.min(
-        readPositiveInteger(params.get("pageSize"), 30),
-        100,
-      );
+      pageSize = Math.min(readPositiveInteger(params.get("pageSize"), 30), 100);
     } catch {
       return NextResponse.json(
         {
@@ -125,11 +115,9 @@ export async function GET(req: Request) {
       .eq("is_deleted", false)
       .eq("status", "active");
 
-    employeeQuery = applyEmployeeScope(
-      employeeQuery,
-      auth.access,
-      { permission: "leave.view" },
-    );
+    employeeQuery = applyEmployeeScope(employeeQuery, auth.access, {
+      permission: "leave.view",
+    });
 
     for (const [parameter, column] of scopeFilters) {
       const value = params.get(parameter);
@@ -154,6 +142,27 @@ export async function GET(req: Request) {
       );
     }
 
+    const requestedEmployeeIds = (params.get("employeeIds") || "")
+      .split(",")
+      .filter(Boolean);
+
+    if (
+      requestedEmployeeIds.length > 100 ||
+      requestedEmployeeIds.some((id) => !UUID_PATTERN.test(id))
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "รหัสพนักงานสำหรับคัดลอกไม่ถูกต้อง",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (requestedEmployeeIds.length) {
+      employeeQuery = employeeQuery.in("id", requestedEmployeeIds);
+    }
+
     const offset = (page - 1) * pageSize;
 
     const {
@@ -171,10 +180,7 @@ export async function GET(req: Request) {
     const employeeIds = employees.map((item) => item.id);
 
     // GET อ่านรอบที่มีอยู่เท่านั้น ไม่สร้างรอบใหม่ตอนเปิดหน้า
-    const {
-      data: savedPeriod,
-      error: periodError,
-    } = await supabaseAdmin
+    const { data: savedPeriod, error: periodError } = await supabaseAdmin
       .from("leave_work_schedule_periods")
       .select("id, start_date, end_date")
       .eq("start_date", period.startDate)
@@ -205,7 +211,8 @@ export async function GET(req: Request) {
         ? readAllScheduleRows(
             supabaseAdmin
               .from("leave_work_schedule_days")
-              .select(`
+              .select(
+                `
                 id,
                 employee_id,
                 work_date,
@@ -223,7 +230,8 @@ export async function GET(req: Request) {
                   starts_at,
                   ends_at
                 )
-              `)
+              `,
+              )
               .eq("period_id", savedPeriod.id)
               .in("employee_id", employeeIds)
               .in("state", ["DRAFT", "PUBLISHED"])
@@ -234,11 +242,47 @@ export async function GET(req: Request) {
 
     if (configsResult.error) throw configsResult.error;
 
+    const periodEndExclusive = new Date(
+      Date.parse(`${period.endDate}T00:00:00+07:00`) + 86_400_000,
+    ).toISOString();
+
+    const leaveRows = employeeIds.length
+      ? await readAllScheduleRows(
+          supabaseAdmin
+            .from("leave_requests")
+            .select(
+              `
+          id,
+          employeeId,
+          kind,
+          startDate,
+          endDate,
+          session,
+          requestedDays,
+          status
+        `,
+            )
+            .in("employeeId", employeeIds)
+            .in("status", ["APPROVED", "PENDING"])
+            .lt("startDate", periodEndExclusive)
+            .gte("endDate", `${period.startDate}T00:00:00+07:00`)
+            .order("id"),
+        )
+      : [];
+
+    const mappedLeaves = leaveRows.map((row) => ({
+      id: row.id,
+      employeeId: row.employeeId,
+      kind: row.kind,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      session: row.session || "FULL",
+      requestedDays: Number(row.requestedDays),
+      status: row.status,
+    }));
+
     const configsByEmployee = new Map(
-      (configsResult.data || []).map((config) => [
-        config.employeeId,
-        config,
-      ]),
+      (configsResult.data || []).map((config) => [config.employeeId, config]),
     );
 
     const mappedEmployees = employees.map((employee) => {
@@ -247,10 +291,7 @@ export async function GET(req: Request) {
       return {
         id: employee.id,
         employeeCode: employee.employee_code || "",
-        name: [
-          employee.first_name_th,
-          employee.last_name_th,
-        ]
+        name: [employee.first_name_th, employee.last_name_th]
           .filter(Boolean)
           .join(" "),
 
@@ -269,10 +310,8 @@ export async function GET(req: Request) {
 
         defaults: {
           weeklyHoliday: config?.weeklyHoliday || "",
-          startTime:
-            config?.work_start_time?.slice(0, 5) || "",
-          endTime:
-            config?.work_end_time?.slice(0, 5) || "",
+          startTime: config?.work_start_time?.slice(0, 5) || "",
+          endTime: config?.work_end_time?.slice(0, 5) || "",
         },
       };
     });
@@ -290,9 +329,7 @@ export async function GET(req: Request) {
       note: row.note || "",
       publishedAt: row.published_at,
 
-      intervals: (
-        row.leave_work_schedule_intervals || []
-      )
+      intervals: (row.leave_work_schedule_intervals || [])
         .slice()
         .sort((a, b) => a.sequence - b.sequence)
         .map((interval) => ({
@@ -320,6 +357,7 @@ export async function GET(req: Request) {
 
       employees: mappedEmployees,
       schedules: mappedSchedules,
+      leaves: mappedLeaves,
     });
   } catch (error: unknown) {
     console.error("Load work schedules failed:", error);
@@ -327,10 +365,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "โหลดตารางงานไม่สำเร็จ",
+        error: error instanceof Error ? error.message : "โหลดตารางงานไม่สำเร็จ",
       },
       { status: 500 },
     );

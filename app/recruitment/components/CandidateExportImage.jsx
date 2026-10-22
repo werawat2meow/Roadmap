@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { Modal, Button } from "antd";
 import { sendBrowserActivity } from "../lib/activity/browser";
+import { addCacheVersion } from "./candidateExportImage.mjs";
 import { toPng } from "html-to-image";
 import dayjs from "dayjs";
 
@@ -29,6 +30,7 @@ const CandidateExportImage = forwardRef(function CandidateExportImage(
   const [exporting, setExporting] = useState(false);
   const [scale, setScale] = useState(0.6);
   const [modalWidth, setModalWidth] = useState(1200);
+  const [photoCacheVersion, setPhotoCacheVersion] = useState(null);
 
   const getCandidatePhoto = (app) => {
     if (app?.proxy_photo_url) return app.proxy_photo_url;
@@ -135,6 +137,7 @@ const CandidateExportImage = forwardRef(function CandidateExportImage(
   useImperativeHandle(ref, () => ({
     openPreview: (data) => {
       setApplication(data);
+      setPhotoCacheVersion(Date.now());
 
       const maxWidth = window.innerWidth * 0.92;
       const maxHeight = window.innerHeight - 180;
@@ -166,7 +169,10 @@ const CandidateExportImage = forwardRef(function CandidateExportImage(
     }
   };
 
-  const photoUrl = getProxyImageUrl(getCandidatePhoto(application));
+  const photoUrl = addCacheVersion(
+    getProxyImageUrl(getCandidatePhoto(application)),
+    photoCacheVersion
+  );
   const brancheImageUrl = getProxyImageUrl(
     application?.branche_image_url?.trim()
   );

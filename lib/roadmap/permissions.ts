@@ -23,6 +23,7 @@ export async function getCurrentRoadmapAccess() {
     };
   }
 
+  const userAccountId = auth.user.id;
   const employeeId = auth.user.employee_id;
   const isSuperAdmin = Boolean(auth.access?.is_super_admin);
 
@@ -32,16 +33,6 @@ export async function getCurrentRoadmapAccess() {
       employeeId,
       isSuperAdmin: true,
       menus: ALL_ROADMAP_MENUS,
-    };
-  }
-
-  // ได้รับสามเมนูพื้นฐาน แม้ยังไม่มีแถว rm_user_access
-  if (!employeeId) {
-    return {
-      ok: true as const,
-      employeeId: null,
-      isSuperAdmin: false,
-      menus: [...DEFAULT_ROADMAP_MENUS],
     };
   }
 
@@ -56,7 +47,7 @@ export async function getCurrentRoadmapAccess() {
     )
   `,
     )
-    .eq("employee_id", employeeId);
+    .eq("user_account_id", userAccountId);
 
   if (error) {
     throw new Error(error.message);

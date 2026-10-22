@@ -1,17 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseServer';
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 
-// 🛠️ 1. แก้ไขฟังก์ชัน GET: ปรับชนิดข้อมูล params ให้เป็น Promise
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // ใช้ await ถอดเอาค่า id ออกมาจาก Promise ตามเงื่อนไขของ Next.js 16
+const DEFAULT_ROADMAP_MENUS = [
+  "Overview",
+  "Employee",
+  "Evaluate HR",
+];
+
+const normalizeMenus = (menus: string[] = []) =>
+  Array.from(new Set([...DEFAULT_ROADMAP_MENUS, ...menus]));
+
+const getRelation = (value: any) =>
+  Array.isArray(value) ? value[0] : value;
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  
+
   const { data, error } = await supabaseAdmin
-    .from('rm_user_access')
+    .from("rm_user_access")
     .select(`
       id,
+      user_account_id,
       employee_id,
       role,
+      user_accounts (
+        id,
+        username
+      ),
       employees (
         id,
         first_name_th,
@@ -23,109 +41,133 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         is_allowed
       )
     `)
-    .eq('id', id)
+    .eq("id", id)
     .single();
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-
-  if (!data) {
-    return NextResponse.json({ success: false, error: 'User access not found' }, { status: 404 });
-  }
-
-  const employee = data.employees?.[0];
-
-  const mapped = {
-    id: data.id,
-    employee_id: data.employee_id,
-    name: `${employee?.first_name_th || ''} ${employee?.last_name_th || ''}`.trim(),
-    email: employee?.email || '',
-    role: data.role,
-    menus: (data.rm_user_menu_permissions || [])
-      .filter((perm: any) => perm.is_allowed)
-      .map((perm: any) => perm.menu_name),
-  };
-
-  return NextResponse.json({ success: true, data: mapped });
-}
-
-// 🛠️ 2. แก้ไขฟังก์ชัน PUT: ปรับชนิดข้อมูล params ให้เป็น Promise เช่นกัน
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // ใช้ await เพื่อแกะเอาค่า id จาก Promise มาใช้งาน
-  const { id: idFromParams } = await params;
-  
-  const body = await req.json();
-  const { employee_id, role, menus } = body as {
-    employee_id: string;
-    role: string;
-    menus: string[];
-  };
-
-  let accessId =
-    typeof idFromParams === 'string' && idFromParams.trim().length > 0 && idFromParams !== 'undefined'
-      ? idFromParams
-      : undefined;
-
-  if (!accessId && employee_id) {
-    const { data: existingAccess, error: accessError } = await supabaseAdmin
-      .from('rm_user_access')
-      .select('id')
-      .eq('employee_id', employee_id)
-      .single();
-
-    if (accessError) {
-      return NextResponse.json(
-        { success: false, error: accessError.message },
-        { status: 500 }
-      );
-    }
-
-    accessId = existingAccess?.id;
-  }
-
-  if (!accessId) {
     return NextResponse.json(
-      { success: false, error: 'Missing or invalid id' },
-      { status: 400 }
+      { success: false, error: error.message },
+      { status: 500 },
     );
   }
 
+  if (!data) {
+    return NextResponse.json(
+      { success: false, error: "User access not found" },
+      { status: 404 },
+    );
+  }
+
+  const employee = getRelation(data.employees);
+  const account = getRelation(data.user_accounts);
+
+  const menus = normalizeMenus(
+    (data.rm_user_menu_permissions || [])
+      .filter((permission: any) => permission.is_allowed)
+      .map((permission: any) => permission.menu_name),
+  );
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      id: data.id,
+      user_account_id: data.user_account_id,
+      employee_id: data.employee_id,
+      name:
+        `${employee?.first_name_th || ""} ${
+          employee?.last_name_th || ""
+        }`.trim() || account?.username || "",
+      email: employee?.email || "",
+      role: data.role,
+      menus,
+    },
+  });
+}
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await req.json();
+
+  const userAccountId =
+    typeof body.user_account_id === "string" &&
+    body.user_account_id.length > 0
+      ? body.user_account_id
+      : null;
+
+  const employeeId =
+    typeof body.employee_id === "string" &&
+    body.employee_id.length > 0
+      ? body.employee_id
+      : null;
+
+  const role =
+    typeof body.role === "string" && body.role.length > 0
+      ? body.role
+      : "ยังไม่กำหนด";
+
+  const menus = normalizeMenus(
+    Array.isArray(body.menus) ? body.menus : [],
+  );
+
   const { data, error: updateError } = await supabaseAdmin
-    .from('rm_user_access')
-    .update({ role, updated_at: new Date().toISOString() })
-    .eq('id', accessId)
+    .from("rm_user_access")
+    .update({
+      user_account_id: userAccountId,
+      employee_id: employeeId,
+      role,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
     .select()
     .single();
 
   if (updateError) {
-    return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: updateError.message },
+      { status: 500 },
+    );
   }
 
   const { error: deleteError } = await supabaseAdmin
-    .from('rm_user_menu_permissions')
+    .from("rm_user_menu_permissions")
     .delete()
-    .eq('user_access_id', accessId);
+    .eq("user_access_id", id);
 
   if (deleteError) {
-    return NextResponse.json({ success: false, error: deleteError.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: deleteError.message },
+      { status: 500 },
+    );
   }
 
-  const inserts = (menus || []).map((menu) => ({
-    user_access_id: accessId,
+  const menuRows = menus.map((menu) => ({
+    user_access_id: id,
     menu_name: menu,
     is_allowed: true,
   }));
 
-  if (inserts.length > 0) {
-    const { error: insertError } = await supabaseAdmin
-      .from('rm_user_menu_permissions')
-      .insert(inserts);
+  const { error: insertError } = await supabaseAdmin
+    .from("rm_user_menu_permissions")
+    .insert(menuRows);
 
-    if (insertError) {
-      return NextResponse.json({ success: false, error: insertError.message }, { status: 500 });
-    }
+  if (insertError) {
+    return NextResponse.json(
+      { success: false, error: insertError.message },
+      { status: 500 },
+    );
   }
 
-  return NextResponse.json({ success: true, data: { ...data, menus: menus || [] } });
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...data,
+      user_account_id: userAccountId,
+      employee_id: employeeId,
+      role,
+      menus,
+    },
+  });
 }

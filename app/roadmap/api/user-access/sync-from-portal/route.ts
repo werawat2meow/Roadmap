@@ -2,170 +2,188 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 const ROADMAP_PERMISSION = "roadmap.portal.view";
+const DEFAULT_ROLE = "ยังไม่กำหนด";
 
 export async function POST() {
   try {
-    // 1) หารายการ role ที่แมปกับ permission ของ roadmap
-    const { data: rolePermsRaw, error: rpError } = await supabaseAdmin
-      .from("role_permissions")
-      .select("role_id, permissions(permission_code)");
+    const { data: rolePermissions, error: permissionError } =
+      await supabaseAdmin
+        .from("role_permissions")
+        .select(
+          "role_id, permissions(permission_code, is_active), roles(is_active)",
+        );
 
-    if (rpError) {
+    if (permissionError) {
       return NextResponse.json(
-        { success: false, error: rpError.message },
+        { success: false, error: permissionError.message },
         { status: 500 },
       );
     }
 
-    const allowedRoleIds = new Set<string>(
-      (rolePermsRaw || [])
+    const roadmapRoleIds = new Set(
+      (rolePermissions || [])
         .filter(
-          (r: any) => r.permissions?.permission_code === ROADMAP_PERMISSION,
+          (row: any) =>
+            row.roles?.is_active === true &&
+            row.permissions?.permission_code === ROADMAP_PERMISSION &&
+            row.permissions?.is_active === true,
         )
-        .map((r: any) => r.role_id),
+        .map((row: any) => row.role_id),
     );
 
-    if (allowedRoleIds.size === 0) {
-      // ไม่มี role ใดให้สิทธิ์ roadmap -> ทำการลบ rm_user_access ทั้งหมดเพื่อความสะอาด (ถ้าต้องการเก็บไว้ เปลี่ยนเป็น skip)
-      const { error: delAllErr } = await supabaseAdmin
-        .from("rm_user_access")
-        .delete()
-        .neq("id", ""); // delete all rows
-      if (delAllErr) {
-        return NextResponse.json(
-          { success: false, error: delAllErr.message },
-          { status: 500 },
-        );
-      }
-      return NextResponse.json({
-        success: true,
-        synced: 0,
-        inserted: 0,
-        removed: "all",
-      });
+    if (roadmapRoleIds.size === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No active Portal roles grant Roadmap access",
+        },
+        { status: 503 },
+      );
     }
 
-    // 2) ดึง users จาก user_accounts ที่มี role_id และ employee_id
-    const { data: uaData, error: uaErr } = await supabaseAdmin
-      .from("user_accounts")
-      .select("id, employee_id, role_id")
-      .not("employee_id", "is", null);
+    const today = new Date().toISOString().slice(0, 10);
 
-    if (uaErr) {
+    const [
+      { data: accounts, error: accountsError },
+      { data: assignments, error: assignmentsError },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("user_accounts")
+        .select("id, employee_id, role_id")
+        .eq("is_active", true),
+      supabaseAdmin
+        .from("user_access_assignments")
+        .select("user_account_id, role_id")
+        .eq("status", "active")
+        .lte("effective_from", today)
+        .or(`effective_to.is.null,effective_to.gte.${today}`),
+    ]);
+
+    if (accountsError) {
       return NextResponse.json(
-        { success: false, error: uaErr.message },
+        { success: false, error: accountsError.message },
         { status: 500 },
       );
     }
 
-    // 3) ดึง user_role_assignments (multi-role) เพื่อรวม role เพิ่มเติม
-    const { data: uraData, error: uraErr } = await supabaseAdmin
-      .from("user_role_assignments")
-      .select("user_account_id, role_id");
-
-    if (uraErr) {
+    if (assignmentsError) {
       return NextResponse.json(
-        { success: false, error: uraErr.message },
+        { success: false, error: assignmentsError.message },
         { status: 500 },
       );
     }
 
-    // สร้าง map: user_account_id -> Set(role_id)
-    const userRoleMap = new Map<string, Set<string>>();
+    const rolesByAccount = new Map<string, Set<string>>();
 
-    (uaData || []).forEach((u: any) => {
-      if (!u.employee_id) return;
-      userRoleMap.set(u.id, new Set([u.role_id].filter(Boolean)));
-    });
+    for (const account of accounts || []) {
+      rolesByAccount.set(
+        account.id,
+        new Set(account.role_id ? [account.role_id] : []),
+      );
+    }
 
-    (uraData || []).forEach((r: any) => {
-      if (!userRoleMap.has(r.user_account_id)) {
-        userRoleMap.set(r.user_account_id, new Set());
+    for (const assignment of assignments || []) {
+      const roles = rolesByAccount.get(assignment.user_account_id);
+
+      if (roles && assignment.role_id) {
+        roles.add(assignment.role_id);
       }
-      if (r.role_id) userRoleMap.get(r.user_account_id)!.add(r.role_id);
+    }
+
+    const eligibleAccounts = (accounts || []).filter((account: any) => {
+      const roles = rolesByAccount.get(account.id) || new Set<string>();
+
+      return [...roles].some((roleId) => roadmapRoleIds.has(roleId));
     });
 
-    // จับเฉพาะ user ที่มี employee_id และมี role ที่อนุญาต
-    const employeeIdsToSync = new Set<string>();
-    (uaData || []).forEach((u: any) => {
-      if (!u.employee_id) return;
-      const roles = userRoleMap.get(u.id) || new Set();
-      for (const rid of roles) {
-        if (allowedRoleIds.has(rid)) {
-          employeeIdsToSync.add(u.employee_id);
-          break;
-        }
-      }
-    });
-
-    const employeeIds = Array.from(employeeIdsToSync);
-
-    // 4) หา existing rm_user_access rows
-    const { data: existingRows, error: existingErr } = await supabaseAdmin
+    const { data: existingRows, error: existingError } = await supabaseAdmin
       .from("rm_user_access")
-      .select("id, employee_id");
+      .select("id, user_account_id, employee_id");
 
-    if (existingErr) {
+    if (existingError) {
       return NextResponse.json(
-        { success: false, error: existingErr.message },
+        { success: false, error: existingError.message },
         { status: 500 },
       );
     }
 
-    const existingByEmployee = new Map<string, string>();
-    (existingRows || []).forEach((r: any) => {
-      if (r.employee_id) existingByEmployee.set(r.employee_id, r.id);
-    });
+    const existingByAccount = new Map<string, any>();
+    const existingByEmployee = new Map<string, any>();
 
-    // 5) Prepare inserts for employees not existing
-    const inserts = employeeIds
-      .filter((eid) => !existingByEmployee.has(eid))
-      .map((eid) => ({
-        employee_id: eid,
-        role: "ยังไม่กำหนด",
-      }));
+    for (const row of existingRows || []) {
+      if (row.user_account_id) {
+        existingByAccount.set(row.user_account_id, row);
+      }
+      if (row.employee_id) {
+        existingByEmployee.set(row.employee_id, row);
+      }
+    }
+
+    const inserts = [];
+    const updates = [];
+
+    for (const account of eligibleAccounts) {
+      const existing =
+        existingByAccount.get(account.id) ||
+        (account.employee_id
+          ? existingByEmployee.get(account.employee_id)
+          : undefined);
+
+      if (existing) {
+        updates.push(
+          supabaseAdmin
+            .from("rm_user_access")
+            .update({
+              user_account_id: account.id,
+              employee_id: account.employee_id || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id),
+        );
+      } else {
+        inserts.push({
+          user_account_id: account.id,
+          employee_id: account.employee_id || null,
+          role: DEFAULT_ROLE,
+        });
+      }
+    }
 
     if (inserts.length > 0) {
-      const { error: insertErr } = await supabaseAdmin
+      const { error: insertError } = await supabaseAdmin
         .from("rm_user_access")
         .insert(inserts);
-      if (insertErr) {
+
+      if (insertError) {
         return NextResponse.json(
-          { success: false, error: insertErr.message },
+          { success: false, error: insertError.message },
           { status: 500 },
         );
       }
     }
 
-    // 6) Remove rm_user_access entries for employees that no longer have permission
-    const existingEmployeeIds = Array.from(existingByEmployee.keys());
-    const toRemove = existingEmployeeIds.filter(
-      (eid) => !employeeIdsToSync.has(eid),
-    );
-    let removedCount = 0;
-    if (toRemove.length > 0) {
-      const { error: deleteErr } = await supabaseAdmin
-        .from("rm_user_access")
-        .delete()
-        .in("employee_id", toRemove);
-      if (deleteErr) {
+    if (updates.length > 0) {
+      const results = await Promise.all(updates);
+      const updateError = results.find((result) => result.error)?.error;
+
+      if (updateError) {
         return NextResponse.json(
-          { success: false, error: deleteErr.message },
+          { success: false, error: updateError.message },
           { status: 500 },
         );
       }
-      removedCount = toRemove.length;
     }
 
     return NextResponse.json({
       success: true,
-      synced: employeeIds.length,
+      synced: eligibleAccounts.length,
       inserted: inserts.length,
-      removed: removedCount,
+      updated: updates.length,
+      removed: 0,
     });
-  } catch (err: any) {
+  } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: err.message || "sync failed" },
+      { success: false, error: error.message || "sync failed" },
       { status: 500 },
     );
   }

@@ -41,7 +41,7 @@ const KPI_TYPES = [
   ['STARTED', 'เริ่มงานวันแรก'],
   ['PROBATION', 'ทดลองงาน'],
   ['NOTICE', 'แจ้งลาออก'],
-  ['EXITED', 'พ้นสภาพเป็นพนักงาน'],
+  ['LAST_WORKING_DAY', 'วันทำงานสุดท้าย'],
 ];
 
 function hasPermission(user, codes) {
@@ -329,8 +329,14 @@ export default function EmployeeMovementsPage() {
           KPI_TYPES.map(async ([type]) => {
             const params = new URLSearchParams(kpiQuery);
             params.set('event', type);
-            const result = await getJson(`/api/admin/employee-movements/roster?${params.toString()}`);
-            return [type, Number(result.pagination?.total || 0)];
+            try {
+              const result = await getJson(`/api/admin/employee-movements/roster?${params.toString()}`);
+              return [type, Number(result.pagination?.total || 0)];
+            } catch (error) {
+              // An unrelated KPI request must not reset every KPI to zero.
+              console.error(`EMPLOYEE_MOVEMENT_KPI_${type}_ERROR`, error);
+              return [type, null];
+            }
           })
         );
 
@@ -798,7 +804,7 @@ export default function EmployeeMovementsPage() {
         </div>
 
         <Title level={2} style={{ margin: 0 }}>
-          <TeamOutlined /> Dashboard - การติดตามพนักงาน
+          <TeamOutlined /> Dashboard - การติดตามพนักงาน เข้า - ออก
         </Title>
 
         <div style={{ marginTop: 8 }}>

@@ -11,6 +11,9 @@ import {
   Modal,
   Select,
   Typography,
+  Button,
+  Timeline,
+  Spin,
 } from "antd";
 import dayjs from "dayjs";
 
@@ -26,6 +29,7 @@ const TRANSITIONS = {
     "RESIGNED",
     "SUSPENDED",
     "TERMINATED",
+    "DISMISSED",
   ],
   ACTIVE: [
     "NOTICE",
@@ -33,9 +37,10 @@ const TRANSITIONS = {
     "SUSPENDED",
     "RETIRED",
     "TERMINATED",
+    "DISMISSED",
   ],
-  NOTICE: ["RESIGNED", "ACTIVE"],
-  SUSPENDED: ["ACTIVE", "TERMINATED"],
+  NOTICE: ["RESIGNED", "ACTIVE", "DISMISSED"],
+  SUSPENDED: ["ACTIVE", "TERMINATED", "DISMISSED"],
 };
 
 // --------------------------------------------------
@@ -69,6 +74,10 @@ export default function EmployeeStatusChangeModal({
   const [busy, setBusy] = useState(false);
   const [policy, setPolicy] = useState(null);
   const [policyError, setPolicyError] = useState("");
+  const [history, setHistory] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   // ------------------------------------------------
   // Watch Form Values
@@ -82,7 +91,11 @@ export default function EmployeeStatusChangeModal({
   )?.status_code;
 
   const isNotice = selectedStatus === "NOTICE";
+  const isCancelResignation = employee?.status_code === "NOTICE" && selectedStatus === "ACTIVE";
 
+  const directDismissed =
+    selectedStatus === "DISMISSED" &&
+    ["ACTIVE", "PROBATION", "NOTICE", "SUSPENDED"].includes(employee?.status_code);
   const directResigned =
     selectedStatus === "RESIGNED" &&
     ["ACTIVE", "PROBATION"].includes(employee?.status_code);
@@ -187,6 +200,30 @@ export default function EmployeeStatusChangeModal({
     };
   }, [employee?.id]);
 
+  useEffect(() => {
+    setHistoryOpen(false);
+    setHistory([]);
+    setHistoryError("");
+  }, [employee?.id]);
+
+  const loadHistory = async () => {
+    if (!employee?.id) return;
+    if (historyOpen) { setHistoryOpen(false); return; }
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const response = await fetch(
+        `/api/admin/employee-movements/status-history?employee_id=${encodeURIComponent(employee.id)}`,
+        { credentials: "same-origin", cache: "no-store" }
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "ไม่สามารถโหลดประวัติได้");
+      setHistory(result.data || []);
+    } catch (error) { setHistoryError(error?.message || "ไม่สามารถโหลดประวัติได้"); }
+    finally { setHistoryLoading(false); }
+  };
+
   // ------------------------------------------------
   // Validate Last Working Day
   // ------------------------------------------------
@@ -250,10 +287,10 @@ export default function EmployeeStatusChangeModal({
         effective_date: effectiveDate,
         last_working_day: lastWorkingDay,
         reason: values.reason.trim(),
-        exit_reason_code: directResigned
+        exit_reason_code: directDismissed
           ? values.exit_reason_code
           : null,
-        confirm_direct_exit: directResigned
+        confirm_direct_exit: directDismissed
           ? values.confirm_direct_exit === true
           : false,
       };
@@ -428,21 +465,27 @@ export default function EmployeeStatusChangeModal({
                 </>
               )}
 
-              {/* Direct Resignation */}
+              {isCancelResignation && (
+                <Alert type="success" showIcon style={{ marginBottom: 12 }}
+                  title="ยกเลิกการลาออก"
+                  description="เมื่อยืนยัน ระบบจะคืนสถานะเป็นพนักงานปัจจุบันและล้างวันทำงานสุดท้าย เพื่อไม่ให้เปลี่ยนเป็นลาออกอัตโนมัติ กรุณาระบุเหตุผลด้านล่าง" />
+              )}
 
-              {directResigned && (
+              {/* Disciplinary Dismissal */}
+
+              {directDismissed && (
                 <>
                   <Alert
                     type="warning"
                     showIcon
                     style={{ marginBottom: 12 }}
-                    title="พ้นสภาพโดยตรง"
-                    description="ต้องยืนยันเหตุผลและวันที่มีผลเป็นวันนี้ โดย HR ตรวจสอบข้อเท็จจริงและขั้นตอนตามกฎหมายก่อนบันทึก; กรณีเลิกจ้างควรเลือกสถานะ TERMINATED ให้ตรงกับข้อเท็จจริง"
+                    title="พ้นสภาพการเป็นพนักงาน (DISMISSED)"
+                    description="สำหรับกรณีบริษัทมีคำสั่งให้ออกเนื่องจากความผิดร้ายแรงที่ผ่านการตรวจสอบแล้ว ต้องระบุเหตุผลและยืนยันการตรวจสอบก่อนบันทึก"
                   />
 
                   <Form.Item
                     name="exit_reason_code"
-                    label="เหตุผลพ้นสภาพโดยตรง"
+                    label="เหตุผลการพ้นสภาพจากความผิดร้ายแรง"
                     rules={[
                       {
                         required: true,
@@ -463,7 +506,7 @@ export default function EmployeeStatusChangeModal({
                       type="warning"
                       showIcon
                       style={{ marginBottom: 12 }}
-                      title="ข้อควรระวัง: การขาดงานไม่ได้แปลว่าลาออกโดยอัตโนมัติ ต้องตรวจขั้นตอนเลิกจ้าง/ข้อเท็จจริงก่อน"
+                      title="ข้อควรระวัง: ต้องตรวจสอบข้อเท็จจริงและดำเนินการตามระเบียบก่อนให้ออก"
                     />
                   )}
 
@@ -487,7 +530,7 @@ export default function EmployeeStatusChangeModal({
                   >
                     <Checkbox>
                       HR ยืนยันว่าตรวจสอบเหตุผล เอกสาร
-                      และอำนาจอนุมัติก่อนพ้นสภาพโดยตรงแล้ว
+                      และอำนาจอนุมัติก่อนพ้นสภาพแล้ว
                     </Checkbox>
                   </Form.Item>
                 </>
@@ -513,6 +556,26 @@ export default function EmployeeStatusChangeModal({
                 />
               </Form.Item>
             </Form>
+
+            <div style={{ margin: "16px 0" }}>
+              <Button onClick={loadHistory}> {historyOpen ? "ซ่อนประวัติการเปลี่ยนสถานะ" : "ดูประวัติการเปลี่ยนสถานะ"} </Button>
+              {historyOpen && (
+                <div style={{ marginTop: 12, maxHeight: 260, overflowY: "auto" }}>
+                  <Spin spinning={historyLoading} />
+                  {historyError && <Alert type="error" showIcon title={historyError} />}
+                  {!historyLoading && !historyError && history.length === 0 && <Typography.Text type="secondary">ยังไม่มีประวัติ</Typography.Text>}
+                  <Timeline style={{ marginTop: 12 }} items={history.map(item => ({
+                    content: <div key={item.id}>
+                      <Typography.Text strong>{item.old_status_name} → {item.new_status_name}</Typography.Text>
+                      <div>{item.change_source === "SYSTEM" ? "ระบบอัตโนมัติ" : `HR: ${item.actor_display_name || item.actor_username || "ไม่พบชื่อผู้ดำเนินการ"}${item.actor_username && item.actor_display_name && item.actor_display_name !== item.actor_username ? ` (${item.actor_username})` : ""}`}</div>
+                      <div>บันทึก: {new Date(item.changed_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</div>
+                      <div>วันที่มีผล: {item.effective_date || "-"}</div>
+                      <div>เหตุผล: {item.reason || "-"}</div>
+                    </div>
+                  }))} />
+                </div>
+              )}
+            </div>
 
             {/* Additional Information */}
 

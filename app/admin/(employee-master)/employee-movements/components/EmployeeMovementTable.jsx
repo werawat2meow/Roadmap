@@ -341,12 +341,20 @@ export default function EmployeeMovementTable({
                     >
                       {row.status_name || "-"}
                     </Tag>
-                    {canManage && !isExitStatus && ["PRE_HIRE", "PROBATION", "ACTIVE", "NOTICE", "SUSPENDED"].includes(String(row.status_code || "").toUpperCase()) && (
-                      <div style={{ marginTop: 10 }}>
-                        <Button size="small" icon={<EditOutlined />} onClick={() => onChangeStatus(row)}>
-                          ดู / จัดการ
-                        </Button>
-                      </div>
+                    {canManage &&
+                      !isExitStatus &&
+                      ["PROBATION", "ACTIVE", "NOTICE", "SUSPENDED"].includes(
+                        String(row.status_code || "").toUpperCase()
+                      ) && (
+                        <div style={{ marginTop: 10 }}>
+                          <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => onChangeStatus(row)}
+                          >
+                            ดู / จัดการ
+                          </Button>
+                        </div>
                     )}
                   </div>}
 

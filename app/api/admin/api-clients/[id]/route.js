@@ -103,7 +103,7 @@ export async function PATCH(req, { params }) {
 
     await logActivity({
       moduleName: "API_CLIENTS",
-      actionType: "UPDATE",
+      actionType: "update",
       referenceTable: "api_clients",
       referenceId: data.id,
       description: `อัปเดต API Client: ${data.client_name} (${data.client_code})`,

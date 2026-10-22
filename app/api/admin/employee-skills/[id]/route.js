@@ -152,7 +152,7 @@ export async function PATCH(req, { params }) {
       module:
         "Employee Skills",
 
-      action: "UPDATE",
+      action: "update",
 
       description:
         `แก้ไข Skill ${data.skill_name} ของ ${data.employee_name}`,
@@ -237,7 +237,7 @@ export async function DELETE(req, { params }) {
 
       module: "Employee Skills",
 
-      action: "DELETE",
+      action: "delete",
 
       description:
         `ลบ Skill ${oldData.skill_name} ของ ${oldData.employee_name}`,

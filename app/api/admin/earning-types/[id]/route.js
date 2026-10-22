@@ -396,7 +396,7 @@ export async function PATCH(req, { params }) {
     try {
       await writeActivityLog({
         moduleName: "earning_types",
-        actionType: "UPDATE",
+        actionType: "update",
         referenceTable: TABLE_NAME,
         referenceId: id,
         description: `แก้ไขประเภทเงินได้ ${data.earning_code} - ${data.earning_name}`,
@@ -463,7 +463,7 @@ export async function DELETE(req, { params }) {
     try {
       await writeActivityLog({
         moduleName: "earning_types",
-        actionType: "DELETE",
+        actionType: "delete",
         referenceTable: TABLE_NAME,
         referenceId: id,
         description: `ลบประเภทเงินได้ ${current.earning_code} - ${current.earning_name}`,

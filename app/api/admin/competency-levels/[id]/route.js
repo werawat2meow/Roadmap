@@ -176,7 +176,7 @@ export async function PATCH(
       req,
       module:
         "Competency Levels",
-      action: "UPDATE",
+      action: "update",
       description: `แก้ไข Competency Level ${data.level_code} - ${data.level_name}`,
     });
 
@@ -261,7 +261,7 @@ export async function DELETE(
     await writeActivityLog({
       req,
       module: "Competency Levels",
-      action: "DELETE",
+      action: "delete",
       description: `ลบ Competency Level ${oldItem.level_code} - ${oldItem.level_name}`,
     });
 

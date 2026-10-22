@@ -16,6 +16,7 @@ const routePermissionMap: { [key: string]: string } = {
   "/roadmap/executive": "Management",
   "/roadmap/payroll": "Send Account",
   "/roadmap/settings": "Settings",
+  "/roadmap/audit-logs": "Audit Logs",
 };
 
 function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
@@ -41,41 +42,45 @@ function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
 
   // ดึงข้อมูลสิทธิ์เมนูจาก API
   useEffect(() => {
-    // แก้ไขคีย์การดึงค่าไอดีพนักงานให้ตรงกับฐานข้อมูลจริงของคุณ (user.employee_id)
-    const empId = user?.employee_id || user?.id;
-    if (!empId) return;
+    if (!user) return;
 
-    // 🛠️ ถ้าเป็น SUPER_ADMIN ไม่ต้องยิงไปดึงตารางย่อย ให้เปิดทุกเมนูไปเลย
+    const controller = new AbortController();
 
     async function fetchPermissions() {
-      if (user?.role === "SUPER_ADMIN" || user?.role_code === "SUPER_ADMIN") {
-        setLoadingPermissions(false);
-        return;
-      }
-
       try {
-        const res = await fetch("/roadmap/api/user-access");
-        const json = await res.json();
+        const response = await fetch("/roadmap/api/user-access/me", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
-        if (json.success && Array.isArray(json.data)) {
-          const myAccess = json.data.find(
-            (item: any) => item.employee_id === empId,
-          );
-          if (myAccess && Array.isArray(myAccess.menus)) {
-            setAllowedMenus(myAccess.menus);
-          }
+        const json = await response.json();
+
+        if (controller.signal.aborted) return;
+
+        if (!response.ok || !json.success) {
+          setAllowedMenus([]);
+          return;
         }
-      } catch (err) {
-        console.error("Failed to fetch permissions:", err);
+
+        setAllowedMenus(Array.isArray(json.data?.menus) ? json.data.menus : []);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch permissions:", error);
+          setAllowedMenus([]);
+        }
       } finally {
-        setLoadingPermissions(false);
+        if (!controller.signal.aborted) {
+          setLoadingPermissions(false);
+        }
       }
     }
 
-    fetchPermissions();
+    void fetchPermissions();
+
+    return () => controller.abort();
   }, [user]);
 
-  if (loadingUser || loadingPermissions) {
+  if (loadingUser || (user && loadingPermissions)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#F9F5F2]">
         <p className="text-gray-500 animate-pulse font-medium">
@@ -88,14 +93,21 @@ function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   // 🛠️ เงื่อนไขการปล่อยสิทธิ์ผ่าน: ถ้าเป็น SUPER_ADMIN หรือหน้าทั่วไปที่ไม่อยู่ใน Permissions Map ให้ปล่อยเข้าได้เลย
-  const isSuperAdmin =
-    user?.role === "SUPER_ADMIN" || user?.role_code === "SUPER_ADMIN";
-  const requiredPermission = routePermissionMap[pathname];
+  const matchedRoute = Object.keys(routePermissionMap)
+    .sort((a, b) => b.length - a.length)
+    .find(
+      (route) =>
+        pathname === route ||
+        (route !== "/roadmap" && pathname.startsWith(`${route}/`)),
+    );
+
+  const requiredPermission = matchedRoute
+    ? routePermissionMap[matchedRoute]
+    : undefined;
 
   const hasPermission =
-    isSuperAdmin || !requiredPermission
-      ? true
-      : allowedMenus.includes(requiredPermission);
+    allowedMenus.length > 0 &&
+    (!requiredPermission || allowedMenus.includes(requiredPermission));
 
   return (
     <div className="relative min-h-screen bg-[#F9F5F2]">

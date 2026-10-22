@@ -53,6 +53,8 @@ const tabTypeMap: Record<string, string> = {
 type User = {
   id: string;
   accessId?: string;
+  userAccountId: string;
+  employeeId?: string | null;
   name: string;
   email: string;
   role: "Admin" | "Manager" | "Management" | "ยังไม่กำหนด";
@@ -463,7 +465,8 @@ export default function SettingsPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employee_id: updatedUser.id,
+          user_account_id: updatedUser.userAccountId,
+          employee_id: updatedUser.employeeId ?? null,
           role: updatedUser.role,
           menus: updatedUser.menus,
         }),
@@ -499,52 +502,27 @@ export default function SettingsPage() {
       setLoading(true);
 
       try {
-        await fetch("/roadmap/api/user-access/sync-from-portal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        const [employeesRes, accessRes] = await Promise.all([
-          fetch("/roadmap/api/employees"),
-          fetch("/roadmap/api/user-access"),
-        ]);
-
-        const employeesJson = await employeesRes.json();
+        const accessRes = await fetch("/roadmap/api/user-access");
         const accessJson = await accessRes.json();
 
-        const accessMap = new Map<string, any>();
-
-        if (accessJson.success && Array.isArray(accessJson.data)) {
-          for (const item of accessJson.data) {
-            if (item.employee_id) {
-              accessMap.set(item.employee_id, item);
-            }
-          }
+        if (!accessRes.ok || !accessJson.success) {
+          throw new Error(
+            accessJson.error || "ไม่สามารถโหลดรายชื่อผู้ใช้ Roadmap ได้",
+          );
         }
 
-        const mappedUsers =
-          employeesJson.success && Array.isArray(employeesJson.data)
-            ? employeesJson.data
-                .map((item: any) => {
-                  const access = accessMap.get(item.id);
-
-                  return {
-                    id: item.id,
-                    accessId: access?.id,
-                    name: item.name,
-                    email: item.email ?? "",
-                    role: access?.role ?? "ยังไม่กำหนด",
-                    menus: access?.menus ?? [],
-                  } as User;
-                })
-                .filter((user: User) => {
-                  // แสดงเฉพาะคนที่ Portal อนุญาตเข้า Roadmap
-                  // หรือมีข้อมูลสิทธิ์ Roadmap อยู่แล้ว
-                  const access = accessMap.get(user.id);
-
-                  return Boolean(access?.id || access?.portalRoadmapAllowed);
-                })
-            : [];
+        const mappedUsers: User[] = Array.isArray(accessJson.data)
+          ? accessJson.data.map((item: any) => ({
+              id: item.user_account_id,
+              accessId: item.id ?? undefined,
+              userAccountId: item.user_account_id,
+              employeeId: item.employee_id ?? null,
+              name: item.name || item.user_account_id,
+              email: item.email ?? "",
+              role: item.role ?? "ยังไม่กำหนด",
+              menus: item.menus ?? ["Overview", "Employee", "Evaluate HR"],
+            }))
+          : [];
 
         setUsers(mappedUsers);
 

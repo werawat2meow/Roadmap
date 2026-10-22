@@ -15,6 +15,11 @@ interface ImportResult {
   totalRows: number;
   matchedRows: number;
   unmatchedRows: number;
+  issues: {
+    sourceEmployeeCode: string;
+    workDate: string;
+    reason: string;
+  }[];
 }
 
 const attendanceHeaders = [
@@ -120,9 +125,20 @@ export default function AttendancePage() {
         },
       );
 
+      const formattedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        worksheet,
+        {
+          defval: "",
+          raw: false,
+          range: 0,
+        },
+      );
+
       const parsedRows: AttendanceRow[] = rawRows
-        .map((row) => ({
-          sourceEmployeeCode: String(row.employee_code ?? "").trim(),
+        .map((row, index) => ({
+          sourceEmployeeCode: String(
+            formattedRows[index]?.employee_code ?? row.employee_code ?? "",
+          ).trim(),
           workDate: normalizeWorkDate(row.work_date),
           checkIn: normalizeTime(row.check_in),
           checkOut: normalizeTime(row.check_out),
@@ -208,6 +224,7 @@ export default function AttendancePage() {
         totalRows: json.totalRows,
         matchedRows: json.matchedRows,
         unmatchedRows: json.unmatchedRows,
+        issues: json.issues || [],
       });
     } catch (error: any) {
       console.error("Attendance import failed:", error);
@@ -307,6 +324,24 @@ export default function AttendancePage() {
                   <AlertCircle className="h-5 w-5" />
                   ยังจับคู่ไม่ได้ {result.unmatchedRows} รายการ
                 </div>
+              </div>
+            )}
+            {result && result.issues.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-semibold text-amber-900">
+                  รายการที่ต้องตรวจสอบ — แสดงไม่เกิน 20 รายการ
+                </p>
+
+                <ul className="mt-2 space-y-2 text-xs text-amber-900">
+                  {result.issues.map((issue, index) => (
+                    <li key={index}>
+                      <strong>{issue.sourceEmployeeCode}</strong>
+                      {" · "}
+                      {issue.workDate}
+                      <div className="mt-1">{issue.reason}</div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>

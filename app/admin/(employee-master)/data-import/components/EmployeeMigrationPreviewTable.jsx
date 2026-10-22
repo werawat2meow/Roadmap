@@ -70,6 +70,19 @@ export default function EmployeeMigrationPreviewTable({
         ),
     },
     {
+      title: "รหัสเก่าทั้งหมด", key: "legacy_codes", width: 240,
+      render: (_, row) => {
+        const values = Array.isArray(row.legacy_employee_codes) ? row.legacy_employee_codes : String(row.legacy_employee_codes || row.employee_code || "").split(/[;,]+/);
+        return <>{values.filter(Boolean).map(code=><Tag key={code}>{code}</Tag>)}</>;
+      },
+    },
+    {
+      title: "รหัสหลัก HRMS", key: "code_strategy", width: 175,
+      render: (_, row) => row.code_strategy === "KEEP_LEGACY"
+        ? <><Tag color="geekblue">ใช้รหัสเดิม</Tag><Text code>{row.selected_primary_code || row.employee_code}</Text></>
+        : <Tag color="purple">ออกใหม่เมื่อ Confirm</Tag>,
+    },
+    {
       title:
         "External ID",
       dataIndex:
@@ -109,23 +122,6 @@ export default function EmployeeMigrationPreviewTable({
       dataIndex:
         "department_code",
       width: 100,
-    },
-    {
-      title:
-        "ตำแหน่ง",
-      dataIndex:
-        "position_code",
-      width: 120,
-    },
-    {
-      title:
-        "เงินเดือนฐาน",
-      dataIndex:
-        "base_salary",
-      width: 140,
-      align: "right",
-      render:
-        formatMoney,
     },
     {
       title:

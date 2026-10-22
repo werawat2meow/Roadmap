@@ -518,7 +518,7 @@ export default function DataImportPage() {
   function handleImport(){
     if(!draftJobId || !previewReady){swalError("กรุณาบันทึก Draft และตรวจ Mapping ก่อน");return;}
     if(summary.invalid>0 || draftStatus!=="ready"){swalError("ยังมีข้อมูลไม่ผ่าน Validation กรุณาแก้ Mapping ให้ครบ");return;}
-    Modal.confirm({title:"ยืนยัน Import พนักงานจริง",content:`จะสร้างพนักงานจริง ${summary.insert} คน และอัปเดต ${summary.update} คน รหัสพนักงานใหม่จะออกจาก Running Number เดิม`,okText:"ยืนยัน Import จริง",cancelText:"กลับไปตรวจ",async onOk(){
+    Modal.confirm({title:"ยืนยัน Import พนักงานจริง",content:`จะสร้างพนักงานจริง ${summary.insert} คน และอัปเดต ${summary.update} คน ระบบจะใช้รหัสเดิมที่ HR เลือก หรือสร้างรหัสใหม่ตามแต่ละแถว กรุณาตรวจรหัสหลักและข้อมูลบุคคลก่อนยืนยัน`,okText:"ยืนยัน Import จริง",cancelText:"กลับไปตรวจ",async onOk(){
       try{setImporting(true);const res=await fetch(`/api/admin/data-import/employees/draft/${draftJobId}/confirm`,{method:"POST"});const json=await readJsonResponse(res);if(!res.ok||!json.success)throw new Error(json.error||"Import ไม่สำเร็จ");
        swalSuccess(json.message);setDraftStatus("completed");setPreviewReady(false);setDraftJobId(null);setPreviewRows([]);setSummary({total:0,valid:0,invalid:0,insert:0,update:0});await loadHistory();
       }catch(e){swalError(e.message);throw e;}finally{setImporting(false);}
@@ -666,7 +666,7 @@ export default function DataImportPage() {
             }}
           >
             <Card
-              title="ผลตรวจสอบ Employee Migration"
+              title="ตรวจสอบพนักงานและรหัสเก่า (Draft → เลือกรหัสหลัก → Confirm)"
               extra={<Space><Button onClick={handleSaveDraft} disabled={!previewReady||!!draftJobId||!canImport} loading={savingDraft}>บันทึก Draft</Button>{draftJobId&&<Text type="secondary">Draft: {draftJobId.slice(0,8)} · {draftStatus}</Text>}</Space>}
             >
               {!previewReady ? (

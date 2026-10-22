@@ -75,7 +75,7 @@ const ROLE_LABELS: Record<User["role"], string> = {
   Admin: "Settings",
   Manager: "Manager",
   Management: "Management",
-  "ยังไม่กำหนด": "Make Form",
+  ยังไม่กำหนด: "Make Form",
 };
 
 const getRoleButtonClass = (role: User["role"], selectedRole: User["role"]) => {
@@ -264,20 +264,38 @@ export default function AccessPermissionsPanel({
   onUpdateUser,
 }: Props) {
   const itemsPerPage = 4;
+  const [searchText, setSearchText] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+
+    if (!keyword) return users;
+
+    return users.filter((user) =>
+      `${user.name} ${user.email}`.toLowerCase().includes(keyword),
+    );
+  }, [users, searchText]);
 
   const usersKey = useMemo(
     () => users.map((user) => user.id).join(","),
     [users],
   );
   const [pageState, setPageState] = useState({ usersKey, page: 1 });
+  const filteredUsersKey = `${usersKey}:${searchText.trim().toLowerCase()}`;
 
-  const currentPage = pageState.usersKey === usersKey ? pageState.page : 1;
-  const totalPages = Math.max(Math.ceil(users.length / itemsPerPage), 1);
+  const currentPage =
+    pageState.usersKey === filteredUsersKey ? pageState.page : 1;
+
+  const totalPages = Math.max(
+    Math.ceil(filteredUsers.length / itemsPerPage),
+    1,
+  );
 
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return users.slice(startIndex, startIndex + itemsPerPage);
-  }, [users, currentPage]);
+
+    return filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredUsers, currentPage]);
 
   const pageWindowSize = 3;
 
@@ -350,6 +368,24 @@ export default function AccessPermissionsPanel({
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4">
+            <input
+              type="text"
+              value={searchText}
+              onChange={(event) => {
+                setSearchText(event.target.value);
+
+                setPageState({
+                  usersKey: `${usersKey}:${event.target.value
+                    .trim()
+                    .toLowerCase()}`,
+                  page: 1,
+                });
+              }}
+              placeholder="ค้นหาชื่อพนักงาน..."
+              className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
           {paginatedUsers.map((user) => {
             const isSelected = user.id === selectedUserId;
             return (
@@ -405,12 +441,12 @@ export default function AccessPermissionsPanel({
                   <span className="text-slate-900">
                     {Math.min(
                       (currentPage - 1) * itemsPerPage + 1,
-                      users.length,
+                      filteredUsers.length,
                     )}{" "}
-                    - {Math.min(currentPage * itemsPerPage, users.length)}
+                    -{" "}
+                    {Math.min(currentPage * itemsPerPage, filteredUsers.length)}
                   </span>{" "}
-                  จาก <span className="text-slate-900">{users.length}</span>{" "}
-                  รายชื่อ
+                  จาก <span>{filteredUsers.length}</span> รายชื่อ
                 </div>
 
                 {/* ส่วนปุ่มกด - ปรับเป็น Icon และวงกลม/มน เพื่อประหยัดพื้นที่ */}
@@ -420,7 +456,7 @@ export default function AccessPermissionsPanel({
                     onClick={() =>
                       setPageState((prev) => ({
                         ...prev,
-                        usersKey,
+                        usersKey: filteredUsersKey,
                         page: Math.max(prev.page - 1, 1),
                       }))
                     }
@@ -454,7 +490,7 @@ export default function AccessPermissionsPanel({
                         onClick={() =>
                           setPageState((prev) => ({
                             ...prev,
-                            usersKey,
+                            usersKey: filteredUsersKey,
                             page,
                           }))
                         }
@@ -474,7 +510,7 @@ export default function AccessPermissionsPanel({
                     onClick={() =>
                       setPageState((prev) => ({
                         ...prev,
-                        usersKey,
+                        usersKey: filteredUsersKey,
                         page: Math.min(prev.page + 1, totalPages),
                       }))
                     }

@@ -413,7 +413,7 @@ export async function POST(req) {
       module:
         "Employee Skills",
 
-      action: "CREATE",
+      action: "create",
 
       description:
         `เพิ่ม Skill ${result.skill_name} ให้ ${result.employee_name}`,

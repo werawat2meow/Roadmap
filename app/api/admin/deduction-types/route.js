@@ -471,7 +471,7 @@ export async function POST(req) {
     try {
       await writeActivityLog({
         moduleName: "deduction_types",
-        actionType: "CREATE",
+        actionType: "create",
         referenceTable: TABLE_NAME,
         referenceId: data.id,
         description: `เพิ่มประเภทรายการหัก ${data.deduction_code} - ${data.deduction_name}`,

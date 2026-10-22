@@ -72,7 +72,7 @@ async function handlePOST(request) {
   }
 
   if (existing.data?.id) {
-    setActivityDetails({ action: "UPDATE", resource_id: existing.data.id });
+    setActivityDetails({ action: "update", resource_id: existing.data.id });
     const updated = await supabaseAdmin
       .from("recruit_job_mix_language")
       .update({ job_to_language , updated_at })

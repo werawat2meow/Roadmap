@@ -5,7 +5,7 @@ const fail=(s,c=400)=>NextResponse.json({success:false,error:s},{status:c});
 export async function GET(req,{params}) {
  try{const guard=await checkAccess("view");if(!guard.ok)return guard.response;
  const {jobId}=await params;const job=await getJob(guard,jobId);if(!job)return fail("ไม่พบ Import Job หรือไม่มีสิทธิ์",404);
- const rows=await getRows(jobId);return NextResponse.json({success:true,job,rows:rows.map(r=>({id:r.id,row_no:r.row_no,employee_code:r.employee_code,external_employee_id:r.external_employee_id,action:r.action,valid:r.status==="ready"||r.status==="imported",errors:r.error_messages,warnings:r.warning_messages,employee_name:[r.source_data?.first_name_th,r.source_data?.last_name_th].filter(Boolean).join(" "),company_code:r.mapped_data?.company_code??r.source_data?.company_code,branch_code:r.mapped_data?.branch_code??r.source_data?.branch_code,department_code:r.mapped_data?.department_code??r.source_data?.department_code,position_code:r.mapped_data?.position_code??r.source_data?.position_code,base_salary:r.mapped_data?.base_salary??r.source_data?.base_salary,mapping:Object.fromEntries(MIGRATION_KEYS.map(k=>[k,r.mapped_data?.[k]??r.source_data?.[k]??""]))}))});
+ const rows=await getRows(jobId);return NextResponse.json({success:true,job,rows:rows.map(r=>({id:r.id,row_no:r.row_no,employee_code:r.employee_code,external_employee_id:r.external_employee_id,action:r.action,valid:r.status==="ready"||r.status==="imported",errors:r.error_messages,warnings:r.warning_messages,employee_name:[r.source_data?.first_name_th,r.source_data?.last_name_th].filter(Boolean).join(" "),company_code:r.mapped_data?.company_code??r.source_data?.company_code,branch_code:r.mapped_data?.branch_code??r.source_data?.branch_code,department_code:r.mapped_data?.department_code??r.source_data?.department_code,position_code:r.mapped_data?.position_code??r.source_data?.position_code,base_salary:r.mapped_data?.base_salary??r.source_data?.base_salary,mapping:Object.fromEntries(MIGRATION_KEYS.map(k=>[k,r.mapped_data?.[k]??r.source_data?.[k]??""])),legacy_employee_codes:r.mapped_data?.legacy_employee_codes??r.source_data?.legacy_employee_codes??[],selected_primary_code:r.mapped_data?.selected_primary_code??r.source_data?.selected_primary_code??r.employee_code,code_strategy:r.mapped_data?.code_strategy??r.source_data?.code_strategy??"GENERATE"}))});
  }catch(e){return fail(e.message,500)}
 }
 export async function PATCH(req,{params}){
@@ -14,7 +14,7 @@ export async function PATCH(req,{params}){
  const body=await req.json();const updates=Array.isArray(body?.updates)?body.updates:[];if(!updates.length||updates.length>5000)return fail("ไม่มีข้อมูล Mapping ที่จะแก้ไข");
  const old=await getRows(jobId);const byId=new Map(old.map(r=>[r.id,r]));
  for(const item of updates){const row=byId.get(item.id);if(!row)return fail("Row ไม่อยู่ใน Job นี้",403);
-  const changes=Object.fromEntries(Object.entries(item.mapping||{}).filter(([k,v])=>MIGRATION_KEYS.includes(k)&&(typeof v==="string"||typeof v==="number")&&String(v).length<=200));
+  const changes=Object.fromEntries(Object.entries(item.mapping||{}).filter(([k,v])=>MIGRATION_KEYS.includes(k)&&((typeof v==="string"||typeof v==="number")&&String(v).length<=2000 || (k==="legacy_employee_codes"&&Array.isArray(v)&&v.length<=30&&v.every(x=>typeof x==="string"&&x.length<=100)))));
   row.mapped_data={...(row.mapped_data||{}),...changes};
  }
  // Full validation with original server scope before persisting edits.

@@ -60,6 +60,7 @@ export default function ActivityLogsPage() {
   const [systems, setSystems] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [dates, setDates] = useState(null);
   const [modules, setModules] = useState([]);
   const [actions, setActions] = useState([]);
@@ -162,6 +163,35 @@ export default function ActivityLogsPage() {
       setRefreshKey(key => key + 1);
     } catch (err) { setError(err.message || "Export ไม่สำเร็จ"); } finally { setExporting(false); }
   };
+  const exportExcel = async () => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (moduleFilter) params.set("module_name", moduleFilter);
+    if (actionFilter) params.set("action_type", actionFilter);
+    if (systemFilter) params.set("system_code", systemFilter);
+    if (statusFilter) params.set("event_status", statusFilter);
+    if (dates?.[0]) params.set("date_from", dates[0].format(DATE_FORMAT));
+    if (dates?.[1]) params.set("date_to", dates[1].format(DATE_FORMAT));
+    setExportingExcel(true);
+    try {
+      const response = await fetch(`/api/admin/activity-logs/export-summary?${params}`, { cache: "no-store" });
+      if (!response.ok) throw new Error((await getJson(response)).error || "Export Excel ล้มเหลว");
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `hrms-activity-summary-${dayjs().format("YYYY-MM-DD")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      setRefreshKey(key => key + 1);
+    } catch (err) {
+      setError(err.message || "Export Excel ไม่สำเร็จ");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
   const columns = useMemo(() => [
     { title: "วันที่ / เวลา", dataIndex: "created_at", key: "created_at", width: 185, render: formatTime },
     {
@@ -195,7 +225,7 @@ export default function ActivityLogsPage() {
       <Space orientation="vertical" size={18} style={{ width: "100%" }}>
         <Row align="middle" justify="space-between" gutter={[12, 12]}>
           <Col><Title level={3} style={{ marginBottom: 4 }}><AuditOutlined /> Activity Logs</Title><Text type="secondary">ตรวจสอบการทำรายการในระบบตามสิทธิ์ที่ได้รับ</Text></Col>
-          <Col><Space><Button onClick={() => router.push("/admin")}>กลับหน้า Admin</Button><Button icon={<ReloadOutlined />} onClick={() => setRefreshKey(key => key + 1)} loading={loading}>รีเฟรช</Button><Button type="primary" icon={<DownloadOutlined />} loading={exporting} onClick={exportCsv}>Export CSV</Button></Space></Col>
+          <Col><Space><Button onClick={() => router.push("/admin")}>กลับหน้า Admin</Button><Button icon={<ReloadOutlined />} onClick={() => setRefreshKey(key => key + 1)} loading={loading}>รีเฟรช</Button><Button type="primary" icon={<DownloadOutlined />} loading={exporting} onClick={exportCsv}>Export CSV</Button><Button icon={<DownloadOutlined />} loading={exportingExcel} onClick={exportExcel}>Export Excel สรุปการใช้งาน</Button></Space></Col>
         </Row>
         <Card style={{ borderRadius: 16 }}>
           <Row gutter={[12, 12]}>

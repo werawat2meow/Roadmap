@@ -124,7 +124,7 @@ async function handlePOST(request) {
     let message;
 
     if (existing) {
-      setActivityDetails({ action: "UPDATE", resource_id: existing.id });
+      setActivityDetails({ action: "update", resource_id: existing.id });
       // ============================
       // UPDATE
       // ============================

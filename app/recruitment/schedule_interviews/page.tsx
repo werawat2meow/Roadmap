@@ -30,6 +30,7 @@ import usePageGuard from "@/hooks/usePageGuard";
 
 import CandidateExportImage from "@/app/recruitment/components/CandidateExportImage";
 import RecruitmentBreadcrumb from "@/app/recruitment/components/RecruitmentBreadcrumb";
+import { candidatePhotoError } from "./candidatePhoto.mjs";
 import styles from "./page.module.css";
 
 const { Title, Text } = Typography;
@@ -795,7 +796,7 @@ export default function RecruitmentApplicationsPage() {
     if (!photoApplication) return;
 
     if(photoFile === null) {
-      Modal.error({ title: 'เกิดข้อผิดพลาด', content: "รูปภาพต้องมีขนาดไม่เกิน 2MB" });
+      Modal.error({ title: 'เกิดข้อผิดพลาด', content: "กรุณาเลือกรูปผู้สมัคร" });
       return;
     }
 
@@ -851,21 +852,15 @@ export default function RecruitmentApplicationsPage() {
 
   const photoUploadProps: UploadProps = {
     maxCount: 1,
+    multiple: false,
     accept: "image/png,image/jpeg",
+    disabled: savingPhoto,
+    fileList: photoFile ? [photoFile] : [],
+    showUploadList: false,
     beforeUpload: (file) => {
-      const isImage =
-        file.type === "image/png" ||
-        file.type === "image/jpeg";
-
-      if (!isImage) {
-        message.error("สามารถอัปโหลดได้เฉพาะ JPG หรือ PNG เท่านั้น");
-        return Upload.LIST_IGNORE;
-      }
-
-      const isLt2M = file.size / 1024 / 1024 < 2;
-
-      if (!isLt2M) {
-        message.error("รูปภาพต้องมีขนาดไม่เกิน 2MB");
+      const error = candidatePhotoError(file);
+      if (error) {
+        message.error(error);
         return Upload.LIST_IGNORE;
       }
 
@@ -1168,11 +1163,31 @@ export default function RecruitmentApplicationsPage() {
             <Text strong>รูปผู้สมัคร</Text>
 
             <div style={{ marginTop: 8 }}>
-              <Upload {...photoUploadProps}>
-                <Button icon={<AntIcon name="UploadOutlined" />}>
-                  เลือกรูปภาพ
-                </Button>
-              </Upload>
+              <Space wrap size={[8, 8]}>
+                <Upload {...photoUploadProps} capture="environment">
+                  <Button disabled={savingPhoto} icon={<AntIcon name="CameraOutlined" />}>
+                    ถ่ายรูป
+                  </Button>
+                </Upload>
+                <Upload {...photoUploadProps}>
+                  <Button disabled={savingPhoto} icon={<AntIcon name="UploadOutlined" />}>
+                    เลือกรูปภาพ
+                  </Button>
+                </Upload>
+              </Space>
+            </div>
+
+            <div aria-live="polite" style={{ marginTop: 8 }}>
+              {photoFile ? (
+                <Space wrap size={[8, 8]}>
+                  <Text>ไฟล์ที่เลือก: {photoFile.name}</Text>
+                  <Button type="link" danger disabled={savingPhoto} onClick={() => setPhotoFile(null)}>
+                    ลบไฟล์ที่เลือก
+                  </Button>
+                </Space>
+              ) : (
+                <Text type="secondary">ยังไม่ได้เลือกรูป</Text>
+              )}
             </div>
 
             <Text
@@ -1183,7 +1198,7 @@ export default function RecruitmentApplicationsPage() {
                 fontSize: 12,
               }}
             >
-              รองรับ JPG, PNG และขนาดไม่เกิน 2MB
+              รองรับ JPG, PNG จำนวน 1 รูป และขนาดไม่เกิน 5MB
             </Text>
           </div>
         </Space>

@@ -43,7 +43,7 @@ export interface EmploymentContractDocumentProps {
 
 export interface ContractHeaderProps {
   company: EmploymentContractData["company"];
-  /** Validated branch logo prepared by the server from branches.branch_image_url. */
+  /** Validated local company logo prepared from companies.logo_path. */
   logoDataUri: string | null;
 }
 

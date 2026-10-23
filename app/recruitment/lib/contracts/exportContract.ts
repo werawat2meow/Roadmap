@@ -6,11 +6,7 @@ import { buildEmploymentContractData, getContractSigners } from "./contractData"
 import { ensureContractNumberForApplication } from "./contractNumber";
 import { persistContractExportChoice } from "./contractExportChoice.mjs";
 import { authorizeContractAccess, contractDataErrorResponse, contractErrorResponse } from "./contractApi";
-
-function filenamePart(value: string): string {
-  return value.normalize("NFKC").replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
-    .replace(/\s+/g, "-").replace(/^[.-]+|[.-]+$/g, "").slice(0, 70);
-}
+import { filenamePart } from "./contractFilename";
 
 export async function exportContractPdf(id: string, signerId: string, signatureType: EmployerSignatureType, requestUrl: string) {
   try {
@@ -31,7 +27,7 @@ export async function exportContractPdf(id: string, signerId: string, signatureT
     const name = filenamePart(`${data.employee.firstNameTH} ${data.employee.lastNameTH}`) || "employee";
     const number = filenamePart(data.contract.contractNo) || "contract";
     // Full application ID disambiguates identical names/numbers across companies.
-    const filename = `employment-contract-${name}-${number}-${id}.pdf`;
+    const filename = `Contract_${number}.pdf`;
     return { buffer, filename };
   } catch (error) {
     return { error: contractDataErrorResponse(error, "PDF_GENERATION_FAILED", "ไม่สามารถสร้างไฟล์สัญญาจ้างได้") };

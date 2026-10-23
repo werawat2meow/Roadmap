@@ -1,4 +1,5 @@
 import { thaiDate } from "../lib/orientation/domain.mjs";
+import { employeeGroupLabel } from "../lib/orientation/reports.mjs";
 
 const reportDate = (value) => value ? new Intl.DateTimeFormat("en-GB", {
   day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Bangkok",
@@ -14,8 +15,9 @@ export default function ActivityReportHeader({ page }) {
         <div style={{ fontSize: 22, lineHeight: 1.4, overflowWrap: "anywhere" }}>
           {page.sessions.map((session, index) => <div key={session.session_id || index} style={{ marginTop: index ? 14 : 0 }}>
             <div>Date : {reportDate(session.orientation_date)}</div>
-            <div>{session.facilitators?.length ? session.facilitators.map((person) => <div key={person.id}>วิทยากร : {person.full_name || "-"}{person.nickname ? ` (${person.nickname})` : ""}<div>ตำแหน่ง : {person.position_name || "-"}</div><div>Group : {person.group_name || "-"}</div></div>) : "วิทยากร : -"}</div>
-            {!session.facilitators?.length && <><div>ตำแหน่ง : -</div><div>Group : -</div></>}
+            <div>{session.facilitators?.length ? session.facilitators.map((person) => <div key={person.id}>วิทยากร : {person.full_name || "-"}{person.nickname ? ` (${person.nickname})` : ""}<div>ตำแหน่ง : {person.position_name || "-"}</div></div>) : "วิทยากร : -"}</div>
+            {!session.facilitators?.length && <div>ตำแหน่ง : -</div>}
+            <div>Group : {employeeGroupLabel(page.rows, session.session_id)}</div>
             <div>สถานที่ : {session.location_name || "-"}</div>
           </div>)}
         </div>

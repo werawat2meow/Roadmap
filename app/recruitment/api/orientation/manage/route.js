@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { orientationAccess } from "../../../lib/orientation/access";
-import { readAll, readByIds, orientationData } from "../../../lib/orientation/readData.mjs";
+import { readAll, readByIds, orientationData, visiblePhotoMetadata } from "../../../lib/orientation/readData.mjs";
 import { normalizedStatus } from "../../../lib/orientation/mutations.mjs";
 import { privateJson } from "../../../lib/orientation/http";
 
@@ -29,10 +29,11 @@ export async function GET() {
       if (!canManage && !people.some((p) => visible.has(p.id))) return [];
       return [{ ...s, status: normalizedStatus(s.status), can_manage: canManage }];
     });
-    const [facilitators, handovers, logs] = await Promise.all([
+    const [facilitators, handovers, logs, photos] = await Promise.all([
       readByIds(supabaseAdmin, "recruit_orientation_facilitators", "id,session_id,employee_id", "session_id", sessions.map((s) => s.id)),
       readByIds(supabaseAdmin, "recruit_orientation_handovers", "id,participant_id,receiver_employee_id,receiver_name_snapshot,handover_at,handover_location,notes", "participant_id", participants.map((p) => p.id)),
       readByIds(supabaseAdmin, "recruit_orientation_status_logs", "id,session_id,participant_id,action,from_status,to_status,reason,created_at", "session_id", sessions.map((s) => s.id)),
+      visiblePhotoMetadata(supabaseAdmin, participants),
     ]);
     const manageable = new Set(sessions.filter((s) => s.can_manage).map((s) => s.id));
     const history = logs.filter((log) => visible.has(log.participant_id) || manageable.has(log.session_id)).map(({ reason, ...log }) => {
@@ -43,7 +44,7 @@ export async function GET() {
       employees: staff.map((e) => ({ id: e.id, label: `${e.employee_code || ""} ${[e.first_name_th, e.last_name_th].filter(Boolean).join(" ") || [e.first_name_en, e.last_name_en].filter(Boolean).join(" ")}`.trim() })),
       sessions: sessions.map((s) => ({ ...s, facilitator_ids: facilitators.filter((f) => f.session_id === s.id && staffMap.has(f.employee_id)).map((f) => f.employee_id) })),
       participants: participants.map((p) => ({ ...p, attendance_status: normalizedStatus(p.attendance_status), site_visit_status: normalizedStatus(p.site_visit_status), workflow_status: normalizedStatus(p.workflow_status) })),
-      locations, handovers, history,
+      locations, handovers, history, photos,
     });
   } catch (error) {
     console.error("ORIENTATION_MANAGE_READ_FAILED", { code: error.code || "READ_ERROR" });

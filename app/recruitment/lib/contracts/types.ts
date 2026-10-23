@@ -44,9 +44,11 @@ export interface EmploymentContractBaseData {
     prefixTH: NullableText;
     firstNameTH: string;
     lastNameTH: string;
+    nicknameTH: NullableText;
     prefixEN: NullableText;
     firstNameEN: NullableText;
     lastNameEN: NullableText;
+    nicknameEN: NullableText;
     addressTH: NullableText;
     /** Built from shared address fields and English names returned by geothai. */
     addressEN: NullableText;
@@ -56,6 +58,9 @@ export interface EmploymentContractBaseData {
     departmentTH: NullableText;
     /** The current departments schema has no English-name field. */
     departmentEN: NullableText;
+    divisionTH: NullableText;
+    /** The current divisions schema has no English-name field. */
+    divisionEN: NullableText;
     level: NullableText;
     salary: number | null;
     positionAllowance: number | null;
@@ -95,17 +100,27 @@ export interface ContractAccessScope {
 export type ContractTemplateVariableKey =
   | "employeeNameTH"
   | "employeeNameEN"
+  | "employeeNicknameTH"
+  | "employeeNicknameEN"
   | "positionTH"
   | "positionEN"
   | "level"
   | "departmentTH"
   | "departmentEN"
+  | "divisionTH"
+  | "divisionEN"
   | "salary"
   | "salaryEN"
+  | "salaryTextTH"
+  | "salaryTextEN"
   | "positionAllowance"
   | "positionAllowanceEN"
+  | "positionAllowanceTextTH"
+  | "positionAllowanceTextEN"
   | "totalSalary"
   | "totalSalaryEN"
+  | "totalSalaryTextTH"
+  | "totalSalaryTextEN"
   | "startDateTH"
   | "startDateEN"
   | "endDateTH"
@@ -116,6 +131,8 @@ export type ContractTemplateVariableKey =
   | "contractDateEN"
   | "companyNameTH"
   | "companyNameEN"
+  | "companyAddressTH"
+  | "companyAddressEN"
   | "employerNameTH"
   | "employerNameEN"
   | "employerPositionTH"

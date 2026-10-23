@@ -4,6 +4,7 @@ import { ContractDataError } from "./errors";
 import {
   formatContractDateEN,
   formatContractDateTH,
+  selectContractLevelCode,
   toContractNumber,
   type ContractNumericValue,
 } from "./formatContractData";
@@ -13,6 +14,8 @@ import type {
   EmploymentContractBaseData,
   EmploymentContractData,
 } from "./types";
+import { selectCompanyContractLogo } from "./contractLogo";
+import { resolveSharedContractNames } from "./contractName";
 
 const CONTRACT_APPLICATION_STATUSES = [15, 17];
 
@@ -23,6 +26,8 @@ type ContractApplicationRow = {
   title_id: string | null;
   first_name: string | null;
   last_name: string | null;
+  nickname_th: string | null;
+  nickname_en: string | null;
   current_address_no: string | null;
   village_no: number | null;
   street: string | null;
@@ -55,11 +60,7 @@ type CompanyRow = {
   district_code: string | number | null;
   subdistrict_code: string | number | null;
   postcode: string | null;
-};
-
-type BranchRow = {
-  id: string;
-  branch_image_url: string | null;
+  logo_path: string | null;
 };
 
 type EmployeeRow = {
@@ -67,8 +68,8 @@ type EmployeeRow = {
   title_id: string | null;
   first_name_th: string;
   last_name_th: string;
-  first_name_en: string | null;
-  last_name_en: string | null;
+  nickname_th: string | null;
+  nickname_en: string | null;
 };
 
 type TitleRow = {
@@ -84,9 +85,12 @@ type DepartmentRow = {
   department_name: string;
 };
 
+type DivisionRow = {
+  division_name: string;
+};
+
 type PositionLevelRow = {
   level_code: string;
-  level_name: string;
 };
 
 type GeothaiAddressType = "province" | "district" | "subdistrict";
@@ -221,6 +225,8 @@ async function getApprovedApplication(contractId: string): Promise<ContractAppli
       title_id,
       first_name,
       last_name,
+      nickname_th,
+      nickname_en,
       current_address_no,
       village_no,
       street,
@@ -300,31 +306,24 @@ export async function getEmploymentContractData(
 
   const [
     companyResult,
-    branchResult,
     employeeResult,
     positionResult,
     departmentResult,
+    divisionResult,
     levelResult,
   ] =
     await Promise.all([
       supabaseAdmin
         .from("companies")
         .select(
-          "id, company_name_th, company_name_en, address, province_code, district_code, subdistrict_code, postcode"
+          "id, company_name_th, company_name_en, address, province_code, district_code, subdistrict_code, postcode, logo_path"
         )
         .eq("id", application.company_id)
         .maybeSingle(),
-      application.branch_id
-        ? supabaseAdmin
-            .from("branches")
-            .select("id, branch_image_url")
-            .eq("id", application.branch_id)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
       application.emp_id ? supabaseAdmin
         .from("employees")
         .select(
-          "id, title_id, first_name_th, last_name_th, first_name_en, last_name_en"
+          "id, title_id, first_name_th, last_name_th, nickname_th, nickname_en"
         )
         .eq("id", application.emp_id)
         .maybeSingle() : Promise.resolve({ data: null, error: null }),
@@ -342,10 +341,17 @@ export async function getEmploymentContractData(
             .eq("id", application.department_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
+      application.division_id
+        ? supabaseAdmin
+            .from("divisions")
+            .select("division_name")
+            .eq("id", application.division_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       application.position_level_id
         ? supabaseAdmin
             .from("position_levels")
-            .select("level_code, level_name")
+            .select("level_code")
             .eq("id", application.position_level_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -353,10 +359,10 @@ export async function getEmploymentContractData(
 
   const firstError = [
     companyResult.error,
-    branchResult.error,
     employeeResult.error,
     positionResult.error,
     departmentResult.error,
+    divisionResult.error,
     levelResult.error,
   ].find(Boolean);
 
@@ -367,10 +373,10 @@ export async function getEmploymentContractData(
   }
 
   const company = companyResult.data as CompanyRow | null;
-  const branch = branchResult.data as BranchRow | null;
   const employee = employeeResult.data as EmployeeRow | null;
   const position = positionResult.data as PositionRow | null;
   const department = departmentResult.data as DepartmentRow | null;
+  const division = divisionResult.data as DivisionRow | null;
   const level = levelResult.data as PositionLevelRow | null;
 
   if (!company || (Number(application.status) === 15 && !employee)) {
@@ -408,6 +414,12 @@ export async function getEmploymentContractData(
   const startDate = Number(application.status) === 17 ? application.start_date : application.start_date ?? application.hire_date;
   const salary = toContractNumber(application.base_salary);
   const positionAllowance = toContractNumber(application.position_allowance);
+  const sharedEmployeeNames = resolveSharedContractNames({
+    applicationFirstName: application.first_name,
+    applicationLastName: application.last_name,
+    employeeFirstName: employee?.first_name_th,
+    employeeLastName: employee?.last_name_th,
+  });
   if (Number(application.status) === 17 && (!startDate || !formatContractDateTH(startDate) || !application.probation_end_date ||
     !formatContractDateTH(application.probation_end_date) || !(application.probation_days > 0) ||
     salary === null || salary < 0 || !(employee?.first_name_th || application.first_name)?.trim() ||
@@ -432,7 +444,7 @@ export async function getEmploymentContractData(
     company: {
       id: company.id,
       branchId: application.branch_id,
-      logo: branch?.branch_image_url ?? null,
+      logo: selectCompanyContractLogo(company),
       nameTH: company.company_name_th,
       nameEN: company.company_name_en,
       addressTH: joinNonEmpty([
@@ -453,11 +465,13 @@ export async function getEmploymentContractData(
     employee: {
       id: employee?.id ?? null,
       prefixTH: title?.title_name_th ?? null,
-      firstNameTH: employee?.first_name_th || application.first_name || "",
-      lastNameTH: employee?.last_name_th || application.last_name || "",
+      firstNameTH: sharedEmployeeNames.firstNameTH,
+      lastNameTH: sharedEmployeeNames.lastNameTH,
+      nicknameTH: employee?.nickname_th || application.nickname_th || null,
       prefixEN: title?.title_name_en ?? null,
-      firstNameEN: employee?.first_name_en ?? null,
-      lastNameEN: employee?.last_name_en ?? null,
+      firstNameEN: sharedEmployeeNames.firstNameEN,
+      lastNameEN: sharedEmployeeNames.lastNameEN,
+      nicknameEN: employee?.nickname_en || application.nickname_en || null,
       addressTH: joinNonEmpty([
         application.current_address_no,
         application.village_no,
@@ -480,7 +494,9 @@ export async function getEmploymentContractData(
       positionEN: position?.position_name ?? null,
       departmentTH: department?.department_name ?? null,
       departmentEN: department?.department_name ?? null,
-      level: joinNonEmpty([level?.level_code, level?.level_name]),
+      divisionTH: division?.division_name ?? null,
+      divisionEN: division?.division_name ?? null,
+      level: selectContractLevelCode(level?.level_code),
       salary,
       positionAllowance,
       totalSalary: combineAmount(application.base_salary, application.position_allowance),

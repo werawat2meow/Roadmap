@@ -20,7 +20,7 @@ export default async function OrientationUploadPage({ searchParams }) {
             อัปโหลดรูปกิจกรรม
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-            เลือกรอบและผู้เข้าร่วม แล้วแนบรูป Orientation, Site Visit และส่งมอบให้ครบในชุดเดียว
+            เลือกรอบและผู้เข้าร่วม แล้วแนบและบันทึกรูป Orientation, Site Visit หรือส่งมอบแยกทีละหมวด
           </p>
         </header>
 

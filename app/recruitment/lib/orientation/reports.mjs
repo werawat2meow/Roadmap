@@ -1,5 +1,13 @@
 const photoTypes = ["orientation", "site_visit", "handover"];
 
+export function employeeGroupLabel(rows, sessionId) {
+  const names = [...new Set(rows
+    .filter((row) => row.session_id === sessionId)
+    .map((row) => row.group_name?.trim())
+    .filter(Boolean))];
+  return names.length ? names.join(" & ") : "-";
+}
+
 export function tablePages(rows) {
   return [...new Set(rows.map((row) => row.orientation_date))].sort().flatMap((date) => {
     const items = rows.filter((row) => row.orientation_date === date);

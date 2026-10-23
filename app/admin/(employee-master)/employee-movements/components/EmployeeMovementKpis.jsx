@@ -30,7 +30,7 @@ const CARD_META = {
     soft: "#ffffff",
     border: "#d9d9d9",
   },
-  EXITED: {
+  LAST_WORKING_DAY: {
     icon: <LogoutOutlined />,
     accent: "#7f7f7f",
     soft: "#ffffff",

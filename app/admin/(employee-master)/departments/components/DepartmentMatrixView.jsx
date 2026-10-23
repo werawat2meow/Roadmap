@@ -19,14 +19,14 @@ import {
 } from "./departmentMatrixUtils";
 
 function BranchLogo({ branch, compact = false }) {
-  const sizeClass = compact ? "h-10 w-10" : "h-14 w-14";
+  const sizeClass = compact ? "h-12 w-12" : "h-20 w-20";
   return (
-    <div className={`flex ${sizeClass} shrink-0 items-center justify-center bg-white/75 p-1.5`}>
+    <div className={`flex ${sizeClass} shrink-0 items-center justify-center bg-transparent p-0`}>
       {branch?.branch_image_url ? (
         <img
           src={branch.branch_image_url}
           alt={branch.branch_name || branch.branch_code || "Branch"}
-          className="max-h-full max-w-full object-contain"
+          className="block h-full w-full object-contain"
         />
       ) : (
         <span className="text-[8px] text-slate-400">LOGO</span>
@@ -260,6 +260,10 @@ function DesktopMatrix({
   onDelete,
 }) {
   const manageEnabled = canEdit || canDelete;
+  const currentYear = new Date().getFullYear();
+  const startYear = currentYear + 543;
+  const endYear = startYear + 1;
+  
 
   return (
     <div
@@ -268,7 +272,7 @@ function DesktopMatrix({
     >
       <div className="border-b border-slate-300 bg-white px-6 py-4 text-center">
         <h2 className="text-3xl font-black tracking-tight text-black">
-          BUSINESS STRUCTURE 2026
+          BUSINESS STRUCTURE ปี {startYear} - {endYear}
         </h2>
         <p className="mt-1 text-xs text-slate-500">
           GROUP / สังกัด อยู่ด้านซ้าย และ Department อยู่ด้านขวาตามรูปแบบโครงสร้างบริษัท
@@ -542,7 +546,12 @@ export default function DepartmentMatrixView({
   onEdit,
   onDelete,
 }) {
-  const branchGroups = useMemo(() => buildBranchGroups(branches), [branches]);
+  // Matrix แสดงเฉพาะสังกัดที่เปิดใช้งาน โดยไม่เปลี่ยนรายการในฟอร์มหรือฐานข้อมูล
+  const activeBranches = useMemo(
+    () => branches.filter((branch) => String(branch.status || "").toLowerCase() === "active"),
+    [branches]
+  );
+  const branchGroups = useMemo(() => buildBranchGroups(activeBranches), [activeBranches]);
 
   return (
     <div className="space-y-4">
@@ -555,7 +564,7 @@ export default function DepartmentMatrixView({
       <MobileMatrix
         loading={loading}
         departments={departments}
-        branches={branches}
+        branches={activeBranches}
         branchGroups={branchGroups}
         deletingId={deletingId}
         canEdit={canEdit}
@@ -569,7 +578,7 @@ export default function DepartmentMatrixView({
       <DesktopMatrix
         loading={loading}
         departments={departments}
-        branches={branches}
+        branches={activeBranches}
         branchGroups={branchGroups}
         deletingId={deletingId}
         canEdit={canEdit}

@@ -11,6 +11,7 @@ export default function ImageCropModal({
   saving = false,
   onClose,
   onComplete,
+  onUseOriginal,
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -83,6 +84,12 @@ export default function ImageCropModal({
             Cancel
           </button>
 
+          {onUseOriginal && (
+            <button type="button" onClick={onUseOriginal} disabled={saving}
+              className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              ใช้รูปต้นฉบับ (ไม่ Crop)
+            </button>
+          )}
           <button
             type="button"
             onClick={handleConfirm}

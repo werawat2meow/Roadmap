@@ -135,7 +135,7 @@ export default function EmployeeMovementFilters({
           </Col>
         ))}
 
-        <Col xs={24} md={8} lg={4}>
+        {/* <Col xs={24} md={8} lg={4}>
           <Text strong>ติดตามรายการ</Text>
           <Select
             style={{ width: "100%", marginTop: 6 }}
@@ -148,7 +148,7 @@ export default function EmployeeMovementFilters({
               label,
             }))}
           />
-        </Col>
+        </Col> */}
 
         <Col xs={24} md={8} lg={3}>
           <Text strong>รหัสพนักงาน</Text>

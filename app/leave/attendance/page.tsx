@@ -3,6 +3,12 @@
 import { ChangeEvent, useState } from "react";
 import * as XLSX from "xlsx";
 import { AlertCircle, CheckCircle2, FileText, Upload } from "lucide-react";
+import type { AttendanceAssessment } from "@/lib/leave-attendance-assessment";
+
+type ImportAssessment = AttendanceAssessment & {
+  employeeCode: string;
+  employeeName: string;
+};
 
 interface AttendanceRow {
   sourceEmployeeCode: string;
@@ -20,6 +26,8 @@ interface ImportResult {
     workDate: string;
     reason: string;
   }[];
+  assessments: ImportAssessment[];
+  assessmentWarning: string | null;
 }
 
 const attendanceHeaders = [
@@ -71,9 +79,11 @@ function normalizeWorkDate(value: unknown): string {
 }
 
 function normalizeTime(value: unknown): string {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const hours = String(value.getHours()).padStart(2, "0");
-    const minutes = String(value.getMinutes()).padStart(2, "0");
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const seconds = ((Math.round(value * 86400) % 86400) + 86400) % 86400;
+
+    const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
 
     return `${hours}:${minutes}`;
   }
@@ -110,7 +120,7 @@ export default function AttendancePage() {
 
       const workbook = XLSX.read(buffer, {
         type: "array",
-        cellDates: true,
+        cellDates: false,
       });
 
       const sheetName = workbook.SheetNames[0];
@@ -225,6 +235,8 @@ export default function AttendancePage() {
         matchedRows: json.matchedRows,
         unmatchedRows: json.unmatchedRows,
         issues: json.issues || [],
+        assessments: json.assessments || [],
+        assessmentWarning: json.assessmentWarning || null,
       });
     } catch (error: any) {
       console.error("Attendance import failed:", error);
@@ -405,6 +417,90 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
+            {result?.assessmentWarning && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                บันทึกสแกนแล้ว แต่ตรวจเทียบตารางไม่สำเร็จ:{" "}
+                {result.assessmentWarning}
+              </div>
+            )}
+
+            {result && result.assessments.length > 0 && (
+              <div className="pt-6">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[1000px] text-left text-sm text-black">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="min-w-[220px] whitespace-nowrap p-3">
+                          พนักงาน
+                        </th>
+                        <th className="min-w-[120px] whitespace-nowrap p-3">
+                          วันที่
+                        </th>
+                        <th className="min-w-[160px] whitespace-nowrap p-3">
+                          เวลาที่ต้องทำงาน
+                        </th>
+                        <th className="min-w-[160px] whitespace-nowrap p-3">
+                          เวลาสแกนจริง
+                        </th>
+                        <th className="min-w-[340px] whitespace-nowrap p-3">
+                          ผลตรวจ
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {result.assessments.map((item) => (
+                        <tr
+                          key={`${item.employeeId}:${item.workDate}`}
+                          className="border-t border-slate-100 align-top"
+                        >
+                          <td className="p-3">
+                            <div className="whitespace-nowrap font-medium">
+                              {item.employeeName || "ไม่ระบุชื่อ"}
+                            </div>
+
+                            <div className="mt-1 whitespace-nowrap text-xs text-slate-500">
+                              {item.employeeCode}
+                            </div>
+                          </td>
+
+                          <td className="whitespace-nowrap p-3 tabular-nums">
+                            {item.workDate}
+                          </td>
+
+                          <td className="whitespace-nowrap p-3 tabular-nums">
+                            {item.scheduledType === "OFF"
+                              ? "OFF"
+                              : item.expectedIn && item.expectedOut
+                                ? `${item.expectedIn} – ${item.expectedOut}`
+                                : "—"}
+                          </td>
+
+                          <td className="whitespace-nowrap p-3 tabular-nums">
+                            {item.checkIn?.slice(0, 5) || "—"}
+                            {" – "}
+                            {item.checkOut?.slice(0, 5) || "—"}
+                          </td>
+
+                          <td className="p-3 leading-6">
+                            <div>{item.text}</div>
+
+                            {item.warnings.map((warning) => (
+                              <div
+                                key={warning}
+                                className="mt-1 text-amber-700"
+                              >
+                                {warning}
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </div>

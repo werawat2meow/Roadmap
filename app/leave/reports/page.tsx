@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import type { AttendanceAssessment } from "@/lib/leave-attendance-assessment";
 import {
   CalendarDays,
   CheckCircle2,
@@ -19,6 +20,7 @@ interface AttendanceItem {
 }
 
 interface ExportEmployee {
+  dailyResults: AttendanceAssessment[];
   employeeId: string;
   employeeCode: string;
   employeeName: string;
@@ -118,17 +120,6 @@ const leaveColorMap: Record<string, string> = {
   UNPAID: "#d1d5db",
 };
 
-const leaveShortLabelMap: Record<string, string> = {
-  SICK: "SL",
-  BUSINESS: "PL",
-  ANNUAL: "AL",
-  ANNUAL_HOLIDAY: "PH",
-  BIRTHDAY: "BD",
-  ORDAIN: "OR",
-  MATERNITY: "MT",
-  UNPAID: "LWP",
-};
-
 function formatDateInput(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -157,7 +148,12 @@ function getCurrentMonthRange() {
 function toDateOnly(value: string) {
   if (!value) return "";
 
-  return value.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 function parseDateOnly(value: string) {
@@ -252,61 +248,104 @@ function htmlEscape(value: unknown) {
     .replace(/"/g, "&quot;");
 }
 
-function parseWeeklyHoliday(value?: string) {
-  if (!value) return [];
+function formatExcelAttendanceCell(item: AttendanceAssessment) {
+  let text = "-";
+  let background = "#ffffff";
+  let color = "#111827";
 
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+  const hasScan = Boolean(item.checkIn || item.checkOut);
+  const notes = [...item.warnings];
 
-function isWeeklyHoliday(date: Date, weeklyHoliday?: string) {
-  const day = String(date.getDay());
+  const shortLabels: Record<string, string> = {
+    ANNUAL: "AL",
+    SICK: "SL",
+    BUSINESS: "PL",
+    ANNUAL_HOLIDAY: "PH",
+    BIRTHDAY: "BD",
+    ORDAIN: "OR",
+    MATERNITY: "MT",
+    UNPAID: "LWP",
+  };
 
-  return parseWeeklyHoliday(weeklyHoliday).includes(day);
-}
-function calculateLateMinutes(
-  checkIn?: string | null,
-  workStartTime?: string | null,
-) {
-  if (!checkIn || !workStartTime) return 0;
+  const fullLabels: Record<string, string> = {
+    ANNUAL: "ลาพักร้อน",
+    SICK: "ลาป่วย",
+    BUSINESS: "ลากิจ",
+    ANNUAL_HOLIDAY: "วันหยุดประจำปี",
+    BIRTHDAY: "ลาวันเกิด",
+    ORDAIN: "ลาบวช",
+    MATERNITY: "ลาคลอด",
+    UNPAID: "ลาไม่รับค่าจ้าง",
+  };
 
-  const [checkHour, checkMinute] = checkIn.slice(0, 5).split(":").map(Number);
+  // ใบลาอนุมัติมีผลก่อนวันหยุดและสแกน
+  if (item.leaveKinds.length > 0) {
+    text = item.text;
 
-  const [startHour, startMinute] = workStartTime
-    .slice(0, 5)
-    .split(":")
-    .map(Number);
+    for (const kind of item.leaveKinds) {
+      if (fullLabels[kind]) {
+        text = text.split(fullLabels[kind]).join(shortLabels[kind]);
+      }
+    }
 
-  const actualMinutes = checkHour * 60 + checkMinute;
-  const expectedMinutes = startHour * 60 + startMinute;
+    text = text
+      .replace(/ เต็มวัน/g, "")
+      .replace(/ครึ่งวันเช้า/g, "0.5 เช้า")
+      .replace(/ครึ่งวันบ่าย/g, "0.5 บ่าย");
 
-  return Math.max(0, actualMinutes - expectedMinutes);
-}
+    background = leaveColorMap[item.leaveKinds[0]] || "#e5e7eb";
 
-function calculateEarlyLeaveMinutes(
-  checkOut?: string | null,
-  workEndTime?: string | null,
-) {
-  if (!checkOut || !workEndTime) return 0;
+    if (item.leaveDays === null) {
+      notes.push("ตรวจสอบจำนวนวันลาก่อนสรุปยอด");
+    }
+  } else if (item.scheduledType === "OFF") {
+    text = "OFF";
+    background = "#7f1d1d";
+    color = "#ffffff";
+  } else if (!hasScan) {
+    text = "-";
+  } else if (item.lateMinutes !== null && item.earlyMinutes !== null) {
+    const messages: string[] = [];
 
-  const [checkHour, checkMinute] = checkOut.slice(0, 5).split(":").map(Number);
+    if (item.lateMinutes > 0) {
+      messages.push(`สาย ${item.lateMinutes} นาที`);
+    }
 
-  const [endHour, endMinute] = workEndTime.slice(0, 5).split(":").map(Number);
+    if (item.earlyMinutes > 0) {
+      messages.push(`ออกก่อน ${item.earlyMinutes} นาที`);
+    }
 
-  const actualMinutes = checkHour * 60 + checkMinute;
-  const expectedMinutes = endHour * 60 + endMinute;
+    if (messages.length === 0) {
+      // ออกเกินเวลาไม่ถือว่าออกก่อน จึงยังเป็น ✓
+      text = "✓";
+      background = "#dcfce7";
+      color = "#15803d";
+    } else {
+      text = messages.join(" / ");
 
-  return Math.max(0, expectedMinutes - actualMinutes);
-}
-function isApprovedLeave(row: ReportRow) {
-  const status = String(row.status || "")
-    .trim()
-    .toUpperCase();
-  const statusLabel = String(row.statusLabel || "").trim();
+      if (item.lateMinutes > 0) {
+        background = "#fed7aa";
+        color = "#9a3412";
+      } else {
+        background = "#ddd6fe";
+        color = "#5b21b6";
+      }
+    }
+  } else {
+    // เช่น สแกนไม่ครบ ไม่มีตาราง หรือกะที่ยังประเมินไม่ได้
+    text = "ตรวจสอบ";
+    background = "#fef3c7";
+    notes.push(item.text);
+  }
 
-  return status === "APPROVED" || statusLabel === "อนุมัติแล้ว";
+  const uniqueNotes = [...new Set(notes)];
+
+  return {
+    text: text + (uniqueNotes.length > 0 ? " *" : ""),
+    background,
+    color,
+    notes: uniqueNotes,
+  };
 }
 
 export default function LeaveReportsPage() {
@@ -369,6 +408,13 @@ export default function LeaveReportsPage() {
     let ignore = false;
 
     async function run() {
+      // รอให้เลือกช่วงวันที่ถูกต้องก่อน ไม่เรียก API หรือเด้งแจ้งเตือน
+      if (!from || !to || from > to) {
+        setLoading(false);
+        setExportEmployees([]);
+        return;
+      }
+
       try {
         setLoading(true);
 
@@ -415,6 +461,7 @@ export default function LeaveReportsPage() {
       } catch (error: any) {
         if (ignore) return;
 
+        setExportEmployees([]);
         console.error("Load leave reports failed:", error);
         alert(error.message || "โหลดรายงานการลาไม่สำเร็จ");
       } finally {
@@ -454,185 +501,124 @@ export default function LeaveReportsPage() {
   };
 
   const exportExcel = () => {
-    const approvedRows = rows.filter(isApprovedLeave);
-
-    if (exportEmployees.length === 0) {
-      alert("ไม่พบรายชื่อพนักงานสำหรับส่งออก");
+    if (loading || exportEmployees.length === 0) {
+      alert("ไม่พบข้อมูลพร้อมส่งออก กรุณารอให้โหลดรายงานสำเร็จ");
       return;
     }
-
     const dateColumns = getDateRangeColumns(from, to);
-
     if (dateColumns.length === 0) {
       alert("กรุณาเลือกช่วงวันที่ให้ถูกต้อง");
       return;
     }
-
-    const employeeMap = new Map<
-      string,
-      {
-        employeeCode: string;
-        employeeName: string;
-        department: string;
-        division: string;
-        unit: string;
-        weeklyHoliday: string;
-        workStartTime: string;
-        workEndTime: string;
-        attendance: AttendanceItem[];
-        leavesByDate: Record<string, ReportRow[]>;
-        totalDays: number;
-      }
-    >();
-
-    exportEmployees.forEach((employee) => {
-      employeeMap.set(employee.employeeId, {
-        employeeCode: employee.employeeCode,
-        employeeName: employee.employeeName,
-        department: employee.department,
-        division: employee.division,
-        unit: employee.unit,
-        weeklyHoliday: employee.weeklyHoliday,
-        workStartTime: employee.workStartTime,
-        workEndTime: employee.workEndTime,
-        attendance: employee.attendance || [],
-        leavesByDate: {},
-        totalDays: 0,
-      });
+    const expectedDates = dateColumns.map(getDateKey);
+    const incomplete = exportEmployees.some((employee) => {
+      const available = new Set(
+        (employee.dailyResults || []).map((item) => item.workDate),
+      );
+      return expectedDates.some((date) => !available.has(date));
     });
-
-    approvedRows.forEach((row) => {
-      const current = employeeMap.get(row.employeeId);
-
-      if (!current) return;
-
-      const startDate = parseDateOnly(row.startDate);
-      const endDate = parseDateOnly(row.endDate);
-
-      if (startDate && endDate) {
-        const currentDate = new Date(startDate);
-
-        while (currentDate <= endDate) {
-          const keyDate = getDateKey(currentDate);
-
-          current.leavesByDate[keyDate] = current.leavesByDate[keyDate] || [];
-
-          current.leavesByDate[keyDate].push(row);
-
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      }
-
-      current.totalDays += Number(row.requestedDays || 0);
-    });
-
-    const employees = Array.from(employeeMap.values());
-
+    if (incomplete) {
+      alert("ผลตรวจรายวันยังไม่ครบ กรุณาโหลดรายงานใหม่ก่อนส่งออก");
+      return;
+    }
     const headerCells = [
       "รหัสพนักงาน",
       "ชื่อพนักงาน",
       "แผนก",
       "ฝ่าย",
       "หน่วย",
-      ...dateColumns.map((date) => formatDayHeader(date)),
-      "รวมวันลา",
+      ...dateColumns.map(formatDayHeader),
+      "รวมวันลาอนุมัติ",
     ];
-
     const legend = `
-      <table class="legend">
-        <tr>
-          <td class="legend-title">คำอธิบายสี</td>
-          <td style="background:#fecaca;">ลาป่วย</td>
-          <td style="background:#fed7aa;">ลากิจ</td>
-          <td style="background:#fbcfe8;">ลาพักร้อน</td>
-          <td style="background:#fde68a;">วันหยุดประจำปี</td>
-          <td style="background:#bae6fd;">ลาวันเกิด</td>
-          <td style="background:#fdba74;">ลาบวช</td>
-          <td style="background:#ddd6fe;">ลาคลอด</td>
-          <td style="background:#d1d5db;">ลาไม่รับค่าจ้าง</td>
-          <td style="background:#7f1d1d;color:#ffffff;">วันหยุดประจำสัปดาห์</td>
-        </tr>
-      </table>
-    `;
+  <table class="legend">
+    <tr>
+      <td style="background:#fecaca;">SL ลาป่วย</td>
+      <td style="background:#fed7aa;">PL ลากิจ</td>
+      <td style="background:#fbcfe8;">AL ลาพักร้อน</td>
+      <td style="background:#fde68a;">PH วันหยุดประจำปี</td>
+      <td style="background:#bae6fd;">BD ลาวันเกิด</td>
+      <td style="background:#fdba74;">OR ลาบวช</td>
+      <td style="background:#ddd6fe;">MT ลาคลอด</td>
+      <td style="background:#d1d5db;">LWP ลาไม่รับค่าจ้าง</td>
+      <td style="background:#7f1d1d;color:#ffffff;">OFF วันหยุดตามตาราง</td>
+    </tr>
+  </table>
 
-    const detailRows = employees
+  <div class="subtitle">
+    ✓ = เข้า–ออกตามเวลา /
+    - = ไม่มีข้อมูลสแกน /
+    * = มีหมายเหตุใต้ตาราง
+  </div>
+`;
+    const reportNotes: string[] = [];
+    const detailRows = exportEmployees
       .map((employee) => {
-        const dayCells = dateColumns
+        const dayMap = new Map(
+          employee.dailyResults.map((item) => [item.workDate, item]),
+        );
+        let totalLeave = 0;
+        let needsLeaveReview = false;
+        const dayCells = expectedDates
           .map((date) => {
-            const keyDate = getDateKey(date);
-            const leaves = employee.leavesByDate[keyDate] || [];
+            const item = dayMap.get(date)!;
+            if (item.leaveDays === null) needsLeaveReview = true;
+            else totalLeave += item.leaveDays;
+            const cell = formatExcelAttendanceCell(item);
 
-            const attendance = employee.attendance.find(
-              (item) => item.date === keyDate,
-            );
-
-            if (isWeeklyHoliday(date, employee.weeklyHoliday)) {
-              return `<td
-    style="background:#7f1d1d;color:#ffffff;font-weight:700;text-align:center;"
-  >Off</td>`;
+            if (cell.notes.length > 0) {
+              reportNotes.push(`
+    <tr>
+      <td>${htmlEscape(employee.employeeCode)}</td>
+      <td>${htmlEscape(employee.employeeName)}</td>
+      <td>${htmlEscape(date)}</td>
+      <td style="white-space:normal;">
+        ${cell.notes.map(htmlEscape).join("<br/>")}
+      </td>
+    </tr>
+  `);
             }
 
-            if (leaves.length > 0) {
-              const firstLeave = leaves[0];
-
-              const color = leaveColorMap[firstLeave.kind] || "#e5e7eb";
-
-              const text = leaves
-                .map(
-                  (leave) => leaveShortLabelMap[leave.kind] || leave.kindLabel,
-                )
-                .join(", ");
-
-              return `<td
-    style="background:${color};text-align:center;"
-  >${htmlEscape(text)}</td>`;
-            }
-
-            if (!attendance) {
-              return `<td
-    style="text-align:center;color:#6b7280;"
-  >-</td>`;
-            }
-
-            const lateMinutes = calculateLateMinutes(
-              attendance.checkIn,
-              employee.workStartTime,
-            );
-
-            const earlyLeaveMinutes = calculateEarlyLeaveMinutes(
-              attendance.checkOut,
-              employee.workEndTime,
-            );
-
-            if (lateMinutes > 0) {
-              return `<td
-    style="background:#fed7aa;color:#9a3412;font-weight:700;text-align:center;"
-  >สาย ${lateMinutes} นาที</td>`;
-            }
-
-            if (earlyLeaveMinutes > 0) {
-              return `<td
-    style="background:#ddd6fe;color:#5b21b6;font-weight:700;text-align:center;"
-  >ออกก่อน ${earlyLeaveMinutes} นาที</td>`;
-            }
-
-            return `<td
-  style="background:#dcfce7;color:#166534;font-weight:700;text-align:center;"
->✓</td>`;
+            return `
+  <td
+    class="day"
+    style="
+      background:${cell.background};
+      color:${cell.color};
+      text-align:center;
+      font-weight:700;
+      white-space:nowrap;
+    "
+  >
+    ${htmlEscape(cell.text)}
+  </td>
+`;
           })
           .join("");
-
-        return `
-          <tr>
-            <td>${htmlEscape(employee.employeeCode)}</td>
-            <td>${htmlEscape(employee.employeeName)}</td>
-            <td>${htmlEscape(employee.department)}</td>
-            <td>${htmlEscape(employee.division)}</td>
-            <td>${htmlEscape(employee.unit)}</td>
-            ${dayCells}
-            <td class="total">${employee.totalDays}</td>
-          </tr>
-        `;
+        const totalText = needsLeaveReview
+          ? totalLeave + " + รอตรวจสอบวันลา"
+          : String(totalLeave);
+        return (
+          `<tr><td style='mso-number-format:"\\@";'>` +
+          htmlEscape(employee.employeeCode) +
+          "</td>" +
+          "<td>" +
+          htmlEscape(employee.employeeName) +
+          "</td>" +
+          "<td>" +
+          htmlEscape(employee.department) +
+          "</td>" +
+          "<td>" +
+          htmlEscape(employee.division) +
+          "</td>" +
+          "<td>" +
+          htmlEscape(employee.unit) +
+          "</td>" +
+          dayCells +
+          '<td class="total">' +
+          htmlEscape(totalText) +
+          "</td></tr>"
+        );
       })
       .join("");
 
@@ -673,15 +659,16 @@ export default function LeaveReportsPage() {
 
             td {
               border: 1px solid #000;
-              padding: 5px;
-              font-size: 12px;
+              padding: 4px 6px;
+              font-size: 11px;
               white-space: nowrap;
+              vertical-align: middle;
             }
 
             .day {
               text-align: center;
               font-weight: bold;
-              min-width: 34px;
+              min-width: 45px;
             }
 
             .ok {
@@ -748,6 +735,28 @@ export default function LeaveReportsPage() {
               ${detailRows}
             </tbody>
           </table>
+          ${
+            reportNotes.length > 0
+              ? `
+      <div class="section-title">หมายเหตุรายการ *</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>รหัสพนักงาน</th>
+            <th>ชื่อพนักงาน</th>
+            <th>วันที่</th>
+            <th>รายละเอียด</th>
+          </tr>
+        </thead>
+
+            <tbody>
+              ${reportNotes.join("")}
+            </tbody>
+          </table>
+        `
+              : ""
+          }
         </body>
       </html>
     `;

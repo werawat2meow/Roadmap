@@ -4,6 +4,7 @@ import { assessAttendanceRange } from "@/lib/leave-attendance-assessment";
 import { requirePermission } from "@/lib/auth/requirePortalAccess";
 import { applyEmployeeScope } from "@/lib/auth/requireScopedAccess";
 import { readAllScheduleRows } from "@/lib/leave-schedule-query";
+import { buildLatePenaltySummaries } from "@/lib/leave-late-penalty";
 
 const leaveKindLabels: Record<string, string> = {
   ANNUAL: "ลาพักร้อน",
@@ -79,22 +80,32 @@ export async function GET(req: Request) {
     const validDate = (value: string) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
       const date = new Date(`${value}T00:00:00Z`);
-      return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+      return (
+        Number.isFinite(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
     };
-    if (!validDate(from) || !validDate(to) || start > end ||
-      (end.getTime() - start.getTime()) / 86400000 >= 366) {
+    if (
+      !validDate(from) ||
+      !validDate(to) ||
+      start > end ||
+      (end.getTime() - start.getTime()) / 86400000 >= 366
+    ) {
       return NextResponse.json(
-        { success: false, error: "กรุณาเลือกช่วงวันที่ให้ถูกต้องและไม่เกิน 366 วัน" },
+        {
+          success: false,
+          error: "กรุณาเลือกช่วงวันที่ให้ถูกต้องและไม่เกิน 366 วัน",
+        },
         { status: 400 },
       );
     }
     const endExclusive = new Date(end.getTime() + 86400000).toISOString();
 
     function getRequestQuery() {
-    let requestQuery = supabaseAdmin
-      .from("leave_requests")
-      .select(
-        `
+      let requestQuery = supabaseAdmin
+        .from("leave_requests")
+        .select(
+          `
         id,
         employeeId,
         approverId,
@@ -107,33 +118,33 @@ export async function GET(req: Request) {
         status,
         createdAt
       `,
-      )
-      .order("startDate", { ascending: false })
-      .order("id");
+        )
+        .order("startDate", { ascending: false })
+        .order("id");
 
-    if (from) {
-      requestQuery = requestQuery.gte("endDate", start.toISOString());
-    }
+      if (from) {
+        requestQuery = requestQuery.gte("endDate", start.toISOString());
+      }
 
-    if (to) {
-      requestQuery = requestQuery.lt("startDate", endExclusive);
-    }
+      if (to) {
+        requestQuery = requestQuery.lt("startDate", endExclusive);
+      }
 
-    if (kind) {
-      requestQuery = requestQuery.eq("kind", kind);
-    }
+      if (kind) {
+        requestQuery = requestQuery.eq("kind", kind);
+      }
 
-    if (status) {
-      requestQuery = requestQuery.eq("status", status);
-    }
+      if (status) {
+        requestQuery = requestQuery.eq("status", status);
+      }
 
-    if (source === "paper") {
-      requestQuery = requestQuery.ilike("reason", "[Paper]%");
-    }
+      if (source === "paper") {
+        requestQuery = requestQuery.ilike("reason", "[Paper]%");
+      }
 
-    if (source === "system") {
-      requestQuery = requestQuery.not("reason", "ilike", "[Paper]%");
-    }
+      if (source === "system") {
+        requestQuery = requestQuery.not("reason", "ilike", "[Paper]%");
+      }
 
       return requestQuery;
     }
@@ -171,33 +182,57 @@ export async function GET(req: Request) {
     // Limit the request query to employees accessible to this user.
     const requests = [];
     for (let offset = 0; offset < allEmployees.length; offset += 100) {
-      const chunk = allEmployees.slice(offset, offset + 100).map((employee) => employee.id);
-      requests.push(...await readAllScheduleRows(getRequestQuery().in("employeeId", chunk)));
+      const chunk = allEmployees
+        .slice(offset, offset + 100)
+        .map((employee) => employee.id);
+      requests.push(
+        ...(await readAllScheduleRows(
+          getRequestQuery().in("employeeId", chunk),
+        )),
+      );
     }
-    requests.sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
+    requests.sort((a, b) =>
+      String(b.startDate).localeCompare(String(a.startDate)),
+    );
 
     const employeeById = new Map(
       allEmployees.map((employee: any) => [employee.id, employee]),
     );
-    const approverIds = [...new Set(requests.map((item) => item.approverId).filter(Boolean))];
+    const approverIds = [
+      ...new Set(requests.map((item) => item.approverId).filter(Boolean)),
+    ];
     const approvers = [];
     for (let offset = 0; offset < approverIds.length; offset += 100) {
-      approvers.push(...await readAllScheduleRows(
-        supabaseAdmin.from("leave_approvers")
-          .select("id,firstNameTh,lastNameTh,empNo")
-          .in("id", approverIds.slice(offset, offset + 100)).order("id"),
-      ));
+      approvers.push(
+        ...(await readAllScheduleRows(
+          supabaseAdmin
+            .from("leave_approvers")
+            .select("id,firstNameTh,lastNameTh,empNo")
+            .in("id", approverIds.slice(offset, offset + 100))
+            .order("id"),
+        )),
+      );
     }
     const approverById = new Map(
       approvers.map((approver: any) => [approver.id, approver]),
     );
     // Retain response compatibility; Settings no longer determines attendance.
-    const configByEmployeeId = new Map<string, {
-      weeklyHoliday?: string; work_start_time?: string; work_end_time?: string;
-    }>();
-    const attendanceByEmployeeId = new Map<string, {
-      date: string; checkIn: string | null; checkOut: string | null;
-    }[]>();
+    const configByEmployeeId = new Map<
+      string,
+      {
+        weeklyHoliday?: string;
+        work_start_time?: string;
+        work_end_time?: string;
+      }
+    >();
+    const attendanceByEmployeeId = new Map<
+      string,
+      {
+        date: string;
+        checkIn: string | null;
+        checkOut: string | null;
+      }[]
+    >();
 
     const employeeRows = (allEmployees || [])
       .filter((employee: any) => {
@@ -238,54 +273,69 @@ export async function GET(req: Request) {
         };
       });
 
-    const allowedEmployeeIds = new Set(employeeRows.map((employee) => employee.employeeId));
-    const assessments = await assessAttendanceRange([...allowedEmployeeIds], from, to);
+    const allowedEmployeeIds = new Set(
+      employeeRows.map((employee) => employee.employeeId),
+    );
+    const assessments = await assessAttendanceRange(
+      [...allowedEmployeeIds],
+      from,
+      to,
+    );
     const assessmentsByEmployee = new Map<string, typeof assessments>();
     for (const item of assessments) {
       const current = assessmentsByEmployee.get(item.employeeId) || [];
       current.push(item);
       assessmentsByEmployee.set(item.employeeId, current);
     }
+    const latePenaltyByEmployee = await buildLatePenaltySummaries(
+      [...allowedEmployeeIds],
+      from,
+      to,
+    );
     const employeesWithAssessment = employeeRows.map((employee) => ({
       ...employee,
       dailyResults: assessmentsByEmployee.get(employee.employeeId) || [],
+      latePenaltySummaries:
+        latePenaltyByEmployee.get(employee.employeeId) || [],
     }));
 
-    let rows = requests.filter((item) => allowedEmployeeIds.has(item.employeeId)).map((item: any) => {
-      const emp = employeeById.get(item.employeeId);
-      const approver = approverById.get(item.approverId);
-      const config = configByEmployeeId.get(item.employeeId);
+    let rows = requests
+      .filter((item) => allowedEmployeeIds.has(item.employeeId))
+      .map((item: any) => {
+        const emp = employeeById.get(item.employeeId);
+        const approver = approverById.get(item.approverId);
+        const config = configByEmployeeId.get(item.employeeId);
 
-      const employeeName = getEmployeeName(emp);
-      const employeeCode = emp?.employee_code || "";
+        const employeeName = getEmployeeName(emp);
+        const employeeCode = emp?.employee_code || "";
 
-      return {
-        id: item.id,
-        employeeId: item.employeeId,
-        employeeCode,
-        employeeName,
-        department: emp?.departments?.department_name || "-",
-        division: emp?.divisions?.division_name || "-",
-        unit: emp?.units?.unit_name || "-",
-        weeklyHoliday: config?.weeklyHoliday || "",
-        workStartTime: config?.work_start_time || "",
-        workEndTime: config?.work_end_time || "",
-        kind: item.kind,
-        kindLabel: leaveKindLabels[item.kind] || item.kind || "-",
-        startDate: item.startDate,
-        endDate: item.endDate,
-        session: item.session || "FULL",
-        requestedDays: toNumber(item.requestedDays),
-        status: item.status,
-        statusLabel: statusLabels[item.status] || item.status || "-",
-        approverName: getApproverName(approver) || "-",
-        reason: item.reason || "",
-        source: String(item.reason || "").startsWith("[Paper]")
-          ? "HR บันทึกย้อนหลัง"
-          : "จากระบบ",
-        createdAt: item.createdAt,
-      };
-    });
+        return {
+          id: item.id,
+          employeeId: item.employeeId,
+          employeeCode,
+          employeeName,
+          department: emp?.departments?.department_name || "-",
+          division: emp?.divisions?.division_name || "-",
+          unit: emp?.units?.unit_name || "-",
+          weeklyHoliday: config?.weeklyHoliday || "",
+          workStartTime: config?.work_start_time || "",
+          workEndTime: config?.work_end_time || "",
+          kind: item.kind,
+          kindLabel: leaveKindLabels[item.kind] || item.kind || "-",
+          startDate: item.startDate,
+          endDate: item.endDate,
+          session: item.session || "FULL",
+          requestedDays: toNumber(item.requestedDays),
+          status: item.status,
+          statusLabel: statusLabels[item.status] || item.status || "-",
+          approverName: getApproverName(approver) || "-",
+          reason: item.reason || "",
+          source: String(item.reason || "").startsWith("[Paper]")
+            ? "HR บันทึกย้อนหลัง"
+            : "จากระบบ",
+          createdAt: item.createdAt,
+        };
+      });
 
     if (keyword) {
       rows = rows.filter((row) => {

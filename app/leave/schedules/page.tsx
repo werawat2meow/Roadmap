@@ -6,10 +6,12 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Download,
   RefreshCw,
   Search,
 } from "lucide-react";
 import ScheduleWorkspace from "./components/ScheduleWorkspace";
+import { downloadScheduleExcel } from "@/lib/leave-schedule-excel";
 
 import { getDefaultScheduleMonth } from "@/lib/leave-schedule-period";
 
@@ -139,6 +141,7 @@ export default function LeaveSchedulesPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [hasPending, setHasPending] = useState(false);
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
@@ -240,8 +243,60 @@ export default function LeaveSchedulesPage() {
     setRefreshKey((value) => value + 1);
   }
 
+  async function handleDownloadExcel() {
+    if (exporting || loading || workspaceBusy || error) return;
+
+    if (hasPending) {
+      window.alert("กรุณาบันทึกตารางงานก่อน Download Excel");
+      return;
+    }
+
+    const filterDescription = [
+      `สังกัด: ${
+        metadata.branches.find((item) => item.id === filters.branchId)
+          ?.branch_name || "ทั้งหมด"
+      }`,
+
+      `แผนก: ${
+        metadata.departments.find((item) => item.id === filters.departmentId)
+          ?.department_name || "ทั้งหมด"
+      }`,
+
+      `ฝ่าย: ${
+        metadata.divisions.find((item) => item.id === filters.divisionId)
+          ?.division_name || "ทั้งหมด"
+      }`,
+
+      `หน่วย: ${
+        metadata.units.find((item) => item.id === filters.unitId)?.unit_name ||
+        "ทั้งหมด"
+      }`,
+
+      filters.keyword ? `ค้นหา: ${filters.keyword}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    try {
+      setExporting(true);
+
+      await downloadScheduleExcel({
+        year: selectedPeriod.year,
+        month: selectedPeriod.month,
+        filters: { ...filters },
+        filterDescription,
+      });
+    } catch (error: unknown) {
+      window.alert(
+        error instanceof Error ? error.message : "Download Excel ไม่สำเร็จ",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function canChangeView() {
-    if (workspaceBusy) return false;
+    if (workspaceBusy || exporting) return false;
     if (!hasPending) return true;
 
     const discard = window.confirm(
@@ -376,20 +431,46 @@ export default function LeaveSchedulesPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={loading || workspaceBusy}
-          onClick={() => {
-            if (!canChangeView()) return;
-            setLoading(true);
-            setError("");
-            setRefreshKey((value) => value + 1);
-          }}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-900 shadow-md shadow-yellow-500/20 transition-all hover:from-amber-500 hover:to-yellow-600 hover:shadow-lg active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
-        >
-          <RefreshCw size={16} />
-          รีเฟรช
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadExcel}
+            disabled={
+              loading ||
+              workspaceBusy ||
+              exporting ||
+              hasPending ||
+              Boolean(error) ||
+              !data ||
+              data.pagination.total === 0
+            }
+            title={
+              hasPending
+                ? "กรุณาบันทึกตารางก่อน Download"
+                : "ส่งออกตารางที่บันทึกแล้ว ตามตัวกรองทุกหน้า"
+            }
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={16} />
+            {exporting ? "กำลังสร้าง Excel..." : "Download Excel"}
+          </button>
+
+          <button
+            type="button"
+            disabled={loading || workspaceBusy || exporting}
+            onClick={() => {
+              if (!canChangeView()) return;
+
+              setLoading(true);
+              setError("");
+              setRefreshKey((value) => value + 1);
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-900 shadow-md transition hover:from-amber-500 hover:to-yellow-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw size={16} />
+            รีเฟรช
+          </button>
+        </div>
       </header>
 
       {saveMessage && (

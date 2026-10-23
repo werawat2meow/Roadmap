@@ -8,6 +8,7 @@ import { isValidPhoneNumber } from "libphonenumber-js";
 import { PhoneOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import LoadingOrb from "../../../components/LoadingOrb";
 import ImageCropModal from "../components/ImageCropModal";
+import LogoBackgroundEditor from "../components/LogoBackgroundEditor";
 import useScopedPermissions from "@/hooks/useScopedPermissions";
 
 const initialForm = {
@@ -39,6 +40,9 @@ export default function BranchesPage() {
   // crop image
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState("");
+  const [logoAspect, setLogoAspect] = useState(1);
+  const [logoForReview, setLogoForReview] = useState(null);
+  const [selectedLogoFile, setSelectedLogoFile] = useState(null);
 
   /* =========================================================
     Permission + Access Scope
@@ -373,6 +377,9 @@ export default function BranchesPage() {
     }
   };
 
+  // ลบพื้นหลังที่เชื่อมกับขอบรูปก่อนอัปโหลด
+  // รองรับทั้งพื้นขาว/สีอ่อน และพื้นสีทึบที่ติดขอบรูป
+  // ใช้หลัง Crop และก่อนการบีบอัด/อัปโหลด (WebP รองรับ transparency)
   const compressImageFile = async (
     file,
     {
@@ -483,7 +490,7 @@ export default function BranchesPage() {
 
   const handleUploadImage =
   async (file) => {
-    if (!file) return;
+    if (!file) return false;
 
     const allowedTypes = [
       "image/jpeg",
@@ -514,9 +521,11 @@ export default function BranchesPage() {
        * - WebP
        * - Quality 80%
        */
+      const transparentFile = file; // Already reviewed; do not modify background again
+
       const compressedFile =
         await compressImageFile(
-          file,
+          transparentFile,
           {
             maxWidth: 1200,
             maxHeight: 1200,
@@ -600,6 +609,7 @@ export default function BranchesPage() {
       swalSuccess(
         "อัปโหลดรูปสำเร็จ"
       );
+      return true;
     } catch (err) {
       console.error(
         "UPLOAD_BRANCH_IMAGE_ERROR:",
@@ -610,6 +620,7 @@ export default function BranchesPage() {
         err?.message ||
           "อัปโหลดรูปไม่สำเร็จ"
       );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -624,11 +635,27 @@ export default function BranchesPage() {
       return;
     }
 
+    setSelectedLogoFile(file);
     const reader = new FileReader();
 
     reader.onload = () => {
-      setImageSrc(reader.result);
-      setCropModalOpen(true);
+      const source = reader.result;
+      if (typeof source !== "string") return;
+
+      // Logos can be wide wordmarks or tall emblems. Preserve their
+      // native shape instead of forcing a 1:1 square crop.
+      const image = new Image();
+      image.onload = () => {
+        if (!image.naturalWidth || !image.naturalHeight) {
+          swalError("ไม่สามารถอ่านขนาดภาพโลโก้ได้");
+          return;
+        }
+        setLogoAspect(image.naturalWidth / image.naturalHeight);
+        setImageSrc(source);
+        setCropModalOpen(true);
+      };
+      image.onerror = () => swalError("ไม่สามารถเปิดรูปภาพโลโก้ได้");
+      image.src = source;
     };
 
     reader.readAsDataURL(file);
@@ -882,7 +909,7 @@ export default function BranchesPage() {
 
                   <p className="mt-2 text-xs text-slate-400">
                     รองรับ JPG, PNG, WEBP
-                    ระบบจะปรับขนาดและบีบอัดรูปภาพอัตโนมัติก่อนอัปโหลด
+                    ระบบจะให้ครอปตามสัดส่วนโลโก้จริง แล้วเลือกลบพื้นหลังและตรวจสอบก่อนอัปโหลด
                   </p>
                 </div>
               </div>
@@ -1091,18 +1118,37 @@ export default function BranchesPage() {
       )}
 
       <ImageCropModal
+        key={imageSrc || "branch-logo-crop"}
         open={cropModalOpen}
         imageSrc={imageSrc}
-        aspect={1}
+        aspect={logoAspect}
         saving={saving}
         onClose={() => {
           setCropModalOpen(false);
           setImageSrc("");
+          setSelectedLogoFile(null);
         }}
-        onComplete={async (croppedFile) => {
-          await handleUploadImage(croppedFile);
+        onUseOriginal={() => {
+          if (!selectedLogoFile) return;
+          setLogoForReview(selectedLogoFile);
           setCropModalOpen(false);
           setImageSrc("");
+          setSelectedLogoFile(null);
+        }}
+        onComplete={(croppedFile) => {
+          setLogoForReview(croppedFile);
+          setCropModalOpen(false);
+          setImageSrc("");
+          setSelectedLogoFile(null);
+        }}
+      />
+      <LogoBackgroundEditor
+        file={logoForReview}
+        saving={saving}
+        onClose={() => setLogoForReview(null)}
+        onConfirm={async (reviewedFile) => {
+          const uploaded = await handleUploadImage(reviewedFile);
+          if (uploaded) setLogoForReview(null);
         }}
       />
     </div>

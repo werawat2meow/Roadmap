@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Checkbox, Divider, Drawer, Empty, Flex, Form, Input, Space, Spin, Tag, Typography, message } from "antd";
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import CompanyAssetsChecklist from "./CompanyAssetsChecklist";
 const { Text } = Typography;
 async function request(url, options = {}) {
   const res = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options });
@@ -9,13 +10,36 @@ async function request(url, options = {}) {
   if (!res.ok || j.success === false) throw new Error(j.error || `HTTP ${res.status}`);
   return j;
 }
+// Create the form instance only while the Audit form is actually mounted.
+function AuditAddForm({ onAdd, busy }) {
+  const [form] = Form.useForm();
+
+  const handleFinish = async (values) => {
+    const succeeded = await onAdd(values);
+    if (succeeded) form.resetFields();
+  };
+
+  return (
+    <>
+      <Divider>เพิ่มชื่อกลุ่ม LINE</Divider>
+      <Form form={form} layout="vertical" onFinish={handleFinish}>
+        <Form.Item label="ชื่อกลุ่ม LINE" name="item_name" rules={[{ required: true, message: "กรุณาระบุรายการ" }]}>
+          <Input maxLength={150} placeholder="เช่น กลุ่ม HR Announcement" />
+        </Form.Item>
+        <Button loading={busy} type="primary" htmlType="submit" icon={<PlusOutlined />}>
+          เพิ่มรายการ
+        </Button>
+      </Form>
+    </>
+  );
+}
+
 export default function EmployeeMovementCheckDrawer({ employee, area, onClose, canManage, onChanged }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
-  const [form] = Form.useForm();
   const title = area === "ASSET" ? "Company Assets · รายการทรัพย์สิน" : "Audit Management · กลุ่ม LINE ของพนักงาน";
   async function load() {
     if (!employee) return;
@@ -29,8 +53,8 @@ export default function EmployeeMovementCheckDrawer({ employee, area, onClose, c
   async function add(values) {
     setBusy(true); try {
       await request('/api/admin/employee-movements/check-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: employee.id, area, item_name: values.item_name, notes: values.notes }) });
-      form.resetFields(); await load(); onChanged?.(); message.success('เพิ่มรายการแล้ว');
-    } catch (e) { message.error(e.message) } finally { setBusy(false) }
+      await load(); onChanged?.(); message.success('เพิ่มรายการแล้ว'); return true;
+    } catch (e) { message.error(e.message); return false; } finally { setBusy(false) }
   }
   async function saveName(item) {
     const name = editingName.trim();
@@ -50,6 +74,25 @@ export default function EmployeeMovementCheckDrawer({ employee, area, onClose, c
       await request('/api/admin/employee-movements/check-items', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, state: item.state === 'COMPLETED' ? 'PENDING' : 'COMPLETED', notes: item.notes }) });
       await load(); onChanged?.(); message.success('อัปเดตรายการแล้ว');
     } catch (e) { message.error(e.message) } finally { setBusy(false) }
+  }
+  async function setAssetState(item, state) {
+    if (!canManage || busy || item.state === state) return;
+    setBusy(true);
+    try {
+      await request('/api/admin/employee-movements/check-items', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, state, notes: item.notes })
+      });
+      await load(); onChanged?.(); message.success('อัปเดตสถานะแล้ว');
+    } catch (e) { message.error(e.message); } finally { setBusy(false); }
+  }
+  if (area === 'ASSET') {
+    return <Drawer open={!!employee} onClose={onClose} size={780} title="Company Assets · รายการทรัพย์สิน" destroyOnHidden>
+      {employee && <CompanyAssetsChecklist
+        key={employee.id} employee={employee} items={items} loading={loading} busy={busy}
+        canManage={canManage} onReload={load} onAdd={add} onChange={setAssetState}
+      />}
+    </Drawer>;
   }
   const done = items.filter(x => x.state === 'COMPLETED').length;
   return <Drawer open={!!employee} onClose={onClose} size={540} title={title} destroyOnHidden>
@@ -80,11 +123,7 @@ export default function EmployeeMovementCheckDrawer({ employee, area, onClose, c
           </Flex>
         ))}
       </Spin>
-      {canManage && <><Divider>{area === 'AUDIT' ? 'เพิ่มชื่อกลุ่ม LINE' : 'เพิ่มรายการ'}</Divider><Form form={form} layout="vertical" onFinish={add}>
-        <Form.Item label={area === 'AUDIT' ? 'ชื่อกลุ่ม LINE' : 'ชื่อรายการ'} name="item_name" rules={[{ required: true, message: 'กรุณาระบุรายการ' }]}><Input maxLength={150} placeholder={area === 'ASSET' ? 'เช่น คอมพิวเตอร์พนักงาน' : 'เช่น กลุ่ม HR Announcement'} /></Form.Item>
-        {area === 'ASSET' && <Form.Item label="หมายเหตุ" name="notes"><Input.TextArea maxLength={1000} rows={2} /></Form.Item>}
-        <Button loading={busy} type="primary" htmlType="submit" icon={<PlusOutlined />}>เพิ่มรายการ</Button>
-      </Form></>}
+      {canManage && <AuditAddForm onAdd={add} busy={busy} />}
     </>}
   </Drawer>;
 }

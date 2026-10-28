@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+import {
+  applyApprovedEmployeeReportFilters,
+  readApprovedEmployeeReportFilters,
+} from "@/app/recruitment/lib/reportApproveEmp.mjs";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 const MAX_PAGE_SIZE = 100;
@@ -33,6 +37,7 @@ export async function GET(request) {
       MAX_PAGE_SIZE
     );
     const keyword = (searchParams.get("keyword") || "").trim();
+    const reportFilters = readApprovedEmployeeReportFilters(searchParams);
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
@@ -70,6 +75,8 @@ export async function GET(request) {
         );
       }
     }
+
+    query = applyApprovedEmployeeReportFilters(query, reportFilters);
 
     const { data: applications, count, error } = await query
       .order("hire_date", { ascending: false, nullsFirst: false })

@@ -8,10 +8,16 @@ import React, {
 } from "react";
 import { Button, Modal, message } from "antd";
 import { toPng } from "html-to-image";
+import JSZip from "jszip";
 import Image from "next/image";
 
 import { sendBrowserActivity } from "../lib/activity/browser";
 import { buildDepartmentPresentationFields } from "../lib/departmentPresentation.mjs";
+import {
+  getPresentationFilename,
+  normalizePresentationBatch,
+  waitForPresentationPaint,
+} from "../lib/presentationBatch.mjs";
 
 const EXPORT_WIDTH = 1672;
 const EXPORT_HEIGHT = 941;
@@ -66,7 +72,8 @@ async function waitForImages(element) {
 const DepartmentPresentationExport = forwardRef(
   function DepartmentPresentationExport(_props, ref) {
     const exportRef = useRef(null);
-    const [employee, setEmployee] = useState(null);
+    const [employees, setEmployees] = useState([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [previewScale, setPreviewScale] = useState(0.6);
@@ -74,6 +81,8 @@ const DepartmentPresentationExport = forwardRef(
 
     useImperativeHandle(ref, () => ({
       openPreview(data) {
+        const batch = normalizePresentationBatch(data);
+        if (!batch.length) return;
         const maxWidth = window.innerWidth * 0.92;
         const maxHeight = window.innerHeight - 190;
         const scale = Math.min(
@@ -82,7 +91,8 @@ const DepartmentPresentationExport = forwardRef(
           1,
         );
 
-        setEmployee(data);
+        setEmployees(batch);
+        setCurrentIndex(0);
         setPreviewScale(scale);
         setModalWidth(
           Math.min(EXPORT_WIDTH * scale + 48, window.innerWidth * 0.96),
@@ -90,6 +100,8 @@ const DepartmentPresentationExport = forwardRef(
         setPreviewOpen(true);
       },
     }));
+
+    const employee = employees[currentIndex] || null;
 
     const handleDownload = async () => {
       const element = exportRef.current;
@@ -99,32 +111,51 @@ const DepartmentPresentationExport = forwardRef(
       try {
         await sendBrowserActivity("EXPORT_REQUESTED");
         await document.fonts.ready;
-        await waitForImages(element);
+        const zip = employees.length > 1 ? new JSZip() : null;
+        let singleDataUrl = null;
 
-        const dataUrl = await toPng(element, {
-          width: EXPORT_WIDTH,
-          height: EXPORT_HEIGHT,
-          pixelRatio: 1,
-          cacheBust: true,
-          backgroundColor: "#ffffff",
-          skipFonts: false,
-          style: {
-            width: `${EXPORT_WIDTH}px`,
-            height: `${EXPORT_HEIGHT}px`,
-            transform: "none",
-            transformOrigin: "top left",
-          },
-        });
+        for (let index = 0; index < employees.length; index += 1) {
+          setCurrentIndex(index);
+          await waitForPresentationPaint();
+          await waitForImages(element);
 
-        const safeEmployeeCode = String(employee?.emp_code || "employee")
-          .replace(/[\\/:*?"<>|]/g, "")
-          .replace(/\s+/g, "-");
+          const dataUrl = await toPng(element, {
+            width: EXPORT_WIDTH,
+            height: EXPORT_HEIGHT,
+            pixelRatio: 1,
+            cacheBust: true,
+            backgroundColor: "#ffffff",
+            skipFonts: false,
+            style: {
+              width: `${EXPORT_WIDTH}px`,
+              height: `${EXPORT_HEIGHT}px`,
+              transform: "none",
+              transformOrigin: "top left",
+            },
+          });
+          const filename = getPresentationFilename(
+            "present-to-department",
+            employees[index],
+            zip ? index : undefined,
+          );
+          if (zip) zip.file(filename, dataUrl.split(",")[1], { base64: true });
+          else singleDataUrl = { dataUrl, filename };
+        }
+
         const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = `present-to-department-${safeEmployeeCode}.png`;
+        let objectUrl = null;
+        if (zip) {
+          objectUrl = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
+          link.href = objectUrl;
+          link.download = "present-to-department.zip";
+        } else {
+          link.href = singleDataUrl.dataUrl;
+          link.download = singleDataUrl.filename;
+        }
         document.body.appendChild(link);
         link.click();
         link.remove();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
       } catch (error) {
         console.error("Present to Department export error:", error);
         message.error("ไม่สามารถ Export รูป Present to Department ได้");
@@ -135,6 +166,10 @@ const DepartmentPresentationExport = forwardRef(
 
     const profileUrl = getProxyImageUrl(employee?.profile_image_url);
     const logoUrl = getProxyImageUrl(employee?.branch_logo_url);
+    const presentationTextColor =
+      employee?.presentation_text_color || "#13294B";
+    const presentationMutedTextColor =
+      employee?.presentation_muted_text_color || "#718096";
     const presentationFields = buildDepartmentPresentationFields({
       ...employee,
       start_date: formatStartDate(employee?.start_date),
@@ -142,13 +177,21 @@ const DepartmentPresentationExport = forwardRef(
 
     return (
       <Modal
-        title="ตัวอย่าง Present to Department"
+        title={`ตัวอย่าง Present to Department${employees.length > 1 ? ` (${currentIndex + 1}/${employees.length})` : ""}`}
         open={previewOpen}
         onCancel={() => !exporting && setPreviewOpen(false)}
         width={modalWidth}
         centered
         destroyOnHidden
         footer={[
+          employees.length > 1 ? <Button key="previous" disabled={exporting || currentIndex === 0}
+            onClick={() => setCurrentIndex((index) => Math.max(index - 1, 0))}>
+            ก่อนหน้า
+          </Button> : null,
+          employees.length > 1 ? <Button key="next" disabled={exporting || currentIndex === employees.length - 1}
+            onClick={() => setCurrentIndex((index) => Math.min(index + 1, employees.length - 1))}>
+            ถัดไป
+          </Button> : null,
           <Button
             key="cancel"
             onClick={() => setPreviewOpen(false)}
@@ -162,9 +205,9 @@ const DepartmentPresentationExport = forwardRef(
             loading={exporting}
             onClick={handleDownload}
           >
-            ดาวน์โหลดรูป
+            {employees.length > 1 ? "ดาวน์โหลดทั้งหมด (.zip)" : "ดาวน์โหลดรูป"}
           </Button>,
-        ]}
+        ].filter(Boolean)}
         styles={{ body: { padding: 0, overflow: "hidden" } }}
       >
         <div
@@ -178,6 +221,7 @@ const DepartmentPresentationExport = forwardRef(
         >
           <div
             ref={exportRef}
+            data-presentation-canvas="department"
             style={{
               width: EXPORT_WIDTH,
               height: EXPORT_HEIGHT,
@@ -235,11 +279,11 @@ const DepartmentPresentationExport = forwardRef(
                 position: "absolute",
                 left: 70,
                 top: 54,
-                width: 260,
-                height: 132,
-                padding: 18,
+                width: 150,
+                height: 150,
+                padding: 10,
                 borderRadius: 14,
-                backgroundColor: "rgba(255,255,255,0.94)",
+                backgroundColor: "rgba(255,255,255,0.4)",
                 boxShadow: "0 16px 34px rgba(15, 23, 42, 0.22)",
                 boxSizing: "border-box",
                 display: "flex",
@@ -342,7 +386,7 @@ const DepartmentPresentationExport = forwardRef(
               >
                 <div
                   style={{
-                    color: "#13294b",
+                    color: presentationTextColor,
                     fontSize: 50,
                     fontWeight: 700,
                     lineHeight: 1.15,
@@ -353,7 +397,7 @@ const DepartmentPresentationExport = forwardRef(
                 </div>
                 <div
                   style={{
-                    color: "#718096",
+                    color: presentationMutedTextColor,
                     fontSize: 25,
                     fontWeight: 600,
                     lineHeight: 1.12,
@@ -372,7 +416,12 @@ const DepartmentPresentationExport = forwardRef(
                 }}
               >
                 {presentationFields.map((field) => (
-                  <PresentationField key={field.label} {...field} />
+                  <PresentationField
+                    key={field.label}
+                    {...field}
+                    textColor={presentationTextColor}
+                    mutedTextColor={presentationMutedTextColor}
+                  />
                 ))}
               </div>
             </div>
@@ -383,12 +432,18 @@ const DepartmentPresentationExport = forwardRef(
   },
 );
 
-function PresentationField({ label, value, span = 1 }) {
+function PresentationField({
+  label,
+  value,
+  span = 1,
+  textColor,
+  mutedTextColor,
+}) {
   return (
     <div style={{ minWidth: 0, gridColumn: `span ${span}` }}>
       <div
         style={{
-          color: "#718096",
+          color: mutedTextColor,
           fontSize: 17,
           fontWeight: 600,
           marginBottom: 3,
@@ -398,7 +453,7 @@ function PresentationField({ label, value, span = 1 }) {
       </div>
       <div
         style={{
-          color: "#1e293b",
+          color: textColor,
           fontSize: 22,
           fontWeight: 700,
           lineHeight: 1.2,

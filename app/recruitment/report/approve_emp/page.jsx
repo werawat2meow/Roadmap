@@ -1,16 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Select, Space, Table, Tag, Typography, message } from "antd";
 import AntIcon from "@/components/AntIcon";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import ExportEmploymentContractButton from "@/app/recruitment/components/pdf/employment-contract/ExportEmploymentContractButton";
 import DepartmentPresentationExport from "@/app/recruitment/components/DepartmentPresentationExport";
+import ExecutivePresentationExport from "@/app/recruitment/components/ExecutivePresentationExport";
 import usePageGuard from "@/hooks/usePageGuard";
 
 const { Search } = Input;
 const { Title, Text } = Typography;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const MAX_BATCH_SIZE = 20;
+const EMPTY_FILTER_OPTIONS = {
+  companies: [],
+  branches: [],
+  departments: [],
+  divisions: [],
+  units: [],
+  positions: [],
+};
+const REPORT_FILTER_FIELDS = [
+  "company_id",
+  "branch_id",
+  "department_id",
+  "division_id",
+  "unit_id",
+  "position_id",
+];
 
 const showValue = (value) => value || "-";
 
@@ -24,13 +42,82 @@ export default function ApprovedEmployeeReportPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [exportingDepartmentId, setExportingDepartmentId] = useState(null);
+  const [filterOptions, setFilterOptions] = useState(EMPTY_FILTER_OPTIONS);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [presentingDepartment, setPresentingDepartment] = useState(false);
+  const [presentingExecutive, setPresentingExecutive] = useState(false);
   const departmentPresentationRef = useRef(null);
+  const executivePresentationRef = useRef(null);
   const [filters, setFilters] = useState({
     keyword: "",
     page: 1,
     pageSize: 20,
   });
+
+  const selectedRows = useMemo(
+    () => data.filter((row) => selectedIds.includes(String(row.id))),
+    [data, selectedIds],
+  );
+  const visibleBranches = useMemo(
+    () => filterOptions.branches.filter(
+      (item) => !filters.company_id || String(item.company_id) === String(filters.company_id),
+    ),
+    [filterOptions.branches, filters.company_id],
+  );
+  const visibleDepartments = useMemo(
+    () => filterOptions.departments.filter(
+      (item) => !filters.branch_id || item.branch_ids?.map(String).includes(String(filters.branch_id)),
+    ),
+    [filterOptions.departments, filters.branch_id],
+  );
+  const visibleDivisions = useMemo(
+    () => filterOptions.divisions.filter(
+      (item) => !filters.department_id || String(item.department_id) === String(filters.department_id),
+    ),
+    [filterOptions.divisions, filters.department_id],
+  );
+  const visibleUnits = useMemo(
+    () => filterOptions.units.filter(
+      (item) => !filters.division_id || String(item.division_id) === String(filters.division_id),
+    ),
+    [filterOptions.units, filters.division_id],
+  );
+  const visiblePositions = useMemo(
+    () => filterOptions.positions.filter(
+      (item) => !filters.unit_id || item.unit_ids?.map(String).includes(String(filters.unit_id)),
+    ),
+    [filterOptions.positions, filters.unit_id],
+  );
+
+  const updateFilters = (updater) => {
+    setSelectedIds([]);
+    setFilters(updater);
+  };
+
+  useEffect(() => {
+    if (isChecking || !canView) return undefined;
+
+    const controller = new AbortController();
+    fetch("/recruitment/api/report/approve_emp/filters", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "ไม่สามารถโหลดตัวกรองได้");
+        }
+        setFilterOptions({ ...EMPTY_FILTER_OPTIONS, ...result.data });
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error(error);
+          message.error(error.message || "ไม่สามารถโหลดตัวกรองได้");
+        }
+      });
+
+    return () => controller.abort();
+  }, [canView, isChecking]);
 
   useEffect(() => {
     if (isChecking || !canView) return undefined;
@@ -47,6 +134,9 @@ export default function ApprovedEmployeeReportPage() {
         });
 
         if (filters.keyword) params.set("keyword", filters.keyword);
+        REPORT_FILTER_FIELDS.forEach((field) => {
+          if (filters[field]) params.set(field, filters[field]);
+        });
 
         const response = await fetch(
           `/recruitment/api/report/approve_emp?${params.toString()}`,
@@ -77,31 +167,90 @@ export default function ApprovedEmployeeReportPage() {
   if (isChecking) return <LoadingOrb />;
   if (!canView) return null;
 
-  const handlePresentToDepartment = async (applicationId) => {
-    if (exportingDepartmentId) return;
+  const updateOrganizationFilter = (field, value) => {
+    const hierarchy = [
+      "company_id",
+      "branch_id",
+      "department_id",
+      "division_id",
+      "unit_id",
+      "position_id",
+    ];
+    const fieldIndex = hierarchy.indexOf(field);
+    updateFilters((current) => {
+      const next = { ...current, [field]: value, page: 1 };
+      hierarchy.slice(fieldIndex + 1).forEach((childField) => {
+        next[childField] = undefined;
+      });
+      return next;
+    });
+  };
 
-    setExportingDepartmentId(applicationId);
+  const loadPresentationBatch = async (type) => {
+    if (!selectedIds.length) return [];
+
+    const results = await Promise.all(
+      selectedIds.map(async (applicationId) => {
+        try {
+          const response = await fetch(
+            `/recruitment/api/report/approve_emp/${encodeURIComponent(applicationId)}/presentation/${type}`,
+            { cache: "no-store" },
+          );
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.message || "ไม่สามารถโหลดข้อมูล Presentation ได้");
+          }
+          return { success: true, data: result.data };
+        } catch (error) {
+          console.error(error);
+          return {
+            success: false,
+            message: error.message || "ไม่สามารถโหลดข้อมูล Presentation ได้",
+          };
+        }
+      }),
+    );
+
+    const successful = results.filter((item) => item.success).map((item) => item.data);
+    const failedCount = results.length - successful.length;
+    if (failedCount) {
+      message.warning(`โหลด Presentation สำเร็จ ${successful.length} คน ไม่สำเร็จ ${failedCount} คน`);
+    }
+    if (!successful.length) throw new Error("ไม่สามารถโหลดข้อมูลพนักงานที่เลือกได้");
+    return successful;
+  };
+
+  const handlePresentToDepartment = async () => {
+    if (presentingDepartment || !selectedIds.length) return;
+
+    setPresentingDepartment(true);
     try {
-      const response = await fetch(
-        `/recruitment/api/report/approve_emp/${encodeURIComponent(applicationId)}/presentation/department`,
-        { cache: "no-store" }
-      );
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(
-          result.message || "ไม่สามารถโหลดข้อมูล Present to Department ได้"
-        );
-      }
-
-      departmentPresentationRef.current?.openPreview(result.data);
+      const presentationData = await loadPresentationBatch("department");
+      departmentPresentationRef.current?.openPreview(presentationData);
     } catch (error) {
       console.error(error);
       message.error(
         error.message || "ไม่สามารถโหลดข้อมูล Present to Department ได้"
       );
     } finally {
-      setExportingDepartmentId(null);
+      setPresentingDepartment(false);
+    }
+  };
+
+  const handlePresentToExecutive = async () => {
+    if (presentingExecutive || !selectedIds.length) return;
+
+    setPresentingExecutive(true);
+    try {
+      const presentationData = await loadPresentationBatch("executive");
+      executivePresentationRef.current?.openPreview(presentationData);
+    } catch (error) {
+      console.error(error);
+      message.error(
+        error.message || "ไม่สามารถโหลดข้อมูล Present to Executive ได้"
+      );
+    } finally {
+      setPresentingExecutive(false);
     }
   };
 
@@ -226,37 +375,17 @@ export default function ApprovedEmployeeReportPage() {
     {
       title: "จัดการ",
       key: "action",
-      width: 260,
+      width: 150,
       fixed: "right",
       align: "center",
       render: (_, row) => (
-        <Space orientation="vertical" size={4}>
-        <Button
-          type="primary"
-          size="small"
-          icon={<AntIcon name="PictureOutlined" />}
-          loading={exportingDepartmentId === row.id}
-          disabled={Boolean(exportingDepartmentId) && exportingDepartmentId !== row.id}
-          onClick={() => handlePresentToDepartment(row.id)}
-        >
-          Present to Department
-        </Button>
-        <ExportEmploymentContractButton
-          id={row.id}
-          size="small"
-          onSaved={(signerId, signatureType) => setData(current => current.map(item => item.id === row.id ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType } : item))}
-          autoExport={Boolean(row.contract_number)}
-          signerId={row.contract_signer_id}
-          employerSignatureType={row.employer_signature_type}
-        />
-        {canEdit && <ExportEmploymentContractButton
-          id={row.id} size="small" type="default" saveOnly
-          buttonText="อัปเดตผู้ลงนาม"
-          signerId={row.contract_signer_id}
-          employerSignatureType={row.employer_signature_type}
-          onSaved={(signerId, signatureType) => setData(current => current.map(item => item.id === row.id ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType } : item))}
-        />}
-        </Space>
+        canEdit ? <ExportEmploymentContractButton
+            id={row.id} size="small" type="default" saveOnly
+            buttonText="อัปเดตผู้ลงนาม"
+            signerId={row.contract_signer_id}
+            employerSignatureType={row.employer_signature_type}
+            onSaved={(signerId, signatureType) => setData(current => current.map(item => item.id === row.id ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType } : item))}
+          /> : "-"
       ),
     },
   ];
@@ -319,7 +448,7 @@ export default function ApprovedEmployeeReportPage() {
               placeholder="ค้นหารหัสหรือชื่อพนักงาน"
               enterButton={<AntIcon name="SearchOutlined" />}
               onSearch={(keyword) =>
-                setFilters((current) => ({
+                updateFilters((current) => ({
                   ...current,
                   keyword: keyword.trim(),
                   page: 1,
@@ -339,8 +468,69 @@ export default function ApprovedEmployeeReportPage() {
                   label: `${value} รายการ`,
                 }))}
                 onChange={(pageSize) =>
-                  setFilters((current) => ({ ...current, pageSize, page: 1 }))
+                  updateFilters((current) => ({ ...current, pageSize, page: 1 }))
                 }
+              />
+            </Space>
+          </div>
+        </div>
+
+        <div className="border-b border-slate-100 bg-slate-50/60 p-4 md:p-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <Select allowClear showSearch placeholder="บริษัท" value={filters.company_id}
+              optionFilterProp="label"
+              options={filterOptions.companies.map((item) => ({ value: item.id, label: item.company_name_th }))}
+              onChange={(value) => updateOrganizationFilter("company_id", value)} />
+            <Select allowClear showSearch placeholder="สาขา" value={filters.branch_id}
+              optionFilterProp="label"
+              options={visibleBranches.map((item) => ({ value: item.id, label: item.branch_name }))}
+              onChange={(value) => updateOrganizationFilter("branch_id", value)} />
+            <Select allowClear showSearch placeholder="แผนก" value={filters.department_id}
+              optionFilterProp="label"
+              options={visibleDepartments.map((item) => ({ value: item.id, label: item.department_name }))}
+              onChange={(value) => updateOrganizationFilter("department_id", value)} />
+            <Select allowClear showSearch placeholder="ฝ่าย" value={filters.division_id}
+              optionFilterProp="label"
+              options={visibleDivisions.map((item) => ({ value: item.id, label: item.division_name }))}
+              onChange={(value) => updateOrganizationFilter("division_id", value)} />
+            <Select allowClear showSearch placeholder="หน่วยงาน" value={filters.unit_id}
+              optionFilterProp="label"
+              options={visibleUnits.map((item) => ({ value: item.id, label: item.unit_name }))}
+              onChange={(value) => updateOrganizationFilter("unit_id", value)} />
+            <Select allowClear showSearch placeholder="ตำแหน่ง" value={filters.position_id}
+              optionFilterProp="label"
+              options={visiblePositions.map((item) => ({ value: item.id, label: item.position_name }))}
+              onChange={(value) => updateOrganizationFilter("position_id", value)} />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Text type="secondary">
+              เลือกแล้ว {selectedIds.length} คน (สูงสุด {MAX_BATCH_SIZE} คน)
+            </Text>
+            <Space wrap>
+              <Button type="primary" className="!bg-violet-600 hover:!bg-violet-700"
+                icon={<AntIcon name="FundProjectionScreenOutlined" />}
+                loading={presentingExecutive}
+                disabled={!selectedIds.length || presentingDepartment}
+                onClick={handlePresentToExecutive}>
+                Present to Executive ({selectedIds.length})
+              </Button>
+              <Button type="primary" icon={<AntIcon name="PictureOutlined" />}
+                loading={presentingDepartment}
+                disabled={!selectedIds.length || presentingExecutive}
+                onClick={handlePresentToDepartment}>
+                Present to Department ({selectedIds.length})
+              </Button>
+              <ExportEmploymentContractButton
+                id={selectedRows[0]?.id || ""}
+                ids={selectedIds}
+                disabled={!selectedIds.length || presentingDepartment || presentingExecutive}
+                buttonText={`Export สัญญาทดลองงาน (${selectedIds.length})`}
+                onSaved={(signerId, signatureType) => setData((current) => current.map((item) =>
+                  selectedIds.includes(String(item.id))
+                    ? { ...item, contract_signer_id: signerId, employer_signature_type: signatureType }
+                    : item
+                ))}
               />
             </Space>
           </div>
@@ -349,10 +539,23 @@ export default function ApprovedEmployeeReportPage() {
         <div className="overflow-hidden">
           <Table
             rowKey="id"
+            rowSelection={{
+              selectedRowKeys: selectedIds,
+              onChange: (keys) => {
+                if (keys.length > MAX_BATCH_SIZE) {
+                  message.warning(`เลือกได้ครั้งละไม่เกิน ${MAX_BATCH_SIZE} คน`);
+                }
+                setSelectedIds(keys.slice(0, MAX_BATCH_SIZE).map(String));
+              },
+              getCheckboxProps: (row) => ({
+                disabled: selectedIds.length >= MAX_BATCH_SIZE && !selectedIds.includes(String(row.id)),
+                "aria-label": `เลือก ${row.employee_name || row.emp_code || "พนักงาน"}`,
+              }),
+            }}
             columns={columns}
             dataSource={data}
             loading={loading}
-            scroll={{ x: 1740 }}
+            scroll={{ x: 1630 }}
             rowClassName={(_, index) =>
               index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
             }
@@ -365,7 +568,7 @@ export default function ApprovedEmployeeReportPage() {
               showTotal: (count, range) =>
                 `${range[0]}-${range[1]} จาก ${count} รายการ`,
               onChange: (page) =>
-                setFilters((current) => ({ ...current, page })),
+                updateFilters((current) => ({ ...current, page })),
             }}
             locale={{ emptyText: "ไม่พบข้อมูลพนักงานที่อนุมัติแล้ว" }}
           />
@@ -373,6 +576,7 @@ export default function ApprovedEmployeeReportPage() {
       </section>
 
       <DepartmentPresentationExport ref={departmentPresentationRef} />
+      <ExecutivePresentationExport ref={executivePresentationRef} />
     </div>
   );
 }

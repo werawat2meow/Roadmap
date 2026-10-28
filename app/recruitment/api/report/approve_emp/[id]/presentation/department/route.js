@@ -78,7 +78,7 @@ export async function GET(_request, { params }) {
         ),
         getLookup(
           "branches",
-          "branch_code, branch_name, branch_image_url",
+          "branch_code, branch_name, branch_image_url, presentation_text_color, presentation_muted_text_color",
           application.branch_id,
         ),
         getLookup("departments", "department_name", application.department_id),

@@ -1,3 +1,5 @@
+import { resolvePresentationTheme } from "./presentationTheme.mjs";
+
 const PRESENTATION_ROOT = "/presentation";
 
 function showValue(value) {
@@ -46,6 +48,7 @@ export function buildDepartmentPresentationPayload({
   const backgrounds = getDepartmentPresentationBackgrounds(
     branch?.branch_code,
   );
+  const presentationTheme = resolvePresentationTheme(branch);
 
   return {
     id: application.id,
@@ -64,6 +67,7 @@ export function buildDepartmentPresentationPayload({
     branch_logo_url: branch?.branch_image_url || null,
     background_header_url: backgrounds.header,
     background_footer_url: backgrounds.footer,
+    ...presentationTheme,
   };
 }
 

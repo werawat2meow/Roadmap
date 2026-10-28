@@ -46,7 +46,7 @@ export async function GET(request) {
         position_id,
         start_date,
         status,
-        positions(position_name),
+        positions:positions!recruit_job_applications_position_id_fkey(position_name),
         recruit_job_interviews(
           interview_round,
           interview_datetime

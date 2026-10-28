@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Input, Select, Space, Table, Tag, Typography, message } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Button, Input, Select, Space, Table, Tag, Typography, message } from "antd";
 import AntIcon from "@/components/AntIcon";
 import LoadingOrb from "@/app/components/LoadingOrb";
 import ExportEmploymentContractButton from "@/app/recruitment/components/pdf/employment-contract/ExportEmploymentContractButton";
+import DepartmentPresentationExport from "@/app/recruitment/components/DepartmentPresentationExport";
 import usePageGuard from "@/hooks/usePageGuard";
 
 const { Search } = Input;
@@ -23,6 +24,8 @@ export default function ApprovedEmployeeReportPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [exportingDepartmentId, setExportingDepartmentId] = useState(null);
+  const departmentPresentationRef = useRef(null);
   const [filters, setFilters] = useState({
     keyword: "",
     page: 1,
@@ -73,6 +76,34 @@ export default function ApprovedEmployeeReportPage() {
 
   if (isChecking) return <LoadingOrb />;
   if (!canView) return null;
+
+  const handlePresentToDepartment = async (applicationId) => {
+    if (exportingDepartmentId) return;
+
+    setExportingDepartmentId(applicationId);
+    try {
+      const response = await fetch(
+        `/recruitment/api/report/approve_emp/${encodeURIComponent(applicationId)}/presentation/department`,
+        { cache: "no-store" }
+      );
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || "ไม่สามารถโหลดข้อมูล Present to Department ได้"
+        );
+      }
+
+      departmentPresentationRef.current?.openPreview(result.data);
+    } catch (error) {
+      console.error(error);
+      message.error(
+        error.message || "ไม่สามารถโหลดข้อมูล Present to Department ได้"
+      );
+    } finally {
+      setExportingDepartmentId(null);
+    }
+  };
 
   const columns = [
     {
@@ -195,11 +226,21 @@ export default function ApprovedEmployeeReportPage() {
     {
       title: "จัดการ",
       key: "action",
-      width: 190,
+      width: 260,
       fixed: "right",
       align: "center",
       render: (_, row) => (
         <Space orientation="vertical" size={4}>
+        <Button
+          type="primary"
+          size="small"
+          icon={<AntIcon name="PictureOutlined" />}
+          loading={exportingDepartmentId === row.id}
+          disabled={Boolean(exportingDepartmentId) && exportingDepartmentId !== row.id}
+          onClick={() => handlePresentToDepartment(row.id)}
+        >
+          Present to Department
+        </Button>
         <ExportEmploymentContractButton
           id={row.id}
           size="small"
@@ -311,7 +352,7 @@ export default function ApprovedEmployeeReportPage() {
             columns={columns}
             dataSource={data}
             loading={loading}
-            scroll={{ x: 1600 }}
+            scroll={{ x: 1740 }}
             rowClassName={(_, index) =>
               index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
             }
@@ -330,6 +371,8 @@ export default function ApprovedEmployeeReportPage() {
           />
         </div>
       </section>
+
+      <DepartmentPresentationExport ref={departmentPresentationRef} />
     </div>
   );
 }

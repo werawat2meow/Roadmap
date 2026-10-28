@@ -9,6 +9,10 @@ import usePageGuard from "@/hooks/usePageGuard";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import {
+  displayFinalPositionId,
+  showsFinalPositionSection,
+} from "@/app/recruitment/lib/finalPosition.mjs";
+import {
   Card,
   Row,
   Col,
@@ -80,7 +84,7 @@ export default function Page({ params }) {
     department_id: null,
     division_id: null,
     unit_id: null,
-    position_id: null,
+    final_position_id: null,
     position_level_id: null,
     start_date: dayjs(),
     base_salary: 0,
@@ -191,6 +195,11 @@ export default function Page({ params }) {
     
     if (!application) return;
 
+    const finalPositionId = displayFinalPositionId(
+      application,
+      Number(application.status)
+    );
+
     setForm((prev) => ({
       ...prev,
       base_salary: application.base_salary ?? prev.base_salary,
@@ -241,11 +250,11 @@ export default function Page({ params }) {
     const positions = await fetchMaster("positions", { unit_id: application.unit_id });
     setMaster((prev) => ({ ...prev, positions }));
 
-    if (!application.position_id) return;
+    if (!finalPositionId) return;
 
-    setForm((prev) => ({ ...prev, position_id: application.position_id }));
+    setForm((prev) => ({ ...prev, final_position_id: finalPositionId }));
 
-    const positionLevelResult = await fetchMaster("position_levels", { position_id: application.position_id });
+    const positionLevelResult = await fetchMaster("position_levels", { position_id: finalPositionId });
     const position_levels = positionLevelResult?.position_levels ?? positionLevelResult ?? [];
 
     setMaster((prev) => ({ ...prev, position_levels }));
@@ -321,7 +330,7 @@ export default function Page({ params }) {
       department_id: null,
       division_id: null,
       unit_id: null,
-      position_id: null,
+      final_position_id: null,
     }));
 
     setMaster((prev) => ({
@@ -348,7 +357,7 @@ export default function Page({ params }) {
       department_id: value,
       division_id: null,
       unit_id: null,
-      position_id: null,
+      final_position_id: null,
     }));
 
     setMaster((prev) => ({
@@ -373,7 +382,7 @@ export default function Page({ params }) {
       ...prev,
       division_id: value,
       unit_id: null,
-      position_id: null,
+      final_position_id: null,
     }));
 
     setMaster((prev) => ({
@@ -396,7 +405,7 @@ export default function Page({ params }) {
     setForm((prev) => ({
       ...prev,
       unit_id: value,
-      position_id: null,
+      final_position_id: null,
       position_level_id: null,
     }));
 
@@ -421,7 +430,7 @@ export default function Page({ params }) {
   async function handlePositionChange(value) {
       setForm((prev) => ({
           ...prev,
-          position_id: value,
+          final_position_id: value,
           position_level_id: null,
           job_id: null,
           position_family_id: null,
@@ -442,7 +451,7 @@ export default function Page({ params }) {
 
       setForm((prev) => ({
           ...prev,
-          position_id: value,
+          final_position_id: value,
           position_level_id: null,
           job_id,
           position_family_id,
@@ -550,12 +559,8 @@ export default function Page({ params }) {
   // และแนบไปกับ payload ตอนบันทึก เพื่อให้ backend เช็คว่าสถานะยังตรงกันอยู่)
   const applicationStatus = Number(data?.application?.status);
 
-  // แสดงข้อมูลตำแหน่ง/เงินเดือน/การจ้างงาน ตอน status 12 (กรอกใหม่)
-  // รวมถึง 17 และ 19 (แสดงข้อมูลที่เคยกรอกไว้ ถ้ามี)
-  const showsPositionSection =
-    applicationStatus === 12 ||
-    applicationStatus === 17 ||
-    applicationStatus === 19;
+  // status 12 ใช้กรอกข้อมูล และ status 17 ใช้แสดงข้อมูลที่บันทึกไว้ก่อนยืนยัน
+  const showsPositionSection = showsFinalPositionSection(applicationStatus);
 
   useEffect(() => {
     setActionChoice(null);
@@ -567,7 +572,7 @@ export default function Page({ params }) {
     try {
       setSaving(true);
       // ฟอร์มตำแหน่ง/เงินเดือนบังคับกรอกเฉพาะตอน status = 12 เท่านั้น
-      // (ตอน 17/19 เป็นการแสดงข้อมูลเดิมเฉยๆ ไม่บังคับ validate ซ้ำ)
+      // (ตอน 17 เป็นการแสดงข้อมูลเดิมเฉยๆ ไม่บังคับ validate ซ้ำ)
       const showsPositionFields = applicationStatus === 12;
 
       // status = 17: รอเลือกว่าจะเลื่อนวันเริ่มงาน (13) / ไม่มาทำงาน (14)
@@ -615,7 +620,7 @@ export default function Page({ params }) {
           return;
         }
 
-        if (!form.position_id) {
+        if (!form.final_position_id) {
           message.warning("กรุณาเลือก Position");
           return;
         }
@@ -655,7 +660,7 @@ export default function Page({ params }) {
         department_id: form.department_id,
         division_id: form.division_id,
         unit_id: form.unit_id,
-        position_id: form.position_id,
+        final_position_id: form.final_position_id,
         position_level_id: form.position_level_id,
         start_date: dayjs(form.start_date).format("YYYY-MM-DD"),
         base_salary: Number(form.base_salary || 0),
@@ -812,6 +817,7 @@ export default function Page({ params }) {
                     placeholder="เลือก Branch"
                     value={form.branch_id}
                     onChange={handleBranchChange}
+                    disabled={applicationStatus !== 12}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -833,7 +839,7 @@ export default function Page({ params }) {
                     placeholder="เลือก Department"
                     value={form.department_id}
                     onChange={handleDepartmentChange}
-                    disabled={!form.branch_id}
+                    disabled={applicationStatus !== 12 || !form.branch_id}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -855,7 +861,7 @@ export default function Page({ params }) {
                     placeholder="เลือก Division"
                     value={form.division_id}
                     onChange={handleDivisionChange}
-                    disabled={!form.department_id}
+                    disabled={applicationStatus !== 12 || !form.department_id}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -877,7 +883,7 @@ export default function Page({ params }) {
                     placeholder="เลือก Unit"
                     value={form.unit_id}
                     onChange={handleUnitChange}
-                    disabled={!form.division_id}
+                    disabled={applicationStatus !== 12 || !form.division_id}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -897,9 +903,9 @@ export default function Page({ params }) {
                   <Select
                     style={{ width: "100%", marginTop: 6 }}
                     placeholder="เลือก Position"
-                    value={form.position_id}
+                    value={form.final_position_id}
                     onChange={handlePositionChange}
-                    disabled={!form.unit_id}
+                    disabled={applicationStatus !== 12 || !form.unit_id}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -921,7 +927,7 @@ export default function Page({ params }) {
                     placeholder="เลือก Position Level"
                     value={form.position_level_id}
                     onChange={handlePositionLevelChange}
-                    disabled={!form.position_id}
+                    disabled={applicationStatus !== 12 || !form.final_position_id}
                     allowClear
                     showSearch
                     optionFilterProp="label"

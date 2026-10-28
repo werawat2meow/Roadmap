@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
       .from("recruit_job_applications")
       .select(`
         *,
-        positions (
+        positions:positions!recruit_job_applications_position_id_fkey (
           id,
           position_name
         ),

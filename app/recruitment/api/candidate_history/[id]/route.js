@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
         updated_at,
         status,
         position_id,
-        positions (
+        positions:positions!recruit_job_applications_position_id_fkey (
           position_name
         ),
         status_reason

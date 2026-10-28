@@ -36,6 +36,10 @@ import type { UploadProps, FormInstance } from "antd";
 
 import { uiText } from "@/app/jobs/components/translations";
 import { getUIText } from "@/app/jobs/lib/ui";
+import {
+  documentAccept,
+  isAllowedDocumentUpload,
+} from "@/app/jobs/lib/documentRules.mjs";
 
 import {
   ApplicationDocument,
@@ -3671,13 +3675,6 @@ function WorkExperienceSection({
 /*                         Inlined DocumentsSection                           */
 /* ========================================================================== */
 
-const ALLOWED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "application/pdf",
-  "video/mp4",
-];
-
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
 
@@ -3707,7 +3704,9 @@ function DocumentsSection({
   const beforeUpload =
   (id: string): UploadProps["beforeUpload"] =>
   (file) => {
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const documentType = value.find((item) => item.id === id)?.type;
+
+    if (!isAllowedDocumentUpload(documentType, file.type)) {
       message.error(getUIText(uiText.invalidDocument, locale));
       return Upload.LIST_IGNORE;
     }
@@ -3824,7 +3823,7 @@ function DocumentsSection({
 
               <Col xs={24} md={16}>
                 <Upload
-                  accept=".png,.jpg,.jpeg,.pdf,.mp4"
+                  accept={documentAccept(doc.type)}
                   maxCount={1}
                   beforeUpload={beforeUpload(
                     doc.id

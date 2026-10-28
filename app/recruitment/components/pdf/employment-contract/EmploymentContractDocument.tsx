@@ -127,8 +127,8 @@ export function EmploymentContractDocument({
         </View>
 
         <View wrap={false} style={styles.titleBlock}>
-          <Text style={styles.titleTH}>สัญญาจ้าง</Text>
-          <Text style={styles.titleEN}>Employment Contract</Text>
+          <Text style={styles.titleTH}>สัญญาทดลองงาน</Text>
+          <Text style={styles.titleEN}>Trial Employment Contract</Text>
         </View>
 
         <View style={styles.introduction} minPresenceAhead={52}>

@@ -256,7 +256,7 @@ export async function GET(request) {
             title_name_th
           ),
 
-          positions (
+          positions:positions!recruit_job_applications_position_id_fkey (
             position_name
           ),
 

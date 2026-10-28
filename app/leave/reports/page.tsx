@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { AttendanceAssessment } from "@/lib/leave-attendance-assessment";
+import type { LatePenaltySummary } from "@/lib/leave-late-penalty";
 import {
   CalendarDays,
   CheckCircle2,
@@ -21,6 +22,7 @@ interface AttendanceItem {
 
 interface ExportEmployee {
   dailyResults: AttendanceAssessment[];
+  latePenaltySummaries: LatePenaltySummary[];
   employeeId: string;
   employeeCode: string;
   employeeName: string;
@@ -510,6 +512,12 @@ export default function LeaveReportsPage() {
       alert("กรุณาเลือกช่วงวันที่ให้ถูกต้อง");
       return;
     }
+    if (
+      exportEmployees.some((employee) => !employee.latePenaltySummaries?.length)
+    ) {
+      alert("ยังไม่มีข้อมูลสรุปการสาย กรุณาโหลดรายงานใหม่ก่อนส่งออก");
+      return;
+    }
     const expectedDates = dateColumns.map(getDateKey);
     const incomplete = exportEmployees.some((employee) => {
       const available = new Set(
@@ -529,6 +537,9 @@ export default function LeaveReportsPage() {
       "หน่วย",
       ...dateColumns.map(formatDayHeader),
       "รวมวันลาอนุมัติ",
+      "รอบคำนวณสาย",
+      "สายสะสม (นาที)",
+      "ผลตามเกณฑ์",
     ];
     const legend = `
   <table class="legend">
@@ -598,6 +609,33 @@ export default function LeaveReportsPage() {
         const totalText = needsLeaveReview
           ? totalLeave + " + รอตรวจสอบวันลา"
           : String(totalLeave);
+        const lateSummaries = employee.latePenaltySummaries;
+
+        // หากเลือกหลายรอบ ให้แต่ละรอบแสดงคนละบรรทัดในเซลล์
+        const periodText = lateSummaries
+          .map((item) =>
+            htmlEscape(`${item.periodStart} ถึง ${item.periodEnd}`),
+          )
+          .join("<br/>");
+
+        const lateMinutesText = lateSummaries
+          .map((item) =>
+            htmlEscape(
+              String(item.totalLateMinutes) +
+                (item.needsReview ? " (ยอดที่ประเมินได้)" : ""),
+            ),
+          )
+          .join("<br/>");
+
+        const penaltyText = lateSummaries
+          .map((item) =>
+            htmlEscape(
+              item.result +
+                (item.provisional ? " (รอบยังไม่สิ้นสุด)" : "") +
+                (item.needsReview ? " / มีข้อมูลรอตรวจสอบ" : ""),
+            ),
+          )
+          .join("<br/>");
         return (
           `<tr><td style='mso-number-format:"\\@";'>` +
           htmlEscape(employee.employeeCode) +
@@ -617,6 +655,15 @@ export default function LeaveReportsPage() {
           dayCells +
           '<td class="total">' +
           htmlEscape(totalText) +
+          "</td>" +
+          '<td class="total">' +
+          periodText +
+          "</td>" +
+          '<td class="total">' +
+          lateMinutesText +
+          "</td>" +
+          '<td class="total">' +
+          penaltyText +
           "</td></tr>"
         );
       })
@@ -720,6 +767,14 @@ export default function LeaveReportsPage() {
           <div class="title">รายงานการลา</div>
           <div class="subtitle">
             ช่วงวันที่ ${htmlEscape(formatDateForExcel(from))} - ${htmlEscape(formatDateForExcel(to))}
+          </div>
+          <div class="subtitle">
+            เกณฑ์สายแยกรายคนต่อรอบวันที่ 21–20:
+            0–30 นาที ไม่เข้าเกณฑ์ลงโทษ /
+            31–60 นาที ว.91 /
+            61–90 นาที ว.92 /
+            91–100 นาที ว.93 /
+            ตั้งแต่ 101 นาที เข้าเกณฑ์ใบเตือน
           </div>
 
           ${legend}

@@ -21,6 +21,9 @@ import {
   type DayValue,
   type SavedDay,
 } from "@/lib/leave-schedule-model";
+import {
+  parseScheduleTemplate,
+} from "@/lib/leave-schedule-import-excel";
 
 type Props = {
   year: number;
@@ -32,6 +35,7 @@ type Props = {
   onReload: () => void;
   onPendingChange: (pending: boolean) => void;
   onBusyChange: (busy: boolean) => void;
+  shareToken?: string;
 };
 
 const inputClass =
@@ -383,7 +387,11 @@ export default function ScheduleWorkspace({
   onReload,
   onPendingChange,
   onBusyChange,
+  shareToken,
 }: Props) {
+  const schedulesUrl = shareToken
+    ? `/api/schedule-share/${encodeURIComponent(shareToken)}`
+    : "/leave/api/schedules";
   const [sourceEmployeeId, setSourceEmployeeId] = useState("");
   const [sourceCandidates, setSourceCandidates] = useState<ScheduleEmployee[]>(
     [],
@@ -393,6 +401,7 @@ export default function ScheduleWorkspace({
   const [snapshot, setSnapshot] = useState<SavedDay[]>([]);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<{
@@ -428,6 +437,7 @@ export default function ScheduleWorkspace({
       if (!(event.target instanceof Element)) return;
       const anchor = event.target.closest("a[href]");
       if (!anchor) return;
+      if (anchor.hasAttribute("download")) return;
       if (
         busy ||
         !window.confirm("มีตารางที่ยังไม่บันทึก ต้องการออกจากหน้านี้หรือไม่?")
@@ -512,7 +522,7 @@ export default function ScheduleWorkspace({
         page: String(page),
         pageSize: "100",
       });
-      const response = await fetch("/leave/api/schedules?" + params, {
+      const response = await fetch(schedulesUrl + "?" + params, {
         cache: "no-store",
       });
       const json = await response.json();
@@ -537,6 +547,113 @@ export default function ScheduleWorkspace({
       throw new Error("รายชื่อพนักงานเปลี่ยนระหว่างอ่านข้อมูล กรุณาโหลดใหม่");
     }
     return { employees: allEmployees, schedules: allSchedules };
+  }
+
+  async function downloadTemplate() {
+    if (!beginWork()) return;
+    setMessage("กำลังตรวจรายชื่อพนักงานสำหรับ Template...");
+    try {
+      const params = new URLSearchParams({
+        ...filters,
+        year: String(year),
+        month: String(month),
+        view: "template",
+      });
+      const response = await fetch(`${schedulesUrl}?${params}`, {
+        cache: "no-store",
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || "โหลดรายชื่อพนักงานสำหรับ Template ไม่สำเร็จ");
+      }
+      const total = json.pagination.total;
+      if (total > 500) {
+        throw new Error("กรุณากรองพนักงานให้เหลือไม่เกิน 500 คนต่อไฟล์");
+      }
+      if (!total) {
+        throw new Error("ไม่พบพนักงานตามตัวกรองที่เลือก");
+      }
+      params.set("view", "templateFile");
+      setMessage(`กำลังดาวน์โหลดไฟล์ Excel สำหรับพนักงาน ${total} คน...`);
+      const fileResponse = await fetch(`${schedulesUrl}?${params}`, {
+        cache: "no-store",
+      });
+      if (!fileResponse.ok) {
+        const detail = await fileResponse.json().catch(() => null);
+        throw new Error(detail?.error || "สร้างไฟล์ Template ไม่สำเร็จ");
+      }
+      const contentType = fileResponse.headers.get("content-type") || "";
+      if (!contentType.includes("spreadsheetml.sheet")) {
+        throw new Error("เซิร์ฟเวอร์ไม่ได้ส่งไฟล์ Excel กลับมา");
+      }
+      const blob = await fileResponse.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `schedule-template-${year}-${String(month).padStart(2, "0")}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage("เริ่มดาวน์โหลด Template แล้ว");
+    } catch (error) {
+      setMessage("");
+      setError(error instanceof Error ? error.message : "ดาวน์โหลด Template ไม่สำเร็จ");
+    } finally {
+      endWork();
+    }
+  }
+
+  async function importTemplate(file: File) {
+    if (hasPending) {
+      setError("กรุณาบันทึกหรือยกเลิกช่องที่แก้ค้างก่อนนำเข้า Excel");
+      return;
+    }
+    if (!beginWork()) return;
+    try {
+      const parsed = await parseScheduleTemplate(file, year, month);
+      const loaded = await loadCurrentScope();
+      const employeesByCode = new Map<string, ScheduleEmployee>();
+      for (const employee of loaded.employees) {
+        if (employeesByCode.has(employee.employeeCode)) {
+          throw new Error(`พบรหัสพนักงาน ${employee.employeeCode} ซ้ำในข้อมูล กรุณาตรวจสอบก่อนนำเข้า`);
+        }
+        employeesByCode.set(employee.employeeCode, employee);
+      }
+      const missingCodes = [
+        ...new Set(
+          parsed.map((cell) => cell.employeeCode)
+            .filter((code) => !employeesByCode.has(code)),
+        ),
+      ];
+      if (missingCodes.length) {
+        throw new Error(
+          `รหัสพนักงานไม่อยู่ในตัวกรองนี้หรือไม่มีสิทธิ์จัดตาราง: ${missingCodes.slice(0, 10).join(", ")}`,
+        );
+      }
+      const proposals = parsed.map((cell) => ({
+        employeeId: employeesByCode.get(cell.employeeCode)!.id,
+        workDate: cell.workDate,
+        value: cell.value,
+      }));
+      const saved = currentDays(loaded.schedules);
+      const replacing = proposals.filter((proposal) =>
+        saved.has(cellKey(proposal.employeeId, proposal.workDate)),
+      ).length;
+      if (!window.confirm(
+        `ไฟล์ ${file.name}\nรอบ ${dates[0]}–${dates[dates.length - 1]}\n` +
+        `${new Set(parsed.map((cell) => cell.employeeCode)).size} คน · ${proposals.length} ช่อง ` +
+        `(แทนที่ช่องที่บันทึกแล้ว ${replacing} ช่อง)\n` +
+        "นำข้อมูลลงตารางเพื่อตรวจสอบก่อนกดบันทึกหรือไม่?",
+      )) return;
+
+      stage(proposals, saved);
+      setSnapshot(loaded.schedules);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "นำเข้าตารางงานไม่สำเร็จ");
+    } finally {
+      endWork();
+    }
   }
 
   async function applyToEveryone(selectedSourceId = sourceEmployeeId) {
@@ -693,7 +810,7 @@ export default function ScheduleWorkspace({
           pageSize: "100",
           employeeIds: ids.slice(offset, offset + 100).join(","),
         });
-        const response = await fetch("/leave/api/schedules?" + params, {
+        const response = await fetch(schedulesUrl + "?" + params, {
           cache: "no-store",
         });
         const json = await response.json();
@@ -759,7 +876,9 @@ export default function ScheduleWorkspace({
   async function save() {
     if (!hasPending || !beginWork()) return;
     try {
-      const response = await fetch("/leave/api/schedules/batch", {
+      const response = await fetch(shareToken
+        ? `/api/schedule-share/${encodeURIComponent(shareToken)}/save`
+        : "/leave/api/schedules/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -860,6 +979,32 @@ export default function ScheduleWorkspace({
             </button>
             <button
               type="button"
+              className="cursor-pointer rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition-all hover:from-violet-600 hover:to-purple-700 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => void downloadTemplate()}
+            >
+              ดาวน์โหลด Template
+            </button>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              aria-label="เลือกไฟล์ Excel ตารางงาน"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void importTemplate(file);
+              }}
+            />
+            <button
+              type="button"
+              className="cursor-pointer rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-500/20 transition-all hover:from-cyan-600 hover:to-teal-600 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => importFileRef.current?.click()}
+            >
+              นำเข้า Excel
+            </button>
+            <button
+              type="button"
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:from-sky-500 hover:to-blue-600 hover:shadow-lg active:scale-95 cursor-pointer"
               onClick={() => void importSettings()}
             >
@@ -871,6 +1016,7 @@ export default function ScheduleWorkspace({
               type="button"
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-all hover:from-amber-500 hover:to-orange-600 hover:shadow-lg active:scale-95 cursor-pointer"
               onClick={() => void copyPrevious()}
+              style={shareToken ? { display: "none" } : undefined}
             >
               คัดลอกจากเดือนก่อน
             </button>

@@ -7,6 +7,7 @@ import {
   getLeaveSchedulePeriod,
 } from "@/lib/leave-schedule-period";
 import { readAllScheduleRows } from "@/lib/leave-schedule-query";
+import { createScheduleTemplateBuffer } from "@/lib/leave-schedule-import-excel";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,10 @@ export async function GET(req: Request) {
       page = readPositiveInteger(params.get("page"), 1);
 
       pageSize = Math.min(readPositiveInteger(params.get("pageSize"), 30), 100);
+      if (params.get("view") === "templateFile") {
+        page = 1;
+        pageSize = 500;
+      }
     } catch {
       return NextResponse.json(
         {
@@ -178,6 +183,59 @@ export async function GET(req: Request) {
 
     const employees = employeeRows || [];
     const employeeIds = employees.map((item) => item.id);
+
+    if (params.get("view") === "templateFile") {
+      if ((count || 0) > 500) {
+        return NextResponse.json(
+          { success: false, error: "กรุณากรองพนักงานให้เหลือไม่เกิน 500 คนต่อไฟล์" },
+          { status: 400 },
+        );
+      }
+      if (!employees.length) {
+        return NextResponse.json(
+          { success: false, error: "ไม่พบพนักงานตามตัวกรองที่เลือก" },
+          { status: 404 },
+        );
+      }
+      const buffer = await createScheduleTemplateBuffer({
+        year,
+        month,
+        employees: employees.map((employee) => ({
+          employeeCode: employee.employee_code || "",
+          name: [employee.first_name_th, employee.last_name_th]
+            .filter(Boolean)
+            .join(" "),
+        })),
+      });
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="schedule-template-${year}-${String(month).padStart(2, "0")}.xlsx"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    // Template needs only the scoped employee list; loading schedules and
+    // leave records for every page makes a simple download unnecessarily slow.
+    if (params.get("view") === "template") {
+      return NextResponse.json({
+        success: true,
+        pagination: {
+          page,
+          pageSize,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / pageSize),
+        },
+        employees: employees.map((employee) => ({
+          id: employee.id,
+          employeeCode: employee.employee_code || "",
+          name: [employee.first_name_th, employee.last_name_th]
+            .filter(Boolean)
+            .join(" "),
+        })),
+      });
+    }
 
     // GET อ่านรอบที่มีอยู่เท่านั้น ไม่สร้างรอบใหม่ตอนเปิดหน้า
     const { data: savedPeriod, error: periodError } = await supabaseAdmin

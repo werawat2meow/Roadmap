@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { readAllScheduleRows } from "@/lib/leave-schedule-query";
+import { remainingLeaveParts } from "@/lib/leave-refund-model";
 
 type Interval = {
   sequence: number;
@@ -32,6 +33,7 @@ type ApprovedLeave = {
   endDate: string;
   session: string | null;
   requestedDays: number | string | null;
+  reservation: unknown;
 };
 
 export type AttendanceAssessment = {
@@ -197,7 +199,7 @@ export async function assessAttendanceRange(
         supabaseAdmin
           .from("leave_requests")
           .select(`
-            id,employeeId,kind,startDate,endDate,session,requestedDays
+            id,employeeId,kind,startDate,endDate,session,requestedDays,reservation
           `)
           .in("employeeId", chunk)
           .eq("status", "APPROVED")
@@ -230,39 +232,35 @@ export async function assessAttendanceRange(
   const uncertainLeaveIds = new Set<string>();
 
   for (const leave of leaves) {
-    const start = bangkokDate(leave.startDate);
-    const end = bangkokDate(leave.endDate);
+  const parts = remainingLeaveParts(leave);
 
-    const calendarDays =
-      (Date.parse(`${end}T00:00:00Z`) -
-        Date.parse(`${start}T00:00:00Z`)) /
-        86400000 +
-      1;
+  const expectedDays = parts.reduce(
+    (sum, part) => sum + part.days,
+    0,
+  );
 
-    const session = leave.session || "FULL";
-    const expectedDays =
-      calendarDays * (session === "FULL" ? 1 : 0.5);
-
-    // หากยอดใบลาไม่ได้กระจายตามวันปฏิทิน
-    // ห้ามเดาว่าต้องนับวันไหนเป็นวันลา
-    if (
-      !["FULL", "AM", "PM"].includes(session) ||
-      leave.requestedDays === null ||
-      !Number.isFinite(Number(leave.requestedDays)) ||
-      Math.abs(Number(leave.requestedDays) - expectedDays) > 0.001
-    ) {
-      uncertainLeaveIds.add(leave.id);
-    }
-
-    for (const date of dates) {
-      if (date < start || date > end) continue;
-
-      const mapKey = key(leave.employeeId, date);
-      const current = leaveMap.get(mapKey) || [];
-      current.push(leave);
-      leaveMap.set(mapKey, current);
-    }
+  if (
+    leave.requestedDays === null ||
+    !Number.isFinite(Number(leave.requestedDays)) ||
+    Math.abs(Number(leave.requestedDays) - expectedDays) > 0.001
+  ) {
+    uncertainLeaveIds.add(leave.id);
   }
+
+  for (const part of parts) {
+    if (part.date < from || part.date > to) continue;
+
+    const mapKey = key(leave.employeeId, part.date);
+    const current = leaveMap.get(mapKey) || [];
+
+    current.push({
+      ...leave,
+      session: part.session,
+    });
+
+    leaveMap.set(mapKey, current);
+  }
+}
 
   const results: AttendanceAssessment[] = [];
 

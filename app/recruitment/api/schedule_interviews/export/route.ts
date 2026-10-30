@@ -25,7 +25,7 @@ async function handleGET(req: NextRequest) {
       profile_image_url,
       position_id,
       titles (title_name_th),
-      positions ( position_name ),
+      positions:positions!recruit_job_applications_position_id_fkey ( position_name ),
       recruit_job_interviews ( id, interview_datetime, remark, reviewer, interview_order ),
       recruit_job_documents ( document_type, file_url )
       `

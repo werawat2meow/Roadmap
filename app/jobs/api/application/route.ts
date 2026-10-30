@@ -6,6 +6,7 @@ import {
   uploadFileToSpaces,
   deleteFileFromSpaces,
 } from "@/lib/spaces";
+import { isIdCardImageMimeType } from "@/app/jobs/lib/documentRules.mjs";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ function getFileBaseName(fileName: string) {
   return extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
 }
 
-function validateDocumentFileSizes(
+function validateDocumentFiles(
   documents: any[] | undefined,
   formData: FormData | null
 ): string | null {
@@ -35,6 +36,13 @@ function validateDocumentFileSizes(
     const file = formData.get(document.id);
 
     if (!(file instanceof File)) continue;
+
+    if (
+      document.type === "id_card" &&
+      !isIdCardImageMimeType(file.type)
+    ) {
+      return `ไฟล์ "${file.name}" (id_card) ต้องเป็นไฟล์ PNG, JPG หรือ JPEG เท่านั้น`;
+    }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
@@ -227,13 +235,13 @@ export async function POST(request: NextRequest) {
 
     // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
     const driverLicenseDocuments = getDriverLicenseDocuments(payload);
-    const sizeError = validateDocumentFileSizes(
+    const documentError = validateDocumentFiles(
       [...(payload.documents ?? []), ...driverLicenseDocuments],
       formData
     );
-    if (sizeError) {
+    if (documentError) {
       return NextResponse.json(
-        { success: false, message: sizeError },
+        { success: false, message: documentError },
         { status: 400 }
       );
     }
@@ -650,13 +658,13 @@ export async function PUT(request: NextRequest) {
 
     // ✅ ตรวจสอบขนาดไฟล์ก่อนทำอะไรต่อ
     const driverLicenseDocuments = getDriverLicenseDocuments(payload);
-    const sizeError = validateDocumentFileSizes(
+    const documentError = validateDocumentFiles(
       [...(payload.documents ?? []), ...driverLicenseDocuments],
       formData
     );
-    if (sizeError) {
+    if (documentError) {
       return NextResponse.json(
-        { success: false, message: sizeError },
+        { success: false, message: documentError },
         { status: 400 }
       );
     }

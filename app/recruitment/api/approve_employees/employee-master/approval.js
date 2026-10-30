@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
 import { generateContractNumber, ContractDataError } from "@/app/recruitment/lib/contracts";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { employeePositionData } from "@/app/recruitment/lib/finalPosition.mjs";
+import { resolveIdCardPhotoUrl } from "@/app/jobs/lib/documentRules.mjs";
 
 export const MAX_APPROVAL_BATCH = 20;
 
@@ -79,7 +81,7 @@ function validateApplication(application) {
   const required = {
     first_name: "ชื่อ", last_name: "นามสกุล", start_date: "วันเริ่มงาน",
     branch_id: "สาขา", department_id: "ฝ่าย", division_id: "แผนก", unit_id: "หน่วยงาน",
-    position_id: "ตำแหน่ง", position_level_id: "ระดับตำแหน่ง", company_id: "บริษัท",
+    final_position_id: "ตำแหน่งสุดท้าย", position_level_id: "ระดับตำแหน่ง", company_id: "บริษัท",
     payroll_company_id: "บริษัทจ่ายเงินเดือน", payroll_type_id: "ประเภทเงินเดือน",
     employment_type: "ประเภทสำหรับสร้างรหัส", employment_type_id: "ประเภทการจ้างงาน",
     employee_status_id: "สถานะพนักงาน", gender: "เพศ", nationality: "สัญชาติ", identity_no: "เลขเอกสารประจำตัว",
@@ -93,6 +95,33 @@ function validateApplication(application) {
     throw new ApprovalError("เงินเดือนในใบสมัครไม่ถูกต้อง");
   }
   if (application.emp_id) throw new ApprovalError("ใบสมัครเชื่อมพนักงานแล้ว กรุณาตรวจสอบข้อมูล", 409, "RECOVERY_REQUIRED");
+}
+
+async function resolveEmployeePhotoUrl(application) {
+  const profileImageUrl = application.profile_image_url?.trim();
+  if (profileImageUrl) return profileImageUrl;
+
+  const { data: idCardDocument, error } = await supabaseAdmin
+    .from("recruit_job_documents")
+    .select("file_url, file_name")
+    .eq("application_id", application.id)
+    .eq("document_type", "id_card")
+    .not("file_url", "is", null)
+    .neq("file_url", "")
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new ApprovalError(
+      "ไม่สามารถโหลดรูปบัตรประชาชนได้ กรุณาลองใหม่อีกครั้ง",
+      500,
+      "DATABASE_ERROR"
+    );
+  }
+
+  return resolveIdCardPhotoUrl(idCardDocument);
 }
 
 async function ensureAuth(operation) {
@@ -151,6 +180,8 @@ export async function approveApplication({ application_id, role_id }) {
     return { success: true, application_id, employee_code: operation.employee_code, already_approved: true };
   }
 
+  const employeePhotoUrl = await resolveEmployeePhotoUrl(application);
+
   const [{ data: gender, error: genderError }, { data: nationality, error: nationalityError }] = await Promise.all([
     supabaseAdmin.from("genders").select("gender_name_th").eq("id", application.gender).single(),
     supabaseAdmin.from("nationalities").select("id, nationality_code").eq("id", application.nationality).single(),
@@ -182,7 +213,7 @@ export async function approveApplication({ application_id, role_id }) {
       department_id: application.department_id,
       division_id: application.division_id,
       unit_id: application.unit_id,
-      position_id: application.position_id,
+      ...employeePositionData(application),
       position_level_id: application.position_level_id,
       job_id: application.last_job_id,
       payroll_company_id: application.payroll_company_id,
@@ -207,7 +238,7 @@ export async function approveApplication({ application_id, role_id }) {
       employee_type_digit: codeSetting.running_digits,
       employee_year_2d: codeSetting.year_digits,
       employee_running_no: codeSetting.executive_digit,
-      employee_photo_url: application.profile_image_url,
+      employee_photo_url: employeePhotoUrl,
       position_family_id: application.position_family_id,
       employee_photo_path: application.profile_image_url,
       status: "active",

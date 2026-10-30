@@ -2,6 +2,7 @@ import { withActivity, setActivityDetails } from "@/app/recruitment/lib/activity
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { ContractDataError } from "@/app/recruitment/lib/contracts/errors";
+import { finalPositionUpdate } from "@/app/recruitment/lib/finalPosition.mjs";
 import { approvalAccess, approveApplication, approvalFailure, approvalRpc, isApprovalId, isApprovalDate } from "../approval";
 
 class AppError extends Error {
@@ -137,7 +138,7 @@ async function processStageOneApproval({ application, body, userId }) {
     department_id: body.department_id,
     division_id: body.division_id,
     unit_id: body.unit_id,
-    position_id: body.position_id,
+    ...finalPositionUpdate(body),
     position_level_id: body.position_level_id,
     start_date: body.start_date,
     base_salary: body.base_salary,
@@ -206,7 +207,7 @@ async function handlePOST(request) {
         [body.department_id, "กรุณาเลือก Department"],
         [body.division_id, "กรุณาเลือก Division"],
         [body.unit_id, "กรุณาเลือก Unit"],
-        [body.position_id, "กรุณาเลือก Position"],
+        [body.final_position_id, "กรุณาเลือก Position"],
         [body.position_level_id, "กรุณาเลือก Position Level"],
         [body.employment_type, "ประเภทสำหรับสร้างรหัส"],
         [body.employment_type_id, "กรุณาเลือกประเภทการจ้างงาน"],

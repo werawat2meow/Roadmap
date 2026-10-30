@@ -25,7 +25,7 @@ export interface ExportEmploymentContractButtonProps {
 export function ExportEmploymentContractButton({
   id,
   ids,
-  buttonText = "Export สัญญาจ้าง",
+  buttonText = "Export สัญญาทดลองงาน",
   type = "primary",
   size,
   disabled = false,

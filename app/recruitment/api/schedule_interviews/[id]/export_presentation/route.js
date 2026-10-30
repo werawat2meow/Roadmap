@@ -41,7 +41,7 @@ async function handleGET(request, { params }) {
           position_id,
           job_id,
           source_branch_id,
-          positions (
+          positions:positions!recruit_job_applications_position_id_fkey (
             id,
             position_name
           )

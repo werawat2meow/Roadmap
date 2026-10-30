@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from './components/Navbar';
+import LeavePageTracker from './components/LeavePageTracker';
 import { Menu } from 'lucide-react';
 
 function LeaveLayoutContent({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ function LeaveLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative min-h-screen bg-[#F9F5F2]">
+      <LeavePageTracker />
       <div className="hidden md:block fixed inset-y-0 left-0 z-20">
         <Navbar isCollapsed={isDesktopCollapsed} toggleSidebar={toggleDesktopSidebar} />
       </div>

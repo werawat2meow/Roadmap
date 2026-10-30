@@ -1,0 +1,28 @@
+-- Run once in the same Supabase database used by the Leave schedules.
+create table if not exists public.leave_schedule_share_links (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  year integer not null check (year between 1900 and 9998),
+  month integer not null check (month between 1 and 12),
+  branch_id uuid not null,
+  department_id uuid not null,
+  division_id uuid,
+  unit_id uuid,
+  created_by uuid not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  revoked_at timestamptz
+);
+
+create index if not exists leave_schedule_share_links_scope_idx
+  on public.leave_schedule_share_links
+  (year, month, branch_id, department_id);
+
+alter table public.leave_schedule_share_links enable row level security;
+
+alter table public.leave_work_schedule_days
+  add column if not exists share_link_id uuid
+  references public.leave_schedule_share_links(id);
+
+create index if not exists leave_work_schedule_days_share_link_idx
+  on public.leave_work_schedule_days (share_link_id);

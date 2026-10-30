@@ -1,5 +1,5 @@
 "use client";
-
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,15 +12,23 @@ import {
   UserCheck,
   Fingerprint,
   CalendarDays,
+  ClipboardList,
+  ScrollText,
 } from "lucide-react";
 
 const menuItems = [
   { name: "Overview", href: "/leave", icon: LayoutDashboard },
-  { name: "Leave Entry", href: "/leave/approvals", icon: ClipboardCheck },
-  { name: "Eligibility", href: "/leave/eligibility", icon: UserCheck },
   { name: "Schedule tasks", href: "/leave/schedules", icon: CalendarDays },
   { name: "Attendance", href: "/leave/attendance", icon: Fingerprint },
   { name: "Reports", href: "/leave/reports", icon: BarChart3 },
+  { name: "Leave Entry", href: "/leave/approvals", icon: ClipboardCheck },
+  { name: "Eligibility", href: "/leave/eligibility", icon: UserCheck },
+  {
+    name: "Restore leave",
+    href: "/leave/manage-requests",
+    icon: ClipboardList,
+  },
+  { name: "Logs", href: "/leave/audit-logs", icon: ScrollText },
   { name: "Settings", href: "/leave/settings", icon: Settings },
   { name: "Main Website", href: "/admin", icon: ArrowLeftSquare },
 ];
@@ -37,6 +45,35 @@ export default function Navbar({
   onLinkClick,
 }: NavbarProps) {
   const pathname = usePathname();
+
+  const [canViewAuditLogs, setCanViewAuditLogs] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadAuditAccess() {
+      try {
+        const response = await fetch("/leave/api/audit/access", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await response.json();
+
+        if (!controller.signal.aborted) {
+          setCanViewAuditLogs(
+            response.ok && json.success && json.canViewAuditLogs === true,
+          );
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setCanViewAuditLogs(false);
+        }
+      }
+    }
+
+    void loadAuditAccess();
+    return () => controller.abort();
+  }, []);
 
   return (
     <div
@@ -65,29 +102,33 @@ export default function Navbar({
 
       <nav className="grow px-3 pt-4">
         <ul>
-          {menuItems.map((item) => {
-            const isActive =
-              item.href === "/leave"
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
-            return (
-              <li key={item.name} onClick={onLinkClick} className="relative">
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-md z-10" />
-                )}
-                <Link href={item.href} title={isCollapsed ? item.name : ""}>
-                  <span
-                    className={`flex items-center py-3 my-1 rounded-lg transition-colors relative group ${isCollapsed ? "justify-center px-3" : "pl-6 pr-3"} ${isActive ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-700 hover:text-white"}`}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    {!isCollapsed && (
-                      <span className="ml-3 truncate grow">{item.name}</span>
-                    )}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+          {menuItems
+            .filter(
+              (item) => item.href !== "/leave/audit-logs" || canViewAuditLogs,
+            )
+            .map((item) => {
+              const isActive =
+                item.href === "/leave"
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href);
+              return (
+                <li key={item.name} onClick={onLinkClick} className="relative">
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r-md z-10" />
+                  )}
+                  <Link href={item.href} title={isCollapsed ? item.name : ""}>
+                    <span
+                      className={`flex items-center py-3 my-1 rounded-lg transition-colors relative group ${isCollapsed ? "justify-center px-3" : "pl-6 pr-3"} ${isActive ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-700 hover:text-white"}`}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!isCollapsed && (
+                        <span className="ml-3 truncate grow">{item.name}</span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
       </nav>
     </div>

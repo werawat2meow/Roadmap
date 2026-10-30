@@ -88,6 +88,15 @@ type Filters = {
   keyword: string;
 };
 
+type ShareLink = {
+  id: string;
+  year: number;
+  month: number;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+};
+
 const emptyMetadata: Metadata = {
   branches: [],
   departments: [],
@@ -143,6 +152,70 @@ export default function LeaveSchedulesPage() {
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState("");
+
+  async function loadShareLinks() {
+    const response = await fetch("/leave/api/schedules/share-links", { cache: "no-store" });
+    const json = await response.json();
+    if (response.ok && json.success) {
+      setShareLinks(json.links || []);
+    }
+  }
+
+  async function copyShareLink() {
+    if (!filters.branchId || !filters.departmentId || shareBusy) return;
+    setShareBusy(true);
+    setShareError("");
+    try {
+      const response = await fetch("/leave/api/schedules/share-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          year: selectedPeriod.year, month: selectedPeriod.month,
+          branchId: filters.branchId, departmentId: filters.departmentId,
+          divisionId: filters.divisionId, unitId: filters.unitId,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.error || "สร้างลิงก์ไม่สำเร็จ");
+      await navigator.clipboard.writeText(json.url);
+      setSaveMessage("คัดลอกลิงก์แล้ว ใช้ได้ 24 ชั่วโมง");
+      await loadShareLinks();
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : "คัดลอกลิงก์ไม่สำเร็จ");
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function revokeShareLink(id: string) {
+    if (!window.confirm("ยกเลิกลิงก์จัดตารางนี้หรือไม่?")) return;
+    setShareBusy(true);
+    try {
+      const response = await fetch("/leave/api/schedules/share-links", {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) throw new Error("ยกเลิกลิงก์ไม่สำเร็จ");
+      await loadShareLinks();
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : "ยกเลิกลิงก์ไม่สำเร็จ");
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    fetch("/leave/api/schedules/share-links", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        if (!json.success) return;
+        setShareLinks(json.links || []);
+      })
+      .catch(() => {});
+  }, []);
 
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
 
@@ -611,6 +684,31 @@ export default function LeaveSchedulesPage() {
           aria-label="ค้นหาพนักงาน"
           className={`${inputClass} w-full`}
         />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={!filters.branchId || !filters.departmentId || shareBusy}
+            onClick={() => void copyShareLink()}
+            className="cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {shareBusy ? "กำลังดำเนินการ..." : "คัดลอกลิงก์ให้แผนกจัดตาราง"}
+          </button>
+          <span className="text-xs text-slate-500">เลือกสังกัดและแผนกก่อน · ลิงก์ใช้ได้ 24 ชั่วโมง</span>
+        </div>
+        {shareError && <p role="alert" className="text-sm text-rose-700">{shareError}</p>}
+        {shareLinks.length > 0 && (
+          <details className="text-sm text-slate-700">
+            <summary className="cursor-pointer font-semibold">ลิงก์ที่ยังใช้งานได้ของฉัน</summary>
+            <div className="mt-2 space-y-2">
+              {shareLinks.map((link) => (
+                <div key={link.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2">
+                  <span>รอบ {link.month}/{link.year + 543} · หมดอายุ {new Date(link.expires_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</span>
+                  <button type="button" disabled={shareBusy} onClick={() => void revokeShareLink(link.id)} className="cursor-pointer text-rose-700 underline disabled:opacity-40">ยกเลิก</button>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">

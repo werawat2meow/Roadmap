@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { remainingLeaveParts } from "@/lib/leave-refund-model";
 
 const toNumber = (value: any) => Number(value || 0);
 
@@ -153,9 +154,11 @@ export async function GET() {
 
       supabaseAdmin
         .from("leave_requests")
-        .select("employeeId, kind, startDate, requestedDays, status")
+        .select(
+          "employeeId,kind,startDate,endDate,session,requestedDays,status,reservation",
+        )
         .eq("status", "APPROVED")
-        .gte("startDate", `${currentYear}-01-01T00:00:00+07:00`)
+        .gte("endDate", `${currentYear}-01-01T00:00:00+07:00`)
         .lt("startDate", `${currentYear + 1}-01-01T00:00:00+07:00`),
 
       supabaseAdmin
@@ -200,29 +203,54 @@ export async function GET() {
     const holidayUsedBeforeExpiry = new Map<string, number>();
 
     // ใช้เวลาไทย เพื่อรวมรายการที่เริ่มลาวันที่ 30 กันยายนด้วย
-    const holidayExpiryExclusive = Date.parse(
-      `${currentYear}-10-01T00:00:00+07:00`,
-    );
+
 
     for (const request of requestsRes.data || []) {
+      const parts = remainingLeaveParts(request);
+      const calculatedDays = parts.reduce((sum, part) => sum + part.days, 0);
+
+      const storedDays = Number(request.requestedDays);
+
       if (
-        request.kind === "ANNUAL_HOLIDAY" &&
-        Date.parse(request.startDate) < holidayExpiryExclusive
+        request.requestedDays === null ||
+        !Number.isFinite(storedDays) ||
+        Math.abs(calculatedDays - storedDays) > 0.001
       ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              `พบใบลาของพนักงาน ${request.employeeId} ` +
+              `ช่วง ${request.startDate} ถึง ${request.endDate} ` +
+              "ที่จำนวนวันไม่ตรงกับรายละเอียด กรุณาตรวจข้อมูลใบลาเดิม",
+          },
+          { status: 409 },
+        );
+      }
+
+      const currentYearParts = parts.filter(
+        (part) => Number(part.date.slice(0, 4)) === currentYear,
+      );
+
+      const days = currentYearParts.reduce((sum, part) => sum + part.days, 0);
+
+      const current = usedByEmployeeId.get(request.employeeId) || {};
+
+      current[request.kind] = (current[request.kind] || 0) + days;
+
+      usedByEmployeeId.set(request.employeeId, current);
+
+      if (request.kind === "ANNUAL_HOLIDAY") {
+        const beforeExpiry = currentYearParts
+          .filter((part) => part.date < `${currentYear}-10-01`)
+          .reduce((sum, part) => sum + part.days, 0);
+
         holidayUsedBeforeExpiry.set(
           request.employeeId,
-          (holidayUsedBeforeExpiry.get(request.employeeId) || 0) +
-            toNumber(request.requestedDays),
+          (holidayUsedBeforeExpiry.get(request.employeeId) || 0) + beforeExpiry,
         );
       }
     }
-
-    (requestsRes.data || []).forEach((req: any) => {
-      const current = usedByEmployeeId.get(req.employeeId) || {};
-      current[req.kind] =
-        (current[req.kind] || 0) + toNumber(req.requestedDays);
-      usedByEmployeeId.set(req.employeeId, current);
-    });
 
     const data = (employeesRes.data || []).map((emp: any) => {
       const rights = rightsByEmployeeId.get(emp.id) || {};
@@ -252,8 +280,10 @@ export async function GET() {
       const annualTotal =
         toNumber(rights.annualLeave) + toNumber(rights.carryForwardAnnual);
 
-      const sickTotal = toNumber(rights.sickLeave);
-      const businessTotal = toNumber(rights.businessLeave);
+      const sickTotal = toNumber(rights.sickLeave) + toNumber(used.SICK);
+
+      const businessTotal =
+        toNumber(rights.businessLeave) + toNumber(used.BUSINESS);
 
       const leaves = {
         annual: {
@@ -281,7 +311,7 @@ export async function GET() {
           used: toNumber(used.BUSINESS),
         },
         birthday: {
-          total: toNumber(rights.birthdayLeave),
+          total: toNumber(rights.birthdayLeave) + toNumber(used.BIRTHDAY),
           used: toNumber(used.BIRTHDAY),
         },
         ordain: {
@@ -291,11 +321,11 @@ export async function GET() {
           used: 0,
         },
         maternity: {
-          total: toNumber(rights.maternityLeave),
+          total: toNumber(rights.maternityLeave) + toNumber(used.MATERNITY),
           used: toNumber(used.MATERNITY),
         },
         unpaid: {
-          total: toNumber(rights.unpaidLeave),
+          total: toNumber(rights.unpaidLeave) + toNumber(used.UNPAID),
           used: toNumber(used.UNPAID),
         },
       };

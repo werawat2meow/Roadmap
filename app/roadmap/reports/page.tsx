@@ -13,6 +13,7 @@ const tabs = [
   { id: "performance", label: "Performance" },
   { id: "promote", label: "Promote" },
   { id: "progression", label: "Progression" },
+  { id: "annual-evaluation", label: "Annual evaluation" },
 ];
 
 export default function ReportsPage() {

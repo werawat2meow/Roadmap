@@ -29,6 +29,7 @@ type NominatedEvaluation = {
     | "Performance"
     | "Promote"
     | "Progression"
+    | "Annual evaluation"
     | "Probation"
     | null;
   employee?: {

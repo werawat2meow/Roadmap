@@ -79,12 +79,13 @@ export default function EvaluateEmployeePage() {
     urlType === "Performance" ||
     urlType === "Promote" ||
     urlType === "Progression" ||
+    urlType === "Annual evaluation" ||
     urlType === "Probation"
       ? urlType
       : "Probation";
 
   const [activeTab, setActiveTab] = useState<
-    "Probation" | "Performance" | "Promote" | "Progression"
+    "Probation" | "Performance" | "Promote" | "Progression" | "Annual evaluation"
   >(initialTab);
 
   const [showPopup, setShowPopup] = useState(false);
@@ -342,6 +343,7 @@ export default function EvaluateEmployeePage() {
           "Performance",
           "Promote",
           "Progression",
+          "Annual evaluation",
         ];
         if (validTabs.includes(record.evaluationType)) {
           setActiveTab(record.evaluationType as typeof activeTab);

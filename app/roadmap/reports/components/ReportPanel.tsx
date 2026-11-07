@@ -13,6 +13,7 @@ export default function ReportPanel({ activeTab, quarter, scope }: Props) {
     case "performance":
     case "promote":
     case "progression":
+    case "annual-evaluation":
       return <EvaluationHistoryPanel evaluationType={activeTab} />;
     default:
       return <EvaluationHistoryPanel evaluationType="probation" />;

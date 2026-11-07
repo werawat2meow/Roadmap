@@ -26,6 +26,7 @@ const labelStyles: Record<string, string> = {
     "text-white bg-gradient-to-r from-amber-400 to-orange-600 shadow-md",
   Promote: "text-white bg-gradient-to-r from-emerald-400 to-teal-600 shadow-md",
   Progression: "text-white bg-gradient-to-r from-rose-400 to-red-600 shadow-md",
+  "Annual evaluation": "text-white bg-gradient-to-r from-indigo-400 to-violet-700 shadow-md",
 };
 
 export default function ExecutiveEmployeeCard({

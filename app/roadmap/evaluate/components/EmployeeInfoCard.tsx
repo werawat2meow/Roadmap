@@ -26,6 +26,8 @@ const labelStyles: Record<string, string> = {
   /* 🎨 ซ้ายส้มแมนดารินสว่าง ขวาถีบลงสีแดงโรสเข้มสะใจ เห็นความสลัวไล่เฉดคม ๆ */
   Progression:
     "text-white bg-gradient-to-r from-orange-400 to-rose-600 shadow-sm font-bold",
+  "Annual evaluation":
+    "text-white bg-gradient-to-r from-indigo-400 to-violet-700 shadow-sm font-bold",
 };
 
 export default function EmployeeInfoCard({

@@ -16,6 +16,8 @@ const labelStyles: Record<string, string> = {
     "text-white bg-gradient-to-r from-lime-400 to-emerald-700 shadow-sm font-bold",
   Progression:
     "text-white bg-gradient-to-r from-orange-400 to-rose-600 shadow-sm font-bold",
+  "Annual evaluation":
+    "text-white bg-gradient-to-r from-indigo-400 to-violet-700 shadow-sm font-bold",
 };
 
 export default function ReportPreviewModal({

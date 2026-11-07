@@ -28,7 +28,7 @@ export default function NominateEmployeeModal({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [evaluationType, setEvaluationType] = useState<
-    "Promote" | "Performance" | "Progression"
+    "Promote" | "Performance" | "Progression" | "Annual evaluation"
   >("Performance");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -235,7 +235,7 @@ export default function NominateEmployeeModal({
               ประเภทการประเมิน *
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {(["Promote", "Performance", "Progression"] as const).map(
+              {(["Promote", "Performance", "Progression", "Annual evaluation"] as const).map(
                 (type) => (
                   <button
                     type="button"

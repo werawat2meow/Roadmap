@@ -120,8 +120,8 @@ const initialFormData: EvaluationFormData = {
 
 const normalizeEvaluationType = (
   value?: string | null,
-): "Probation" | "Performance" | "Promote" | "Progression" =>
-  value === "Performance" || value === "Promote" || value === "Progression"
+): "Probation" | "Performance" | "Promote" | "Progression" | "Annual evaluation" =>
+  value === "Performance" || value === "Promote" || value === "Progression" || value === "Annual evaluation"
     ? value
     : "Probation";
 

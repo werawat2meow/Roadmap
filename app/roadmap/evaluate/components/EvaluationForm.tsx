@@ -69,7 +69,7 @@ export type EvaluationFormData = {
 };
 
 type EvaluationFormProps = {
-  formType: "Probation" | "Performance" | "Promote" | "Progression";
+  formType: "Probation" | "Performance" | "Promote" | "Progression" | "Annual evaluation";
   companyGround?: CategoryData[];
   departmentGround?: CategoryData[];
   employeeLevel?: string;

@@ -7,7 +7,9 @@ export async function GET(req: Request) {
   const month = url.searchParams.get("month") || "";
   const year = url.searchParams.get("year") || "";
   const evaluationType =
-    type === "promote"
+    type === "annual-evaluation"
+      ? "Annual evaluation"
+      : type === "promote"
       ? "Promote"
       : type.charAt(0).toUpperCase() + type.slice(1);
 

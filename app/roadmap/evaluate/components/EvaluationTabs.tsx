@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction } from 'react';
 
-const tabs = ['Probation', 'Performance', 'Promote', 'Progression'];
+const tabs = ['Probation', 'Performance', 'Promote', 'Progression', 'Annual evaluation'];
 
 // 1. กำหนด Type ของ Props ที่คอมโพเนนต์นี้ต้องรับจากข้างนอก
 interface EvaluationTabsProps {

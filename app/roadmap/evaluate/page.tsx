@@ -7,7 +7,7 @@ import EvaluationForm from "@/app/roadmap/evaluate/components/EvaluationForm";
 import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 
 export default function EvaluatePage() {
-  const [activeTab, setActiveTab] = useState<'Probation'|'Performance'|'Promote'|'Progression'>('Probation');
+  const [activeTab, setActiveTab] = useState<'Probation'|'Performance'|'Promote'|'Progression'|'Annual evaluation'>('Probation');
   useRoadmapPageLog("Evaluate HR");
 
   return (

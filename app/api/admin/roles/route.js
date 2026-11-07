@@ -163,6 +163,42 @@ async function loadRolePermissionMappings(
    Load Permission Details
 ========================================================= */
 
+// async function loadPermissions(permissionIds = []) {
+//   const ids = uniqueIds(permissionIds);
+
+//   if (!ids.length) {
+//     return [];
+//   }
+
+//   const { data, error } =
+//     await supabaseAdmin
+//       .from(PERMISSION_TABLE)
+//       .select(`
+//         id,
+//         permission_code,
+//         permission_name,
+//         description,
+//         module_code,
+//         action_code,
+//         is_active
+//       `)
+//       .in("id", ids)
+//       .order("module_code", {
+//         ascending: true,
+//       })
+//       .order("permission_code", {
+//         ascending: true,
+//       });
+
+//   if (error) {
+//     throw error;
+//   }
+
+//   return data || [];
+// }
+
+
+
 async function loadPermissions(permissionIds = []) {
   const ids = uniqueIds(permissionIds);
 
@@ -170,8 +206,21 @@ async function loadPermissions(permissionIds = []) {
     return [];
   }
 
-  const { data, error } =
-    await supabaseAdmin
+  // แบ่ง Permission IDs เป็นชุด ป้องกัน URL ยาวเกิน
+  const BATCH_SIZE = 50;
+  const allPermissions = [];
+
+  for (
+    let i = 0;
+    i < ids.length;
+    i += BATCH_SIZE
+  ) {
+    const batchIds = ids.slice(
+      i,
+      i + BATCH_SIZE
+    );
+
+    const { data, error } = await supabaseAdmin
       .from(PERMISSION_TABLE)
       .select(`
         id,
@@ -182,20 +231,35 @@ async function loadPermissions(permissionIds = []) {
         action_code,
         is_active
       `)
-      .in("id", ids)
-      .order("module_code", {
-        ascending: true,
-      })
-      .order("permission_code", {
-        ascending: true,
-      });
+      .in("id", batchIds);
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+
+    allPermissions.push(...(data || []));
   }
 
-  return data || [];
+  // คงลำดับการเรียงเหมือนเดิม
+  return allPermissions.sort((a, b) => {
+    const moduleCompare = String(
+      a.module_code || ""
+    ).localeCompare(
+      String(b.module_code || "")
+    );
+
+    if (moduleCompare !== 0) {
+      return moduleCompare;
+    }
+
+    return String(
+      a.permission_code || ""
+    ).localeCompare(
+      String(b.permission_code || "")
+    );
+  });
 }
+
 
 /* =========================================================
    Validate Permission IDs

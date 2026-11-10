@@ -1,22 +1,19 @@
 "use client";
 
 import {useCallback,useEffect,useMemo,useState,} from "react";
-import {Form,message,Modal,Segmented,} from "antd";
-import {ApartmentOutlined,TeamOutlined,UnorderedListOutlined,} from "@ant-design/icons";
+import {Form,message,Modal,} from "antd";
+import {TeamOutlined,} from "@ant-design/icons";
+import { usePathname, useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import LoadingOrb from "@/app/components/LoadingOrb";
 import MasterLayout from "@/app/admin/(employee-master)/components/master/MasterLayout";
 import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
-import PageInfoAlert from "@/app/admin/(employee-master)/components/common/PageInfoAlert";
-import EmployeeSearch from "./components/EmployeeSearch";
-import EmployeeSummaryCards from "./components/EmployeeSummaryCards";
-import EmployeeTable from "./components/EmployeeTable";
-import EmployeeOrganizationView from "./components/EmployeeOrganizationView";
+import EmployeeOverview from "./components/EmployeeOverview";
+import EmployeeListCard from "./components/EmployeeListCard";
 import EmployeeWizardModal from "./components/EmployeeWizardModal";
 import {EMPLOYEE_STEP_FIELDS, EMPLOYEE_WIZARD_STEPS} from "./components/EmployeeWizardForm";
 import useScopedPermissions from "@/hooks/useScopedPermissions";
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
 const LAST_WIZARD_STEP = EMPLOYEE_WIZARD_STEPS.length - 1;
 
 const DEFAULT_FORM_VALUES = {
@@ -1614,6 +1611,8 @@ function buildEmployeePayload(values,{
 }
 
 export default function EmployeesPage() {
+  const pathname = usePathname();
+  const isListPage = pathname === "/admin/employees/list";
 
   /* =========================================================
      Permission + Employee Scope
@@ -1678,10 +1677,11 @@ export default function EmployeesPage() {
     inactive: 0,
     resigned: 0,
     probation: 0,
+    regular: 0,
   });
 
   const [page, setPage] =useState(1);
-  const [pageSize, setPageSize] =useState(DEFAULT_PAGE_SIZE);
+  const pageSize = DEFAULT_PAGE_SIZE;
   const [total, setTotal] =useState(0);
 
   /* =======================================================
@@ -1758,6 +1758,8 @@ export default function EmployeesPage() {
   const [branchGroupId,setBranchGroupId,] = useState("");
   const [branchId,setBranchId,] = useState("");
   const [departmentId,setDepartmentId,] = useState("");
+  const [divisionId,setDivisionId] = useState("");
+  const [unitId,setUnitId] = useState("");
   const [employeeStatusId,setEmployeeStatusId,] = useState("");
   const [employmentTypeId,setEmploymentTypeId,] = useState("");
   const [status, setStatus] =useState("");
@@ -1995,6 +1997,9 @@ export default function EmployeesPage() {
           );
         }
 
+        if (divisionId) params.set("division_id", divisionId);
+        if (unitId) params.set("unit_id", unitId);
+
         if (employeeStatusId) {
           params.set(
             "employee_status_id",
@@ -2092,6 +2097,11 @@ export default function EmployeesPage() {
                 normalized.summary
                   .probation
               ) || 0,
+            regular:
+              Number(
+                normalized.summary
+                  .regular
+              ) || 0,
           });
         } else {
           setSummary({
@@ -2124,6 +2134,11 @@ export default function EmployeesPage() {
                 (item) =>
                   item.probation_status ===
                   "probation"
+              ).length,
+            regular:
+              normalized.rows.filter(
+                (item) =>
+                  String(item.employee_statuses?.status_code || item.status_code || "").toUpperCase() === "ACTIVE"
               ).length,
           });
         }
@@ -2164,6 +2179,8 @@ export default function EmployeesPage() {
       branchGroupId,
       branchId,
       departmentId,
+      divisionId,
+      unitId,
       employeeStatusId,
       employmentTypeId,
       status,
@@ -2389,6 +2406,7 @@ export default function EmployeesPage() {
     fetchStructureEmployees,
   ]);
 
+  const createRouter = useRouter();
   const handleCreate =
     useCallback(() => {
       if (!canCreate) {
@@ -2399,21 +2417,16 @@ export default function EmployeesPage() {
         return;
       }
 
-      setSelectedRecord(null);
-      setModalMode("create");
-      setCurrentStep(0);
-
-      form.resetFields();
-
-      form.setFieldsValue({
-        ...DEFAULT_FORM_VALUES,
-      });
-
-      setModalOpen(true);
+      createRouter.push("/admin/employees/list/new");
     }, [
       canCreate,
-      form,
+      createRouter,
     ]);
+
+  useEffect(() => {
+    window.addEventListener("employee:create", handleCreate);
+    return () => window.removeEventListener("employee:create", handleCreate);
+  }, [handleCreate]);
 
   const handleView = useCallback( (record) => {
     if (!canView) {
@@ -2438,14 +2451,9 @@ export default function EmployeesPage() {
       );
       return;
     }
-      setSelectedRecord(record);
-      setModalMode("edit");
-      setCurrentStep(0);
-      form.resetFields();
-      form.setFieldsValue(createEmployeeFormValues(record));
-      setModalOpen(true);
+    createRouter.push(`/admin/employees/list/${encodeURIComponent(record.id)}/edit`);
     },
-    [canEdit,form,]
+    [canEdit, createRouter]
   );
 
   const handleEditFromView = useCallback(() => {
@@ -3471,6 +3479,8 @@ export default function EmployeesPage() {
 
     setBranchId("");
     setDepartmentId("");
+    setDivisionId("");
+    setUnitId("");
 
     setPage(1);
   }, []);
@@ -3486,6 +3496,8 @@ export default function EmployeesPage() {
   const handleBranchChange  = useCallback((value) => {
     setBranchId(value || "");
     setDepartmentId("");
+    setDivisionId("");
+    setUnitId("");
 
     setPage(1);
   }, []);
@@ -3494,6 +3506,8 @@ export default function EmployeesPage() {
     setDepartmentId(
       value || ""
     );
+    setDivisionId("");
+    setUnitId("");
 
     setPage(1);
   }, []);
@@ -3535,6 +3549,8 @@ export default function EmployeesPage() {
     setBranchGroupId("");
     setBranchId("");
     setDepartmentId("");
+    setDivisionId("");
+    setUnitId("");
 
     setEmployeeStatusId("");
     setEmploymentTypeId("");
@@ -3544,41 +3560,6 @@ export default function EmployeesPage() {
 
     setPage(1);
   }, []);
-
-  const handleTableChange = useCallback(
-  (pagination, filters, sorter) => {
-    const nextPage =
-      pagination?.current || 1;
-
-    const nextPageSize =
-      pagination?.pageSize ||
-      DEFAULT_PAGE_SIZE;
-
-    if (
-      nextPageSize !== pageSize
-    ) {
-      /*
-       * เคลียร์ rows ของ pageSize เก่า
-       * ก่อน render pageSize ใหม่
-       *
-       * กัน Antd warning:
-       * dataSource.length > pagination.pageSize
-       */
-      setEmployees([]);
-
-      setPageSize(
-        nextPageSize
-      );
-
-      setPage(1);
-
-      return;
-    }
-
-    setPage(nextPage);
-  },
-  [pageSize]
-);
 
   const handleRefresh = useCallback(async () => {
     const requests = [
@@ -3609,9 +3590,26 @@ export default function EmployeesPage() {
     return Boolean(selectedRecord && canEdit);
   }, [selectedRecord,canEdit,]);
 
-  if (authLoading) return <LoadingOrb />;
+  const selectedBranchDepartments = branchId
+    ? new Set(
+        scopedMasterData.branchDepartments
+          .filter((item) => item.branch_id === branchId)
+          .map((item) => item.department_id)
+      )
+    : null;
+  const departmentOptions = scopedMasterData.departments.filter(
+    (item) => !selectedBranchDepartments || selectedBranchDepartments.has(item.id)
+  );
+  const divisionOptions = scopedMasterData.divisions.filter(
+    (item) => !departmentId || item.department_id === departmentId
+  );
+  const unitOptions = scopedMasterData.units.filter(
+    (item) => !divisionId || item.division_id === divisionId
+  );
+
+  if (authLoading) return null;
   if (!user || !canView) {
-    return <LoadingOrb />;
+    return null;
   }
 
   return (
@@ -3622,229 +3620,63 @@ export default function EmployeesPage() {
             icon={
               <TeamOutlined className="text-blue-600" />
             }
-            title="พนักงาน"
-            subtitle="จัดการข้อมูลพนักงาน โครงสร้างองค์กร การจ้างงาน Payroll บัญชีผู้ใช้งาน Role และ Permission"
+            title={isListPage ? "รายชื่อพนักงาน" : "ภาพรวมพนักงาน"}
+            subtitle={isListPage ? "ค้นหาและจัดการข้อมูลพนักงาน" : "จำนวนพนักงานตามสถานะปัจจุบัน"}
             loading={loading}
             canRefresh
-            canCreate={canCreate}
+            canCreate={isListPage && canCreate}
             createText="เพิ่มพนักงาน"
-            onRefresh={handleRefresh}
             onCreate={handleCreate}
-          />
-          <PageInfoAlert
-            title="Employee Wizard"
-            description="เพิ่มช่องใส่เงินเดือน ระบบจะสร้างรหัสพนักงานจาก Employee Code Setting และ Running Number แบบ Atomic จากนั้นใช้รหัสพนักงานเป็น Username และรหัสผ่านชั่วคราว พร้อมผูก Role ซึ่งสามารถมีหลาย Permission ผ่าน role_permissions"
+            onRefresh={handleRefresh}
           />
         </>
       }
 
-      search={
-        <EmployeeSearch
-          search={search}
-          companyId={companyId}
-          branchGroupId={
-            branchGroupId
-          }
-          branchId={branchId}
-          departmentId={
-            departmentId
-          }
-          employeeStatusId={
-            employeeStatusId
-          }
-          employmentTypeId={
-            employmentTypeId
-          }
-          status={status}
-          hasUserAccount={
-            hasUserAccount
-          }
-          companies={
-            scopedMasterData.companies
-          }
-          branchGroups={
-            scopedMasterData.branchGroups
-          }
-          branches={
-            scopedMasterData.branches
-          }
-          departments={
-            scopedMasterData.departments
-          }
-          employeeStatuses={
-            masterData.employeeStatuses
-          }
-          employmentTypes={
-            masterData.employmentTypes
-          }
-          loading={loading}
-          masterLoading={
-            masterLoading
-          }
-          onSearchChange={
-            handleSearchChange
-          }
-          onCompanyChange={
-            handleCompanyChange
-          }
-          onBranchGroupChange={
-            handleBranchGroupChange
-          }
-          onBranchChange={
-            handleBranchChange
-          }
-          onDepartmentChange={
-            handleDepartmentChange
-          }
-          onEmployeeStatusChange={
-            handleEmployeeStatusChange
-          }
-          onEmploymentTypeChange={
-            handleEmploymentTypeChange
-          }
-          onStatusChange={
-            handleStatusChange
-          }
-          onHasUserAccountChange={
-            handleHasUserAccountChange
-          }
-          onClear={
-            handleClearFilters
-          }
-          onRefresh={
-            handleRefresh
-          }
-        />
-      }
-
-      summary={
-        <EmployeeSummaryCards
-          summary={summary}
-          loading={loading}
-        />
-      }
-
-      table={
-        <div className="mt-6 space-y-4">
-          <div className="flex justify-end">
-            <Segmented
-              value={
-                employeeView
-              }
-              options={[
-                {
-                  value:
-                    "structure",
-
-                  label:
-                    "โครงสร้างองค์กร",
-
-                  icon:
-                    <ApartmentOutlined />,
-                },
-                {
-                  value:
-                    "list",
-
-                  label:
-                    "รายชื่อพนักงาน",
-
-                  icon:
-                    <UnorderedListOutlined />,
-                },
-              ]}
-              onChange={(
-                value
-              ) => {
-                setEmployeeView(
-                  value
-                );
-              }}
-            />
+      search={isListPage ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <input
+            type="search"
+            aria-label="ค้นหารายชื่อพนักงาน"
+            placeholder="พิมพ์ชื่อหรือรหัสพนักงานเพื่อค้นหา"
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+            className="mb-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder:text-slate-600 outline-none focus:border-emerald-500"
+          />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <select aria-label="สังกัด" value={branchId} onChange={(event) => handleBranchChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
+              <option value="">ทุกสังกัด</option>
+              {scopedMasterData.branches.map((item) => <option key={item.id} value={item.id}>{item.branch_name}</option>)}
+            </select>
+            <select aria-label="แผนก" value={departmentId} onChange={(event) => handleDepartmentChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
+              <option value="">ทุกแผนก</option>
+              {departmentOptions.map((item) => <option key={item.id} value={item.id}>{item.department_name}</option>)}
+            </select>
+            <select aria-label="ฝ่าย" value={divisionId} onChange={(event) => { setDivisionId(event.target.value); setUnitId(""); setPage(1); }} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
+              <option value="">ทุกฝ่าย</option>
+              {divisionOptions.map((item) => <option key={item.id} value={item.id}>{item.division_name}</option>)}
+            </select>
+            <select aria-label="หน่วย" value={unitId} onChange={(event) => { setUnitId(event.target.value); setPage(1); }} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
+              <option value="">ทุกหน่วย</option>
+              {unitOptions.map((item) => <option key={item.id} value={item.id}>{item.unit_name}</option>)}
+            </select>
           </div>
-
-          {employeeView ===
-          "structure" ? (
-            <EmployeeOrganizationView
-              employees={
-                structureEmployees
-              }
-              loading={
-                structureLoading
-              }
-              deletingId={
-                deletingId
-              }
-
-              canView={
-                canView
-              }
-              canEdit={
-                canEdit
-              }
-              canDelete={
-                canDelete
-              }
-
-              onView={
-                handleView
-              }
-              onEdit={
-                handleEdit
-              }
-              onDelete={
-                handleDelete
-              }
-            />
-          ) : (
-            <EmployeeTable
-              dataSource={
-                employees
-              }
-              loading={
-                loading
-              }
-              deletingId={
-                deletingId
-              }
-
-              page={
-                page
-              }
-              pageSize={
-                pageSize
-              }
-              total={
-                total
-              }
-
-              canView={
-                canView
-              }
-              canEdit={
-                canEdit
-              }
-              canDelete={
-                canDelete
-              }
-
-              onView={
-                handleView
-              }
-              onEdit={
-                handleEdit
-              }
-              onDelete={
-                handleDelete
-              }
-
-              onChange={
-                handleTableChange
-              }
-            />
-          )}
         </div>
-      }
+      ) : null}
+
+      table={isListPage ? (
+        <EmployeeListCard
+          employees={employees}
+          loading={loading}
+          deletingId={deletingId}
+          page={page}
+          total={total}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onPageChange={setPage}
+        />
+      ) : <EmployeeOverview summary={summary} loading={loading} />}
 
       modal={
         <EmployeeWizardModal

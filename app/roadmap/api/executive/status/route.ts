@@ -39,6 +39,31 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    if (action !== "approve" && !rejectionNote?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "กรุณาระบุเหตุผลก่อนดำเนินการ" },
+        { status: 400 },
+      );
+    }
+
+    const { data: currentEvaluation, error: currentError } = await supabaseAdmin
+      .from("rm_evaluations")
+      .select("id,status")
+      .eq("id", evaluationId)
+      .maybeSingle();
+    if (currentError) throw currentError;
+    if (!currentEvaluation) {
+      return NextResponse.json(
+        { success: false, error: "ไม่พบรายการประเมิน" },
+        { status: 404 },
+      );
+    }
+    if (currentEvaluation.status !== "Submitted") {
+      return NextResponse.json(
+        { success: false, error: "ดำเนินการได้เฉพาะรายการที่ส่งประเมินครบแล้ว" },
+        { status: 409 },
+      );
+    }
 
     const now = new Date().toISOString();
     const updatePayload: any = {
@@ -71,12 +96,21 @@ export async function POST(req: Request) {
       updatePayload.salary_effective_month = null;
     }
 
-    const { error } = await supabaseAdmin
+    const { data: updatedEvaluation, error } = await supabaseAdmin
       .from("rm_evaluations")
       .update(updatePayload)
-      .eq("id", evaluationId);
+      .eq("id", evaluationId)
+      .eq("status", "Submitted")
+      .select("id")
+      .maybeSingle();
 
     if (error) throw error;
+    if (!updatedEvaluation) {
+      return NextResponse.json(
+        { success: false, error: "สถานะรายการเปลี่ยนแล้ว กรุณาโหลดข้อมูลใหม่" },
+        { status: 409 },
+      );
+    }
 
     await writeRoadmapAuditLog({
       userId: auth.user.id,

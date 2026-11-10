@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingOrb from "@/app/components/LoadingOrb";
-import { swalConfirm, swalError, swalSuccess } from "@/components/Swal";
+import { authLogoutConfirm, authSuccess, authError } from "@/components/AuthSwal";
 
 import PortalSidebar from "@/app/admin/components/portal/PortalSidebar";
 import PortalTopbar from "@/app/admin/components/portal/PortalTopbar";
@@ -113,14 +113,7 @@ export default function AdminLayout({
         return;
       }
 
-      const confirmed =
-        await swalConfirm({
-          title: "ออกจากระบบ?",
-          text: "คุณต้องการออกจากระบบใช่หรือไม่",
-          confirmButtonText: "ออกจากระบบ",
-          cancelButtonText: "ยกเลิก",
-          icon: "warning",
-        });
+      const confirmed = await authLogoutConfirm();
 
       if (!confirmed) {
         return;
@@ -157,7 +150,7 @@ export default function AdminLayout({
 
         setUser?.(null);
 
-        await swalSuccess(
+        await authSuccess(
           "ออกจากระบบสำเร็จ"
         );
 
@@ -172,7 +165,7 @@ export default function AdminLayout({
           error
         );
 
-        await swalError(
+        await authError(
           "ออกจากระบบไม่สำเร็จ",
           error?.message ||
             "ไม่สามารถออกจากระบบได้"

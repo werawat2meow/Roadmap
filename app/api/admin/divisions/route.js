@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { nextOrganizationCode } from "@/lib/admin/next-organization-code";
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
 export async function GET(req) {
@@ -155,7 +156,10 @@ export async function POST(req) {
      
     const body = await req.json();
 
-    const division_code = body?.division_code?.trim();
+    const autoCode = !body?.division_code?.trim();
+    let division_code = autoCode
+      ? await nextOrganizationCode(supabaseAdmin, "divisions")
+      : body.division_code.trim();
     const division_name = body?.division_name?.trim();
     const department_id = body?.department_id || null;
     const status = body?.status || "active";
@@ -187,7 +191,7 @@ export async function POST(req) {
       );
     }
 
-    const { data: division, error: insertError } = await supabaseAdmin
+    let { data: division, error: insertError } = await supabaseAdmin
       .from("divisions")
       .insert([
         {
@@ -212,6 +216,15 @@ export async function POST(req) {
         )
       `)
       .single();
+
+    for (let attempt = 0; autoCode && insertError?.code === "23505" && attempt < 3; attempt++) {
+      division_code = await nextOrganizationCode(supabaseAdmin, "divisions");
+      ({ data: division, error: insertError } = await supabaseAdmin
+        .from("divisions")
+        .insert([{ division_code, division_name, department_id, status }])
+        .select("id, division_code, division_name, department_id, status, sort_order, created_at, departments(department_name, department_color, department_icon)")
+        .single());
+    }
 
     if (insertError) throw insertError;
 

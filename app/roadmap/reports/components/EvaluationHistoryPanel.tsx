@@ -33,7 +33,8 @@ type EvaluationRecord = {
   newLevel?: string;
   diff?: number;
   evaluationType: string;
-  latestDate: string;
+  latestDate: string | null;
+  approvedAt?: string | null;
   score: number | null;
   status: string;
   evaluationCount: number;
@@ -67,6 +68,14 @@ const MONTH_OPTIONS = [
   { value: "11", label: "พ.ย." },
   { value: "12", label: "ธ.ค." },
 ];
+
+function formatReportDate(value: string | null | undefined, options: Intl.DateTimeFormatOptions) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString("th-TH", { ...options, timeZone: "Asia/Bangkok" })
+    : "-";
+}
 
 export default function EvaluationHistoryPanel({
   evaluationType,
@@ -209,6 +218,7 @@ export default function EvaluationHistoryPanel({
     align: "left" | "center" | "right";
   }[] = [
     { header: "พนักงาน", key: "name", align: "center" },
+    { header: "รอบประเมิน", key: "reportPeriod", align: "center" },
     { header: "สังกัด", key: "branch", align: "center" },
     { header: "แผนก", key: "department", align: "center" },
     { header: "ฝ่าย", key: "division", align: "center" },
@@ -217,6 +227,7 @@ export default function EvaluationHistoryPanel({
     { header: "คะแนน", key: "scorePercent", align: "center" },
     { header: "สถานะ", key: "status", align: "center" },
     { header: "ผู้อนุมัติ", key: "approvedByName", align: "center" },
+    { header: "วันที่อนุมัติ", key: "approvedDate", align: "center" },
     { header: "Actions", key: "actions", align: "center" },
   ];
 
@@ -439,7 +450,7 @@ export default function EvaluationHistoryPanel({
           <h2 className="text-2xl font-semibold text-slate-900">
             ประวัติการประเมิน {evaluationType}
           </h2>
-          <p className="text-sm text-slate-500">แสดงพนักงานที่ถูกประเมินแล้ว</p>
+          <p className="text-sm text-slate-500">แสดงผลที่อนุมัติแล้วตามเดือนสิ้นสุดรอบประเมิน</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -505,6 +516,8 @@ export default function EvaluationHistoryPanel({
         columns={columns}
         rows={filteredRows.map((row) => ({
           name: row.name,
+          reportPeriod: formatReportDate(row.latestDate, { month: "short", year: "numeric" }),
+          approvedDate: formatReportDate(row.approvedAt, { day: "numeric", month: "short", year: "numeric" }),
           branch: row.branch,
           department: row.department,
           division: row.division,

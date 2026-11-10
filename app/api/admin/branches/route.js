@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { nextOrganizationCode } from "@/lib/admin/next-organization-code";
 
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
 
@@ -238,7 +239,10 @@ export async function POST(req) {
 
     const body = await req.json();
 
-    const branch_code = body?.branch_code?.trim();
+    const autoCode = !body?.branch_code?.trim();
+    let branch_code = autoCode
+      ? await nextOrganizationCode(supabaseAdmin, "branches")
+      : body.branch_code.trim();
     const branch_name = body?.branch_name?.trim();
     const company_id = body?.company_id || null;
     const phone = body?.phone?.trim() || null;
@@ -261,7 +265,7 @@ export async function POST(req) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from("branches")
       .insert([
         {
@@ -301,6 +305,16 @@ export async function POST(req) {
         )
       `)
       .single();
+
+    // A second writer may have taken the next number; retry with the new maximum.
+    for (let attempt = 0; autoCode && error?.code === "23505" && attempt < 3; attempt++) {
+      branch_code = await nextOrganizationCode(supabaseAdmin, "branches");
+      ({ data, error } = await supabaseAdmin
+        .from("branches")
+        .insert([{ branch_code, branch_name, company_id, phone, status, branch_image_url, branch_image_path, group_id }])
+        .select(`id, branch_code, branch_name, company_id, phone, status, sort_order, branch_image_url, branch_image_path, created_at, group_id, branch_groups(id, group_code, group_name, group_color), companies(id, company_code, company_name_th, company_name_en)`)
+        .single());
+    }
       
     if (error) {
       if (error.code === "23505") {

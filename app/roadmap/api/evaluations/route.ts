@@ -5,6 +5,7 @@ import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import { getRoadmapCycleSettings } from "@/lib/roadmap/cycleSettingsServer";
 import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
 import { requireRoadmapPermission } from "@/lib/roadmap/permissions";
+import { validateEvaluationScores } from "./validation";
 
 const isUuid = (value: string) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -180,6 +181,72 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!["Nominated", "Draft", "Submitted"].includes(status)) {
+    return NextResponse.json(
+      { success: false, error: "สถานะการประเมินไม่ถูกต้อง" },
+      { status: 400 },
+    );
+  }
+  // MGR includes empty UI rows; ignore only unselected rows with zero score.
+  if (Array.isArray(body.scores)) {
+    body.scores = body.scores.filter(
+      (row: any) => !row || row.categoryItemId || Number(row.score) !== 0,
+    );
+  }
+  const scoreError = validateEvaluationScores(body);
+  if (scoreError) {
+    return NextResponse.json({ success: false, error: scoreError }, { status: 400 });
+  }
+
+  const evaluationId = body.evaluationId?.trim();
+  let existingEval: any = null;
+  if (evaluationId) {
+    const { data, error } = await supabaseAdmin
+      .from("rm_evaluations")
+      .select("id,employee_id,status,extra_data")
+      .eq("id", evaluationId)
+      .maybeSingle();
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+    if (!data || data.employee_id !== employeeId) {
+      return NextResponse.json({ success: false, error: "ไม่พบรายการประเมิน" }, { status: 404 });
+    }
+    if (["Completed", "Rejected", "SalaryUpdated"].includes(data.status)) {
+      return NextResponse.json(
+        { success: false, error: "รายการประเมินสิ้นสุดแล้ว ไม่สามารถแก้ไขได้" },
+        { status: 409 },
+      );
+    }
+    existingEval = data;
+  }
+
+  if (status === "Submitted") {
+    let reviewerIds: string[] = Array.isArray(body.managerIds) ? body.managerIds : [];
+    if (evaluationId) {
+      const { data, error } = await supabaseAdmin
+        .from("rm_evaluation_reviewers")
+        .select("manager_id")
+        .eq("evaluation_id", evaluationId);
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+      reviewerIds = (data || []).map((reviewer) => reviewer.manager_id);
+    }
+    if (reviewerIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "กรุณากำหนดผู้ประเมินก่อนส่งประเมิน" },
+        { status: 400 },
+      );
+    }
+    if (!reviewerIds.includes(evaluatorId)) {
+      return NextResponse.json(
+        { success: false, error: "คุณไม่ได้รับมอบหมายให้ประเมินรายการนี้" },
+        { status: 403 },
+      );
+    }
+  }
+
   let evaluationTypeId = requestedTypeId || null;
   if (!evaluationTypeId) {
     try {
@@ -225,20 +292,8 @@ export async function POST(req: Request) {
   }
   const targetStatus = isManagerSubmitting ? "In_Review" : body.status;
 
-  const evaluationId = body.evaluationId?.trim();
-
-  let existingReviewerSubmissions: Record<string, any> = {};
-  if (evaluationId) {
-    const { data: existingEval } = await supabaseAdmin
-      .from("rm_evaluations")
-      .select("extra_data")
-      .eq("id", evaluationId)
-      .maybeSingle();
-    if (existingEval?.extra_data?.reviewer_submissions) {
-      existingReviewerSubmissions =
-        existingEval.extra_data.reviewer_submissions;
-    }
-  }
+  const existingReviewerSubmissions: Record<string, any> =
+    existingEval?.extra_data?.reviewer_submissions || {};
 
   // ถ้าผู้ประเมินคนนี้กด Submit ให้บันทึกคะแนนจริงของคนนี้ไว้ (รวม Company + Department + Expectations ครบ)
   if (isManagerSubmitting) {
@@ -288,6 +343,7 @@ export async function POST(req: Request) {
       .from("rm_evaluations")
       .update(evalPayload)
       .eq("id", evaluationId)
+      .eq("status", existingEval.status)
       .select()
       .single();
 
@@ -414,7 +470,7 @@ export async function POST(req: Request) {
   }
 
   // 2. บันทึกคะแนนแยกรายบุคคลของผู้ประเมินคนนี้ลง rm_evaluation_reviewer_scores
-  if (evaluatorId && Array.isArray(body.scores) && body.scores.length > 0) {
+  if (evaluatorId && (isManagerSubmitting || (Array.isArray(body.scores) && body.scores.length > 0))) {
     const { data: currentReviewer } = await supabaseAdmin
       .from("rm_evaluation_reviewers")
       .select("id")
@@ -437,7 +493,7 @@ export async function POST(req: Request) {
         .delete()
         .eq("reviewer_id", currentReviewer.id);
 
-      const reviewerScoreRows = body.scores.map((s: any) => {
+      const reviewerScoreRows = (body.scores || []).map((s: any) => {
         const maxAllowed = Number(s.max ?? s.weight ?? 0);
         const rawScore = Number(s.score ?? 0);
         const clamped =
@@ -450,9 +506,9 @@ export async function POST(req: Request) {
         };
       });
 
-      const { error: reviewerScoreError } = await supabaseAdmin
-        .from("rm_evaluation_reviewer_scores")
-        .insert(reviewerScoreRows);
+      const { error: reviewerScoreError } = reviewerScoreRows.length > 0
+        ? await supabaseAdmin.from("rm_evaluation_reviewer_scores").insert(reviewerScoreRows)
+        : { error: null };
 
       if (reviewerScoreError) {
         console.error(

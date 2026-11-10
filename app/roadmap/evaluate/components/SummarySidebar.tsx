@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select } from "antd";
 import ScoreChart from "./ScoreChart";
 import ReportPreviewModal from "./ReportPreviewModal";
 
@@ -219,21 +220,43 @@ export default function SummarySidebar({
         <label className="text-sm text-gray-600 block mb-1">
           เลือกรายชื่อผู้ประเมิน
         </label>
-        <div className="flex gap-2">
-          {managers.map((manager) => (
-            <label
-              key={manager.id}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selectedManagerIds.includes(manager.employee_id)}
-                onChange={() => onManagerToggle?.(manager.employee_id)}
-              />
-              {manager.name}
-            </label>
-          ))}
-        </div>
+
+        <Select
+          mode="multiple"
+          showSearch
+          allowClear
+          placeholder="ค้นหาและเลือกผู้ประเมิน"
+          optionFilterProp="label"
+          maxTagCount={2}
+          className="w-full"
+          value={selectedManagerIds}
+          options={managers.map((manager) => ({
+            value: manager.employee_id,
+            label: `${manager.name}${
+              manager.email ? ` (${manager.email})` : ""
+            }`,
+          }))}
+          filterOption={(input, option) =>
+            String(option?.label ?? "")
+              .toLowerCase()
+              .includes(input.toLowerCase())
+          }
+          onChange={(nextValues) => {
+            const nextIds = new Set(nextValues as string[]);
+
+            managers.forEach((manager) => {
+              const wasSelected = selectedManagerIds.includes(
+                manager.employee_id,
+              );
+
+              const isSelected = nextIds.has(manager.employee_id);
+
+              if (wasSelected !== isSelected) {
+                onManagerToggle?.(manager.employee_id);
+              }
+            });
+          }}
+        />
       </div>
 
       <div className="my-6 text-gray-700">

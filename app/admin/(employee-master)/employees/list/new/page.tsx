@@ -42,6 +42,7 @@ const initial = {
   birth_date: "",
   citizen_id: "",
   passport_no: "",
+  base_salary: "",
   start_work_date: "",
   branch_id: "",
   department_id: "",
@@ -100,7 +101,9 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
             key,
             key === "start_work_date"
               ? data.employee?.start_work_date ?? data.employee?.hire_date ?? ""
-              : data.employee?.[key] ?? "",
+              : key === "base_salary"
+                ? String(data.employee?.base_salary ?? "")
+                : data.employee?.[key] ?? "",
           ])) as typeof initial);
           setLegacyCodes(data.legacy_codes?.length ? data.legacy_codes : [""]);
         }
@@ -394,6 +397,18 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 {input("วันเกิด", "birth_date", false, "date")}
                 {input("เลขบัตรประชาชน", "citizen_id")}
                 {input("เลขพาสปอร์ต", "passport_no")}
+                <label className="block text-sm font-semibold text-slate-900">
+                  เงินเดือน (บาท/เดือน)
+                  <input
+                    type="number"
+                    min="0"
+                    max="999999999999.99"
+                    step="0.01"
+                    value={form.base_salary}
+                    onChange={(event) => change("base_salary", event.target.value)}
+                    className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </label>
               </div>
             </section>
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

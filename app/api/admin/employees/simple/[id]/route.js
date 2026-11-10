@@ -12,6 +12,15 @@ async function getOne(table, id, columns) {
   return data;
 }
 
+async function getSalary(employeeId) {
+  const { data, error } = await supabaseAdmin.from("employee_compensations")
+    .select("id,base_salary").eq("employee_id", employeeId).eq("status", "active")
+    .is("effective_to", null).order("effective_from", { ascending: false })
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function GET(_request, { params }) {
   const guard = await requireScopedAccess("ems.employees", "edit");
   if (!guard.ok) return guard.response;
@@ -24,8 +33,10 @@ export async function GET(_request, { params }) {
     const { data: codes, error } = await supabaseAdmin.from("employee_legacy_codes")
       .select("legacy_code").eq("employee_id", id).order("legacy_code");
     if (error) throw error;
+    const salary = await getSalary(id);
     return NextResponse.json({ success: true, data: {
-      employee, legacy_codes: (codes || []).map((item) => item.legacy_code),
+      employee: { ...employee, base_salary: salary?.base_salary ?? null },
+      legacy_codes: (codes || []).map((item) => item.legacy_code),
     } });
   } catch (error) {
     console.error("Load employee for edit failed", error);
@@ -43,6 +54,15 @@ export async function PATCH(request, { params }) {
     if (!current) return fail("ไม่พบพนักงาน", 404);
     if (!guard.canAccessEmployee(current)) return fail("ไม่มีสิทธิ์แก้ไขพนักงานคนนี้", 403);
     const body = await request.json();
+    const hasSalary = Object.prototype.hasOwnProperty.call(body, "base_salary");
+    const salaryText = value(body.base_salary);
+    if (hasSalary && salaryText && !/^\d{1,12}(\.\d{1,2})?$/.test(salaryText)) {
+      return fail("เงินเดือนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป และมีทศนิยมไม่เกิน 2 ตำแหน่ง");
+    }
+    const salary = hasSalary ? await getSalary(id) : null;
+    if (salary && !salaryText) {
+      return fail("กรุณากรอกเงินเดือน หากไม่มีเงินเดือนให้ระบุ 0");
+    }
     const employeeCode = value(body.employee_code);
     const legacyCodes = (Array.isArray(body.legacy_codes) ? body.legacy_codes : []).map(value).filter(Boolean);
     if (!employeeCode || !value(body.first_name_th) || !value(body.last_name_th) ||
@@ -171,6 +191,29 @@ export async function PATCH(request, { params }) {
       const { error } = await supabaseAdmin.from("employee_legacy_codes")
         .update({ company_id: branch.company_id }).eq("employee_id", id);
       if (error) throw error;
+    }
+    if (hasSalary && salaryText) {
+      if (salary) {
+        if (Number(salary.base_salary) !== Number(salaryText)) {
+          const { error: salaryError } = await supabaseAdmin.from("employee_compensations")
+            .update({ base_salary: salaryText, updated_at: new Date().toISOString() })
+            .eq("id", salary.id).eq("employee_id", id);
+          if (salaryError) throw salaryError;
+        }
+      } else {
+        const { error: salaryError } = await supabaseAdmin.from("employee_compensations").insert({
+          employee_id: id,
+          position_id: position.id,
+          position_level_id: level.id,
+          base_salary: salaryText,
+          currency_code: "THB",
+          effective_from: value(body.start_work_date),
+          source_type: "initial",
+          status: "active",
+          reason: "Initial employee compensation",
+        });
+        if (salaryError) throw salaryError;
+      }
     }
     return NextResponse.json({ success: true, data: saved });
   } catch (error) {

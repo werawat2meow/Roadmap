@@ -18,6 +18,10 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
+    const salaryText = text(body.base_salary);
+    if (salaryText && !/^\d{1,12}(\.\d{1,2})?$/.test(salaryText)) {
+      return fail("เงินเดือนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป และมีทศนิยมไม่เกิน 2 ตำแหน่ง");
+    }
     const employeeCode = text(body.employee_code);
     const legacyCodes = (Array.isArray(body.legacy_codes) ? body.legacy_codes : [])
       .map(text).filter(Boolean);
@@ -139,12 +143,36 @@ export async function POST(request) {
       if (createError.code === "23505") return fail("รหัสพนักงานนี้ถูกใช้แล้ว", 409);
       throw createError;
     }
+    if (salaryText) {
+      const { error: salaryError } = await supabaseAdmin.from("employee_compensations").insert({
+        employee_id: created.id,
+        position_id: savedPosition.id,
+        position_level_id: level.id,
+        base_salary: salaryText,
+        currency_code: "THB",
+        effective_from: text(body.start_work_date),
+        source_type: "initial",
+        status: "active",
+        reason: "Initial employee compensation",
+      });
+      if (salaryError) {
+        const { error: rollbackError } = await supabaseAdmin.from("employees").delete().eq("id", created.id);
+        if (rollbackError) return fail("เพิ่มพนักงานแล้วแต่บันทึกเงินเดือนไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ", 500);
+        if (createdNewPosition) await supabaseAdmin.from("positions").delete().eq("id", savedPosition.id);
+        throw salaryError;
+      }
+    }
     if (legacyCodes.length) {
       const { error: legacyError } = await supabaseAdmin.from("employee_legacy_codes").insert(
         legacyCodes.map((legacy_code) => ({ employee_id: created.id,
           company_id: branch.company_id, source_system: "LEGACY_EXCEL", legacy_code }))
       );
       if (legacyError) {
+        if (salaryText) {
+          const { error: salaryRollbackError } = await supabaseAdmin.from("employee_compensations")
+            .delete().eq("employee_id", created.id);
+          if (salaryRollbackError) return fail("เพิ่มพนักงานแล้วแต่บันทึกรหัสเก่าไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ", 500);
+        }
         const { error: rollbackError } = await supabaseAdmin.from("employees").delete().eq("id", created.id);
         if (rollbackError) return fail("เพิ่มพนักงานแล้วแต่บันทึกรหัสเก่าไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ", 500);
         if (createdNewPosition) await supabaseAdmin.from("positions").delete().eq("id", savedPosition.id);

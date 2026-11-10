@@ -1,0 +1,101 @@
+.page {
+  position: relative;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  padding: 28px 16px;
+  background: #101928 url('/login-night-island.png') center / cover no-repeat;
+}
+
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 10, 19, .24), rgba(5, 10, 19, .72));
+  pointer-events: none;
+}
+
+.page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 18%, rgba(255, 223, 145, .15), transparent 35%);
+  pointer-events: none;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 410px);
+  border: 1px solid rgba(255, 222, 160, .3);
+  border-radius: 26px;
+  background: rgba(10, 16, 26, .7);
+  padding: 32px 28px;
+  color: white;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .55), inset 0 0 35px rgba(255, 220, 150, .04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: floatCard 6s ease-in-out infinite;
+}
+
+.field :global(.ant-input-affix-wrapper) {
+  height: 48px;
+  border-color: rgba(255, 222, 160, .28) !important;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .12) !important;
+  color: white;
+  box-shadow: none;
+}
+
+.field :global(.ant-input-affix-wrapper:hover),
+.field :global(.ant-input-affix-wrapper-focused) {
+  border-color: #f3c874 !important;
+  box-shadow: 0 0 0 3px rgba(243, 200, 116, .13) !important;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-input-password-icon) {
+  color: white !important;
+}
+
+.field :global(.ant-input::placeholder) {
+  color: rgba(255, 255, 255, .5);
+}
+
+.field :global(.ant-input-prefix) {
+  color: rgba(255, 238, 210, .75);
+}
+
+.remember :global(.ant-checkbox-wrapper),
+.remember :global(.ant-checkbox-wrapper span) {
+  color: rgba(255, 255, 255, .8);
+}
+
+.remember :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  border-color: #f3c874;
+  background: #f3c874;
+}
+
+.submit {
+  height: 48px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: linear-gradient(120deg, #fff4cd, #efba62) !important;
+  color: #261a0e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 24px rgba(240, 184, 92, .3);
+}
+
+.submit:hover {
+  filter: brightness(1.06);
+}
+
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+}

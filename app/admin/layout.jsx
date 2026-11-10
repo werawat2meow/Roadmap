@@ -17,16 +17,13 @@ import {
 
 import LoadingOrb from "@/app/components/LoadingOrb";
 
-import {
-  swalConfirm,
-  swalError,
-  swalSuccess,
-} from "@/components/Swal";
+import { authLogoutConfirm, authSuccess, authError } from "@/components/AuthSwal";
 
 import PortalSidebar from "./components/portal/PortalSidebar";
 import PortalTopbar from "./components/portal/PortalTopbar";
 import PortalMobileHeader from "./components/portal/PortalMobileHeader";
 import PortalGuidedTour from "./components/portal/PortalGuidedTour";
+import EmployeeSidebar, { EmployeeMobileMenuButton } from "./components/portal/EmployeeSidebar";
 
 import {
   PORTAL_SIDEBAR,
@@ -173,14 +170,7 @@ export default function AdminLayout({children,}) {
       return;
     }
 
-    const confirmed =
-      await swalConfirm({
-        title: "ออกจากระบบ?",
-        text: "คุณต้องการออกจากระบบใช่หรือไม่",
-        confirmButtonText: "ออกจากระบบ",
-        cancelButtonText: "ยกเลิก",
-        icon: "warning",
-      });
+    const confirmed = await authLogoutConfirm();
 
     if (!confirmed) {
       return;
@@ -217,7 +207,7 @@ export default function AdminLayout({children,}) {
 
       setUser?.(null);
 
-      await swalSuccess(
+      await authSuccess(
         "ออกจากระบบสำเร็จ"
       );
 
@@ -232,7 +222,7 @@ export default function AdminLayout({children,}) {
         error
       );
 
-      await swalError(
+      await authError(
         "ออกจากระบบไม่สำเร็จ",
         error?.message ||
           "ไม่สามารถออกจากระบบได้"
@@ -256,6 +246,41 @@ export default function AdminLayout({children,}) {
 
   if (!user) {
     return null;
+  }
+
+  if (pathname === "/admin") {
+    return (
+      <div className="min-h-screen bg-[#f4f7fb]">
+        <AdminActivityPageTracker />
+        <header className="flex min-h-[72px] items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 sm:px-8 lg:px-12">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#132d4f] text-lg font-bold text-white">H</span>
+            <div>
+              <p className="font-bold leading-5 text-[#132d4f]">HRMS Enterprise</p>
+              <p className="text-xs text-slate-500">เลือกระบบที่ต้องการใช้งาน</p>
+            </div>
+          </div>
+          <button type="button" onClick={handleLogout} disabled={loggingOut}
+            className="cursor-pointer rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+            {loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"}
+          </button>
+        </header>
+        {children}
+      </div>
+    );
+  }
+
+  if (pathname === "/admin/employees" || pathname?.startsWith("/admin/employees/")) {
+    return (
+      <div className="min-h-screen bg-[#f9f5f2]">
+        <AdminActivityPageTracker />
+        <EmployeeSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={handleLogout} loggingOut={loggingOut} />
+        <div className={`min-w-0 transition-[margin-left] duration-300 ${collapsed ? "lg:ml-20" : "lg:ml-64"}`}>
+          <div className="p-3 lg:hidden"><EmployeeMobileMenuButton onClick={() => setMobileOpen(true)} /></div>
+          <main className="min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+        </div>
+      </div>
+    );
   }
 
   /* =======================================================

@@ -3,9 +3,9 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 
 // ฟังก์ชันคำนวณเกรดตามเกณฑ์ที่คุณกำหนด
 const getGrade = (percent: number) => {
-  if (percent >= 80) return "A";
-  if (percent >= 70) return "B";
-  if (percent >= 60) return "C";
+  if (percent >= 85) return "A";
+  if (percent >= 75) return "B";
+  if (percent >= 65) return "C";
   if (percent >= 50) return "D";
   return "F";
 };
@@ -163,7 +163,8 @@ export async function GET() {
 
       const rawScore = Number(item.totalScore || 0);
       const maxScore = Number(item.maxScore) > 0 ? Number(item.maxScore) : 100;
-      const scorePercent = Math.round((rawScore / maxScore) * 100);
+      // Match the two-decimal percentage used when saving the evaluation grade.
+      const scorePercent = Math.round((rawScore / maxScore) * 100 * 100) / 100;
       const calculatedGrade = getGrade(scorePercent);
 
       const levelMapping =

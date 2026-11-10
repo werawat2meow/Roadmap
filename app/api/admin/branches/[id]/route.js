@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 import {requireScopedAccess,} from "@/lib/auth/requireScopedAccess";
+import { blockOrganizationDeleteWhenInUse } from "@/lib/admin/organization-delete-guard";
 
 export async function PATCH(req, { params }) {
   try {
@@ -265,6 +266,9 @@ export async function DELETE(req, { params }) {
       .single();
 
     if (oldBranchError) throw oldBranchError;
+
+    const dependencyError = await blockOrganizationDeleteWhenInUse("branch", id);
+    if (dependencyError) return dependencyError;
 
     const { error } = await supabaseAdmin
       .from("branches")

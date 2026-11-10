@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getReportPeriodDate } from "../reportPeriod";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
     .select("id")
     .eq("name", evaluationType)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (typeError) {
     console.error("Failed to load evaluation type", typeError);
@@ -32,36 +33,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: [] });
   }
 
-  let query = supabaseAdmin
+  const query = supabaseAdmin
     .from("rm_evaluations")
     .select(
-      "id,employee_id,status,created_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level,extra_data,evaluation_period_continued,approval_note,salary_effective_month",
+      "id,employee_id,status,created_at,approved_at,totalScore,maxScore,evaluation_type_id,approved_by,evaluator_id,currentSalary,newSalary,new_designation,new_level,extra_data,evaluation_period,evaluation_period_continued,approval_note,salary_effective_month",
     )
     .eq("evaluation_type_id", typeRow.id)
     .in("status", ["Completed", "SalaryUpdated"]);
 
-  if (year) {
-    const yearNum = Number(year);
-    if (!Number.isNaN(yearNum) && yearNum > 0) {
-      if (month) {
-        const monthNum = Number(month);
-        if (monthNum >= 1 && monthNum <= 12) {
-          const from = `${yearNum}-${String(monthNum).padStart(2, "0")}-01`;
-          const lastDay = new Date(yearNum, monthNum, 0).getDate();
-          const to = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-          query = query.gte("created_at", from).lte("created_at", to);
-        }
-      } else {
-        query = query
-          .gte("created_at", `${yearNum}-01-01`)
-          .lte("created_at", `${yearNum}-12-31`);
-      }
-    }
-  }
-
-  const { data: evalRows, error: evalError } = await query.order("created_at", {
-    ascending: false,
-  });
+  const monthNum = Number(month);
+  const yearNum = Number(year);
+  const filterMonth = month && Number.isInteger(monthNum) && monthNum >= 1 && monthNum <= 12;
+  const filterYear = year && Number.isInteger(yearNum) && yearNum > 0;
+  const reportQuery = query
+    .order("created_at", { ascending: false })
+    .order("id");
+  // The period is stored as text; read every page before filtering its end date.
+  const pageSize = 1000;
+  const { data, error: evalError } = await reportQuery.range(0, pageSize - 1);
 
   if (evalError) {
     console.error("Failed to load evaluations", evalError);
@@ -70,6 +59,23 @@ export async function GET(req: Request) {
       { status: 500 },
     );
   }
+
+  let evalRows = data || [];
+  for (let offset = pageSize; evalRows.length === offset; offset += pageSize) {
+    const { data: page, error } = await reportQuery.range(offset, offset + pageSize - 1);
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+    evalRows.push(...(page || []));
+  }
+  if (filterMonth || filterYear) {
+    evalRows = evalRows.filter((row) => {
+      const date = getReportPeriodDate(row);
+      return date && (!filterMonth || Number(date.slice(5, 7)) === monthNum) &&
+        (!filterYear || Number(date.slice(0, 4)) === yearNum);
+    });
+  }
+  evalRows.sort((a, b) => (getReportPeriodDate(b) || "").localeCompare(getReportPeriodDate(a) || ""));
 
   const employeeIds = [
     ...new Set([
@@ -268,7 +274,8 @@ export async function GET(req: Request) {
       newLevel: item.new_level || "",
       diff: (item.newSalary ?? 0) - (item.currentSalary ?? 0),
       evaluationType,
-      latestDate: item.created_at,
+      latestDate: getReportPeriodDate(item),
+      approvedAt: item.approved_at ?? null,
       score: totalScore,
       maxScore,
       scorePercent,

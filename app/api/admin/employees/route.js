@@ -922,6 +922,7 @@ async function getEmployeeSummary({
       active: 0,
       inactive: 0,
       probation: 0,
+      regular: 0,
       resigned: 0,
       newThisMonth: 0,
       newThisYear: 0,
@@ -944,6 +945,10 @@ async function getEmployeeSummary({
 
       if (statusCode === "PROBATION") {
         summary.probation += 1;
+      }
+
+      if (statusCode === "ACTIVE") {
+        summary.regular += 1;
       }
 
       if (statusCode === "RESIGNED") {

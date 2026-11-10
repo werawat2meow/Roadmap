@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { blockOrganizationDeleteWhenInUse } from "@/lib/admin/organization-delete-guard";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
 import { getVerifiedAuditActor } from "@/lib/audit/authActor";
@@ -209,6 +210,9 @@ export async function DELETE(req, { params }) {
         }
       );
     }
+
+    const dependencyError = await blockOrganizationDeleteWhenInUse("unit", id);
+    if (dependencyError) return dependencyError;
 
     const { error } = await supabaseAdmin
       .from("units")

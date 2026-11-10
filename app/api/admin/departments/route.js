@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { writeActivityLog } from "@/lib/activityLogger";
+import { nextOrganizationCode } from "@/lib/admin/next-organization-code";
 import {
   requireScopedAccess,
   resolveAccessibleIds,
@@ -321,9 +322,10 @@ export async function POST(req) {
     const body =
       await req.json();
 
-    const department_code =
-      body?.department_code
-        ?.trim();
+    const autoCode = !body?.department_code?.trim();
+    let department_code = autoCode
+      ? await nextOrganizationCode(supabaseAdmin, "departments")
+      : body.department_code.trim();
 
     const department_name =
       body?.department_name
@@ -411,7 +413,7 @@ export async function POST(req) {
       );
     }
 
-    const {
+    let {
       data: department,
       error: departmentError,
     } =
@@ -437,6 +439,15 @@ export async function POST(req) {
           created_at
         `)
         .single();
+
+    for (let attempt = 0; autoCode && departmentError?.code === "23505" && attempt < 3; attempt++) {
+      department_code = await nextOrganizationCode(supabaseAdmin, "departments");
+      ({ data: department, error: departmentError } = await supabaseAdmin
+        .from("departments")
+        .insert([{ department_code, department_name, department_color, department_icon, status }])
+        .select("id, department_code, department_name, department_color, department_icon, status, sort_order, created_at")
+        .single());
+    }
 
     if (departmentError) {
       throw departmentError;

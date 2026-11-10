@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
+import { getReportPeriodDate } from "../reportPeriod";
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return "";
@@ -39,7 +40,7 @@ const formatEmployeeAge = (hireDate?: string | null) => {
 const calculateGrade = (totalScore: number | null, maxScore: number | null) => {
   const percent =
     maxScore && maxScore > 0
-      ? Math.round((Number(totalScore) / maxScore) * 100)
+      ? Math.round((Number(totalScore) / maxScore) * 100 * 100) / 100
       : 0;
   if (percent >= 85) return "A";
   if (percent >= 75) return "B";
@@ -256,6 +257,7 @@ export async function GET(req: Request) {
     return date.toLocaleDateString("th-TH", {
       month: "long",
       year: "numeric",
+      timeZone: "Asia/Bangkok",
     });
   };
 
@@ -334,7 +336,7 @@ export async function GET(req: Request) {
     newSalary: evaluation.newSalary ?? "",
     managerComment: evaluation.managerComment || "",
     evaluationRound,
-    submittedMonth: formatMonthYear(evaluation.created_at),
+    submittedMonth: formatMonthYear(getReportPeriodDate(evaluation)),
   };
   const auth = await getAuthenticatedUser();
 

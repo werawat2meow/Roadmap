@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { requireScopedAccess } from "@/lib/auth/requireScopedAccess";
+import bcrypt from "bcryptjs";
+import { reserveEmployeeCode } from "@/lib/employee/employeeCodeGenerator";
 
 const text = (value) => String(value ?? "").trim();
 const optional = (value) => text(value) || null;
 const fail = (error, status = 400) => NextResponse.json({ success: false, error }, { status });
+const validationError = (message) => Object.assign(new Error(message), { status: 400 });
 
 async function one(table, id, columns) {
   const { data, error } = await supabaseAdmin.from(table).select(columns).eq("id", id).maybeSingle();
@@ -16,16 +19,20 @@ export async function POST(request) {
   const guard = await requireScopedAccess("ems.employees", "create");
   if (!guard.ok) return guard.response;
 
+  let createdAuthUserId = null;
+  let createdEmployeeId = null;
+  let createdNewPositionId = null;
   try {
     const body = await request.json();
+    const createUserAccount = body.create_user_account === true;
     const salaryText = text(body.base_salary);
     if (salaryText && !/^\d{1,12}(\.\d{1,2})?$/.test(salaryText)) {
       return fail("เงินเดือนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป และมีทศนิยมไม่เกิน 2 ตำแหน่ง");
     }
-    const employeeCode = text(body.employee_code);
+    let employeeCode = text(body.employee_code);
     const legacyCodes = (Array.isArray(body.legacy_codes) ? body.legacy_codes : [])
       .map(text).filter(Boolean);
-    if (!employeeCode || !text(body.first_name_th) || !text(body.last_name_th) ||
+    if ((!employeeCode && !createUserAccount) || !text(body.first_name_th) || !text(body.last_name_th) ||
         !text(body.start_work_date) || !text(body.branch_id) || !text(body.department_id) ||
         !text(body.position_id) || !text(body.position_level_id)) {
       return fail("กรอกรหัสพนักงาน ชื่อและนามสกุลไทย วันที่เริ่มงาน สังกัด แผนก ตำแหน่ง และ Level P");
@@ -45,7 +52,7 @@ export async function POST(request) {
     if (creatingPosition && (!newPositionName || newPositionName.length > 200)) {
       return fail("กรุณากรอกชื่อตำแหน่งใหม่ไม่เกิน 200 ตัวอักษร");
     }
-    const position = creatingPosition ? null : await one("positions", body.position_id, "id,position_family_id,job_id,status");
+    const position = creatingPosition ? null : await one("positions", body.position_id, "id,position_family_id,job_id,status,is_executive");
     const level = await one("position_levels", body.position_level_id, "id,level_code,status");
     if (!branch || !department || (!creatingPosition && !position) || !level ||
         branch.status !== "active" || department.status !== "active" || (!creatingPosition && position.status !== "active") ||
@@ -109,6 +116,7 @@ export async function POST(request) {
         if (positionError) throw positionError;
         savedPosition = createdPosition;
         createdNewPosition = true;
+        createdNewPositionId = createdPosition.id;
       }
       const { error: newMappingError } = await supabaseAdmin.from("position_level_mappings")
         .upsert({ position_id: savedPosition.id, position_level_id: level.id,
@@ -118,6 +126,51 @@ export async function POST(request) {
         throw newMappingError;
       }
     }
+
+    let defaultRole = null;
+    if (createUserAccount) {
+      const { data: setting, error: settingError } = await supabaseAdmin
+        .from("employee_code_settings")
+        .select("id")
+        .eq("company_id", branch.company_id)
+        .eq("status", "active")
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (settingError) throw settingError;
+      if (!setting) throw validationError("บริษัทนี้ยังไม่มีรูปแบบรหัสพนักงานที่เปิดใช้งาน");
+
+      const codeResult = await reserveEmployeeCode({
+        companyId: branch.company_id,
+        settingId: setting.id,
+        employeeType: savedPosition?.is_executive ? "executive" : "thai",
+        // The employee's start date may be historical. Use today's date for
+        // code-setting validation and running-year generation.
+        runningDate: new Date().toISOString().slice(0, 10),
+        skipEffectiveDateCheck: true,
+      });
+      if (!codeResult.success) throw validationError(codeResult.message || "สร้างรหัสพนักงานไม่สำเร็จ");
+      employeeCode = codeResult.data.employee_code;
+      if (legacyCodes.includes(employeeCode)) {
+        return fail("รหัสเก่าต้องไม่ซ้ำกับรหัสที่ระบบสร้าง");
+      }
+
+      const { data: role, error: roleError } = await supabaseAdmin
+        .from("roles")
+        .select("id,role_code,is_active")
+        .eq("role_code", "EMS_ADMIN")
+        .eq("is_active", true)
+        .maybeSingle();
+      if (roleError) throw roleError;
+      if (!role) throw validationError("ยังไม่มี Role EMS_ADMIN ที่เปิดใช้งาน");
+      defaultRole = role;
+    }
+
+    const { data: existingGenerated, error: generatedError } = await supabaseAdmin
+      .from("employees").select("id").eq("employee_code", employeeCode).maybeSingle();
+    if (generatedError) throw generatedError;
+    if (existingGenerated) return fail("รหัสพนักงานที่ระบบสร้างมีอยู่แล้ว กรุณาลองใหม่", 409);
 
     const row = {
       employee_code: employeeCode,
@@ -143,6 +196,7 @@ export async function POST(request) {
       if (createError.code === "23505") return fail("รหัสพนักงานนี้ถูกใช้แล้ว", 409);
       throw createError;
     }
+    createdEmployeeId = created.id;
     if (salaryText) {
       const { error: salaryError } = await supabaseAdmin.from("employee_compensations").insert({
         employee_id: created.id,
@@ -179,9 +233,63 @@ export async function POST(request) {
         throw legacyError;
       }
     }
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    let initialLogin = null;
+    if (createUserAccount) {
+      const temporaryPassword = employeeCode;
+      const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+      const authEmail = `${employeeCode.toLowerCase()}_${Date.now()}@local.user`;
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: authEmail,
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: { employee_code: employeeCode, must_change_password: true },
+      });
+      if (authError) throw authError;
+      createdAuthUserId = authData?.user?.id || null;
+      if (!createdAuthUserId) throw new Error("ไม่พบ Auth User ID หลังสร้างบัญชี");
+
+      const { data: account, error: accountError } = await supabaseAdmin
+        .from("user_accounts")
+        .insert({
+          auth_user_id: createdAuthUserId,
+          employee_id: created.id,
+          username: employeeCode,
+          password_hash: passwordHash,
+          role_id: defaultRole.id,
+          is_active: true,
+        })
+        .select("id")
+        .single();
+      if (accountError) throw accountError;
+
+      const { error: roadmapError } = await supabaseAdmin.from("rm_user_access").insert({
+        employee_id: created.id,
+        user_account_id: account.id,
+        role: defaultRole.role_code,
+      });
+      if (roadmapError) throw roadmapError;
+
+      initialLogin = {
+        username: employeeCode,
+        temporary_password: temporaryPassword,
+        must_change_password: true,
+      };
+    }
+    return NextResponse.json({ success: true, data: { ...created, initial_login: initialLogin } }, { status: 201 });
   } catch (error) {
     console.error("Create employee failed", error);
-    return fail("บันทึกพนักงานไม่สำเร็จ กรุณาตรวจข้อมูลและลองอีกครั้ง", 500);
+    if (createdEmployeeId) {
+      await supabaseAdmin.from("rm_user_access").delete().eq("employee_id", createdEmployeeId);
+      await supabaseAdmin.from("user_accounts").delete().eq("employee_id", createdEmployeeId);
+      await supabaseAdmin.from("employee_legacy_codes").delete().eq("employee_id", createdEmployeeId);
+      await supabaseAdmin.from("employee_compensations").delete().eq("employee_id", createdEmployeeId);
+      await supabaseAdmin.from("employees").delete().eq("id", createdEmployeeId);
+    }
+    if (createdAuthUserId) await supabaseAdmin.auth.admin.deleteUser(createdAuthUserId);
+    if (createdNewPositionId) await supabaseAdmin.from("positions").delete().eq("id", createdNewPositionId);
+    return fail(
+      error?.status === 400 ? error.message : "บันทึกพนักงานไม่สำเร็จ กรุณาตรวจข้อมูลและลองอีกครั้ง",
+      error?.status === 400 ? 400 : 500,
+    );
   }
 }

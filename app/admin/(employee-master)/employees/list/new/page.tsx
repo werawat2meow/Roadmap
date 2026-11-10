@@ -32,6 +32,7 @@ const paths: Record<string, string> = {
 };
 const initial = {
   employee_code: "",
+  create_user_account: false,
   first_name_th: "",
   last_name_th: "",
   first_name_en: "",
@@ -64,6 +65,11 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [createUserAccount, setCreateUserAccount] = useState(false);
+  const [initialLogin, setInitialLogin] = useState<{
+    username: string;
+    temporary_password: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -163,6 +169,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
     const file = event.target.files?.[0];
     if (!file) return;
     setError("");
+    setInitialLogin(null);
     setUploading(true);
     try {
       const data = new FormData();
@@ -200,6 +207,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          create_user_account: !employeeId && createUserAccount,
           legacy_codes: legacyCodes
             .map((value) => value.trim())
             .filter(Boolean),
@@ -208,6 +216,10 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
       const json = await response.json();
       if (!response.ok || !json.success)
         throw new Error(json.error || "บันทึกไม่สำเร็จ");
+      if (json.data?.initial_login) {
+        setInitialLogin(json.data.initial_login);
+        return;
+      }
       router.push("/admin/employees/list");
       router.refresh();
     } catch (reason) {
@@ -229,7 +241,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
       <input
         type={type}
         required={required}
-        value={form[name]}
+        value={String(form[name] ?? "")}
         onChange={(event) => change(name, event.target.value)}
         className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
       />
@@ -247,7 +259,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
       {required && <span className="text-red-500"> *</span>}
       <select
         required={required}
-        value={form[name]}
+        value={String(form[name] ?? "")}
         onChange={(event) => change(name, event.target.value)}
         className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
       >
@@ -320,7 +332,26 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                   />
                 </label>
                 <div className="space-y-4">
-                  {input("รหัสพนักงานปัจจุบัน", "employee_code", true)}
+                  {input(
+                    createUserAccount ? "รหัสพนักงานปัจจุบัน (สร้างอัตโนมัติ)" : "รหัสพนักงานปัจจุบัน",
+                    "employee_code",
+                    !createUserAccount,
+                  )}
+                  {!employeeId && (
+                    <label className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-slate-900">
+                      <input
+                        type="checkbox"
+                        checked={createUserAccount}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setCreateUserAccount(checked);
+                          if (checked) change("employee_code", "");
+                        }}
+                        className="h-5 w-5 accent-emerald-600"
+                      />
+                      สร้างรหัสเข้าใช้งานระบบให้พนักงาน
+                    </label>
+                  )}
                   <div>
                     <p className="mb-2 text-sm font-semibold">
                       รหัสพนักงานเก่า (เพิ่มได้หลายรหัส)
@@ -464,7 +495,22 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 )}
               </div>
             </section>
-            <div className="flex flex-wrap justify-end gap-3 pb-8">
+            {initialLogin && (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+                <h2 className="font-bold">สร้างบัญชีเข้าใช้งานสำเร็จ</h2>
+                <p>Username: <strong>{initialLogin.username}</strong></p>
+                <p>รหัสผ่านชั่วคราว: <strong>{initialLogin.temporary_password}</strong></p>
+                <p className="mt-2 text-sm">กรุณาบันทึกข้อมูลนี้ก่อนออกจากหน้า ระบบจะไม่แสดงรหัสผ่านนี้ซ้ำ</p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/employees/list")}
+                  className="mt-4 rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white"
+                >
+                  เสร็จสิ้น
+                </button>
+              </div>
+            )}
+            {!initialLogin && <div className="flex flex-wrap justify-end gap-3 pb-8">
               <button
                 type="button"
                 onClick={() => router.push("/admin/employees/list")}
@@ -479,7 +525,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
               >
                 <Save size={18} /> {saving ? "กำลังบันทึก..." : employeeId ? "บันทึกการแก้ไข" : "บันทึกพนักงาน"}
               </button>
-            </div>
+            </div>}
           </form>
         )}
       </div>

@@ -157,8 +157,8 @@ export async function POST(
        6. Resize + Optimize
 
        - rotate() แก้ Orientation จาก EXIF
-       - resize 500 × 500
-       - cover ตัดส่วนเกินให้เป็นสี่เหลี่ยม
+       - ย่อให้ไม่เกิน 500 × 500 โดยรักษาสัดส่วนเดิม
+       - เก็บภาพครบทั้งรูป ไม่ครอปหรือเติมขอบในไฟล์
        - convert WebP
        - quality 82
     ===================================================== */
@@ -172,9 +172,8 @@ export async function POST(
           PROFILE_WIDTH,
           PROFILE_HEIGHT,
           {
-            fit: "cover",
-            position:
-              "centre",
+            fit: "inside",
+            withoutEnlargement: true,
           }
         )
         .webp({
@@ -184,6 +183,8 @@ export async function POST(
           effort: 4,
         })
         .toBuffer();
+
+    const optimizedMetadata = await sharp(optimizedBuffer).metadata();
 
     /* =====================================================
        7. File Name
@@ -265,9 +266,9 @@ export async function POST(
       folder:EMPLOYEE_FOLDER,
       image: {
         width:
-          PROFILE_WIDTH,
+          optimizedMetadata.width,
         height:
-          PROFILE_HEIGHT,
+          optimizedMetadata.height,
         format:
           "webp",
         quality:

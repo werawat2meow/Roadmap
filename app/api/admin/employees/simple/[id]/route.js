@@ -103,12 +103,6 @@ export async function PATCH(request, { params }) {
       const unit = await getOne("units", body.unit_id, "id,division_id,status");
       if (!body.division_id || !unit || unit.division_id !== body.division_id || unit.status !== "active") return fail("หน่วยไม่อยู่ในฝ่ายที่เลือก");
     }
-    if (!creatingPosition) {
-      const { data: mapping, error } = await supabaseAdmin.from("position_level_mappings")
-        .select("id").eq("position_id", position.id).eq("position_level_id", level.id).maybeSingle();
-      if (error) throw error;
-      if (!mapping) return fail("Level P ไม่ตรงกับตำแหน่งที่เลือก");
-    }
     const { data: sameCode, error: sameCodeError } = await supabaseAdmin.from("employees")
       .select("id").eq("employee_code", employeeCode).neq("id", id).limit(1);
     if (sameCodeError) throw sameCodeError;

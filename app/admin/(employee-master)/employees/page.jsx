@@ -9,6 +9,7 @@ import MasterLayout from "@/app/admin/(employee-master)/components/master/Master
 import MasterPageHeader from "@/app/admin/(employee-master)/components/master/MasterPageHeader";
 import EmployeeOverview from "./components/EmployeeOverview";
 import EmployeeListCard from "./components/EmployeeListCard";
+import EmployeeImportActions from "./components/EmployeeImportActions";
 import EmployeeWizardModal from "./components/EmployeeWizardModal";
 import {EMPLOYEE_STEP_FIELDS, EMPLOYEE_WIZARD_STEPS} from "./components/EmployeeWizardForm";
 import useScopedPermissions from "@/hooks/useScopedPermissions";
@@ -3623,9 +3624,11 @@ export default function EmployeesPage() {
             title={isListPage ? "รายชื่อพนักงาน" : "ภาพรวมพนักงาน"}
             subtitle={isListPage ? "ค้นหาและจัดการข้อมูลพนักงาน" : "จำนวนพนักงานตามสถานะปัจจุบัน"}
             loading={loading}
-            canRefresh
+            canRefresh={!isListPage}
+            extra={isListPage && canCreate ? <EmployeeImportActions onImported={handleRefresh} /> : null}
             canCreate={isListPage && canCreate}
             createText="เพิ่มพนักงาน"
+            createClassName="!from-green-500 !to-emerald-700 hover:!from-green-600 hover:!to-emerald-800"
             onCreate={handleCreate}
             onRefresh={handleRefresh}
           />

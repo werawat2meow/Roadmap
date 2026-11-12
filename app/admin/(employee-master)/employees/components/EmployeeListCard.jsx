@@ -48,7 +48,7 @@ export default function EmployeeListCard({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       {employee.employee_photo_url ? (
-                        <img src={employee.employee_photo_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                        <img src={employee.employee_photo_url} alt="" className="h-10 w-10 shrink-0 rounded-full bg-white object-cover object-top" />
                       ) : (
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500"><UserRound size={20} /></span>
                       )}
@@ -59,8 +59,8 @@ export default function EmployeeListCard({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-700">
-                    <div>{employee.branches?.branch_name || "-"}</div>
-                    <div className="text-xs text-slate-500">{employee.departments?.department_name || "-"}</div>
+                    <div>{employee.branches?.branch_name || "ยังไม่ระบุ"}</div>
+                    <div className="text-xs text-slate-500">{employee.departments?.department_name || "ยังไม่ระบุ"}</div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{employee.position_levels?.level_code || "-"}</span>

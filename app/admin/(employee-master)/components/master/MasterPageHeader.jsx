@@ -15,6 +15,7 @@ export default function MasterPageHeader({
   canCreate = true,
 
   createText = "เพิ่มข้อมูล",
+  createClassName = "",
 
   onRefresh,
   onCreate,
@@ -76,6 +77,7 @@ export default function MasterPageHeader({
               type="primary"
               icon={<PlusOutlined />}
               onClick={onCreate}
+              className={`!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-green-500 !to-emerald-700 !px-5 !font-semibold !text-white !shadow-md !shadow-green-700/20 hover:!from-green-600 hover:!to-emerald-800 hover:!text-white [&_.anticon]:!text-white [&.ant-btn-disabled]:!text-white ${createClassName}`}
             >
               {createText}
             </Button>

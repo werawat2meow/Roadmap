@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { Select } from "antd";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -84,33 +85,63 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
         const json = await response.json();
         if (!response.ok || !json.success)
           throw new Error(json.error || `โหลด ${key} ไม่สำเร็จ`);
-        return [
-          key,
-          Array.isArray(json.data)
-            ? json.data
-            : json.data?.items || json.items || [],
-        ] as const;
+        let items = Array.isArray(json.data)
+          ? json.data
+          : json.data?.items || json.items || [];
+        // This API paginates even when all=true. Load every page of levels.
+        if (key === "levels") {
+          const totalPages = json.pagination?.totalPages || 1;
+          for (let page = 2; page <= totalPages; page++) {
+            const nextResponse = await fetch(
+              `/api/admin/${path}?page=${page}&status=active${scoped}`,
+            );
+            const nextJson = await nextResponse.json();
+            if (!nextResponse.ok || !nextJson.success)
+              throw new Error(nextJson.error || "โหลด Level P ไม่สำเร็จ");
+            items = [...items, ...(nextJson.data || [])];
+          }
+        }
+        return [key, items] as const;
       }),
-      ...(employeeId ? [fetch(`/api/admin/employees/simple/${encodeURIComponent(employeeId)}`)
-        .then(async (response) => {
-          const json = await response.json();
-          if (!response.ok || !json.success) throw new Error(json.error || "โหลดข้อมูลพนักงานไม่สำเร็จ");
-          return json.data;
-        })] : []),
+      ...(employeeId
+        ? [
+            fetch(
+              `/api/admin/employees/simple/${encodeURIComponent(employeeId)}`,
+            ).then(async (response) => {
+              const json = await response.json();
+              if (!response.ok || !json.success)
+                throw new Error(json.error || "โหลดข้อมูลพนักงานไม่สำเร็จ");
+              return json.data;
+            }),
+          ]
+        : []),
     ])
       .then((entries) => {
         if (!active) return;
-        setLists(Object.fromEntries(entries.slice(0, Object.keys(paths).length) as (readonly [string, Item[]])[]));
+        setLists(
+          Object.fromEntries(
+            entries.slice(0, Object.keys(paths).length) as (readonly [
+              string,
+              Item[],
+            ])[],
+          ),
+        );
         if (employeeId) {
           const data = entries[entries.length - 1] as Item;
-          setForm(Object.fromEntries(Object.keys(initial).map((key) => [
-            key,
-            key === "start_work_date"
-              ? data.employee?.start_work_date ?? data.employee?.hire_date ?? ""
-              : key === "base_salary"
-                ? String(data.employee?.base_salary ?? "")
-                : data.employee?.[key] ?? "",
-          ])) as typeof initial);
+          setForm(
+            Object.fromEntries(
+              Object.keys(initial).map((key) => [
+                key,
+                key === "start_work_date"
+                  ? (data.employee?.start_work_date ??
+                    data.employee?.hire_date ??
+                    "")
+                  : key === "base_salary"
+                    ? String(data.employee?.base_salary ?? "")
+                    : (data.employee?.[key] ?? ""),
+              ]),
+            ) as typeof initial,
+          );
           setLegacyCodes(data.legacy_codes?.length ? data.legacy_codes : [""]);
         }
       })
@@ -141,14 +172,9 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
   const units = (lists.units || []).filter(
     (item) => item.division_id === form.division_id,
   );
-  const selectedPosition = (lists.positions || []).find(
-    (item) => item.id === form.position_id,
+  const levels = (lists.levels || []).filter((item: Item) =>
+    /^P\d+$/i.test(item.level_code || ""),
   );
-  const levels = (
-    form.position_id === "__new__"
-      ? lists.levels || []
-      : selectedPosition?.levels || []
-  ).filter((item: Item) => /^P\d+$/i.test(item.level_code || ""));
 
   function change(name: keyof typeof initial, value: string) {
     setForm((old) => ({
@@ -159,9 +185,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
         : {}),
       ...(name === "department_id" ? { division_id: "", unit_id: "" } : {}),
       ...(name === "division_id" ? { unit_id: "" } : {}),
-      ...(name === "position_id"
-        ? { position_level_id: "", new_position_name: "" }
-        : {}),
+      ...(name === "position_id" ? { new_position_name: "" } : {}),
     }));
   }
 
@@ -200,19 +224,22 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
     setError("");
     setSaving(true);
     try {
-      const response = await fetch(employeeId
-        ? `/api/admin/employees/simple/${encodeURIComponent(employeeId)}`
-        : "/api/admin/employees/simple", {
-        method: employeeId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          create_user_account: !employeeId && createUserAccount,
-          legacy_codes: legacyCodes
-            .map((value) => value.trim())
-            .filter(Boolean),
-        }),
-      });
+      const response = await fetch(
+        employeeId
+          ? `/api/admin/employees/simple/${encodeURIComponent(employeeId)}`
+          : "/api/admin/employees/simple",
+        {
+          method: employeeId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            create_user_account: !employeeId && createUserAccount,
+            legacy_codes: legacyCodes
+              .map((value) => value.trim())
+              .filter(Boolean),
+          }),
+        },
+      );
       const json = await response.json();
       if (!response.ok || !json.success)
         throw new Error(json.error || "บันทึกไม่สำเร็จ");
@@ -288,7 +315,9 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
             <UserPlus size={26} />
           </span>
           <div>
-            <h1 className="text-2xl font-bold">{employeeId ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงาน"}</h1>
+            <h1 className="text-2xl font-bold">
+              {employeeId ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงาน"}
+            </h1>
             <p className="text-sm text-slate-500">
               กรอกข้อมูลที่จำเป็นในหน้าเดียว
             </p>
@@ -314,7 +343,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                     <img
                       src={form.employee_photo_url}
                       alt="รูปพนักงาน"
-                      className="h-28 w-28 rounded-full object-cover"
+                      className="h-28 w-28 rounded-full bg-white object-cover object-top"
                     />
                   ) : (
                     <UploadCloud size={34} />
@@ -333,7 +362,9 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 </label>
                 <div className="space-y-4">
                   {input(
-                    createUserAccount ? "รหัสพนักงานปัจจุบัน (สร้างอัตโนมัติ)" : "รหัสพนักงานปัจจุบัน",
+                    createUserAccount
+                      ? "รหัสพนักงานปัจจุบัน (สร้างอัตโนมัติ)"
+                      : "รหัสพนักงานปัจจุบัน",
                     "employee_code",
                     !createUserAccount,
                   )}
@@ -436,7 +467,9 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                     max="999999999999.99"
                     step="0.01"
                     value={form.base_salary}
-                    onChange={(event) => change("base_salary", event.target.value)}
+                    onChange={(event) =>
+                      change("base_salary", event.target.value)
+                    }
                     className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   />
                 </label>
@@ -464,22 +497,50 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 {select("หน่วย", "unit_id", units, "unit_name")}
                 <label className="block text-sm font-semibold text-slate-900">
                   ตำแหน่ง<span className="text-red-500"> *</span>
-                  <select
-                    required
-                    value={form.position_id}
-                    onChange={(event) =>
-                      change("position_id", event.target.value)
-                    }
-                    className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                  >
-                    <option value="">เลือกตำแหน่ง</option>
-                    {(lists.positions || []).map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.position_name}
-                      </option>
-                    ))}
-                    <option value="__new__">+ เพิ่มตำแหน่งใหม่</option>
-                  </select>
+                  <div className="mt-2 w-full">
+                    <Select
+                      showSearch
+                      allowClear
+                      aria-required="true"
+                      value={form.position_id || undefined}
+                      placeholder="ค้นหาหรือเลือกตำแหน่ง"
+                      optionFilterProp="label"
+                      filterOption={(input, option) =>
+                        String(option?.label || "")
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                      onChange={(value) => change("position_id", value || "")}
+                      options={[
+                        ...(lists.positions || []).map((item) => ({
+                          value: item.id,
+                          label: item.position_name,
+                        })),
+                        {
+                          value: "__new__",
+                          label: "+ เพิ่มตำแหน่งใหม่",
+                        },
+                      ]}
+                      size="large"
+                      className="!h-12 !w-full"
+                      style={{
+                        width: "100%",
+                        height: "48px",
+                      }}
+                      styles={{
+                        root: {
+                          width: "100%",
+                          height: "48px",
+                        },
+                        placeholder: {
+                          color: "#0f172a",
+                        },
+                        content: {
+                          color: "#0f172a",
+                        },
+                      }}
+                    />
+                  </div>
                 </label>
                 {select(
                   "Level P",
@@ -498,9 +559,16 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
             {initialLogin && (
               <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
                 <h2 className="font-bold">สร้างบัญชีเข้าใช้งานสำเร็จ</h2>
-                <p>Username: <strong>{initialLogin.username}</strong></p>
-                <p>รหัสผ่านชั่วคราว: <strong>{initialLogin.temporary_password}</strong></p>
-                <p className="mt-2 text-sm">กรุณาบันทึกข้อมูลนี้ก่อนออกจากหน้า ระบบจะไม่แสดงรหัสผ่านนี้ซ้ำ</p>
+                <p>
+                  Username: <strong>{initialLogin.username}</strong>
+                </p>
+                <p>
+                  รหัสผ่านชั่วคราว:{" "}
+                  <strong>{initialLogin.temporary_password}</strong>
+                </p>
+                <p className="mt-2 text-sm">
+                  กรุณาบันทึกข้อมูลนี้ก่อนออกจากหน้า ระบบจะไม่แสดงรหัสผ่านนี้ซ้ำ
+                </p>
                 <button
                   type="button"
                   onClick={() => router.push("/admin/employees/list")}
@@ -510,22 +578,29 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 </button>
               </div>
             )}
-            {!initialLogin && <div className="flex flex-wrap justify-end gap-3 pb-8">
-              <button
-                type="button"
-                onClick={() => router.push("/admin/employees/list")}
-                className="h-12 cursor-pointer rounded-xl border border-slate-300 bg-white px-7 font-bold hover:bg-slate-50"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="submit"
-                disabled={saving || uploading}
-                className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 px-8 font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Save size={18} /> {saving ? "กำลังบันทึก..." : employeeId ? "บันทึกการแก้ไข" : "บันทึกพนักงาน"}
-              </button>
-            </div>}
+            {!initialLogin && (
+              <div className="flex flex-wrap justify-end gap-3 pb-8">
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/employees/list")}
+                  className="h-12 cursor-pointer rounded-xl border border-slate-300 bg-white px-7 font-bold hover:bg-slate-50"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || uploading}
+                  className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 px-8 font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Save size={18} />{" "}
+                  {saving
+                    ? "กำลังบันทึก..."
+                    : employeeId
+                      ? "บันทึกการแก้ไข"
+                      : "บันทึกพนักงาน"}
+                </button>
+              </div>
+            )}
           </form>
         )}
       </div>

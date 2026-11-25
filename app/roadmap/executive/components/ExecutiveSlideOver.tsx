@@ -8,6 +8,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import EmployeeDocumentsButton from "@/app/roadmap/components/EmployeeDocumentsButton";
 
 type Employee = {
   initials: string;
@@ -39,6 +40,7 @@ type ExecutiveSlideOverProps = {
     completedDate?: string;
   } | null;
   evaluationId?: string;
+  employeeId?: string;
   onClose: () => void;
   onApprove?: () => void;
   onReject?: () => void;
@@ -49,6 +51,7 @@ export default function ExecutiveSlideOver({
   open,
   employee,
   evaluationId,
+  employeeId,
   onClose,
   onApprove,
   onReject,
@@ -192,6 +195,15 @@ export default function ExecutiveSlideOver({
               />
             </div>
           </div>
+
+          {employeeId && (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <p className="mb-3 text-sm font-bold text-slate-800">
+                เอกสารประกอบการประเมิน
+              </p>
+              <EmployeeDocumentsButton employeeId={employeeId} />
+            </div>
+          )}
 
           {/* Link to Full Details Card */}
           {evaluationId && (

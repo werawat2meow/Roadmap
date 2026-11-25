@@ -51,6 +51,11 @@ type HistoryRecord = {
   maxScore: number | null;
   currentSalary?: number | null;
   newSalary?: number | null;
+  evaluation_period?: string | null;
+  evaluation_period_continued?: string | null;
+  new_designation?: string | null;
+  new_level?: string | null;
+  special_compensation?: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
   extra_data?: any;
@@ -330,6 +335,21 @@ export default function EvaluateEmployeePage() {
           totalScore: record.totalScore ?? prev.totalScore,
           currentSalary: record.currentSalary ?? prev.currentSalary,
           newSalary: record.newSalary ?? prev.newSalary,
+          evaluationPeriod:
+            record.evaluation_period ??
+            extraData.evaluationPeriod ??
+            prev.evaluationPeriod,
+          evaluationPeriodContinued:
+            record.evaluation_period_continued ??
+            extraData.evaluationPeriodContinued ??
+            prev.evaluationPeriodContinued,
+          newDesignation:
+            record.new_designation ?? extraData.newDesignation ?? prev.newDesignation,
+          newLevel: record.new_level ?? extraData.newLevel ?? prev.newLevel,
+          specialCompensation:
+            record.special_compensation ??
+            extraData.specialCompensation ??
+            prev.specialCompensation,
           managerComment: record.managerComment ?? prev.managerComment,
           examScore: record.examScore ?? prev.examScore,
           examMaxScore: record.examMaxScore ?? prev.examMaxScore,
@@ -775,7 +795,21 @@ export default function EvaluateEmployeePage() {
         <div className="lg:col-span-2">{renderFormContent()}</div>
         <div>
           <SummarySidebar
-            allFormData={formData}
+            employeeId={employee.id}
+            uploadedBy={evaluatorId}
+            allFormData={{
+              ...formData,
+              employeeCode: employee.employeeCode,
+              employeeName: employee.name,
+              nickname: employee.nickName,
+              position: employee.role,
+              company: employee.branch,
+              department: employee.department,
+              division: employee.division,
+              unit: employee.unit,
+              level: employee.level,
+              startDate: employee.hireDate,
+            }}
             evaluationType={activeTab}
             managers={managers}
             selectedManagerIds={selectedManagerIds}

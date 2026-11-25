@@ -13,6 +13,7 @@ export interface Employee {
   id: string;
   employeeCode: string;
   name: string;
+  nickName?: string;
   firstNameEn?: string;
   lastNameEn?: string;
   avatar: string;

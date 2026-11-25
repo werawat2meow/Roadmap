@@ -21,6 +21,7 @@ import {
 type Item = Record<string, any>;
 type Lists = Record<string, Item[]>;
 const paths: Record<string, string> = {
+  employeeStatuses: "employee-statuses",
   branches: "branches",
   departments: "departments",
   links: "branch-departments",
@@ -33,6 +34,7 @@ const paths: Record<string, string> = {
 };
 const initial = {
   employee_code: "",
+  employee_status_id: "",
   create_user_account: false,
   first_name_th: "",
   last_name_th: "",
@@ -175,6 +177,19 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
   const levels = (lists.levels || []).filter((item: Item) =>
     /^P\d+$/i.test(item.level_code || ""),
   );
+  const employeeStatusOptions = [
+    ["PROBATION", "พนักงานทดลองงาน"],
+    ["ACTIVE", "พนักงานประจำ"],
+    ["RESIGNED", "ลาออกแล้ว"],
+  ]
+    .map(([code, label]) => ({
+      code,
+      label,
+      item: (lists.employeeStatuses || []).find(
+        (status) => String(status.status_code || "").toUpperCase() === code,
+      ),
+    }))
+    .filter((option) => option.item?.id);
 
   function change(name: keyof typeof initial, value: string) {
     setForm((old) => ({
@@ -428,6 +443,35 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                       <Plus size={17} /> เพิ่มรหัสเก่า
                     </button>
                   </div>
+                  <fieldset className="mt-4 rounded-xl border border-slate-200 p-4">
+                    <legend className="px-1 text-sm font-semibold text-slate-900">
+                      สถานะพนักงาน <span className="text-red-500">*</span>
+                    </legend>
+                    <div className="mt-2 flex flex-wrap gap-5">
+                      {employeeStatusOptions.map((option) => (
+                        <label
+                          key={option.code}
+                          className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700"
+                        >
+                          <input
+                            type="radio"
+                            name="employee_status_id"
+                            value={String(option.item!.id)}
+                            checked={
+                              String(form.employee_status_id) ===
+                                String(option.item!.id)
+                            }
+                            onChange={(event) =>
+                              change("employee_status_id", event.target.value)
+                            }
+                            required
+                            className="h-4 w-4 accent-emerald-600"
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
               </div>
             </section>
@@ -583,7 +627,7 @@ export function EmployeeForm({ employeeId }: { employeeId?: string }) {
                 <button
                   type="button"
                   onClick={() => router.push("/admin/employees/list")}
-                  className="h-12 cursor-pointer rounded-xl border border-slate-300 bg-white px-7 font-bold hover:bg-slate-50"
+                  className="h-12 cursor-pointer rounded-xl bg-gradient-to-r from-red-600 to-rose-500 px-7 font-bold text-white shadow-lg transition hover:from-red-700 hover:to-rose-600"
                 >
                   ยกเลิก
                 </button>

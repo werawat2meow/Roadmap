@@ -27,7 +27,7 @@ export async function GET(_request, { params }) {
   try {
     const { id } = await params;
     const employee = await getOne("employees", id,
-      "id,employee_code,first_name_th,last_name_th,first_name_en,last_name_en,nickname_th,title_id,gender_id,birth_date,citizen_id,passport_no,start_work_date,hire_date,branch_id,department_id,division_id,unit_id,position_id,position_level_id,employee_photo_url,employee_photo_path,company_id,branch_group_id");
+      "id,employee_code,employee_status_id,first_name_th,last_name_th,first_name_en,last_name_en,nickname_th,title_id,gender_id,birth_date,citizen_id,passport_no,start_work_date,hire_date,branch_id,department_id,division_id,unit_id,position_id,position_level_id,employee_photo_url,employee_photo_path,company_id,branch_group_id");
     if (!employee) return fail("ไม่พบพนักงาน", 404);
     if (!guard.canAccessEmployee(employee)) return fail("ไม่มีสิทธิ์ดูพนักงานคนนี้", 403);
     const { data: codes, error } = await supabaseAdmin.from("employee_legacy_codes")
@@ -162,6 +162,7 @@ export async function PATCH(request, { params }) {
       position_id: position.id, position_family_id: position.position_family_id,
       job_id: position.job_id, position_level_id: level.id,
       employee_photo_url: nullable(body.employee_photo_url), employee_photo_path: nullable(body.employee_photo_path),
+      employee_status_id: nullable(body.employee_status_id),
     };
     const { data: saved, error: saveError } = await supabaseAdmin.from("employees")
       .update(row).eq("id", id).select("id,employee_code").single();

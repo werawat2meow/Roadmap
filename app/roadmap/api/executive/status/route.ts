@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     const { data: currentEvaluation, error: currentError } = await supabaseAdmin
       .from("rm_evaluations")
-      .select("id,status")
+      .select("id,status,employee_id,new_level")
       .eq("id", evaluationId)
       .maybeSingle();
     if (currentError) throw currentError;
@@ -63,6 +63,42 @@ export async function POST(req: Request) {
         { success: false, error: "ดำเนินการได้เฉพาะรายการที่ส่งประเมินครบแล้ว" },
         { status: 409 },
       );
+    }
+
+    let approvedPositionLevel: { id: string } | null = null;
+    if (action === "approve") {
+      const requestedLevel = String(currentEvaluation.new_level ?? "").trim();
+      if (requestedLevel) {
+        const positionLevelResult = await supabaseAdmin
+          .from("position_levels")
+          .select("id")
+          .eq("level_code", requestedLevel.toUpperCase())
+          .maybeSingle();
+
+        if (positionLevelResult.error) throw positionLevelResult.error;
+        approvedPositionLevel = positionLevelResult.data;
+
+        if (!approvedPositionLevel) {
+          const fallback = await supabaseAdmin
+            .from("position_levels")
+            .select("id")
+            .eq("level_name", requestedLevel)
+            .maybeSingle();
+
+          if (fallback.error) throw fallback.error;
+          approvedPositionLevel = fallback.data;
+        }
+
+        if (!approvedPositionLevel) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `ไม่พบระดับตำแหน่ง ${requestedLevel} ในระบบ จึงยังอนุมัติไม่ได้`,
+            },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     const now = new Date().toISOString();
@@ -153,6 +189,17 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (evalFetchError) throw evalFetchError;
+      if (approvedPositionLevel) {
+        const { error: employeeLevelError } = await supabaseAdmin
+          .from("employees")
+          .update({
+            position_level_id: approvedPositionLevel.id,
+            updated_at: now,
+          })
+          .eq("id", evaluation.employee_id);
+
+        if (employeeLevelError) throw employeeLevelError;
+      }
 
       const evaluationTypeName =
         (evaluation?.rm_evaluation_types as any)?.name ?? "";

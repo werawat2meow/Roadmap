@@ -421,19 +421,21 @@ model oauth_consents {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model one_time_tokens {
-  id         String              @id @db.Uuid
-  user_id    String              @db.Uuid
-  token_type one_time_token_type
-  token_hash String
-  relates_to String
-  created_at DateTime            @default(now()) @db.Timestamp(6)
-  updated_at DateTime            @default(now()) @db.Timestamp(6)
-  expires_at DateTime?           @db.Timestamptz(6)
-  users      users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id              String              @id @db.Uuid
+  user_id         String              @db.Uuid
+  token_type      one_time_token_type
+  token_hash      String
+  relates_to      String
+  created_at      DateTime            @default(now()) @db.Timestamp(6)
+  updated_at      DateTime            @default(now()) @db.Timestamp(6)
+  expires_at      DateTime?           @db.Timestamptz(6)
+  link_token_hash String?
+  users           users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, token_type])
   @@index([relates_to], map: "one_time_tokens_relates_to_hash_idx", type: Hash)
   @@index([token_hash], map: "one_time_tokens_token_hash_hash_idx", type: Hash)
+  @@index([link_token_hash], map: "one_time_tokens_link_token_hash_hash_idx", type: Hash)
   @@schema("auth")
 }
 
@@ -472,6 +474,7 @@ model saml_providers {
   created_at        DateTime?     @db.Timestamptz(6)
   updated_at        DateTime?     @db.Timestamptz(6)
   name_id_format    String?
+  dedicated_scope   Boolean?
   sso_providers     sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([sso_provider_id])
@@ -565,6 +568,9 @@ model sessions {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model sso_domains {
   id              String        @id @db.Uuid
   sso_provider_id String        @db.Uuid
@@ -580,6 +586,9 @@ model sso_domains {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -623,6 +632,9 @@ model sso_providers {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -996,6 +1008,9 @@ model benefit_notifications {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model benefit_policy_rules {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   benefit_id         String   @db.Uuid
@@ -1292,6 +1307,8 @@ model branches {
   recruit_job_open                                                             recruit_job_open[]
   recruit_orientation_locations                                                recruit_orientation_locations[]
   recruit_orientation_participants                                             recruit_orientation_participants[]
+  sop_documents                                                                sop_documents[]
+  sop_related_branches                                                         sop_related_branches[]
   unit_positions                                                               unit_positions[]
   user_access_assignment_scopes                                                user_access_assignment_scopes[]
 
@@ -1356,6 +1373,7 @@ model companies {
   payroll_runs                                                                                  payroll_runs[]
   recruit_job_applications                                                                      recruit_job_applications[]
   social_security_settings                                                                      social_security_settings[]
+  sop_user_settings                                                                             sop_user_settings[]
   tax_profiles                                                                                  tax_profiles[]
   tax_rate_sets                                                                                 tax_rate_sets[]
   user_access_assignment_scopes                                                                 user_access_assignment_scopes[]
@@ -1392,6 +1410,10 @@ model departments {
   recruit_job_description          recruit_job_description[]
   recruit_job_open                 recruit_job_open[]
   recruit_orientation_participants recruit_orientation_participants[]
+  sop_documents                    sop_documents[]
+  sop_related_scopes               sop_related_scopes[]
+  sop_running_counters             sop_running_counters[]
+  sop_user_settings                sop_user_settings[]
   user_access_assignment_scopes    user_access_assignment_scopes[]
 
   @@schema("public")
@@ -1418,6 +1440,10 @@ model divisions {
   recruit_job_applications      recruit_job_applications[]
   recruit_job_description       recruit_job_description[]
   recruit_job_open              recruit_job_open[]
+  sop_documents                 sop_documents[]
+  sop_related_scopes            sop_related_scopes[]
+  sop_running_counters          sop_running_counters[]
+  sop_user_settings             sop_user_settings[]
   units                         units[]
   user_access_assignment_scopes user_access_assignment_scopes[]
 
@@ -1564,6 +1590,7 @@ model employees {
   employee_change_requests                                                                        employee_change_requests[]
   employee_compensation_adjustments                                                               employee_compensation_adjustments[]
   employee_compensations                                                                          employee_compensations[]
+  employee_documents                                                                              employee_documents[]
   employee_exit_report_logs                                                                       employee_exit_report_logs[]
   employee_exit_report_tracking                                                                   employee_exit_report_tracking?
   employee_legacy_codes                                                                           employee_legacy_codes[]
@@ -1622,6 +1649,11 @@ model employees {
   recruit_orientation_participants                                                                recruit_orientation_participants[]
   RmEvaluationReviewer                                                                            RmEvaluationReviewer[]
   rm_user_access                                                                                  RmUserAccess[]
+  sop_approval_steps                                                                              sop_approval_steps[]
+  sop_audit_logs                                                                                  sop_audit_logs[]
+  sop_employee_signatures                                                                         sop_employee_signatures[]
+  sop_signer_steps                                                                                sop_signer_steps[]
+  sop_workflow_config_actors                                                                      sop_workflow_config_actors[]
   user_accounts                                                                                   user_accounts?
 
   @@index([branch_id], map: "idx_employees_branch_id")
@@ -2147,6 +2179,9 @@ model units {
   recruit_job_applications      recruit_job_applications[]
   recruit_job_description       recruit_job_description[]
   recruit_job_open              recruit_job_open[]
+  sop_documents                 sop_documents[]
+  sop_related_scopes            sop_related_scopes[]
+  sop_user_settings             sop_user_settings[]
   unit_positions                unit_positions[]
   divisions                     divisions                       @relation(fields: [division_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user_access_assignment_scopes user_access_assignment_scopes[]
@@ -2252,6 +2287,25 @@ model user_accounts {
   rm_user_access                                                                                  RmUserAccess[]
   social_security_settings_social_security_settings_created_byTouser_accounts                     social_security_settings[]               @relation("social_security_settings_created_byTouser_accounts")
   social_security_settings_social_security_settings_updated_byTouser_accounts                     social_security_settings[]               @relation("social_security_settings_updated_byTouser_accounts")
+  sop_admin_queue                                                                                 sop_admin_queue[]
+  sop_approval_steps                                                                              sop_approval_steps[]
+  sop_audit_logs                                                                                  sop_audit_logs[]
+  sop_documents_sop_documents_owner_user_account_idTouser_accounts                                sop_documents[]                          @relation("sop_documents_owner_user_account_idTouser_accounts")
+  sop_documents_sop_documents_published_byTouser_accounts                                         sop_documents[]                          @relation("sop_documents_published_byTouser_accounts")
+  sop_employee_signatures                                                                         sop_employee_signatures[]
+  sop_files                                                                                       sop_files[]
+  sop_import_batches                                                                              sop_import_batches[]
+  sop_signer_steps                                                                                sop_signer_steps[]
+  sop_status_history                                                                              sop_status_history[]
+  sop_submissions                                                                                 sop_submissions[]
+  sop_user_permissions_sop_user_permissions_granted_byTouser_accounts                             sop_user_permissions[]                   @relation("sop_user_permissions_granted_byTouser_accounts")
+  sop_user_permissions_sop_user_permissions_user_account_idTouser_accounts                        sop_user_permissions[]                   @relation("sop_user_permissions_user_account_idTouser_accounts")
+  sop_user_settings_sop_user_settings_created_byTouser_accounts                                   sop_user_settings[]                      @relation("sop_user_settings_created_byTouser_accounts")
+  sop_user_settings_sop_user_settings_updated_byTouser_accounts                                   sop_user_settings[]                      @relation("sop_user_settings_updated_byTouser_accounts")
+  sop_user_settings_sop_user_settings_user_account_idTouser_accounts                              sop_user_settings?                       @relation("sop_user_settings_user_account_idTouser_accounts")
+  sop_workflow_configs_sop_workflow_configs_created_byTouser_accounts                             sop_workflow_configs[]                   @relation("sop_workflow_configs_created_byTouser_accounts")
+  sop_workflow_configs_sop_workflow_configs_owner_user_account_idTouser_accounts                  sop_workflow_configs[]                   @relation("sop_workflow_configs_owner_user_account_idTouser_accounts")
+  sop_workflow_configs_sop_workflow_configs_updated_byTouser_accounts                             sop_workflow_configs[]                   @relation("sop_workflow_configs_updated_byTouser_accounts")
   tax_rate_sets_tax_rate_sets_created_byTouser_accounts                                           tax_rate_sets[]                          @relation("tax_rate_sets_created_byTouser_accounts")
   tax_rate_sets_tax_rate_sets_updated_byTouser_accounts                                           tax_rate_sets[]                          @relation("tax_rate_sets_updated_byTouser_accounts")
   user_access_assignments_user_access_assignments_created_byTouser_accounts                       user_access_assignments[]                @relation("user_access_assignments_created_byTouser_accounts")
@@ -3167,6 +3221,8 @@ model position_levels {
   status                           String?
   created_at                       DateTime?                          @db.Timestamptz(6)
   updated_at                       DateTime?                          @db.Timestamptz(6)
+  authority_category_level_rules   authority_category_level_rules[]
+  authority_level_rules            authority_level_rules[]
   employee_compensations           employee_compensations[]
   employees                        employees[]
   position_family_levels           position_family_levels[]
@@ -3540,6 +3596,9 @@ model employee_code_settings {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model employee_running_numbers {
   id                       String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id               String                 @db.Uuid
@@ -3894,6 +3953,9 @@ model salary_components {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4306,6 +4368,9 @@ model recruit_additional_cost {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model deduction_types {
   id                                                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                              String         @db.Uuid
@@ -4343,6 +4408,9 @@ model deduction_types {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4559,6 +4627,9 @@ model employee_statutory_profiles {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model formula_variables {
   id                                                        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                                String         @db.Uuid
@@ -4593,6 +4664,9 @@ model formula_variables {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4673,6 +4747,9 @@ model hr_policy_versions {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model payroll_formulas {
   id                                                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                               String         @db.Uuid
@@ -4711,6 +4788,9 @@ model payroll_formulas {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4799,6 +4879,9 @@ model payroll_run_items {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model payroll_runs {
   id                                                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id                                           String              @db.Uuid
@@ -4856,6 +4939,9 @@ model recruit_benefit_center {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -4927,6 +5013,9 @@ model tax_rate_brackets {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -5739,7 +5828,6 @@ model leave_work_schedule_days {
   department_id                 String?                         @db.Uuid
   division_id                   String?                         @db.Uuid
   unit_id                       String?                         @db.Uuid
-  share_link_id                 String?                         @db.Uuid
   note                          String?
   created_by                    String?                         @db.Uuid
   updated_by                    String?                         @db.Uuid
@@ -5751,12 +5839,10 @@ model leave_work_schedule_days {
   leave_work_schedule_periods   leave_work_schedule_periods     @relation(fields: [period_id], references: [id], onUpdate: NoAction)
   leave_work_shifts             leave_work_shifts?              @relation(fields: [shift_id], references: [id], onUpdate: NoAction)
   leave_work_schedule_intervals leave_work_schedule_intervals[]
-  leave_schedule_share_links    leave_schedule_share_links?     @relation(fields: [share_link_id], references: [id], onUpdate: NoAction)
 
   @@unique([employee_id, work_date, revision], map: "leave_work_schedule_days_revision_unique")
   @@index([period_id, state, work_date], map: "leave_work_schedule_days_period_idx")
   @@index([branch_id, department_id, division_id, unit_id], map: "leave_work_schedule_days_scope_idx")
-  @@index([share_link_id], map: "leave_work_schedule_days_share_link_idx")
   @@schema("public")
 }
 
@@ -6166,9 +6252,561 @@ model leave_schedule_share_links {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   expires_at    DateTime  @db.Timestamptz(6)
   revoked_at    DateTime? @db.Timestamptz(6)
-  leave_work_schedule_days leave_work_schedule_days[]
 
   @@index([year, month, branch_id, department_id], map: "leave_schedule_share_links_scope_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model employee_documents {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id       String    @db.Uuid
+  document_type     String    @default("OUTSIDE_EMPLOYMENT")
+  original_filename String
+  storage_path      String
+  file_url          String?
+  mime_type         String    @default("application/pdf")
+  file_size         BigInt?
+  status            String    @default("IMPORTED")
+  uploaded_by       String?   @db.Uuid
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  employees         employees @relation(fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([document_type])
+  @@index([employee_id])
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model authorities {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id           String                  @db.Uuid
+  authority_code        String                  @unique
+  authority_name        String
+  description           String?
+  sort_order            Int                     @default(0)
+  is_active             Boolean                 @default(true)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  authority_categories  authority_categories    @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  authority_level_rules authority_level_rules[]
+
+  @@index([is_active], map: "idx_authorities_active")
+  @@index([category_id], map: "idx_authorities_category_id")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model authority_categories {
+  id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_code                  String                           @unique
+  category_name                  String
+  description                    String?
+  sort_order                     Int                              @default(0)
+  is_active                      Boolean                          @default(true)
+  created_at                     DateTime                         @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime                         @default(now()) @db.Timestamptz(6)
+  authorities                    authorities[]
+  authority_category_level_rules authority_category_level_rules[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model authority_level_rules {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authority_id      String          @db.Uuid
+  position_level_id String          @db.Uuid
+  is_allowed        Boolean         @default(false)
+  limit_amount      Decimal?        @db.Decimal(14, 2)
+  limit_unit        String?
+  scope_text        String?
+  condition_text    String?
+  effective_from    DateTime?       @db.Date
+  effective_to      DateTime?       @db.Date
+  is_active         Boolean         @default(true)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  authorities       authorities     @relation(fields: [authority_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  position_levels   position_levels @relation(fields: [position_level_id], references: [id], onUpdate: NoAction)
+
+  @@unique([authority_id, position_level_id], map: "authority_level_rules_unique_level")
+  @@index([is_active], map: "idx_authority_level_rules_active")
+  @@index([authority_id], map: "idx_authority_level_rules_authority_id")
+  @@index([position_level_id], map: "idx_authority_level_rules_position_level_id")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_admin_queue {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  submission_id   String          @unique @db.Uuid
+  queued_at       DateTime        @default(now()) @db.Timestamptz(6)
+  queue_status    String          @default("waiting") @db.VarChar(20)
+  claimed_by      String?         @db.Uuid
+  claimed_at      DateTime?       @db.Timestamptz(6)
+  completed_at    DateTime?       @db.Timestamptz(6)
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime        @default(now()) @db.Timestamptz(6)
+  queue_sequence  BigInt          @unique(map: "sop_admin_queue_sequence_key")
+  user_accounts   user_accounts?  @relation(fields: [claimed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions sop_submissions @relation(fields: [submission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([claimed_by, queue_status], map: "sop_admin_queue_claimed_idx")
+  @@index([queue_status, queued_at], map: "sop_admin_queue_fifo_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_approval_steps {
+  id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  submission_id            String          @db.Uuid
+  approver_employee_id     String          @db.Uuid
+  approver_user_account_id String?         @db.Uuid
+  employee_name_snapshot   String          @db.VarChar(500)
+  position_snapshot        String?         @db.VarChar(500)
+  sequence_no              Int             @default(1)
+  status                   String          @default("pending") @db.VarChar(20)
+  comment                  String?
+  acted_at                 DateTime?       @db.Timestamptz(6)
+  created_at               DateTime        @default(now()) @db.Timestamptz(6)
+  employees                employees       @relation(fields: [approver_employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts            user_accounts?  @relation(fields: [approver_user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions          sop_submissions @relation(fields: [submission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([submission_id, approver_employee_id], map: "sop_approval_steps_unique")
+  @@index([approver_user_account_id, status], map: "sop_approval_steps_user_status_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_audit_logs {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id          String?          @db.Uuid
+  submission_id   String?          @db.Uuid
+  user_account_id String?          @db.Uuid
+  employee_id     String?          @db.Uuid
+  action_type     String           @db.VarChar(100)
+  event_status    String           @db.VarChar(20)
+  description     String?
+  old_data        Json?
+  new_data        Json?
+  ip_address      String?          @db.Inet
+  user_agent      String?          @db.VarChar(1000)
+  request_id      String?          @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  employees       employees?       @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_documents   sop_documents?   @relation(fields: [sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions sop_submissions? @relation(fields: [submission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts   user_accounts?   @relation(fields: [user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([sop_id, created_at(sort: Desc)], map: "sop_audit_logs_sop_created_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_documents {
+  id                                                               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_code                                                         String                 @unique @db.VarChar(255)
+  title                                                            String                 @db.VarChar(1000)
+  department_id                                                    String                 @db.Uuid
+  division_id                                                      String                 @db.Uuid
+  unit_id                                                          String?                @db.Uuid
+  running_year                                                     Int
+  running_number                                                   Int
+  branch_visibility                                                String                 @default("own_branch") @db.VarChar(30)
+  business_visibility                                              String                 @default("private") @db.VarChar(20)
+  status                                                           String                 @default("draft") @db.VarChar(40)
+  current_pdf_file_id                                              String?                @db.Uuid
+  revised_from_sop_id                                              String?                @db.Uuid
+  owner_user_account_id                                            String                 @db.Uuid
+  published_at                                                     DateTime?              @db.Timestamptz(6)
+  published_by                                                     String?                @db.Uuid
+  created_at                                                       DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                                       DateTime               @default(now()) @db.Timestamptz(6)
+  branch_id                                                        String                 @db.Uuid
+  sop_audit_logs                                                   sop_audit_logs[]
+  branches                                                         branches               @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_files_sop_documents_current_pdf_file_idTosop_files           sop_files?             @relation("sop_documents_current_pdf_file_idTosop_files", fields: [current_pdf_file_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sop_documents_current_pdf_fk")
+  departments                                                      departments            @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions                                                        divisions              @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_documents_owner_user_account_idTouser_accounts user_accounts          @relation("sop_documents_owner_user_account_idTouser_accounts", fields: [owner_user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_documents_published_byTouser_accounts          user_accounts?         @relation("sop_documents_published_byTouser_accounts", fields: [published_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_documents                                                    sop_documents?         @relation("sop_documentsTosop_documents", fields: [revised_from_sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_sop_documents                                              sop_documents[]        @relation("sop_documentsTosop_documents")
+  units                                                            units?                 @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_files_sop_files_sop_idTosop_documents                        sop_files[]            @relation("sop_files_sop_idTosop_documents")
+  sop_import_rows                                                  sop_import_rows[]
+  sop_related_branches                                             sop_related_branches[]
+  sop_related_scopes                                               sop_related_scopes[]
+  sop_status_history                                               sop_status_history[]
+  sop_submissions                                                  sop_submissions[]
+
+  @@unique([department_id, division_id, running_year, running_number], map: "sop_documents_running_key")
+  @@index([branch_id, department_id, division_id], map: "sop_documents_org_idx")
+  @@index([revised_from_sop_id], map: "sop_documents_revised_from_idx")
+  @@index([status, updated_at(sort: Desc)], map: "sop_documents_status_updated_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_employee_signatures {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id             String                    @db.Uuid
+  signature_base64        String
+  mime_type               String                    @db.VarChar(100)
+  checksum_sha256         String                    @db.Char(64)
+  is_default              Boolean                   @default(false)
+  status                  String                    @default("active") @db.VarChar(20)
+  created_by              String?                   @db.Uuid
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  user_accounts           user_accounts?            @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employees               employees                 @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_signature_snapshots sop_signature_snapshots[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_files {
+  id                                                           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id                                                       String            @db.Uuid
+  submission_id                                                String?           @db.Uuid
+  revision_no                                                  Int
+  source_type                                                  String            @db.VarChar(30)
+  original_file_name                                           String            @db.VarChar(500)
+  object_key                                                   String            @unique @db.VarChar(1000)
+  mime_type                                                    String            @db.VarChar(100)
+  file_size                                                    BigInt
+  checksum_sha256                                              String            @db.Char(64)
+  is_current                                                   Boolean           @default(false)
+  uploaded_by                                                  String?           @db.Uuid
+  created_at                                                   DateTime          @default(now()) @db.Timestamptz(6)
+  sop_documents_sop_documents_current_pdf_file_idTosop_files   sop_documents[]   @relation("sop_documents_current_pdf_file_idTosop_files")
+  sop_documents_sop_files_sop_idTosop_documents                sop_documents     @relation("sop_files_sop_idTosop_documents", fields: [sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions                                              sop_submissions?  @relation(fields: [submission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sop_files_submission_fk")
+  user_accounts                                                user_accounts?    @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions_sop_submissions_submitted_file_idTosop_files sop_submissions[] @relation("sop_submissions_submitted_file_idTosop_files")
+
+  @@unique([sop_id, revision_no], map: "sop_files_revision_key")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_import_batches {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  file_name       String            @db.VarChar(500)
+  status          String            @default("uploaded") @db.VarChar(20)
+  total_rows      Int               @default(0)
+  valid_rows      Int               @default(0)
+  invalid_rows    Int               @default(0)
+  imported_rows   Int               @default(0)
+  failed_rows     Int               @default(0)
+  created_by      String?           @db.Uuid
+  started_at      DateTime?         @db.Timestamptz(6)
+  completed_at    DateTime?         @db.Timestamptz(6)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  user_accounts   user_accounts?    @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_import_rows sop_import_rows[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_import_rows {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batch_id           String             @db.Uuid
+  row_no             Int
+  source_data        Json               @default("{}")
+  mapped_data        Json               @default("{}")
+  status             String             @default("ready") @db.VarChar(20)
+  error_messages     Json               @default("[]")
+  sop_id             String?            @db.Uuid
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  sop_import_batches sop_import_batches @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sop_documents      sop_documents?     @relation(fields: [sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([batch_id, row_no], map: "sop_import_rows_key")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_permissions {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  permission_code      String                 @unique @db.VarChar(100)
+  permission_name      String                 @db.VarChar(255)
+  description          String?
+  is_active            Boolean                @default(true)
+  sort_order           Int                    @default(0)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  sop_user_permissions sop_user_permissions[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_related_scopes {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id        String        @db.Uuid
+  scope_type    String        @db.VarChar(20)
+  department_id String?       @db.Uuid
+  division_id   String?       @db.Uuid
+  unit_id       String?       @db.Uuid
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  departments   departments?  @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions     divisions?    @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_documents sop_documents @relation(fields: [sop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units         units?        @relation(fields: [unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_running_counters {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id String      @db.Uuid
+  division_id   String      @db.Uuid
+  running_year  Int
+  last_number   Int         @default(0)
+  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
+  departments   departments @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions     divisions   @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([department_id, division_id, running_year], map: "sop_running_counters_key")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_signature_snapshots {
+  id                                                                               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  signer_step_id                                                                   String                   @unique @db.Uuid
+  source_signature_id                                                              String?                  @db.Uuid
+  signature_base64                                                                 String
+  mime_type                                                                        String                   @db.VarChar(100)
+  checksum_sha256                                                                  String                   @db.Char(64)
+  employee_name_snapshot                                                           String                   @db.VarChar(500)
+  position_snapshot                                                                String?                  @db.VarChar(500)
+  signed_at                                                                        DateTime                 @db.Timestamptz(6)
+  created_at                                                                       DateTime                 @default(now()) @db.Timestamptz(6)
+  sop_signer_steps_sop_signature_snapshots_signer_step_idTosop_signer_steps        sop_signer_steps         @relation("sop_signature_snapshots_signer_step_idTosop_signer_steps", fields: [signer_step_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sop_employee_signatures                                                          sop_employee_signatures? @relation(fields: [source_signature_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_signer_steps_sop_signer_steps_signature_snapshot_idTosop_signature_snapshots sop_signer_steps[]       @relation("sop_signer_steps_signature_snapshot_idTosop_signature_snapshots")
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_signer_steps {
+  id                                                                                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  submission_id                                                                           String                   @db.Uuid
+  signer_employee_id                                                                      String                   @db.Uuid
+  signer_user_account_id                                                                  String?                  @db.Uuid
+  employee_name_snapshot                                                                  String                   @db.VarChar(500)
+  position_snapshot                                                                       String?                  @db.VarChar(500)
+  sequence_no                                                                             Int                      @default(1)
+  is_required                                                                             Boolean                  @default(true)
+  status                                                                                  String                   @default("pending") @db.VarChar(20)
+  signature_snapshot_id                                                                   String?                  @db.Uuid
+  comment                                                                                 String?
+  signed_at                                                                               DateTime?                @db.Timestamptz(6)
+  created_at                                                                              DateTime                 @default(now()) @db.Timestamptz(6)
+  sop_signature_snapshots_sop_signature_snapshots_signer_step_idTosop_signer_steps        sop_signature_snapshots? @relation("sop_signature_snapshots_signer_step_idTosop_signer_steps")
+  employees                                                                               employees                @relation(fields: [signer_employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts                                                                           user_accounts?           @relation(fields: [signer_user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_signature_snapshots_sop_signer_steps_signature_snapshot_idTosop_signature_snapshots sop_signature_snapshots? @relation("sop_signer_steps_signature_snapshot_idTosop_signature_snapshots", fields: [signature_snapshot_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sop_signer_steps_snapshot_fk")
+  sop_submissions                                                                         sop_submissions          @relation(fields: [submission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([submission_id, signer_employee_id], map: "sop_signer_steps_unique")
+  @@index([signer_user_account_id, status], map: "sop_signer_steps_user_status_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_status_history {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id          String           @db.Uuid
+  submission_id   String?          @db.Uuid
+  from_status     String?          @db.VarChar(40)
+  to_status       String           @db.VarChar(40)
+  action_type     String           @db.VarChar(50)
+  comment         String?
+  acted_by        String?          @db.Uuid
+  acted_at        DateTime         @default(now()) @db.Timestamptz(6)
+  user_accounts   user_accounts?   @relation(fields: [acted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_documents   sop_documents    @relation(fields: [sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_submissions sop_submissions? @relation(fields: [submission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([sop_id, acted_at(sort: Desc)], map: "sop_status_history_sop_acted_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_submissions {
+  id                                                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id                                                 String                @db.Uuid
+  submission_no                                          Int
+  workflow_config_id                                     String?               @db.Uuid
+  approval_mode_snapshot                                 String                @db.VarChar(10)
+  status                                                 String                @default("pending_approval") @db.VarChar(40)
+  submitted_by                                           String                @db.Uuid
+  submitted_at                                           DateTime              @default(now()) @db.Timestamptz(6)
+  completed_at                                           DateTime?             @db.Timestamptz(6)
+  created_at                                             DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at                                             DateTime              @default(now()) @db.Timestamptz(6)
+  submitted_file_id                                      String?               @db.Uuid
+  queue_sequence                                         BigInt                @unique @default(autoincrement())
+  sop_admin_queue                                        sop_admin_queue?
+  sop_approval_steps                                     sop_approval_steps[]
+  sop_audit_logs                                         sop_audit_logs[]
+  sop_files                                              sop_files[]
+  sop_signer_steps                                       sop_signer_steps[]
+  sop_status_history                                     sop_status_history[]
+  sop_documents                                          sop_documents         @relation(fields: [sop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts                                          user_accounts         @relation(fields: [submitted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_files_sop_submissions_submitted_file_idTosop_files sop_files?            @relation("sop_submissions_submitted_file_idTosop_files", fields: [submitted_file_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sop_submissions_submitted_file_fk")
+  sop_workflow_configs                                   sop_workflow_configs? @relation(fields: [workflow_config_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([sop_id, submission_no], map: "sop_submissions_number_key")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_user_permissions {
+  id                                                                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_account_id                                                   String          @db.Uuid
+  permission_id                                                     String          @db.Uuid
+  is_allowed                                                        Boolean         @default(true)
+  effective_from                                                    DateTime        @default(dbgenerated("CURRENT_DATE")) @db.Date
+  effective_to                                                      DateTime?       @db.Date
+  granted_by                                                        String?         @db.Uuid
+  created_at                                                        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                                                        DateTime        @default(now()) @db.Timestamptz(6)
+  user_accounts_sop_user_permissions_granted_byTouser_accounts      user_accounts?  @relation("sop_user_permissions_granted_byTouser_accounts", fields: [granted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_permissions                                                   sop_permissions @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_user_permissions_user_account_idTouser_accounts user_accounts   @relation("sop_user_permissions_user_account_idTouser_accounts", fields: [user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_account_id, permission_id], map: "sop_user_permissions_user_permission_key")
+  @@index([user_account_id, is_allowed], map: "sop_user_permissions_user_allowed_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_user_settings {
+  id                                                             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_account_id                                                String         @unique @db.Uuid
+  is_enabled                                                     Boolean        @default(true)
+  default_company_id                                             String?        @db.Uuid
+  default_department_id                                          String?        @db.Uuid
+  default_division_id                                            String?        @db.Uuid
+  default_unit_id                                                String?        @db.Uuid
+  created_by                                                     String?        @db.Uuid
+  updated_by                                                     String?        @db.Uuid
+  created_at                                                     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at                                                     DateTime       @default(now()) @db.Timestamptz(6)
+  role_code                                                      String
+  user_accounts_sop_user_settings_created_byTouser_accounts      user_accounts? @relation("sop_user_settings_created_byTouser_accounts", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  companies                                                      companies?     @relation(fields: [default_company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departments                                                    departments?   @relation(fields: [default_department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  divisions                                                      divisions?     @relation(fields: [default_division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  units                                                          units?         @relation(fields: [default_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_user_settings_updated_byTouser_accounts      user_accounts? @relation("sop_user_settings_updated_byTouser_accounts", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_user_settings_user_account_idTouser_accounts user_accounts  @relation("sop_user_settings_user_account_idTouser_accounts", fields: [user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_workflow_config_actors {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflow_config_id   String               @db.Uuid
+  actor_type           String               @db.VarChar(20)
+  employee_id          String               @db.Uuid
+  sequence_no          Int                  @default(1)
+  is_required          Boolean              @default(true)
+  status               String               @default("active") @db.VarChar(20)
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime             @default(now()) @db.Timestamptz(6)
+  employees            employees            @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_workflow_configs sop_workflow_configs @relation(fields: [workflow_config_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([workflow_config_id, actor_type, employee_id], map: "sop_workflow_actors_unique")
+  @@index([workflow_config_id, actor_type, sequence_no], map: "sop_workflow_actors_order_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_workflow_configs {
+  id                                                                      String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_user_account_id                                                   String                       @db.Uuid
+  approval_mode                                                           String                       @db.VarChar(10)
+  status                                                                  String                       @default("active") @db.VarChar(20)
+  effective_from                                                          DateTime                     @default(dbgenerated("CURRENT_DATE")) @db.Date
+  effective_to                                                            DateTime?                    @db.Date
+  created_by                                                              String?                      @db.Uuid
+  updated_by                                                              String?                      @db.Uuid
+  created_at                                                              DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                                                              DateTime                     @default(now()) @db.Timestamptz(6)
+  sop_submissions                                                         sop_submissions[]
+  sop_workflow_config_actors                                              sop_workflow_config_actors[]
+  user_accounts_sop_workflow_configs_created_byTouser_accounts            user_accounts?               @relation("sop_workflow_configs_created_byTouser_accounts", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_workflow_configs_owner_user_account_idTouser_accounts user_accounts                @relation("sop_workflow_configs_owner_user_account_idTouser_accounts", fields: [owner_user_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_accounts_sop_workflow_configs_updated_byTouser_accounts            user_accounts?               @relation("sop_workflow_configs_updated_byTouser_accounts", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([owner_user_account_id, status], map: "sop_workflow_configs_owner_status_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model authority_category_level_rules {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id          String               @db.Uuid
+  position_level_id    String               @db.Uuid
+  is_allowed           Boolean              @default(true)
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime             @default(now()) @db.Timestamptz(6)
+  authority_categories authority_categories @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  position_levels      position_levels      @relation(fields: [position_level_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([category_id, position_level_id], map: "authority_category_level_rules_unique")
+  @@index([category_id], map: "idx_authority_category_level_rules_category")
+  @@index([position_level_id], map: "idx_authority_category_level_rules_level")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sop_related_branches {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sop_id        String        @db.Uuid
+  branch_id     String        @db.Uuid
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  branches      branches      @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sop_documents sop_documents @relation(fields: [sop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([sop_id, branch_id], map: "sop_related_branches_unique")
+  @@index([branch_id, sop_id], map: "sop_related_branches_branch_idx")
   @@schema("public")
 }
 

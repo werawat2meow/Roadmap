@@ -181,6 +181,7 @@ export async function GET() {
 
       return {
         id: item.id,
+        employeeId: item.employee_id,
         name:
           `${emp?.first_name_th || ""} ${emp?.last_name_th || ""}`.trim() ||
           "ไม่พบชื่อ",

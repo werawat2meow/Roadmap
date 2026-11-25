@@ -151,7 +151,11 @@ export default function AdminPage() {
   const cards = useMemo(() => SYSTEMS.map((system) => {
     const available = findSystem(menu, system.key);
     // The API already filters the tree by the signed-in user's permissions.
-    const href = available ? firstHref(available) : undefined;
+    const href = system.key === "leave"
+      ? system.path
+      : available
+        ? firstHref(available)
+        : undefined;
     return { ...system, href };
   }), [menu]);
 

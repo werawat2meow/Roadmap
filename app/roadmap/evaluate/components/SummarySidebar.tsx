@@ -1,17 +1,24 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Select } from "antd";
 import ScoreChart from "./ScoreChart";
-import ReportPreviewModal from "./ReportPreviewModal";
+import ExpectationPreviewModal from "./ExpectationPreviewModal";
+import OutsideFormPreviewModal from "./OutsideFormPreviewModal";
 
 // 1. เพิ่มการกำหนดประเภทข้อกำหนด (Interface) เพื่อรับข้อมูลฟอร์มจริงจากคอมโพเนนต์แม่
 interface SummarySidebarProps {
   allFormData: {
     id?: string;
+    companyRows?: any[];
+    departmentRows?: any[];
+    expectationRows?: any[];
+    employeeCode?: string;
     employeeName?: string;
     nickname?: string;
     position?: string;
+    company?: string;
     department?: string;
     division?: string;
+    unit?: string;
     level?: string;
     startDate?: string;
     companyScore?: number;
@@ -31,6 +38,8 @@ interface SummarySidebarProps {
     maxScore?: number;
     disciplineData?: any;
   };
+  employeeId?: string;
+  uploadedBy?: string;
   managers?: ManagerUser[];
   selectedManagerIds?: string[];
   isEditing?: boolean;
@@ -113,6 +122,8 @@ const getGrade = (percent: number) => {
 // 2. ปรับตัวฟังก์ชัน SummarySidebar ให้รับ props: allFormData เข้ามาใช้งาน
 export default function SummarySidebar({
   allFormData,
+  employeeId,
+  uploadedBy,
   evaluationType,
   managers = [],
   selectedManagerIds = [],
@@ -132,6 +143,40 @@ export default function SummarySidebar({
 }: SummarySidebarProps) {
   // State สำหรับควบคุมการเปิด-ปิดหน้าต่าง Preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isOutsideOpen, setIsOutsideOpen] = useState(false);
+  const [isUploadingOutside, setIsUploadingOutside] = useState(false);
+  const outsideFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportOutsideForm = async (file?: File) => {
+    if (!file || !employeeId) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      window.alert("กรุณาเลือกไฟล์ PDF เท่านั้น");
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append("employeeId", employeeId);
+    if (uploadedBy) payload.append("uploadedBy", uploadedBy);
+    payload.append("file", file);
+
+    setIsUploadingOutside(true);
+    try {
+      const response = await fetch("/roadmap/api/employee-documents", {
+        method: "POST",
+        body: payload,
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "นำเข้าไฟล์ไม่สำเร็จ");
+      }
+      window.alert("นำเข้า Outside Form เรียบร้อยแล้ว");
+    } catch (error: any) {
+      window.alert(error?.message || "นำเข้าไฟล์ไม่สำเร็จ");
+    } finally {
+      setIsUploadingOutside(false);
+      if (outsideFileInputRef.current) outsideFileInputRef.current.value = "";
+    }
+  };
 
   const parseSalaryInput = (value: string) => {
     const digits = value.replace(/[^0-9]/g, "");
@@ -358,8 +403,30 @@ export default function SummarySidebar({
           }}
           className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(225,29,72,0.25)] transition-all duration-200 active:scale-95 cursor-pointer select-none"
         >
-          Preview
+          Preview Form
         </button>
+        <button
+          type="button"
+          onClick={() => setIsOutsideOpen(true)}
+          className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 cursor-pointer select-none"
+        >
+          Outside Form
+        </button>
+        <button
+          type="button"
+          onClick={() => outsideFileInputRef.current?.click()}
+          disabled={isUploadingOutside || !employeeId}
+          className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 disabled:cursor-not-allowed disabled:opacity-60 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 active:scale-95 cursor-pointer select-none"
+        >
+          {isUploadingOutside ? "Importing..." : "Import Outside Form"}
+        </button>
+        <input
+          ref={outsideFileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(event) => handleImportOutsideForm(event.target.files?.[0])}
+        />
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -416,12 +483,17 @@ export default function SummarySidebar({
 
       {/* 3. ส่งข้อมูลผูกตรง (allFormData) ที่รับมาจากฟอร์มกรอกจริง ๆ เข้าไปยัง Component ป๊อปอัป Preview */}
       {!onPreview && (
-        <ReportPreviewModal
+        <ExpectationPreviewModal
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           data={{ ...allFormData, evaluationType }}
         />
       )}
+      <OutsideFormPreviewModal
+        isOpen={isOutsideOpen}
+        onClose={() => setIsOutsideOpen(false)}
+        data={{ ...allFormData, evaluationType }}
+      />
     </div>
   );
 }

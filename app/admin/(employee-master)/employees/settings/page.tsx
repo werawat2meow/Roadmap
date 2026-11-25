@@ -14,6 +14,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import AuthorityBenefitsSettingsPanel from "./components/AuthorityBenefitsSettingsPanel";
 
 type Level = "branch" | "department" | "division" | "unit";
 type Company = {
@@ -75,6 +76,8 @@ async function readList<T>(url: string): Promise<T[]> {
 }
 
 export default function EmployeeSettingsPage() {
+  const [settingsTab, setSettingsTab] = useState<"organization" | "authority-benefits">("organization");
+  const [authorityTab, setAuthorityTab] = useState<"authority" | "benefit">("authority");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -440,6 +443,30 @@ export default function EmployeeSettingsPage() {
         </button>
       </header>
 
+      <nav aria-label="Settings sections" className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div className="flex min-w-max gap-2">
+          <button
+            type="button"
+            onClick={() => setSettingsTab("organization")}
+            className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${settingsTab === "organization" ? "bg-slate-900 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+          >
+            โครงสร้างองค์กร
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsTab("authority-benefits")}
+            className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${settingsTab === "authority-benefits" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+          >
+            อำนาจและสิทธิประโยชน์
+          </button>
+        </div>
+      </nav>
+
+      {settingsTab === "authority-benefits" ? (
+        <AuthorityBenefitsSettingsPanel activeTab={authorityTab} onChange={setAuthorityTab} />
+      ) : (
+      <div className="space-y-6">
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <label className="relative block">
           <Search
@@ -727,6 +754,8 @@ export default function EmployeeSettingsPage() {
             </div>
           </div>
         </div>
+      )}
+      </div>
       )}
     </div>
   );

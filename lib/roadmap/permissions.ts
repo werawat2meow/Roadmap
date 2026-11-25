@@ -78,6 +78,8 @@ export async function requireRoadmapPermission(
 
   if (!access.ok) return false;
 
+  if (access.isSuperAdmin) return true;
+
   // ห้ามใช้รหัสพนักงานคนอื่นใน request เพื่อขอผ่านสิทธิ์
   if (access.employeeId !== employeeId) return false;
 

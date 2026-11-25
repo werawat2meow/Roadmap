@@ -4,7 +4,10 @@ import { createNotification } from "@/lib/notifications/createNotification";
 import { getEvaluationCycleInfo } from "@/lib/roadmap/cycleHelper";
 import { getRoadmapCycleSettings } from "@/lib/roadmap/cycleSettingsServer";
 import { writeRoadmapAuditLog } from "@/lib/roadmap/auditLog";
-import { requireRoadmapPermission } from "@/lib/roadmap/permissions";
+import {
+  getCurrentRoadmapAccess,
+  requireRoadmapPermission,
+} from "@/lib/roadmap/permissions";
 import { validateEvaluationScores } from "./validation";
 
 const isUuid = (value: string) =>
@@ -195,7 +198,10 @@ export async function POST(req: Request) {
   }
   const scoreError = validateEvaluationScores(body);
   if (scoreError) {
-    return NextResponse.json({ success: false, error: scoreError }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: scoreError },
+      { status: 400 },
+    );
   }
 
   const evaluationId = body.evaluationId?.trim();
@@ -207,10 +213,16 @@ export async function POST(req: Request) {
       .eq("id", evaluationId)
       .maybeSingle();
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
     }
     if (!data || data.employee_id !== employeeId) {
-      return NextResponse.json({ success: false, error: "ไม่พบรายการประเมิน" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "ไม่พบรายการประเมิน" },
+        { status: 404 },
+      );
     }
     if (["Completed", "Rejected", "SalaryUpdated"].includes(data.status)) {
       return NextResponse.json(
@@ -222,24 +234,33 @@ export async function POST(req: Request) {
   }
 
   if (status === "Submitted") {
-    let reviewerIds: string[] = Array.isArray(body.managerIds) ? body.managerIds : [];
+    const currentAccess = await getCurrentRoadmapAccess();
+    const isSuperAdmin =
+      currentAccess.ok && currentAccess.isSuperAdmin === true;
+
+    let reviewerIds: string[] = Array.isArray(body.managerIds)
+      ? body.managerIds
+      : [];
     if (evaluationId) {
       const { data, error } = await supabaseAdmin
         .from("rm_evaluation_reviewers")
         .select("manager_id")
         .eq("evaluation_id", evaluationId);
       if (error) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 500 },
+        );
       }
       reviewerIds = (data || []).map((reviewer) => reviewer.manager_id);
     }
-    if (reviewerIds.length === 0) {
+    if (!isSuperAdmin && reviewerIds.length === 0) {
       return NextResponse.json(
         { success: false, error: "กรุณากำหนดผู้ประเมินก่อนส่งประเมิน" },
         { status: 400 },
       );
     }
-    if (!reviewerIds.includes(evaluatorId)) {
+    if (!isSuperAdmin && !reviewerIds.includes(evaluatorId)) {
       return NextResponse.json(
         { success: false, error: "คุณไม่ได้รับมอบหมายให้ประเมินรายการนี้" },
         { status: 403 },
@@ -440,37 +461,87 @@ export async function POST(req: Request) {
     }
   }
 
-  // 1. เพิ่มผู้ประเมิน: ทำเฉพาะตอนสร้างใหม่ หรือเมื่อมีการส่ง managerIds มาตอนสร้าง
-  if (
-    !evaluationId &&
-    Array.isArray(body.managerIds) &&
-    body.managerIds.length > 0
-  ) {
-    const reviewerPayload = body.managerIds.map((managerId: string) => ({
-      evaluation_id: evalData.id,
-      manager_id: managerId,
-      status: "Pending",
-    }));
+  // 1. เพิ่ม/ซิงก์ผู้ประเมินทั้งตอนสร้างใบใหม่และตอนแก้ไขใบเดิม
+  if (Array.isArray(body.managerIds) && (!evaluationId || status === "Draft")) {
+    const requestedReviewerIds: string[] = Array.from(
+      new Set(
+        body.managerIds
+          .map((managerId: unknown): string => String(managerId ?? "").trim())
+          .filter(
+            (managerId: string): managerId is string => managerId.length > 0,
+          ),
+      ),
+    );
 
-    const { error: reviewerError } = await supabaseAdmin
-      .from("rm_evaluation_reviewers")
-      .insert(reviewerPayload);
+    const { data: existingReviewers, error: existingReviewersError } =
+      await supabaseAdmin
+        .from("rm_evaluation_reviewers")
+        .select("id,manager_id")
+        .eq("evaluation_id", evalData.id);
 
-    if (reviewerError) {
-      console.error(
-        "rm_evaluation_reviewers insert failed",
-        reviewerError,
-        reviewerPayload,
-      );
+    if (existingReviewersError) {
       return NextResponse.json(
-        { success: false, error: reviewerError.message },
+        { success: false, error: existingReviewersError.message },
         { status: 500 },
       );
+    }
+
+    const existingReviewerIds = new Set(
+      (existingReviewers || []).map((reviewer) => String(reviewer.manager_id)),
+    );
+    const requestedReviewerIdSet = new Set(requestedReviewerIds);
+
+    const reviewersToRemove = (existingReviewers || []).filter(
+      (reviewer) => !requestedReviewerIdSet.has(String(reviewer.manager_id)),
+    );
+
+    for (const reviewer of reviewersToRemove) {
+      const { error: removeReviewerError } = await supabaseAdmin
+        .from("rm_evaluation_reviewers")
+        .delete()
+        .eq("id", reviewer.id);
+
+      if (removeReviewerError) {
+        return NextResponse.json(
+          { success: false, error: removeReviewerError.message },
+          { status: 500 },
+        );
+      }
+    }
+
+    const reviewerPayload = requestedReviewerIds
+      .filter((managerId) => !existingReviewerIds.has(managerId))
+      .map((managerId) => ({
+        evaluation_id: evalData.id,
+        manager_id: managerId,
+        status: "Pending",
+      }));
+
+    if (reviewerPayload.length > 0) {
+      const { error: reviewerError } = await supabaseAdmin
+        .from("rm_evaluation_reviewers")
+        .insert(reviewerPayload);
+
+      if (reviewerError) {
+        console.error(
+          "rm_evaluation_reviewers insert failed",
+          reviewerError,
+          reviewerPayload,
+        );
+        return NextResponse.json(
+          { success: false, error: reviewerError.message },
+          { status: 500 },
+        );
+      }
     }
   }
 
   // 2. บันทึกคะแนนแยกรายบุคคลของผู้ประเมินคนนี้ลง rm_evaluation_reviewer_scores
-  if (evaluatorId && (isManagerSubmitting || (Array.isArray(body.scores) && body.scores.length > 0))) {
+  if (
+    evaluatorId &&
+    (isManagerSubmitting ||
+      (Array.isArray(body.scores) && body.scores.length > 0))
+  ) {
     const { data: currentReviewer } = await supabaseAdmin
       .from("rm_evaluation_reviewers")
       .select("id")
@@ -506,9 +577,12 @@ export async function POST(req: Request) {
         };
       });
 
-      const { error: reviewerScoreError } = reviewerScoreRows.length > 0
-        ? await supabaseAdmin.from("rm_evaluation_reviewer_scores").insert(reviewerScoreRows)
-        : { error: null };
+      const { error: reviewerScoreError } =
+        reviewerScoreRows.length > 0
+          ? await supabaseAdmin
+              .from("rm_evaluation_reviewer_scores")
+              .insert(reviewerScoreRows)
+          : { error: null };
 
       if (reviewerScoreError) {
         console.error(

@@ -40,6 +40,8 @@ const menuOptions = [
   "Evaluate MGR",
   "Reports",
   "Management",
+  "Checklist",
+  "Present",
   "Send Account",
   "Settings",
 ];

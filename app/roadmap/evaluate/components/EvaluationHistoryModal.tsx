@@ -14,6 +14,11 @@ type HistoryRecord = {
   maxScore: number | null;
   managerComment: string | null;
   evaluationType?: string | null;
+  evaluation_period?: string | null;
+  evaluation_period_continued?: string | null;
+  new_designation?: string | null;
+  new_level?: string | null;
+  special_compensation?: number | null;
   extra_data?: any;
   employeeName?: string;
   rejection_note?: string | null;
@@ -146,6 +151,13 @@ export default function EvaluationHistoryModal({
                         {record.departmentScore ?? "-"}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                    <div><span className="text-xs text-slate-500">ตำแหน่งใหม่</span><p className="font-semibold text-slate-700">{record.new_designation || "-"}</p></div>
+                    <div><span className="text-xs text-slate-500">ระดับใหม่</span><p className="font-semibold text-slate-700">{record.new_level || "-"}</p></div>
+                    <div><span className="text-xs text-slate-500">ระยะเวลาประเมิน</span><p className="font-semibold text-slate-700">{record.evaluation_period || "-"}</p></div>
+                    <div><span className="text-xs text-slate-500">ค่าตอบแทนพิเศษ</span><p className="font-semibold text-slate-700">{record.special_compensation ?? 0}</p></div>
                   </div>
 
                   {/* 🟡 แถวล่าง: ปุ่มแก้ไข สีเหลืองมีเฉด (Gradient) */}

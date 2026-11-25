@@ -12,6 +12,7 @@ import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
 // กำหนด Type ให้ตรงกับที่ API ส่งมา
 type Employee = {
   id: string;
+  employeeId: string;
   initials: string;
   name: string;
   grade: string;
@@ -478,6 +479,7 @@ export default function ExecutivePage() {
         open={Boolean(selectedEmployee)}
         employee={selectedEmployee}
         evaluationId={selectedEmployee?.id}
+        employeeId={selectedEmployee?.employeeId}
         onClose={() => {
           setSelectedEmployee(null);
           setRejectModalOpen(false);

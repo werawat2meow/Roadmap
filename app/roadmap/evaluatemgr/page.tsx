@@ -20,6 +20,7 @@ import NominateEmployeeModal from "./components/NominateEmployeeModal";
 import CycleNotificationBanner from "@/app/roadmap/components/CycleNotificationBanner";
 import { useRoadmapCycleSettings } from "@/lib/roadmap/useCycleSettings";
 import { useRoadmapPageLog } from "@/lib/roadmap/useRoadmapPageLog";
+import EmployeeDocumentsButton from "@/app/roadmap/components/EmployeeDocumentsButton";
 
 type SettingsCategory = {
   id: string;
@@ -30,6 +31,15 @@ type SettingsCategory = {
   division_id?: string | null;
   unit_id?: string | null;
   items: { id: string; topic: string; weight: number }[];
+};
+
+type ManagerUser = {
+  id: string;
+  employee_id: string;
+  name: string;
+  email: string;
+  role: string;
+  menus: string[];
 };
 
 type EvaluatemgrRecord = {
@@ -141,6 +151,7 @@ export default function EvaluateMgrPage() {
   const [settingsCategories, setSettingsCategories] = useState<
     SettingsCategory[]
   >([]);
+  const [managers, setManagers] = useState<ManagerUser[]>([]);
   const [formData, setFormData] = useState<EvaluationFormData>(initialFormData);
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const [editingEvaluationId, setEditingEvaluationId] = useState<string | null>(
@@ -283,6 +294,40 @@ export default function EvaluateMgrPage() {
       }
     }
     loadSettings();
+  }, []);
+
+  useEffect(() => {
+    let canceled = false;
+
+    async function loadManagers() {
+      try {
+        const res = await fetch("/roadmap/api/user-access");
+        const data = await res.json();
+
+        if (canceled) return;
+
+        if (!res.ok || !data?.success) {
+          console.error("load managers failed", data);
+          return;
+        }
+
+        const managerUsers = (data.data || []).filter(
+          (user: ManagerUser) => user.role === "Manager",
+        );
+
+        setManagers(managerUsers);
+      } catch (error) {
+        if (!canceled) {
+          console.error("load managers failed", error);
+        }
+      }
+    }
+
+    loadManagers();
+
+    return () => {
+      canceled = true;
+    };
   }, []);
 
   const companyGround = useMemo(() => {
@@ -662,6 +707,12 @@ export default function EvaluateMgrPage() {
             showHistoryButton={false}
           />
 
+          <div className="mb-4 flex justify-end">
+            <EmployeeDocumentsButton
+              employeeId={employee?.id || selectedEvaluation.employee_id}
+            />
+          </div>
+
           {selectedEvaluation?.status === "Returned" &&
             selectedEvaluation.rejection_note && (
               <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -687,7 +738,7 @@ export default function EvaluateMgrPage() {
             <div>
               <SummarySidebar
                 allFormData={formData}
-                managers={[]}
+                managers={managers}
                 selectedManagerIds={selectedManagerIds}
                 isEditing={Boolean(editingEvaluationId)}
                 isSaving={isSaving}

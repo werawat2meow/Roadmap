@@ -25,6 +25,8 @@ const menuItems = [
   { name: "Evaluate HR", href: "/roadmap/evaluate", icon: GanttChartSquare },
   { name: "Evaluate MGR", href: "/roadmap/evaluatemgr", icon: ClipboardCheck },
   { name: "Management", href: "/roadmap/executive", icon: Crown },
+  { name: "Checklist", href: "/roadmap/checklist", icon: ClipboardCheck },
+  { name: "Present", href: "/roadmap/present", icon: FileSearch },
   { name: "Reports", href: "/roadmap/reports", icon: BarChart3 },
   { name: "Send Account", href: "/roadmap/payroll", icon: Banknote },
   { name: "Settings", href: "/roadmap/settings", icon: Settings },

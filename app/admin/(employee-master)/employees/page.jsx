@@ -17,6 +17,21 @@ import useScopedPermissions from "@/hooks/useScopedPermissions";
 const DEFAULT_PAGE_SIZE = 10;
 const LAST_WIZARD_STEP = EMPLOYEE_WIZARD_STEPS.length - 1;
 
+const EMPLOYEE_GROUP_OPTIONS = [
+  {
+    value: "PROBATION",
+    label: "พนักงานทดลองงาน",
+  },
+  {
+    value: "ACTIVE",
+    label: "พนักงานประจำ",
+  },
+  {
+    value: "RESIGNED",
+    label: "พนักงานที่ลาออกแล้ว",
+  },
+];
+
 const DEFAULT_FORM_VALUES = {
   /* -------------------------------------------------------
      Personal
@@ -3645,7 +3660,7 @@ export default function EmployeesPage() {
             onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             className="mb-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder:text-slate-600 outline-none focus:border-emerald-500"
           />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <select aria-label="สังกัด" value={branchId} onChange={(event) => handleBranchChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
               <option value="">ทุกสังกัด</option>
               {scopedMasterData.branches.map((item) => <option key={item.id} value={item.id}>{item.branch_name}</option>)}
@@ -3661,6 +3676,32 @@ export default function EmployeesPage() {
             <select aria-label="หน่วย" value={unitId} onChange={(event) => { setUnitId(event.target.value); setPage(1); }} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
               <option value="">ทุกหน่วย</option>
               {unitOptions.map((item) => <option key={item.id} value={item.id}>{item.unit_name}</option>)}
+            </select>
+            <select
+              aria-label="ประเภทพนักงาน"
+              value={
+                scopedMasterData.employeeStatuses.find(
+                  (item) => String(item.id) === String(employeeStatusId)
+                )?.status_code?.toUpperCase() || ""
+              }
+              onChange={(event) => {
+                const selectedCode = event.target.value;
+                const selectedStatus =
+                  scopedMasterData.employeeStatuses.find(
+                    (item) =>
+                      String(item.status_code).toUpperCase() === selectedCode
+                  );
+
+                handleEmployeeStatusChange(selectedStatus?.id || "");
+              }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
+            >
+              <option value="">พนักงานทุกประเภท</option>
+              {EMPLOYEE_GROUP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

@@ -112,9 +112,17 @@ export default function EvaluationSection({
                     {options.length > 0 ? (
                       <select
                         value={row.itemId}
-                        onChange={(e) =>
-                          onChangeRow(row.rowId, { itemId: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const selectedItem = availableOptions.find(
+                            (option) => option.id === e.target.value,
+                          );
+
+                          onChangeRow(row.rowId, {
+                            itemId: e.target.value,
+                            topic: selectedItem?.topic ?? "",
+                            maxScore: Number(selectedItem?.weight ?? 0),
+                          });
+                        }}
                         className="w-full border border-gray-300 rounded-md p-2 pr-10 bg-white text-black truncate appearance-none"
                       >
                         <option value="">เลือกตัวชี้วัด</option>

@@ -14,6 +14,8 @@ const routePermissionMap: { [key: string]: string } = {
   "/roadmap/evaluatemgr": "Evaluate MGR",
   "/roadmap/reports": "Reports",
   "/roadmap/executive": "Management",
+  "/roadmap/checklist": "Checklist",
+  "/roadmap/present": "Present",
   "/roadmap/payroll": "Send Account",
   "/roadmap/settings": "Settings",
   "/roadmap/audit-logs": "Audit Logs",
@@ -24,6 +26,7 @@ function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+  const [serverIsSuperAdmin, setServerIsSuperAdmin] = useState(false);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
 
   const pathname = usePathname();
@@ -59,14 +62,17 @@ function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
 
         if (!response.ok || !json.success) {
           setAllowedMenus([]);
+          setServerIsSuperAdmin(false);
           return;
         }
 
         setAllowedMenus(Array.isArray(json.data?.menus) ? json.data.menus : []);
+        setServerIsSuperAdmin(json.data?.isSuperAdmin === true);
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error("Failed to fetch permissions:", error);
           setAllowedMenus([]);
+          setServerIsSuperAdmin(false);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -106,8 +112,9 @@ function RoadmapLayoutContent({ children }: { children: React.ReactNode }) {
     : undefined;
 
   const hasPermission =
-    allowedMenus.length > 0 &&
-    (!requiredPermission || allowedMenus.includes(requiredPermission));
+    serverIsSuperAdmin ||
+    (allowedMenus.length > 0 &&
+      (!requiredPermission || allowedMenus.includes(requiredPermission)));
 
   return (
     <div className="relative min-h-screen bg-[#F9F5F2]">

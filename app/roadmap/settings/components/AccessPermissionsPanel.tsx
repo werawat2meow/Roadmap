@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { swalSuccess, swalError } from "../../../components/Swal";
-import { Check, Crown, Banknote, X } from "lucide-react";
+import { Check, Crown, Banknote, FileSearch, X } from "lucide-react";
 import {
   Shield,
   ShieldCheck,
@@ -38,6 +38,8 @@ const menuIconMap: Record<string, typeof LayoutDashboard> = {
   "Evaluate MGR": ClipboardCheck,
   Settings: Settings,
   Reports: BarChart3,
+  Checklist: ClipboardCheck,
+  Present: FileSearch,
   Executive: Crown,
   "Send Account": Banknote,
 };
@@ -49,6 +51,8 @@ const menuIconStyles: Record<string, string> = {
   "Evaluate MGR": "text-orange-700",
   Settings: "text-rose-700",
   Reports: "text-blue-700",
+  Checklist: "text-emerald-700",
+  Present: "text-indigo-700",
   Executive: "text-violet-700",
   "Send Account": "text-green-700",
 };
@@ -60,6 +64,8 @@ const menuIconBgStyles: Record<string, string> = {
   "Evaluate MGR": "bg-orange-100",
   Settings: "bg-rose-100",
   Reports: "bg-blue-100",
+  Checklist: "bg-emerald-100",
+  Present: "bg-indigo-100",
   Executive: "bg-violet-100",
   "Send Account": "bg-green-100",
 };
